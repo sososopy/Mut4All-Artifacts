@@ -1,0 +1,97 @@
+Issue Title:
+Internal Compiler Error with awaited async closure within impl Future fn poll · Issue #124867 · rust-lang/rust · GitHub
+
+Rust Code:
+// to listen for the hello world messages, run this in a separate terminal
+// ncat -k -l 8080
+use anyhow::Result as AnyhowResult;
+use futures::FutureExt;
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+    time::Duration,
+};
+use tokio::{io::AsyncWriteExt, net, runtime, task};
+
+/// A Future to print "hello world!\n" on a TCP Stream with a sleep interval and iteration number.
+struct SleepyHelloWorld {
+    handle: runtime::Handle,
+    stream: net::TcpStream,
+    sleep_millis: u64,
+    n_hello: usize,
+}
+
+impl SleepyHelloWorld {
+    async fn write_one(&mut self, src: &[u8]) -> AnyhowResult<()> {
+        self.stream.write_all(src).await;
+        Ok(())
+    }
+}
+
+impl Future for SleepyHelloWorld {
+    type Output = AnyhowResult<()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let waker = cx.waker().clone();
+
+        let n_hello = self.n_hello; // copy
+        let duration = Duration::from_millis(self.sleep_millis);
+        let greeting = b"hello world!\n";
+
+        let this = Pin::get_mut(self);
+
+        // run a task on a blocking thread (because fn poll is sync)
+        let task = async move |this: &mut Self| {
+            for _ in 0..n_hello {
+                this.write_one(greeting).await?;
+                tokio::time::sleep(duration).await;
+                waker.wake();
+            }
+            Result::<(), anyhow::Error>::Ok(())
+        };
+
+        // move that workload into a blocking thread
+        let mut owned_handle = task::spawn_blocking(move || self.handle.block_on(task(this)));
+        let mut handle = Pin::new(&mut owned_handle);
+
+        // Schedule the future to be woken up when the task is complete.
+        let waker = cx.waker().clone();
+
+        // Poll the handle to completion.
+        match handle.as_mut().poll(cx) {
+            Poll::Ready(result) => {
+                println!("The task completed, so we're done.\nresult={result:#?}");
+                match result {
+                    Ok(_) => Poll::Ready(Ok(())),
+                    Err(e) => Poll::Ready(Err(e.into())),
+                }
+            }
+            Poll::Pending => {
+                // The task is still running, so we need to wait.
+                Poll::Pending
+            }
+        }
+    }
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> AnyhowResult<()> {
+    println!("Connecting.");
+    let sleepy_future = SleepyHelloWorld {
+        handle: runtime::Handle::current(),
+        stream: net::TcpStream::connect("127.0.0.1:8080").await?,
+        sleep_millis: 350,
+        n_hello: 10,
+    };
+    println!("Connected.");
+
+    println!("Awaiting sleepy_future...");
+    sleepy_future.await;
+    println!("Awaiting sleepy_future... done.");
+
+    Ok(())
+}
+
+Bug Labels:
+C-bug, F-async_closure, I-ICE, T-compiler

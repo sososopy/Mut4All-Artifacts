@@ -1,0 +1,26 @@
+Mutation Operator: Modify Inherent Associated Types with Nested Lifetimes
+
+Target: Implementations of structs using inherent associated types with lifetime annotations.
+
+Mutation Rule:
+1. Identify a struct definition that utilizes the `#![feature(inherent_associated_types)]` feature, such as `struct Foo<T>(T);`.
+2. Locate the implementation block for the struct where an associated type is defined with a lifetime, for instance:
+   ```rust
+   impl<'a> Foo<fn(&'a ())> {
+       type Assoc = &'a ();
+   }
+   ```
+3. Modify the implementation to introduce a nested lifetime parameter that shadows the existing lifetime, causing potential confusion for the compiler. 
+4. To do this, add an additional layer of function or struct that uses the same lifetime name `'a` but with a different scope. For example, add a function inside the implementation that takes a parameter with a lifetime `'a`:
+   ```rust
+   impl<'a> Foo<fn(&'a ())> {
+       type Assoc = &'a ();
+
+       fn new_function<'a>(&self, _: &'a u32) {
+           // This 'a is different from the 'a in Assoc
+       }
+   }
+   ```
+5. Ensure that the new function or struct properly declares the new lifetime `'a`. The intention is to cause a lifetime mismatch or confusion within the compiler when trying to resolve lifetimes.
+
+Rationale: By introducing a nested lifetime with the same name, we create a situation that challenges the compiler's ability to correctly resolve or differentiate between lifetimes, especially in the context of inherent associated types. This increases the likelihood of encountering edge cases or bugs.

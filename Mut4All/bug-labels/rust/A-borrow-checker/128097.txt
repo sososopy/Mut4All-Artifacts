@@ -1,0 +1,189 @@
+Issue Title:
+compiler/rustc_borrowck/src/borrow_set.rs:250:17: found two uses for 2-phase borrow temporary · Issue #128097 · rust-lang/rust · GitHub
+
+Rust Code:
+trait Cut {
+    fn floor(&mut self) -> (Option<TransDataType>, Bson)
+    where
+        Self: Serialize,
+    {
+        match serde_json::to_string(&self) {
+            Ok(json) => match json.len() {
+                len if len > MAX_VARCHAR_SIZE => {
+                    (Some(TransDataType::Varchar(MAX_VARCHAR_SIZE)), self.cut())
+                }
+                len => (
+                    Some(TransDataType::Varchar(varchar_size(len))),
+                    Bson::String(json),
+                ),
+            },
+            Err(e) => {
+                tracing::error!(?e);
+                (None, Bson::Null)
+            }
+        }
+    }
+    fn cut(&mut self) -> Bson;
+}
+
+impl Cut for Vec<Bson> {
+    /// When the size of the JSON array string exceeds 65535, it needs to be trimmed so that the length is less than 65535;<br>
+    /// Discard the largest element in the array, and then recursively repeat the judgment
+    fn cut(&mut self) -> Bson {
+        let remove_index = self
+            .iter()
+            .enumerate()
+            .map(|(idx, value)| {
+                (
+                    idx,
+                    serde_json::to_string(value)
+                        .map(|s| s.len())
+                        .unwrap_or(usize::MAX),
+                )
+            })
+            .max_by(|a, b| a.1.cmp(&b.1))
+            .map(|(idx, _)| idx);
+
+        if let Some(remove_index) = remove_index {
+            let remove_value = self.remove(remove_index);
+            tracing::warn!(?remove_index, ?remove_value, "Cut the BSON array length");
+        }
+
+        match serde_json::to_string(&self) {
+            Ok(json) if json.len() > MAX_VARCHAR_SIZE => become self.cut(),
+            Ok(json) => Bson::String(json),
+            Err(e) => {
+                tracing::error!(?e);
+                Bson::Null
+            }
+        }
+    }
+}
+
+impl Cut for Document {
+    /// When the size of the JSON object string exceeds 65535, it needs to be trimmed so that the length is less than 65535;<br>
+    /// Discard the largest element in the array, and then recursively repeat the judgment
+    fn cut(&mut self) -> Bson {
+        let replace_key = self
+            .iter()
+            .map(|(key, value)| {
+                (
+                    key,
+                    serde_json::to_string(value)
+                        .map(|s| s.len())
+                        .unwrap_or(usize::MAX),
+                )
+            })
+            .max_by(|a, b| a.1.cmp(&b.1))
+            .map(|(k, _)| k.to_string());
+
+        if let Some(replace_key) = replace_key {
+            tracing::warn!(
+                "Replace the value of the largest field: {} in the BSON object as ...",
+                replace_key
+            );
+            let _ = self.insert(replace_key, Bson::String("...".to_string()));
+        }
+
+        match serde_json::to_string(&self) {
+            Ok(json) if json.len() > MAX_VARCHAR_SIZE => become self.cut(),
+            Ok(json) => Bson::String(json),
+            Err(e) => {
+                tracing::error!(?e);
+                Bson::Null
+            }
+        }
+    }
+}
+
+Bug Trace:
+warning: the feature `explicit_tail_calls` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/lib.rs:8:12
+  |
+8 | #![feature(explicit_tail_calls)]
+  |            ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #112788 <https://github.com/rust-lang/rust/issues/112788> for more information
+  = note: `#[warn(incomplete_features)]` on by default
+
+error: internal compiler error: compiler/rustc_borrowck/src/borrow_set.rs:250:17: found two uses for 2-phase borrow temporary _234: bb210[0] and bb211[0]
+   --> src/trans/bson.rs:142:58
+    |
+142 |             Ok(json) if json.len() > MAX_VARCHAR_SIZE => become self.cut(),
+    |                                                          ^^^^^^^^^^^^^^^^^
+
+thread 'rustc' panicked at compiler/rustc_borrowck/src/borrow_set.rs:250:17:
+Box<dyn Any>
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: <rustc_errors::diagnostic::BugAbort as rustc_errors::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+   2: <rustc_errors::DiagCtxtHandle>::span_bug::<rustc_span::span_encoding::Span, alloc::string::String>
+   3: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}
+   5: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+   6: rustc_middle::util::bug::span_bug_fmt::<rustc_span::span_encoding::Span>
+   7: <rustc_borrowck::borrow_set::BorrowSet>::build
+   8: rustc_borrowck::do_mir_borrowck
+      [... omitted 1 frame ...]
+   9: rustc_interface::passes::analysis
+      [... omitted 1 frame ...]
+  10: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/home/iduanyingjie/Projects/rust/data-mongodb2redshift/rustc-ice-2024-07-23T13_38_17-80983.txt` to your bug report
+
+note: compiler flags: --crate-type lib -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `trans::bson::<impl at src/trans/bson.rs:118:1: 118:23>::cut`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: internal compiler error: compiler/rustc_borrowck/src/borrow_set.rs:250:17: found two uses for 2-phase borrow temporary _179: bb204[0] and bb205[0]
+   --> src/trans/bson.rs:178:58
+    |
+178 |             Ok(json) if json.len() > MAX_VARCHAR_SIZE => become self.cut(),
+    |                                                          ^^^^^^^^^^^^^^^^^
+
+thread 'rustc' panicked at compiler/rustc_borrowck/src/borrow_set.rs:250:17:
+Box<dyn Any>
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: <rustc_errors::diagnostic::BugAbort as rustc_errors::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+   2: <rustc_errors::DiagCtxtHandle>::span_bug::<rustc_span::span_encoding::Span, alloc::string::String>
+   3: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}
+   5: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+   6: rustc_middle::util::bug::span_bug_fmt::<rustc_span::span_encoding::Span>
+   7: <rustc_borrowck::borrow_set::BorrowSet>::build
+   8: rustc_borrowck::do_mir_borrowck
+      [... omitted 1 frame ...]
+   9: rustc_interface::passes::analysis
+      [... omitted 1 frame ...]
+  10: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/home/iduanyingjie/Projects/rust/data-mongodb2redshift/rustc-ice-2024-07-23T13_38_17-80983.txt` to your bug report
+
+note: compiler flags: --crate-type lib -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `trans::bson::<impl at src/trans/bson.rs:152:1: 152:22>::cut`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+warning: `mongodb2redshift` (lib) generated 1 warning
+error: could not compile `mongodb2redshift` (lib); 1 warning emitted
+
+Bug Labels:
+A-borrow-checker, C-bug, F-explicit_tail_calls, I-ICE, S-bug-has-test, T-compiler

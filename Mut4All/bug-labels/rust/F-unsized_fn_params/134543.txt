@@ -1,0 +1,72 @@
+Issue Title:
+ICE (OperandValue cannot be a pointer) trying to convert `dyn PointerLike` to `dyn* PointerLike` with unsized_fn_params · Issue #134543 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(pointer_like_trait, unsized_fn_params, dyn_star)]
+#![allow(internal_features, incomplete_features)]
+
+use std::marker::PointerLike;
+
+#[no_mangle]
+pub fn lol(x: dyn PointerLike) {
+    foo(x);
+}
+
+fn foo<T: PointerLike + ?Sized>(x: T) {
+    let _: dyn* PointerLike = x;
+}
+
+fn main() {}
+
+Bug Trace:
+error: internal compiler error: /rustc/9e136a30a965bf4e63f03095c57df7257bf96fd6/compiler/rustc_codegen_ssa/src/mir/operand.rs:98:18: OperandValue cannot be a pointer: Ref(PlaceValue { llval: (ptr:  %6 = load ptr, ptr %4, align 8, !dbg !38), llextra: Some((ptr:  %8 = load ptr, ptr %7, align 8, !dbg !38)), align: Align(1 bytes) })
+
+thread 'rustc' panicked at /rustc/9e136a30a965bf4e63f03095c57df7257bf96fd6/compiler/rustc_codegen_ssa/src/mir/operand.rs:98:18:
+Box<dyn Any>
+stack backtrace:
+   0:     0x78a8af18315a - <std::sys::backtrace::BacktraceLock::print::DisplayBacktrace as core::fmt::Display>::fmt::h6c37de0361fa7462
+   1:     0x78a8af813cbc - core::fmt::write::hf77fe0583268bf67
+   2:     0x78a8b0742dd1 - std::io::Write::write_fmt::h3b0b8069e2435ed6
+   3:     0x78a8af182fb2 - std::sys::backtrace::BacktraceLock::print::hce84519ec0e7588e
+   4:     0x78a8af1854aa - std::panicking::default_hook::{{closure}}::h6e0433c33d1ed12b
+   5:     0x78a8af1852f3 - std::panicking::default_hook::h19d4e9e8d7fba9e2
+   6:     0x78a8ae2f7768 - std[19739dcbdd52d894]::panicking::update_hook::<alloc[d24e20bba6540ab9]::boxed::Box<rustc_driver_impl[3177e72804664110]::install_ice_hook::{closure#0}>>::{closure#0}
+   7:     0x78a8af185c68 - std::panicking::rust_panic_with_hook::hd21771b96ea64164
+   8:     0x78a8ae3322d1 - std[19739dcbdd52d894]::panicking::begin_panic::<rustc_errors[37abd7aad4ad5df0]::ExplicitBug>::{closure#0}
+   9:     0x78a8ae3274b6 - std[19739dcbdd52d894]::sys::backtrace::__rust_end_short_backtrace::<std[19739dcbdd52d894]::panicking::begin_panic<rustc_errors[37abd7aad4ad5df0]::ExplicitBug>::{closure#0}, !>
+  10:     0x78a8ae323ec9 - std[19739dcbdd52d894]::panicking::begin_panic::<rustc_errors[37abd7aad4ad5df0]::ExplicitBug>
+  11:     0x78a8ae33c231 - <rustc_errors[37abd7aad4ad5df0]::diagnostic::BugAbort as rustc_errors[37abd7aad4ad5df0]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  12:     0x78a8ae910fd3 - rustc_middle[a45f2c6e02975f4b]::util::bug::opt_span_bug_fmt::<rustc_span[2a960e124d280c12]::span_encoding::Span>::{closure#0}
+  13:     0x78a8ae8f67ba - rustc_middle[a45f2c6e02975f4b]::ty::context::tls::with_opt::<rustc_middle[a45f2c6e02975f4b]::util::bug::opt_span_bug_fmt<rustc_span[2a960e124d280c12]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+  14:     0x78a8ae8f664b - rustc_middle[a45f2c6e02975f4b]::ty::context::tls::with_context_opt::<rustc_middle[a45f2c6e02975f4b]::ty::context::tls::with_opt<rustc_middle[a45f2c6e02975f4b]::util::bug::opt_span_bug_fmt<rustc_span[2a960e124d280c12]::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+  15:     0x78a8ac645790 - rustc_middle[a45f2c6e02975f4b]::util::bug::bug_fmt
+  16:     0x78a8ae14cd97 - <rustc_codegen_ssa[86572314d330a2c2]::mir::operand::OperandValue<&rustc_codegen_llvm[de1ddb382a238c68]::llvm_::ffi::Value>>::pointer_parts
+  17:     0x78a8afe533d9 - <rustc_codegen_ssa[86572314d330a2c2]::mir::FunctionCx<rustc_codegen_llvm[de1ddb382a238c68]::builder::Builder>>::codegen_rvalue_operand
+  18:     0x78a8b0629954 - rustc_codegen_ssa[86572314d330a2c2]::mir::codegen_mir::<rustc_codegen_llvm[de1ddb382a238c68]::builder::Builder>
+  19:     0x78a8b0604849 - rustc_codegen_llvm[de1ddb382a238c68]::base::compile_codegen_unit::module_codegen
+  20:     0x78a8b07e4b88 - <rustc_codegen_llvm[de1ddb382a238c68]::LlvmCodegenBackend as rustc_codegen_ssa[86572314d330a2c2]::traits::backend::ExtraBackendMethods>::compile_codegen_unit
+  21:     0x78a8b07e0ee1 - <rustc_codegen_llvm[de1ddb382a238c68]::LlvmCodegenBackend as rustc_codegen_ssa[86572314d330a2c2]::traits::backend::CodegenBackend>::codegen_crate
+  22:     0x78a8b087ef64 - <rustc_interface[dfcc7ff3f03a05db]::queries::Linker>::codegen_and_build_linker
+  23:     0x78a8b079edd2 - rustc_interface[dfcc7ff3f03a05db]::passes::create_and_enter_global_ctxt::<core[57d68807791337c0]::option::Option<rustc_interface[dfcc7ff3f03a05db]::queries::Linker>, rustc_driver_impl[3177e72804664110]::run_compiler::{closure#0}::{closure#2}>::{closure#2}::{closure#0}
+  24:     0x78a8b0810c43 - rustc_interface[dfcc7ff3f03a05db]::interface::run_compiler::<(), rustc_driver_impl[3177e72804664110]::run_compiler::{closure#0}>::{closure#1}
+  25:     0x78a8b07f7711 - std[19739dcbdd52d894]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[dfcc7ff3f03a05db]::util::run_in_thread_with_globals<rustc_interface[dfcc7ff3f03a05db]::util::run_in_thread_pool_with_globals<rustc_interface[dfcc7ff3f03a05db]::interface::run_compiler<(), rustc_driver_impl[3177e72804664110]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>
+  26:     0x78a8b07f7ba6 - <<std[19739dcbdd52d894]::thread::Builder>::spawn_unchecked_<rustc_interface[dfcc7ff3f03a05db]::util::run_in_thread_with_globals<rustc_interface[dfcc7ff3f03a05db]::util::run_in_thread_pool_with_globals<rustc_interface[dfcc7ff3f03a05db]::interface::run_compiler<(), rustc_driver_impl[3177e72804664110]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>::{closure#1} as core[57d68807791337c0]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  27:     0x78a8b07f916f - std::sys::pal::unix::thread::Thread::new::thread_start::h71fe57097907b3f8
+  28:     0x78a8b1e0ca94 - <unknown>
+  29:     0x78a8b1e99a34 - clone
+  30:                0x0 - <unknown>
+
+note: using internal features is not supported and expected to cause internal compiler errors when used incorrectly
+
+note: please attach the file at `/playground/rustc-ice-2024-12-20T04_14_48-33.txt` to your bug report
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+error: could not compile `playground` (bin "playground")
+
+Bug Labels:
+C-bug, F-dyn_star, F-unsized_fn_params, I-ICE, T-compiler, requires-nightly

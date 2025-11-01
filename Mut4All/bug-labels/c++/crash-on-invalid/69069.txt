@@ -1,0 +1,78 @@
+Issue Title:
+[Clang][OpenMP] Assertion `detail::isPresent(Val) && "dyn_cast on a non-existent value"' failed.
+
+Source Code & Bug Trace:
+% cat small.c
+int main () {
+  int v; const int x;
+  #pragma omp atomic capture
+    { v = x; x = 1; }
+  return 0;
+}
+
+
+% clang -O0 -fopenmp-simd small.c
+<source>:4:16: error: cannot assign to variable 'x' with const-qualified type 'const int'
+    4 |     { v = x; x = 1; }
+      |              ~ ^
+<source>:2:20: note: variable 'x' declared const here
+    2 |   int v; const int x;
+      |          ~~~~~~~~~~^
+clang: /root/llvm-project/llvm/include/llvm/Support/Casting.h:662: decltype(auto) llvm::dyn_cast(From*) [with To = clang::BinaryOperator; From = const clang::Stmt]: Assertion `detail::isPresent(Val) && "dyn_cast on a non-existent value"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.  Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-9.2.0 -fcolor-diagnostics -fno-crash-diagnostics -O0 -fopenmp-simd <source>
+1.  <source>:5:3: current parser token 'return'
+2.  <source>:1:13: parsing function body 'main'
+3.  <source>:1:13: in compound statement ('{}')
+ #0 0x000000000372dd18 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x372dd18)
+ #1 0x000000000372b9dc llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x372b9dc)
+ #2 0x00000000036742f8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f6d801d8420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x00007f6d7fc9b00b raise (/lib/x86_64-linux-gnu/libc.so.6+0x4300b)
+ #5 0x00007f6d7fc7a859 abort (/lib/x86_64-linux-gnu/libc.so.6+0x22859)
+ #6 0x00007f6d7fc7a729 (/lib/x86_64-linux-gnu/libc.so.6+0x22729)
+ #7 0x00007f6d7fc8bfd6 (/lib/x86_64-linux-gnu/libc.so.6+0x33fd6)
+ #8 0x000000000724fa90 clang::StmtVisitorBase<llvm::make_const_ptr, (anonymous namespace)::StmtProfiler, void>::Visit(clang::Stmt const*) StmtProfile.cpp:0:0
+ #9 0x0000000007256880 clang::Stmt::Profile(llvm::FoldingSetNodeID&, clang::ASTContext const&, bool, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x7256880)
+#10 0x00000000066aaa34 clang::Sema::ActOnOpenMPAtomicDirective(llvm::ArrayRef<clang::OMPClause*>, clang::Stmt*, clang::SourceLocation, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x66aaa34)
+#11 0x000000000672c999 clang::Sema::ActOnOpenMPExecutableDirective(llvm::omp::Directive, clang::DeclarationNameInfo const&, llvm::omp::Directive, llvm::ArrayRef<clang::OMPClause*>, clang::Stmt*, clang::SourceLocation, clang::SourceLocation, llvm::omp::Directive) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x672c999)
+#12 0x0000000005f5ccd4 clang::Parser::ParseOpenMPDeclarativeOrExecutableDirective(clang::Parser::ParsedStmtContext, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5f5ccd4)
+#13 0x0000000005f792e4 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5f792e4)
+#14 0x0000000005f7b188 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5f7b188)
+#15 0x0000000005f7c0c9 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5f7c0c9)
+#16 0x0000000005f7d9ea clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5f7d9ea)
+#17 0x0000000005eab6d1 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5eab6d1)
+#18 0x0000000005ed2bd8 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5ed2bd8)
+#19 0x0000000005e9fb3b clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5e9fb3b)
+#20 0x0000000005ea026f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.0) Parser.cpp:0:0
+#21 0x0000000005ea7c14 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5ea7c14)
+#22 0x0000000005ea843d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5ea843d)
+#23 0x0000000005ea8880 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5ea8880)
+#24 0x0000000005e9b4b2 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x5e9b4b2)
+#25 0x00000000049982a8 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x49982a8)
+#26 0x00000000041fc4f9 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x41fc4f9)
+#27 0x000000000417d9ce clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x417d9ce)
+#28 0x00000000042db54e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x42db54e)
+#29 0x0000000000bef0e6 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0xbef0e6)
+#30 0x0000000000be69aa ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#31 0x0000000003fd9c19 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#32 0x00000000036747a4 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x36747a4)
+#33 0x0000000003fda20f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#34 0x0000000003fa23d5 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x3fa23d5)
+#35 0x0000000003fa2e3d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x3fa2e3d)
+#36 0x0000000003faad65 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0x3faad65)
+#37 0x0000000000bec58c clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0xbec58c)
+#38 0x0000000000ae6751 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0xae6751)
+#39 0x00007f6d7fc7c083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#40 0x0000000000be648e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+0xbe648e)
+clang: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+
+clang version 18.0.0 (https://github.com/llvm/llvm-project.git f2b79ed9c6c858426b15a0374103ab901b5b2ef3)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /opt/compiler-explorer/clang-assertions-trunk/bin
+
+
+Bug Labels:
+clang:frontend, crash-on-invalid, good first issue, openmp

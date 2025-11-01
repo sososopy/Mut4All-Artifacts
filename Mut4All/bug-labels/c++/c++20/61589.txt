@@ -1,0 +1,97 @@
+Issue Title:
+[concepts] Clang (11 to 16) crash when using generic lambda in template function
+
+Source Code & Bug Trace:
+#include <type_traits>
+#include <utility>
+#include <concepts>
+
+#define FWD(...) static_cast<decltype(__VA_ARGS__)&&>(__VA_ARGS__)
+
+template<typename F, typename... Args>
+concept callable = requires(F&& f, Args&&... args) {
+    FWD(f)(FWD(args)...);
+};
+
+template<typename T>
+concept object = std::is_object_v<T>;
+
+template<typename T>
+concept constraint =
+        object<T>
+    and requires {
+        requires std::same_as<typename T::tag, void>;
+    };
+
+struct member {
+    using tag = void;
+};
+
+template<typename>
+struct specialize {};
+
+template<typename, typename, typename>
+inline constexpr bool callbale_with_nth_parameter_being_expand = false;
+
+template<typename T, typename F, typename S>
+inline constexpr bool callbale_with_nth_parameter_being_expand<
+    T, F,
+    specialize<S>
+> = callable<
+    F,
+    T
+>;
+
+template<typename T, typename F, typename>
+concept callbale_with_nth_parameter_being = callbale_with_nth_parameter_being_expand<
+    T, F,
+    specialize<int>
+>;
+
+template<typename... Args>
+inline constexpr auto invoke_impl(
+    auto&& function,
+    Args... args
+) -> decltype(auto) {
+	int arr[] = {0, callbale_with_nth_parameter_being<int, decltype(function), Args>...};
+    return FWD(function)(args...);
+}
+
+template<constraint... Args>
+inline constexpr auto invoke(callable<Args...> auto&& function, Args... args) -> decltype(auto) {
+    return invoke_impl(FWD(function), args...);
+}
+
+struct my_type {
+    member a;
+};
+
+template<typename... Functions>
+struct overload : Functions... {
+    using Functions::operator()...;
+};
+
+template<typename... Functions>
+overload(Functions...) -> overload<Functions...>;
+
+template<typename Type>
+inline constexpr auto constructor() {
+    auto const call_constructor = overload{
+        [](int, auto&&... args) -> decltype(Type(FWD(args)...)) {
+            return Type(FWD(args)...);
+        },
+        [](void*, auto&&... args) -> decltype(Type{FWD(args)...}) {
+            return Type{FWD(args)...};
+        },
+    };
+    return [call_constructor](auto&&... args) -> decltype(call_constructor(0, FWD(args)...)) {
+        return call_constructor(0, FWD(args)...);
+    };
+}
+
+auto main() -> int {
+    invoke(constructor<my_type>(), member{});
+}
+
+Bug Labels:
+c++20, clang:frontend, concepts, confirmed, crash-on-valid, worksforme

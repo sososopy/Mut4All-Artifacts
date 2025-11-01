@@ -1,0 +1,58 @@
+Mutation Operator: Concept Specialization with Incorrect Argument
+
+Target Code Construct: Concepts and Concept Specialization Expressions.
+
+Mutation Rule:
+1. Identify a concept within the code, typically defined using the `concept` keyword, that uses template parameters.
+2. Locate a usage of this concept where it is specialized or instantiated with a template argument list.
+3. Alter the template argument list by either:
+   a. Removing a required template argument, leaving it incomplete.
+   b. Adding an extra, unexpected template argument to the list.
+   c. Replacing one of the template arguments with a type or value that does not satisfy the concept's requirements.
+   
+This mutation can lead to incorrect template specialization, potentially causing the compiler to crash if it cannot handle the mismatch properly.
+
+Example:
+Before Mutation:
+```cpp
+template <typename T>
+concept MyConcept = requires(T x) {
+    { x.doSomething() } -> std::same_as<void>;
+};
+
+template <MyConcept T>
+void foo(T obj) {
+    obj.doSomething();
+}
+
+struct S {
+    void doSomething() {}
+};
+
+// Correct specialization
+foo(S{});  // S satisfies MyConcept
+```
+
+After Mutation:
+```cpp
+// Alter the template argument list in the concept specialization
+template <typename T, typename U>  // Extra template parameter added
+concept MyConcept = requires(T x) {
+    { x.doSomething() } -> std::same_as<void>;
+};
+
+// Now, MyConcept expects two arguments, but foo still provides one
+template <MyConcept T>
+void foo(T obj) {
+    obj.doSomething();
+}
+
+struct S {
+    void doSomething() {}
+}
+
+// This specialization may now trigger a crash due to the incorrect argument list
+foo(S{});  // Error: S no longer satisfies MyConcept due to extra template parameter expectation
+```
+
+By manipulating the concept specialization in this manner, you create inconsistencies that can lead to compiler assertion failures, especially within the context of complex template and concept resolution processes.

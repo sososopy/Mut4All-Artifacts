@@ -1,0 +1,110 @@
+Issue Title:
+GATs and min_type_alias_impl_trait cause ICE · Issue #87258 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(min_type_alias_impl_trait)]
+#![feature(generic_associated_types)]
+use std::future::Future;
+
+pub trait Trait1
+{
+    type Error: Clone;
+    type Assoc2<'a>
+    where
+        Self: 'a;
+}
+
+pub trait Trait2: Trait1 {
+    type FooFuture<'a, 'b>: Future<Output = Result<(), Self::Error>>;
+    fn foo<'a: 'b, 'b>(assoc2: &'b mut Self::Assoc2<'a>) -> Self::FooFuture<'a, 'b>
+    where
+        Self: 'a;
+}
+
+impl<'c, S : Trait1> Trait1 for &'c mut S {
+    type Error = S::Error;
+
+    type Assoc2<'a> where 'c: 'a = S::Assoc2<'a>;
+}
+
+impl<'c, S : Trait2> Trait2 for &'c mut S {
+    type FooFuture<'a, 'b> = impl Future<Output = Result<(), Self::Error>>;
+    fn foo<'a: 'b, 'b>(assoc2: &'b mut Self::Assoc2<'a>) -> Self::FooFuture<'a, 'b>
+    where
+        Self: 'a
+    {
+        async move {
+            unimplemented!();
+        }
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'assertion failed: self.is_free_or_static(r_a) && self.is_free_or_static(r_b)', compiler/rustc_infer/src/infer/free_regions.rs:77:9
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/c7331d65bdbab1187f5a9b8f5b918248678ebdb9/library/std/src/panicking.rs:515:5
+   1: core::panicking::panic_fmt
+             at /rustc/c7331d65bdbab1187f5a9b8f5b918248678ebdb9/library/core/src/panicking.rs:92:14
+   2: core::panicking::panic
+             at /rustc/c7331d65bdbab1187f5a9b8f5b918248678ebdb9/library/core/src/panicking.rs:50:5
+   3: <rustc_infer::infer::free_regions::FreeRegionMap as rustc_infer::infer::free_regions::FreeRegionRelations>::sub_free_regions
+   4: <rustc_infer::infer::InferCtxt as rustc_trait_selection::opaque_types::InferCtxtExt>::constrain_opaque_types
+   5: rustc_typeck::check::regionck::RegionCtxt::visit_fn_body
+   6: rustc_hir::intravisit::walk_expr
+   7: <rustc_typeck::check::regionck::RegionCtxt as rustc_hir::intravisit::Visitor>::visit_expr
+   8: rustc_hir::intravisit::walk_expr
+   9: <rustc_typeck::check::regionck::RegionCtxt as rustc_hir::intravisit::Visitor>::visit_expr
+  10: <rustc_typeck::check::regionck::RegionCtxt as rustc_hir::intravisit::Visitor>::visit_expr
+  11: rustc_typeck::check::regionck::RegionCtxt::visit_fn_body
+  12: rustc_typeck::check::regionck::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::regionck_fn
+  13: rustc_infer::infer::InferCtxtBuilder::enter
+  14: rustc_typeck::check::typeck
+  15: rustc_query_system::query::plumbing::get_query_impl
+  16: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  17: rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator::check
+  18: <rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator as rustc_hir::intravisit::Visitor>::visit_impl_item
+  19: rustc_hir::intravisit::Visitor::visit_nested_impl_item
+  20: rustc_hir::intravisit::walk_impl_item_ref
+  21: rustc_hir::intravisit::walk_item
+  22: rustc_typeck::collect::type_of::type_of
+  23: rustc_query_system::query::plumbing::get_query_impl
+  24: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_of
+  25: rustc_typeck::check::check::check_item_type
+  26: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  27: rustc_typeck::check::check::check_mod_item_types
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_mod_item_types
+  30: rustc_session::utils::<impl rustc_session::session::Session>::time
+  31: rustc_typeck::check_crate
+  32: rustc_interface::passes::analysis
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  35: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  36: rustc_span::with_source_map
+  37: rustc_interface::interface::create_compiler_and_run
+  38: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.55.0-nightly (c7331d65b 2021-07-17) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck] type-checking `<impl at src/lib.rs:26:1: 36:2>::foo`
+#1 [type_of] computing type of `<impl at src/lib.rs:26:1: 36:2>::FooFuture::{opaque#0}`
+#2 [check_mod_item_types] checking item types in top-level module
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `playground`
+
+Bug Labels:
+A-GATs, C-bug, E-needs-test, F-generic_associated_types, GATs-triaged, I-ICE, T-compiler, glacier

@@ -1,0 +1,38 @@
+Mutation Operator: Bit-field and Defaulted Function Interaction
+
+Target Construct: Class with bit-fields and defaulted special member functions (e.g., constructors, assignment operators, comparators) 
+
+Mutation Rule:
+1. Identify a class with bit-fields in the source code.
+2. Add or modify a bit-field declaration such that it includes a zero-sized bit-field. This involves adding a member variable declared as `unsigned : 0;` within the class.
+3. Ensure that the class has defaulted special member functions or operators (e.g., `operator==`, `operator=`, `operator<`, etc.).
+4. Modify the defaulted special member function to explicitly specify it as `default`. This should be done even if the function already exists; explicitly denote it with `= default;` syntax.
+5. Ensure that the modified class is used in a context where the defaulted function is invoked (e.g., a comparison between two objects of the class using `operator==`).
+
+Example of Mutation:
+Original Code:
+```cpp
+class Example {
+    unsigned field1: 1;
+public:
+    Example() = default;
+    bool operator==(const Example& other) const noexcept;
+};
+```
+
+Mutated Code:
+```cpp
+class Example {
+    unsigned field1: 1;
+    unsigned : 0; // Introduce a zero-sized bit-field
+public:
+    Example() = default;
+    bool operator==(const Example& other) const noexcept = default; // Explicitly defaulted
+};
+
+// Usage that triggers the operator
+Example e1, e2;
+bool result = (e1 == e2);
+```
+
+This mutation operator is designed to exploit the interaction between zero-sized bit-fields and defaulted member functions, which can be a source of crashes in specific compiler versions. This operator systematically introduces conditions that have been shown to expose compiler vulnerabilities, as evidenced in the provided bug report.

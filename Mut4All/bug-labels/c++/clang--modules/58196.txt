@@ -1,0 +1,80 @@
+Issue Title:
+Clang assert tripped when merging modules with deduction guides.
+
+Source Code & Bug Trace:
+// RUN: rm -fr %t
+// RUN: mkdir %t
+// RUN: split-file %s %t
+//
+// RUN: %clang_cc1 -std=c++20 %t/B.cppm -I%t -emit-module-interface -o %t/B.pcm
+// RUN: %clang_cc1 -std=c++20 -fsyntax-only %t/A.cppm -I%t -fprebuilt-module-path=%t
+
+//--- A.cppm
+module;
+export module baz:A;
+import B;
+#include "C.h"
+
+//--- B.cppm
+module;
+
+#include "C.h"
+export module B;
+
+//--- C.h
+namespace foo {
+  template<class T, class U> struct bar {
+      template<class, class> bar(T, U);
+  };
+  template<class T, class U> bar(T, U) -> bar<T, U>;
+}
+
+Assertion failed: !Old || Old->getCachedLinkage() == D->getCachedLinkage(), file clang\lib\AST\Decl.cpp, line 1548
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: build\\llvm\\debug\\bin\\clang.exe -cc1 -internal-isystem build\\llvm\\debug\\lib\\clang\\16.0.0\\include -nostdsysteminc -std=c++20 -fsyntax-only build\\llvm\\tools\\clang\\test\\Modules\\Output\\repro.cppm.tmp/A.cppm -Ibuild\\llvm\\tools\\clang\\test\\Modules\\Output\\repro.cppm.tmp -fprebuilt-module-path=build\\llvm\\tools\\clang\\test\\Modules\\Output\\repro.cppm.tmp
+1.      build\llvm\tools\clang\test\Modules\Output\repro.cppm.tmp/C.h:5:52: current parser token ';'
+2.      build\llvm\tools\clang\test\Modules\Output\repro.cppm.tmp/C.h:1:1: parsing namespace 'foo'
+Exception Code: 0x80000003
+ #0 0x00007ff6c4ab203c HandleAbort llvm\lib\Support\Windows\Signals.inc:414:0
+ #1 0x00007ffb14848e05 (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xa8e05)
+ #2 0x00007ffb1484ab29 (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xaab29)
+ #3 0x00007ffb1485094f (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xb094f)
+ #4 0x00007ffb1484e881 (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xae881)
+ #5 0x00007ffb1485158f (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xb158f)
+ #6 0x00007ff6cc2d32ab clang::LinkageComputer::getLVForDecl(class clang::NamedDecl const *, struct clang::LVComputationKind) clang\lib\AST\Decl.cpp:1548:0
+ #7 0x00007ff6cc2c11fd clang::NamedDecl::getLinkageInternal(void) const clang\lib\AST\Decl.cpp:1153:0
+ #8 0x00007ff6c553c074 clang::NamedDecl::isExternallyVisible(void) const clang\include\clang\AST\Decl.h:406:0
+ #9 0x00007ff6caa8ec41 clang::Sema::ActOnFunctionDeclarator(class clang::Scope *, class clang::Declarator &, class clang::DeclContext *, class clang::TypeSourceInfo *, class clang::LookupResult &, class llvm::MutableArrayRef<class clang::TemplateParameterList *>, bool &) clang\lib\Sema\SemaDecl.cpp:10408:0
+#10 0x00007ff6caa7f2fe clang::Sema::HandleDeclarator(class clang::Scope *, class clang::Declarator &, class llvm::MutableArrayRef<class clang::TemplateParameterList *>) clang\lib\Sema\SemaDecl.cpp:6365:0
+#11 0x00007ff6cae85aa7 clang::Sema::ActOnTemplateDeclarator(class clang::Scope *, class llvm::MutableArrayRef<class clang::TemplateParameterList *>, class clang::Declarator &) clang\lib\Sema\SemaTemplate.cpp:8807:0
+#12 0x00007ff6ca03213c clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(class clang::Declarator &, struct clang::Parser::ParsedTemplateInfo const &, struct clang::Parser::ForRangeInit *) clang\lib\Parse\ParseDecl.cpp:2367:0
+#13 0x00007ff6ca031d95 clang::Parser::ParseDeclarationAfterDeclarator(class clang::Declarator &, struct clang::Parser::ParsedTemplateInfo const &) clang\lib\Parse\ParseDecl.cpp:2307:0
+#14 0x00007ff6ca07c2f8 clang::Parser::ParseSingleDeclarationAfterTemplate(enum clang::DeclaratorContext, struct clang::Parser::ParsedTemplateInfo const &, class clang::ParsingDeclRAIIObject &, class clang::SourceLocation &, class clang::ParsedAttributes &, enum clang::AccessSpecifier) clang\lib\Parse\ParseTemplate.cpp:359:0
+#15 0x00007ff6ca07b025 clang::Parser::ParseTemplateDeclarationOrSpecialization(enum clang::DeclaratorContext, class clang::SourceLocation &, class clang::ParsedAttributes &, enum clang::AccessSpecifier) clang\lib\Parse\ParseTemplate.cpp:170:0
+#16 0x00007ff6ca07a7ad clang::Parser::ParseDeclarationStartingWithTemplate(enum clang::DeclaratorContext, class clang::SourceLocation &, class clang::ParsedAttributes &, enum clang::AccessSpecifier) clang\lib\Parse\ParseTemplate.cpp:47:0
+#17 0x00007ff6ca02faab clang::Parser::ParseDeclaration(enum clang::DeclaratorContext, class clang::SourceLocation &, class clang::ParsedAttributes &, class clang::ParsedAttributes &, class clang::SourceLocation *) clang\lib\Parse\ParseDecl.cpp:1777:0
+#18 0x00007ff6c9fde26a clang::Parser::ParseExternalDeclaration(class clang::ParsedAttributes &, class clang::ParsingDeclSpec *) clang\lib\Parse\Parser.cpp:946:0
+#19 0x00007ff6ca124905 clang::Parser::ParseInnerNamespace(class llvm::SmallVector<struct clang::Parser::InnerNamespaceInfo, 4> const &, unsigned int, class clang::SourceLocation &, class clang::ParsedAttributes &, class clang::BalancedDelimiterTracker &) clang\lib\Parse\ParseDeclCXX.cpp:260:0
+#20 0x00007ff6ca1246a0 clang::Parser::ParseNamespace(enum clang::DeclaratorContext, class clang::SourceLocation &, class clang::SourceLocation) clang\lib\Parse\ParseDeclCXX.cpp:240:0
+#21 0x00007ff6ca02fd3f clang::Parser::ParseDeclaration(enum clang::DeclaratorContext, class clang::SourceLocation &, class clang::ParsedAttributes &, class clang::ParsedAttributes &, class clang::SourceLocation *) clang\lib\Parse\ParseDecl.cpp:1798:0
+#22 0x00007ff6c9fde26a clang::Parser::ParseExternalDeclaration(class clang::ParsedAttributes &, class clang::ParsingDeclSpec *) clang\lib\Parse\Parser.cpp:946:0
+#23 0x00007ff6c9fd7cfb clang::Parser::ParseTopLevelDecl(class clang::OpaquePtr<class clang::DeclGroupRef> &, enum clang::Sema::ModuleImportState &) clang\lib\Parse\Parser.cpp:737:0
+#24 0x00007ff6c9fd2edd clang::ParseAST(class clang::Sema &, bool, bool) clang\lib\Parse\ParseAST.cpp:162:0
+#25 0x00007ff6c660ceda clang::ASTFrontendAction::ExecuteAction(void) clang\lib\Frontend\FrontendAction.cpp:1161:0
+#26 0x00007ff6c660c7ce clang::FrontendAction::Execute(void) clang\lib\Frontend\FrontendAction.cpp:1056:0
+#27 0x00007ff6c65849cc clang::CompilerInstance::ExecuteAction(class clang::FrontendAction &) clang\lib\Frontend\CompilerInstance.cpp:1043:0
+#28 0x00007ff6c684cff0 clang::ExecuteCompilerInvocation(class clang::CompilerInstance *) clang\lib\FrontendTool\ExecuteCompilerInvocation.cpp:266:0
+#29 0x00007ff6c1dd2a84 cc1_main(class llvm::ArrayRef<char const *>, char const *, void *) clang\tools\driver\cc1_main.cpp:250:0
+#30 0x00007ff6c1dbac58 ExecuteCC1Tool clang\tools\driver\driver.cpp:316:0
+#31 0x00007ff6c1dbb69f clang_main(int, char **) clang\tools\driver\driver.cpp:388:0
+#32 0x00007ff6c1e000ac main build\llvm\tools\clang\tools\driver\clang-driver.cpp:11:0
+#33 0x00007ff6cd7708a9 invoke_main D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:79:0
+#34 0x00007ff6cd77074e __scrt_common_main_seh D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:288:0
+#35 0x00007ff6cd77060e __scrt_common_main D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:331:0
+#36 0x00007ff6cd77093e mainCRTStartup D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_main.cpp:17:0
+#37 0x00007ffbddbc244d (C:\WINDOWS\System32\KERNEL32.DLL+0x1244d)
+#38 0x00007ffbdf46df78 (C:\WINDOWS\SYSTEM32\ntdll.dll+0x5df78)
+
+Bug Labels:
+clang:frontend, clang:modules, crash-on-valid

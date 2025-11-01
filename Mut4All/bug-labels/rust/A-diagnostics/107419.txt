@@ -1,0 +1,32 @@
+Issue Title:
+ICE: Out of bounds when relating regions · Issue #107419 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(type_alias_impl_trait)]
+
+use std::future::Future;
+use std::io::Result;
+use std::pin::Pin;
+
+pub trait AsyncReadFrom: Sized {
+    type Output<R>: Future<Output = Self>;
+
+    fn async_read_from<R: Unpin>(r: &mut R) -> Self::Output<R>;
+}
+
+impl<T: AsyncReadFrom> AsyncReadFrom for (T,) {
+    type Output<R> = impl Future<Output = Self>;
+
+    fn async_read_from<R: Unpin>(r: &mut R) -> Self::Output<R> {
+        let r = Pin::new(r);
+        async move {
+            while true {
+                T::async_read_from(r.get_mut()).await;
+            }
+            loop {}
+        }
+    }
+}
+
+Bug Labels:
+A-diagnostics, I-ICE, T-compiler

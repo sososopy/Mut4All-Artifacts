@@ -1,0 +1,56 @@
+Issue Title:
+Clang assert tripped when missing module introducer
+
+Source Code & Bug Trace:
+// RUN: rm -fr %t
+// RUN: mkdir %t
+// RUN: split-file %s %t
+//
+// RUN: %clang_cc1 -std=c++20 %t/B.cppm -I%t -emit-module-interface -o %t/B.pcm
+// RUN: %clang_cc1 -std=c++20 %t/A.cppm -I%t -fprebuilt-module-path=%t -emit-module-interface -verify
+
+//--- A.cppm
+// expected-no-diagnostics
+import B;
+
+//--- B.cppm
+module;
+export module B;
+
+Assertion failed: ThisModule && "was expecting a module if building one", file clang\lib\Sema\SemaModule.cpp, line 568
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: build\\llvm\\debug\\bin\\clang.exe -cc1 -internal-isystem build\\llvm\\debug\\lib\\clang\\16.0.0\\include -nostdsysteminc -std=c++20 build\\llvm\\tools\\clang\\test\\Modules\\Output\\pair-unambiguous-ctor-4.cppm.tmp/A.cppm -Ibuild\\llvm\\tools\\clang\\test\\Modules\\Output\\pair-unambiguous-ctor-4.cppm.tmp -fprebuilt-module-path=build\\llvm\\tools\\clang\\test\\Modules\\Output\\pair-unambiguous-ctor-4.cppm.tmp -emit-module-interface -verify
+1.      build\llvm\tools\clang\test\Modules\Output\pair-unambiguous-ctor-4.cppm.tmp/A.cppm:2:9: current parser token ';'
+Exception Code: 0x80000003
+ #0 0x00007ff61b09203c HandleAbort llvm\lib\Support\Windows\Signals.inc:414:0
+ #1 0x00007ffb14938e05 (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xa8e05)
+ #2 0x00007ffb1493ab29 (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xaab29)
+ #3 0x00007ffb1494094f (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xb094f)
+ #4 0x00007ffb1493e881 (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xae881)
+ #5 0x00007ffb1494158f (C:\WINDOWS\SYSTEM32\ucrtbased.dll+0xb158f)
+ #6 0x00007ff62111927c clang::Sema::ActOnModuleImport(class clang::SourceLocation, class clang::SourceLocation, class clang::SourceLocation, class clang::Module *, class llvm::ArrayRef<struct std::pair<class clang::IdentifierInfo *, class clang::SourceLocation>>) clang\lib\Sema\SemaModule.cpp:568:0
+ #7 0x00007ff6211186e8 clang::Sema::ActOnModuleImport(class clang::SourceLocation, class clang::SourceLocation, class clang::SourceLocation, class llvm::ArrayRef<struct std::pair<class clang::IdentifierInfo *, class clang::SourceLocation>>, bool) clang\lib\Sema\SemaModule.cpp:474:0
+ #8 0x00007ff6205c3c95 clang::Parser::ParseModuleImport(class clang::SourceLocation, enum clang::Sema::ModuleImportState &) clang\lib\Parse\Parser.cpp:2555:0
+ #9 0x00007ff6205b74bb clang::Parser::ParseTopLevelDecl(class clang::OpaquePtr<class clang::DeclGroupRef> &, enum clang::Sema::ModuleImportState &) clang\lib\Parse\Parser.cpp:661:0
+#10 0x00007ff6205b7111 clang::Parser::ParseFirstTopLevelDecl(class clang::OpaquePtr<class clang::DeclGroupRef> &, enum clang::Sema::ModuleImportState &) clang\lib\Parse\Parser.cpp:591:0
+#11 0x00007ff6205b2eba clang::ParseAST(class clang::Sema &, bool, bool) clang\lib\Parse\ParseAST.cpp:161:0
+#12 0x00007ff61cbeceda clang::ASTFrontendAction::ExecuteAction(void) clang\lib\Frontend\FrontendAction.cpp:1161:0
+#13 0x00007ff61cbec7ce clang::FrontendAction::Execute(void) clang\lib\Frontend\FrontendAction.cpp:1056:0
+#14 0x00007ff61cb649cc clang::CompilerInstance::ExecuteAction(class clang::FrontendAction &) clang\lib\Frontend\CompilerInstance.cpp:1043:0
+#15 0x00007ff61ce2cff0 clang::ExecuteCompilerInvocation(class clang::CompilerInstance *) clang\lib\FrontendTool\ExecuteCompilerInvocation.cpp:266:0
+#16 0x00007ff6183b2a84 cc1_main(class llvm::ArrayRef<char const *>, char const *, void *) clang\tools\driver\cc1_main.cpp:250:0
+#17 0x00007ff61839ac58 ExecuteCC1Tool clang\tools\driver\driver.cpp:316:0
+#18 0x00007ff61839b69f clang_main(int, char **) clang\tools\driver\driver.cpp:388:0
+#19 0x00007ff6183e00ac main build\llvm\tools\clang\tools\driver\clang-driver.cpp:11:0
+#20 0x00007ff623d508a9 invoke_main D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:79:0
+#21 0x00007ff623d5074e __scrt_common_main_seh D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:288:0
+#22 0x00007ff623d5060e __scrt_common_main D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:331:0
+#23 0x00007ff623d5093e mainCRTStartup D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_main.cpp:17:0
+#24 0x00007ffbddbc244d (C:\WINDOWS\System32\KERNEL32.DLL+0x1244d)
+#25 0x00007ffbdf46df78 (C:\WINDOWS\SYSTEM32\ntdll.dll+0x5df78)
+
+error: command failed with exit status: 2147483651
+
+Bug Labels:
+clang:frontend, clang:modules, crash

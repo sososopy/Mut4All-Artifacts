@@ -1,0 +1,49 @@
+Issue Title:
+ICE in Earley Parser · Issue #2963 · rust-lang/rust · GitHub
+
+Rust Code:
+macro_rules! move {
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+}
+
+fn switch<T: send, U>(+endp: pipes::recv_packet<T>,
+                      f: fn(+option<T>) -> U) -> U {
+    f(pipes::try_recv(endp))
+}
+
+fn move<T>(-x: T) -> T { x }
+
+macro_rules! follow_alts {
+    {
+        $id:ident, $($message:ident, $next:ident, $body:expr,
+                     ($($pats: ident)+))|+
+    } => (
+        alt move($id) {
+            $(some($message($($pats),+)) {
+                let $next = move!{$next};
+                $e
+            })+
+        }
+    )
+}
+
+macro_rules! follow {
+    { 
+        $($message:ident$(($($x: ident),+))* => $next:ident $e:expr)+
+    } => (|m| follow_alts!{m, $($message, $next, $e, ($($x),+ $next))|+})
+}
+
+fn main() { }
+
+fn client_follow(+bank: bank::client::login) {
+    import bank::*;
+
+    let bank = client::login(bank, ~"theincredibleholk", ~"1234");
+    let bank = switch(bank, follow! {
+        ok => connected { connected }
+        invalid => _next { fail ~"bank closed the connected" }
+    });
+}
+
+Bug Labels:
+A-syntaxext, I-ICE

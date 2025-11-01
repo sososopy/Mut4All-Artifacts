@@ -1,0 +1,401 @@
+Issue Title:
+When I run `cargo test`, I get an `unexpected panic` error. · Issue #84504 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::fmt::{Display, Formatter};
+use std::fmt;
+use std::ops::{Sub, Add, Mul, Rem, Div};
+use num_traits::{NumOps, Num, One, Zero};
+
+// Debugの自動実装
+#[derive(Debug, Copy, Clone)]
+pub struct FieldElement {
+    pub num: u64,
+    pub prime: u64
+}
+
+// P.5 練習問題1
+impl PartialEq for FieldElement {
+    fn eq(&self, other: &Self) -> bool {
+        return self.num == other.num && self.prime == other.prime;
+    }
+}
+
+impl Add for FieldElement {
+    type Output = FieldElement;
+
+    // 左側のprimeに依存させる。
+    fn add(self, rhs: FieldElement) -> FieldElement {
+        Self::Output{
+            prime: self.prime,
+            num: (self.num+rhs.num).rem_euclid(self.prime)
+        }
+    }
+}
+
+impl Sub for FieldElement {
+    type Output = FieldElement;
+
+    fn sub(self, rhs: FieldElement) -> FieldElement {
+        Self::Output{
+            prime: self.prime,
+            num: ((self.num as i128) - (rhs.num as i128)).rem_euclid(self.prime as i128) as u64
+        }
+    }
+}
+
+impl Mul for FieldElement {
+    type Output = FieldElement;
+
+    fn mul(self, rhs: FieldElement) -> FieldElement {
+        Self::Output{
+            prime: self.prime,
+            num: ((self.num as i128) * (rhs.num as i128)).rem_euclid(self.prime as i128) as u64
+        }
+    }
+}
+
+impl Rem for FieldElement {
+    type Output = FieldElement;
+
+    fn rem(self, rhs: FieldElement) -> FieldElement {
+        Self::Output{
+            prime: self.prime,
+            num: ((self.num as i128) % (rhs.num as i128)).rem_euclid(self.prime as i128) as u64
+        }
+    }
+}
+
+
+// TODO: どうにかして実装したい。
+impl FieldElement {
+    fn inner_pow(self,f: FieldElement,exp: u64) -> FieldElement {
+        if exp == 0 {
+            return FieldElement{
+                num: 1,
+                prime: f.prime
+            }
+        }
+        if exp % 2 == 0 {
+            return self.inner_pow(FieldElement{
+                num: (f.num * f.num).rem_euclid(f.prime),
+                prime: f.prime,
+            },exp / 2);
+        }
+        f * f.inner_pow(FieldElement{
+            num: (f.num * f.num).rem_euclid(f.prime),
+            prime: f.prime,
+        },(exp-1)/2)
+    }
+    // rem_euclidを使って負数でもよしなに整数値に変更する。
+    pub fn pow(self, exp: i64) -> FieldElement {
+        self.inner_pow(self, exp.rem_euclid((self.prime - 1) as i64) as u64)
+    }
+
+    // フェルマーの小定理からインバースを実装する。 位数が素数で無い場合は正しく動作しない
+    pub fn inv(self) -> FieldElement {
+        return self.pow((self.prime - 2) as i64)
+    }
+}
+
+impl Div for FieldElement {
+    type Output = FieldElement;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        return self * rhs.inv();
+    }
+}
+
+impl Display for FieldElement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f,"{}",self.num)
+    }
+}
+
+pub fn new_field_element(num: i64, prime: u64) -> FieldElement {
+    FieldElement{
+        num: num.rem_euclid(prime as i64) as u64,
+        prime
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use super::*;
+
+    #[test]
+    fn test_field_element_all() {
+        {
+            let a = new_field_element(7,13);
+            let b = new_field_element(6,13);
+
+            println!("{}",a == b);
+            println!("{}",a != b);
+
+            println!("{}",a == a);
+            println!("{}",a != a);
+        }
+
+        // P.9 練習問題2
+        {
+            println!("P.9 Q2");
+            {
+                let a = new_field_element(44,57);
+                let b = new_field_element(33,57);
+                println!("{}",a + b);
+            }
+            {
+                let a = new_field_element(9,57);
+                let b = new_field_element(-29,57);
+                println!("{}", a + b);
+            }
+            {
+                let a = new_field_element(17,57);
+                let b = new_field_element(42,57);
+                let c = new_field_element(49,57);
+                println!("{}", a + b + c);
+            }
+            {
+                let a = new_field_element(52,57);
+                let b = new_field_element(-30,57);
+                let c = new_field_element(-38,57);
+                println!("{}", a + b + c);
+            }
+        }
+
+        // P.10 練習問題3
+        {
+            println!("P.10 Q3");
+            {
+                let a = new_field_element(44,57);
+                let b = new_field_element(33,57);
+                println!("{}",a - b);
+            }
+            {
+                let a = new_field_element(9,57);
+                let b = new_field_element(-29,57);
+                println!("{}", a - b);
+            }
+            {
+                let a = new_field_element(17,57);
+                let b = new_field_element(42,57);
+                let c = new_field_element(49,57);
+                println!("{}", a + b - c);
+            }
+            {
+                let a = new_field_element(52,57);
+                let b = new_field_element(-30,57);
+                let c = new_field_element(-38,57);
+                println!("{}", a + b - c);
+            }
+        }
+
+        // P.11 練習問題4
+        {
+            println!("P.11 Q4");
+            {
+                let a = new_field_element(95,97);
+                let b = new_field_element(45,97);
+                let c = new_field_element(31,97);
+                println!("{}",a * b * c);
+            }
+            {
+                let a = new_field_element(17,97);
+                let b = new_field_element(13,97);
+                let c = new_field_element(19,97);
+                let d = new_field_element(44,97);
+                println!("{}", a * b * c * d);
+            }
+            {
+                let a = new_field_element(12,97).pow(7);
+                let b = new_field_element(77,97).pow(49);
+                println!("{}", a * b);
+            }
+        }
+
+        // P.11 練習問題5
+        {
+            println!("P.11 Q5");
+            let solver = |k: i32|{
+                print!("k = {{");
+                for i in 0..19 {
+                    let f = new_field_element((i * k) as i64, 19);
+                    print!(" {},",f)
+                }
+                print!("}} \n");
+            };
+            solver(1);
+            solver(3);
+            solver(7);
+            solver(17);
+            solver(18);
+        }
+
+        // P.12 練習問題6
+        {
+            println!("P.12 Q6");
+            let f = new_field_element((7 * 7),31);
+            println!("F31 7 * 7 = {}",f)
+        }
+
+        // P.13 練習問題7
+        {
+            println!("P.13 Q7");
+            let solver = |k: i32|{
+                print!("k = {} {{",k);
+                for i in 0..k-1 {
+                    let f = new_field_element((i + 1) as i64, k as u64);
+                    print!(" {},",f.pow((k - 1) as i64))
+                }
+                print!("}} \n");
+            };
+
+            solver(7);
+            solver(11);
+            solver(17);
+            solver(31);
+        }
+
+        // P.16 練習問題8
+        {
+            println!("P.16 練習問題");
+            {
+                let l = new_field_element(3,31);
+                let r = new_field_element(24,31);
+                println!("F31 3/24 = {}",l/r);
+            }
+            {
+                let l = new_field_element(17,31);
+                println!("F31 17^(-3) = {}",l.pow(-3));
+            }
+            {
+                let l = new_field_element(4,31);
+                println!("F31 4^(-4) * 11 = {}",l.pow(-4) * new_field_element(11,31));
+            }
+        }
+
+        // P.16 練習問題9
+        {
+            {
+                let l = new_field_element(3,31);
+                let r = new_field_element(24,31);
+                println!("F31 3/24 = {}",l/r);
+            }
+        }
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'assertion failed: `(left == right)`
+  left: `Some(Fingerprint(8556428269209080887, 4269101851060977991))`,
+ right: `Some(Fingerprint(14469595183014616750, 10866501170494209091))`: found unstable fingerprints for predicates_of(core[ec89]::cmp::PartialEq): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::cmp::PartialEq<Rhs>>), []), /home/reud/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:202:1: 202:40 (#0))] }', /rustc/bb491ed23937aef876622e4beb68ae95938b3bf9/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/bb491ed23937aef876622e4beb68ae95938b3bf9/library/std/src/panicking.rs:493:5
+   1: core::panicking::panic_fmt
+             at /rustc/bb491ed23937aef876622e4beb68ae95938b3bf9/library/core/src/panicking.rs:92:14
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed
+   4: rustc_query_system::query::plumbing::incremental_verify_ich
+   5: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   6: rustc_query_system::query::plumbing::get_query_impl
+   7: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   8: rustc_middle::ty::generics::GenericPredicates::instantiate_into
+   9: rustc_middle::ty::generics::GenericPredicates::instantiate
+  10: rustc_typeck::check::method::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::lookup_method_in_trait
+  11: rustc_typeck::check::op::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::lookup_op_method
+  12: rustc_typeck::check::op::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_overloaded_binop
+  13: rustc_typeck::check::op::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_binop
+  14: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  15: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  16: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  17: <smallvec::SmallVec<A> as core::iter::traits::collect::Extend<<A as smallvec::Array>::Item>>::extend
+  18: <T as rustc_middle::ty::context::InternIteratorElement<T,R>>::intern_with
+  19: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  20: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  21: rustc_typeck::check::_match::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::demand_scrutinee_type
+  22: rustc_typeck::check::_match::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_match
+  23: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  24: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  25: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  26: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  27: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_argument_types
+  28: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::confirm_builtin_call
+  29: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  30: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  31: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  32: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_argument_types
+  33: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::confirm_builtin_call
+  34: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  35: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  36: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  37: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  38: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  39: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  40: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  41: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  42: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  43: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  44: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  45: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  46: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  47: rustc_typeck::check::check::check_fn
+  48: rustc_infer::infer::InferCtxtBuilder::enter
+  49: rustc_typeck::check::typeck
+  50: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  51: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  52: rustc_data_structures::stack::ensure_sufficient_stack
+  53: rustc_query_system::query::plumbing::force_query_with_job
+  54: rustc_query_system::query::plumbing::get_query_impl
+  55: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  56: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  57: rustc_typeck::check::typeck_item_bodies
+  58: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  59: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  60: rustc_data_structures::stack::ensure_sufficient_stack
+  61: rustc_query_system::query::plumbing::force_query_with_job
+  62: rustc_query_system::query::plumbing::get_query_impl
+  63: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck_item_bodies
+  64: rustc_session::utils::<impl rustc_session::session::Session>::time
+  65: rustc_typeck::check_crate
+  66: rustc_interface::passes::analysis
+  67: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  68: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  69: rustc_data_structures::stack::ensure_sufficient_stack
+  70: rustc_query_system::query::plumbing::force_query_with_job
+  71: rustc_query_system::query::plumbing::get_query_impl
+  72: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  73: rustc_interface::passes::QueryContext::enter
+  74: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  75: rustc_span::with_source_map
+  76: rustc_interface::interface::create_compiler_and_run
+  77: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (bb491ed23 2021-04-23) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::cmp::PartialEq`
+#1 [typeck] type-checking `ecc::field_element::tests::test_field_element_all`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+warning: 5 warnings emitted
+
+error: could not compile `pg-bitcoin`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-incr-comp, C-bug, I-ICE, T-compiler

@@ -1,0 +1,122 @@
+Issue Title:
+rustc 1.65.0 crashes (SIGSEGV) when compiling with --release. Looks like a corner case. · Issue #104520 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::cmp;
+
+fn main() {
+    println!("Hello World");
+}
+
+
+// bug is triggered when menu is a tuple with an even number of elements. Tuples with an
+// odd numer of elements seem to work fine.
+// Tested up to size 8
+pub struct InternalValue {
+    menu: (u8, u8)
+}
+impl InternalValue {
+    pub fn new(menu: u8) -> InternalValue {
+        InternalValue { menu: (menu, 2) }
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum EmulatedSize {
+    Reduced,
+    Full,
+}
+// if MAX_PARAMS is 4, 8 or 16 the bug is not triggered
+const MAX_PARAMS:u8 = 3;
+// if Reduced and Full are converted to the same value, the bug is no longer triggered
+impl From<EmulatedSize> for u8 {
+    fn from(et: EmulatedSize) -> Self {
+        match et {
+            EmulatedSize::Reduced => MAX_PARAMS-1,
+            EmulatedSize::Full => MAX_PARAMS,
+        }
+    }
+}
+
+
+pub struct EmulatedComponent {
+    values: [InternalValue; MAX_PARAMS as usize],
+}
+impl EmulatedComponent {
+    pub fn init(id: u8) -> Self {
+        EmulatedComponent {
+            values: [
+                InternalValue::new(id),
+                InternalValue::new(id),
+                InternalValue::new(id),
+            ]
+        }
+    }
+}
+
+
+pub struct EmulatedDevice {
+    variant: EmulatedSize,
+    components: Vec<EmulatedComponent>,
+}
+impl EmulatedDevice {
+    pub fn init_with_components(i: u8, variant:Option<EmulatedSize>) -> Self {
+        let mut components = Vec::with_capacity(8);
+
+        for x in 0..i {
+            components.push(EmulatedComponent::init(x));
+        }
+
+        EmulatedDevice{
+            variant: variant.unwrap_or(EmulatedSize::Full),
+            components,
+        }
+    }
+
+    pub fn to_0xDC(&self, count: u8, first_id: u8) -> Vec<u8> {
+        let max_values_per_component: u8 = self.variant.into();
+        let first_component = (first_id / max_values_per_component) as usize;
+
+        let mut no_values_read = 0;
+        // commenting out any part of the code in this loop stops the bug from being triggered
+        for (curr_id, _) in self.components.iter().enumerate() {
+            if curr_id < first_component {
+                continue;
+            }
+            else if count - no_values_read <= 0 {
+                break;
+            }
+
+            let first_param_id = if curr_id == first_component { first_id % max_values_per_component } else { 0 };
+            let params_to_fetch = cmp::min(max_values_per_component - first_param_id, count - no_values_read);
+            // code reading the params removed, didn't affect triggering the bug
+
+            no_values_read += params_to_fetch;
+        }
+
+        vec![no_values_read, 0x01]
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cause_compiler_sigsegv_on_release() {
+        let device = EmulatedDevice::init_with_components(8, None);
+
+        let first_id: u8 = 0;
+        let count: u8 = 0xFF;
+
+        let expected: usize = 2;
+        let actual: usize = device.to_0xDC(count, first_id).len();
+
+        assert_eq!(expected, actual);
+    }
+}
+
+Bug Labels:
+A-LLVM, C-bug, I-ICE, P-medium, T-compiler

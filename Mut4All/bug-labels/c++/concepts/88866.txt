@@ -1,0 +1,83 @@
+Issue Title:
+[clang] Crash on unexpanded pack in concept-constrained NTTP
+
+Source Code & Bug Trace:
+template <typename...Ts> struct index_by;
+
+template <typename T, typename Indices>
+concept InitFunc = true;
+
+// with constrained non-type template parameter
+// clang crashes
+// gcc is still fine
+template <typename Indices, InitFunc<Indices> auto init>
+struct LazyLitMatrix;
+
+template <
+    typename...Indices,
+    InitFunc<index_by<Indices>> auto init /* This parameter pack should be expanded */
+>
+struct LazyLitMatrix<index_by<Indices...>, init> {
+};
+
+LazyLitMatrix<
+    index_by<int, char>,
+    42
+> inst;
+
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 <source>
+1.	<source>:22:7: current parser token ';'
+ #0 0x00000000036b0788 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x36b0788)
+ #1 0x00000000036ae8d4 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x36ae8d4)
+ #2 0x00000000035f6e88 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fdd8e442520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x0000000006fcbc61 clang::StmtVisitorBase<llvm::make_const_ptr, (anonymous namespace)::IntExprEvaluator, bool>::Visit(clang::Stmt const*) ExprConstant.cpp:0:0
+ #5 0x0000000006fba9de Evaluate(clang::APValue&, (anonymous namespace)::EvalInfo&, clang::Expr const*) ExprConstant.cpp:0:0
+ #6 0x0000000006fd75c6 EvaluateInPlace(clang::APValue&, (anonymous namespace)::EvalInfo&, (anonymous namespace)::LValue const&, clang::Expr const*, bool) (.constprop.0) ExprConstant.cpp:0:0
+ #7 0x0000000006fe590a clang::Expr::EvaluateAsConstantExpr(clang::Expr::EvalResult&, clang::ASTContext const&, clang::Expr::ConstantExprKind) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6fe590a)
+ #8 0x00000000060b4c3e clang::ActionResult<clang::Expr*, true> calculateConstraintSatisfaction<calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::'lambda'(clang::Expr const*)>(clang::Sema&, clang::Expr const*, clang::ConstraintSatisfaction&, calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::'lambda'(clang::Expr const*)&&) SemaConcept.cpp:0:0
+ #9 0x00000000060b5548 CheckConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) SemaConcept.cpp:0:0
+#10 0x00000000060b5ae8 clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60b5ae8)
+#11 0x00000000068f8894 _Z31FinishTemplateArgumentDeductionIN5clang38ClassTemplatePartialSpecializationDeclEENSt9enable_ifIXsr23IsPartialSpecializationIT_E5valueENS0_23TemplateDeductionResultEE4typeERNS0_4SemaEPS4_bN4llvm8ArrayRefINS0_16TemplateArgumentEEERNSC_15SmallVectorImplINS0_23DeducedTemplateArgumentEEERNS0_4sema21TemplateDeductionInfoE SemaTemplateDeduction.cpp:0:0
+#12 0x00000000068f8cff _ZN4llvm12function_refIFvvEE11callback_fnIZ23DeduceTemplateArgumentsIN5clang38ClassTemplatePartialSpecializationDeclEENSt9enable_ifIXsr23IsPartialSpecializationIT_E5valueENS5_23TemplateDeductionResultEE4typeERNS5_4SemaEPS9_NS_8ArrayRefINS5_16TemplateArgumentEEERNS5_4sema21TemplateDeductionInfoEEUlvE_EEvl SemaTemplateDeduction.cpp:0:0
+#13 0x0000000005f43f71 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5f43f71)
+#14 0x000000000690202e _Z23DeduceTemplateArgumentsIN5clang38ClassTemplatePartialSpecializationDeclEENSt9enable_ifIXsr23IsPartialSpecializationIT_E5valueENS0_23TemplateDeductionResultEE4typeERNS0_4SemaEPS4_N4llvm8ArrayRefINS0_16TemplateArgumentEEERNS0_4sema21TemplateDeductionInfoE SemaTemplateDeduction.cpp:0:0
+#15 0x0000000006949012 getPatternForClassTemplateSpecialization(clang::Sema&, clang::SourceLocation, clang::ClassTemplateSpecializationDecl*, clang::TemplateSpecializationKind) (.isra.0) SemaTemplateInstantiate.cpp:0:0
+#16 0x0000000006986f69 clang::Sema::InstantiateClassTemplateSpecialization(clang::SourceLocation, clang::ClassTemplateSpecializationDecl*, clang::TemplateSpecializationKind, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6986f69)
+#17 0x0000000006a0842f void llvm::function_ref<void ()>::callback_fn<clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*)::'lambda'()>(long) SemaType.cpp:0:0
+#18 0x0000000005f43f71 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5f43f71)
+#19 0x0000000006a0d7f5 clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6a0d7f5)
+#20 0x0000000006a0d875 clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6a0d875)
+#21 0x0000000006a0d950 clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, unsigned int) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6a0d950)
+#22 0x0000000006168a91 clang::Sema::ActOnUninitializedDecl(clang::Decl*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6168a91)
+#23 0x0000000005e0e9dc clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5e0e9dc)
+#24 0x0000000005e25f48 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5e25f48)
+#25 0x0000000005dda64d clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5dda64d)
+#26 0x0000000005ddb223 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5ddb223)
+#27 0x0000000005de38d2 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5de38d2)
+#28 0x0000000005de5447 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5de5447)
+#29 0x0000000005dd443a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5dd443a)
+#30 0x0000000003f18955 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3f18955)
+#31 0x00000000041af831 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x41af831)
+#32 0x000000000413506b clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x413506b)
+#33 0x0000000004292e13 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x4292e13)
+#34 0x0000000000c50e2c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xc50e2c)
+#35 0x0000000000c4addd ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#36 0x0000000003f61839 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#37 0x00000000035f72b3 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x35f72b3)
+#38 0x0000000003f61a59 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#39 0x0000000003f27fa7 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3f27fa7)
+#40 0x0000000003f2895d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3f2895d)
+#41 0x0000000003f3277c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3f3277c)
+#42 0x0000000000c4e291 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xc4e291)
+#43 0x0000000000b31424 main (/opt/compiler-explorer/clang-trunk/bin/clang+++0xb31424)
+#44 0x00007fdd8e429d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#45 0x00007fdd8e429e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#46 0x0000000000c4a93e _start (/opt/compiler-explorer/clang-trunk/bin/clang+++0xc4a93e)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+
+Bug Labels:
+c++20, clang:frontend, concepts, confirmed, crash

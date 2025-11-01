@@ -1,0 +1,122 @@
+Issue Title:
+ICE: bound-normalization-pass.rs with -Zsave-analysis: node type cannot be placed in TypeckResults · Issue #75962 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_bindings)]
+
+struct Foo<T>(T);
+
+trait FooLike { type Output; }
+
+impl<T> FooLike for Foo<T> {
+    type Output = T;
+}
+
+
+// Reduction using `impl Trait` in bindings
+
+mod impl_trait_in_bindings {
+    struct Foo;
+
+    trait FooLike { type Output; }
+
+    impl FooLike for Foo {
+        type Output = u32;
+    }
+
+    trait Trait {
+        type Assoc;
+    }
+
+    fn foo<T: Trait<Assoc=u32>>() {
+        let _: impl FooLike<Output=T::Assoc> = Foo;
+    }
+}
+
+fn main() {}
+
+Bug Trace:
+o[0]::{{opaque}}[0]) cannot be placed in TypeckResults with hir_owner DefId(0:21 ~ bound_normalization_pass[317d]::impl_trait_in_bindings[0]::foo[0])
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:918:9
+stack backtrace:
+   0:     0x7f4e15e735a0 - std::backtrace_rs::backtrace::libunwind::trace::ha1eabb142084ea37
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/../../backtrace/src/backtrace/libunwind.rs:96
+   1:     0x7f4e15e735a0 - std::backtrace_rs::backtrace::trace_unsynchronized::hbb8825661d997281
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/../../backtrace/src/backtrace/mod.rs:66
+   2:     0x7f4e15e735a0 - std::sys_common::backtrace::_print_fmt::h26d850e2f7183914
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/sys_common/backtrace.rs:79
+   3:     0x7f4e15e735a0 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h3834b06f68a2b012
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/sys_common/backtrace.rs:58
+   4:     0x7f4e15ee1fac - core::fmt::write::h3a043650ba7bf668
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/core/src/fmt/mod.rs:1082
+   5:     0x7f4e15e658c7 - std::io::Write::write_fmt::h9c0c8944a1898139
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/io/mod.rs:1514
+   6:     0x7f4e15e78260 - std::sys_common::backtrace::_print::h693c0c2cc41d4d10
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/sys_common/backtrace.rs:61
+   7:     0x7f4e15e78260 - std::sys_common::backtrace::print::h213be73e5670b8ea
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/sys_common/backtrace.rs:48
+   8:     0x7f4e15e78260 - std::panicking::default_hook::{{closure}}::h2d49a3361cc4e7ea
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/panicking.rs:200
+   9:     0x7f4e15e77fac - std::panicking::default_hook::hd41fbdeba93207ba
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/panicking.rs:219
+  10:     0x7f4e166ef7b9 - rustc_driver::report_ice::hb57fcf9c0f585ed3
+  11:     0x7f4e15e78a08 - std::panicking::rust_panic_with_hook::hcab398664b4bd473
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/panicking.rs:573
+  12:     0x7f4e1963f2ad - std::panicking::begin_panic::{{closure}}::h8167e11966f2c61e
+  13:     0x7f4e1963ef36 - std::sys_common::backtrace::__rust_end_short_backtrace::hf533c51810ac4e24
+  14:     0x7f4e1963f1cf - std::panicking::begin_panic::h0c1ac1cb4a9df838
+  15:     0x7f4e196039f0 - rustc_errors::HandlerInner::bug::h6884eda37e1ae60e
+  16:     0x7f4e19602350 - rustc_errors::Handler::bug::hdd5d3c8d59153cb5
+  17:     0x7f4e191ef56d - rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}::haaaf654d6c84e698
+  18:     0x7f4e191df11b - rustc_middle::ty::context::tls::with_opt::{{closure}}::h38b4285e3e9fea7a
+  19:     0x7f4e191df0c2 - rustc_middle::ty::context::tls::with_opt::h7b2abec421520bc7
+  20:     0x7f4e191ef499 - rustc_middle::util::bug::opt_span_bug_fmt::h31811e5a60bbc027
+  21:     0x7f4e191ef40e - rustc_middle::util::bug::bug_fmt::hab28943ad0c8e7bd
+  22:     0x7f4e191d2fdb - rustc_middle::ty::context::validate_hir_id_for_typeck_results::{{closure}}::h99f670eb5d958467
+  23:     0x7f4e191defc9 - rustc_middle::ty::context::tls::with::{{closure}}::h8d5f2784099b4177
+  24:     0x7f4e191defb0 - rustc_middle::ty::context::tls::with_context::{{closure}}::hf8af14fd5e22e80f
+  25:     0x7f4e191d37f1 - rustc_middle::ty::context::TypeckResults::type_dependent_def::hc909fbe02c64d72b
+  26:     0x7f4e191d35ab - rustc_middle::ty::context::TypeckResults::qpath_res::hb7822ff593e2f23a
+  27:     0x7f4e16832d23 - rustc_save_analysis::SaveContext::get_path_res::h920f8a141df53118
+  28:     0x7f4e1689cb42 - <rustc_save_analysis::dump_visitor::DumpVisitor as rustc_hir::intravisit::Visitor>::visit_ty::h20704e8febf98e8a
+  29:     0x7f4e1687875d - rustc_hir::intravisit::walk_generic_args::hf5f3b6b09e58b4fc
+  30:     0x7f4e1687b6cf - rustc_hir::intravisit::walk_item::h05bb3e7ff57dc465
+  31:     0x7f4e1687c4bd - rustc_hir::intravisit::walk_stmt::h852774c7842b77ce
+  32:     0x7f4e1687afbc - rustc_hir::intravisit::walk_expr::hc8e9e897f8487115
+  33:     0x7f4e1689598e - <rustc_save_analysis::dump_visitor::DumpVisitor as rustc_hir::intravisit::Visitor>::visit_item::h09bc78b7ff707760
+  34:     0x7f4e16897ab1 - <rustc_save_analysis::dump_visitor::DumpVisitor as rustc_hir::intravisit::Visitor>::visit_item::h09bc78b7ff707760
+  35:     0x7f4e16893121 - rustc_save_analysis::dump_visitor::DumpVisitor::process_crate::hc145538c7e63dd3f
+  36:     0x7f4e166759dd - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h39bfa8d95128f189
+  37:     0x7f4e16676f19 - rustc_session::utils::<impl rustc_session::session::Session>::time::h61ac4fba29e526cd
+  38:     0x7f4e16713752 - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::h037edd44e25c852a
+  39:     0x7f4e166a8ad7 - rustc_span::with_source_map::h8bee9729eacaf0e5
+  40:     0x7f4e16714db3 - rustc_interface::interface::create_compiler_and_run::hca1ea19f87aad490
+  41:     0x7f4e166f34da - scoped_tls::ScopedKey<T>::set::h98a472b48acc2e14
+  42:     0x7f4e167079b7 - std::sys_common::backtrace::__rust_begin_short_backtrace::h0fbaefb3a51451a7
+  43:     0x7f4e166930be - core::ops::function::FnOnce::call_once{{vtable.shim}}::h7a49202ee8dc3a27
+  44:     0x7f4e15e87fba - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::h8a8db08de617a605
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/alloc/src/boxed.rs:1042
+  45:     0x7f4e15e87fba - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::hddfcff0ffd25c0c4
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/alloc/src/boxed.rs:1042
+  46:     0x7f4e15e87fba - std::sys::unix::thread::Thread::new::thread_start::h8e648f9ee2e9cb3a
+                               at /rustc/bf4342114e357f2934d59e12e31e94532ddb2adf/library/std/src/sys/unix/thread.rs:87
+  47:     0x7f4e15d7a422 - start_thread
+  48:     0x7f4e15c98bf3 - __clone
+  49:                0x0 - <unknown>
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.47.0-nightly (bf4342114 2020-08-25) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z save-analysis
+
+query stack during panic:
+end of query stack
+error: aborting due to previous error; 4 warnings emitted
+
+Bug Labels:
+A-save-analysis, C-bug, F-impl_trait_in_bindings, F-type_alias_impl_trait, I-ICE, T-compiler, glacier, requires-nightly

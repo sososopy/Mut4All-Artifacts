@@ -1,0 +1,34 @@
+use crate::mutator::Mutator;
+
+pub struct Modify_Const_Generic_Default_52;
+
+impl Mutator for Modify_Const_Generic_Default_52 {
+    fn name(&self) -> &str {
+        "Modify_Const_Generic_Default_52"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let Item::Struct(ItemStruct { generics, .. }) = item {
+                for param in &mut generics.params {
+                    if let GenericParam::Const(const_param) = param {
+                        if let Some(default) = &const_param.default {
+                            if let Expr::Block(expr_block) = default {
+                                let new_expr: Expr = parse_quote!({ 10 / 0 });
+                                *expr_block = ExprBlock {
+                                    attrs: expr_block.attrs.clone(),
+                                    block: syn::Block {
+                                        brace_token: expr_block.block.brace_token,
+                                        stmts: vec![Stmt::Expr(new_expr, None)],
+                                    },
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator targets struct definitions with constant generic parameters having default values. It modifies the default value by replacing the existing constant expression with a potentially problematic one, such as a division by zero. This aims to reveal issues in the compiler's handling of const generics by introducing expressions that may cause internal compiler errors or other unexpected behaviors."
+    }
+}

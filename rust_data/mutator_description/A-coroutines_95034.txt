@@ -1,0 +1,33 @@
+Mutation Operator 
+
+Target: Trait Implementation
+
+Mutation Rule:
+1. Locate a trait implementation for a type, specifically look for a function that returns a `Future` type.
+2. Introduce a new generic parameter to the trait implementation function. This parameter should not affect the existing logic but will complicate the type handling.
+3. Ensure that the new generic parameter is used in the return type of the function and in an associated type if one exists.
+
+Example:
+Original:
+```rust
+impl<'a, E, A: Object<'a, Error = E>> Object<'a> for (A,) {
+    type Error = ();
+    type Future = CustomFut<'a, E, A>;
+    fn create() -> Self::Future {
+        unimplemented!()
+    }
+}
+```
+
+Mutated:
+```rust
+impl<'a, E, A: Object<'a, Error = E>, T> Object<'a> for (A,) {
+    type Error = ();
+    type Future = CustomFut<'a, E, A, T>;
+    fn create<T: Default>() -> Self::Future {
+        unimplemented!()
+    }
+}
+```
+
+In this mutation, a new generic parameter `T` is introduced to the `Object` trait implementation. The `create` function now takes a type parameter `T` with a `Default` bound, which is unused within the function but alters the way the return type is determined. This encourages the compiler to evaluate complex type interactions, which can trigger bugs in type inference or trait resolution processes.

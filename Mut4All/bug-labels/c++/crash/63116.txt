@@ -1,0 +1,95 @@
+Issue Title:
+[clang] When the PointerWidth and the SizeType width are not same, a crash occurs in the new operation.
+
+Source Code & Bug Trace:
+diff --git a/clang/lib/Basic/Targets/ARC.h b/clang/lib/Basic/Targets/ARC.h
+index fcbfdd6eec58..2547f454416d 100644
+--- a/clang/lib/Basic/Targets/ARC.h
++++ b/clang/lib/Basic/Targets/ARC.h
+@@ -31,9 +31,10 @@ public:
+     DoubleAlign = LongDoubleAlign = 32;
+     SizeType = UnsignedInt;
+     PtrDiffType = SignedInt;
+-    IntPtrType = SignedInt;
++    IntPtrType = SignedLong;
++    PointerAlign = PointerWidth = 64;
+     UseZeroLengthBitfieldAlignment = true;
+-    resetDataLayout("e-m:e-p:32:32-i1:8:32-i8:8:32-i16:16:32-"
++    resetDataLayout("e-m:e-p:64:64:64:32-i1:8:32-i8:8:32-i16:16:32-"
+                     "i32:32:32-f32:32:32-i64:32-f64:32-a:0:32-n32");
+   }
+
+// test_new.cpp
+int *TestNew() { return new int; }
+
+clang test_new.cpp -target arc -Xclang -ast-dump -c
+
+clang: llvm-project/clang/lib/AST/Expr.cpp:978: clang::IntegerLiteral::IntegerLiteral(const ASTContext &, const llvm::APInt &, QualType, SourceLocation): Assertion `V.getBitWidth() == C.getIntWidth(type) && "Integer type is not the correct size for constant."' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: ./bin/clang ../test_new.cpp -target arc -Xclang -ast-dump -c
+1.      ../test_new.cpp:1:32: current parser token ';'
+2.      ../test_new.cpp:1:16: parsing function body 'TestNew'
+3.      ../test_new.cpp:1:16: in compound statement ('{}')
+ #0 0x000055bfd0899228 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (./bin/clang+0x3d1a228)
+ #1 0x000055bfd0896f1e llvm::sys::RunSignalHandlers() (./bin/clang+0x3d17f1e)
+ #2 0x000055bfd08985c1 llvm::sys::CleanupOnSignal(unsigned long) (./bin/clang+0x3d195c1)
+ #3 0x000055bfd0813ac6 CrashRecoverySignalHandler(int) (./bin/clang+0x3c94ac6)
+ #4 0x00007f68247de980 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x12980)
+ #5 0x00007f682300ce87 gsignal /build/glibc-uZu3wS/glibc-2.27/signal/../sysdeps/unix/sysv/linux/raise.c:51:0
+ #6 0x00007f682300e7f1 abort /build/glibc-uZu3wS/glibc-2.27/stdlib/abort.c:81:0
+ #7 0x00007f6822ffe3fa __assert_fail_base /build/glibc-uZu3wS/glibc-2.27/assert/assert.c:89:0
+ #8 0x00007f6822ffe472 (/lib/x86_64-linux-gnu/libc.so.6+0x30472)
+ #9 0x000055bfd3b78a84 (./bin/clang+0x6ff9a84)
+#10 0x000055bfd32a258e clang::Sema::FindAllocationFunctions(clang::SourceLocation, clang::SourceRange, clang::Sema::AllocationFunctionScope, clang::Sema::AllocationFunctionScope, clang::QualType, bool, bool&, llvm::MutableArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::FunctionDecl*&, bool) (./bin/clang+0x672358e)
+#11 0x000055bfd32a038f clang::Sema::BuildCXXNew(clang::SourceRange, bool, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::SourceRange, clang::QualType, clang::TypeSourceInfo*, std::optional<clang::Expr*>, clang::SourceRange, clang::Expr*) (./bin/clang+0x672138f)
+#12 0x000055bfd329fa68 clang::Sema::ActOnCXXNew(clang::SourceLocation, bool, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::SourceRange, clang::Declarator&, clang::Expr*) (./bin/clang+0x6720a68)
+#13 0x000055bfd2ca2d9d clang::Parser::ParseCXXNewExpression(bool, clang::SourceLocation) (./bin/clang+0x6123d9d)
+#14 0x000055bfd2c8abfa clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (./bin/clang+0x610bbfa)
+#15 0x000055bfd2c8416f clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (./bin/clang+0x610516f)
+#16 0x000055bfd2c84079 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (./bin/clang+0x6105079)
+#17 0x000055bfd2d1d163 clang::Parser::ParseReturnStatement() (./bin/clang+0x619e163)
+#18 0x000055bfd2d1647f clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (./bin/clang+0x619747f)
+#19 0x000055bfd2d1572f clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (./bin/clang+0x619672f)
+#20 0x000055bfd2d1f7b1 clang::Parser::ParseCompoundStatementBody(bool) (./bin/clang+0x61a07b1)
+#21 0x000055bfd2d2087f clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (./bin/clang+0x61a187f)
+#22 0x000055bfd2c64ec6 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (./bin/clang+0x60e5ec6)
+#23 0x000055bfd2cd35ff clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (./bin/clang+0x61545ff)
+#24 0x000055bfd2c63b97 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (./bin/clang+0x60e4b97)
+#25 0x000055bfd2c63471 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (./bin/clang+0x60e4471)
+#26 0x000055bfd2c62426 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (./bin/clang+0x60e3426)
+#27 0x000055bfd2c6045d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (./bin/clang+0x60e145d)
+#28 0x000055bfd2c5fbcf clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (./bin/clang+0x60e0bcf)
+#29 0x000055bfd2c5ad46 clang::ParseAST(clang::Sema&, bool, bool) (./bin/clang+0x60dbd46)
+#30 0x000055bfd13b9f9f clang::FrontendAction::Execute() (./bin/clang+0x483af9f)
+#31 0x000055bfd132b46d clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (./bin/clang+0x47ac46d)
+#32 0x000055bfd1495dae clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (./bin/clang+0x4916dae)
+#33 0x000055bfcf64fb3a cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (./bin/clang+0x2ad0b3a)
+#34 0x000055bfcf64bc8e ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) (./bin/clang+0x2accc8e)
+#35 0x000055bfd11a3009 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::$_0>(long) (./bin/clang+0x4624009)
+#36 0x000055bfd0813806 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (./bin/clang+0x3c94806)
+#37 0x000055bfd11a2842 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const (./bin/clang+0x4623842)
+#38 0x000055bfd11606f9 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (./bin/clang+0x45e16f9)
+#39 0x000055bfd11609a7 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&, bool) const (./bin/clang+0x45e19a7)
+#40 0x000055bfd117fe8a clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) (./bin/clang+0x4600e8a)
+#41 0x000055bfcf64b013 clang_main(int, char**, llvm::ToolContext const&) (./bin/clang+0x2acc013)
+#42 0x000055bfcf65c011 main (./bin/clang+0x2add011)
+#43 0x00007f6822fefc87 __libc_start_main /build/glibc-uZu3wS/glibc-2.27/csu/../csu/libc-start.c:344:0
+#44 0x000055bfcf647d2a _start (./bin/clang+0x2ac8d2a)
+clang: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 17.0.0 (https://github.com/llvm/llvm-project.git 8ec44987e54b5366a03716237feb79e37ae0634a)
+Target: arc
+Thread model: posix
+InstalledDir: llvm-project/build/./bin
+clang: error: unable to execute command: Aborted (core dumped)
+clang: note: diagnostic msg: Error generating preprocessed source(s).
+
+// clang/lib/Sema/SemaExprCXX.cpp:2643
+IntegerLiteral Size(
+    Context,
+    llvm::APInt::getZero(
+        Context.getTargetInfo().getPointerWidth(LangAS::Default)),
+    Context.getSizeType(), SourceLocation());
+
+Bug Labels:
+clang:frontend, crash

@@ -1,0 +1,148 @@
+Issue Title:
+Overflow should be caught earlier in standard query mode: ErrorReporting · Issue #93720 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(specialization)]
+#![feature(generic_const_exprs)]
+#![recursion_limit = "400"]
+
+trait MyFn<Args> {
+    type Output;
+    fn call(self, args: Args) -> Self::Output;
+}
+
+struct Bubble<T, const N: u8> {
+    t: std::marker::PhantomData<T>,
+}
+
+
+impl<T> MyFn<T> for Bubble<T, 1> {
+    type Output = [T; 1];
+    fn call(self, args: T) -> [T; 1] {
+        [args]
+    }
+}
+
+impl<T, const N: u8> MyFn<T> for Bubble<T, N>
+where
+    [(); {N - 1}]:,
+    Bubble::<[T; 1], {N - 1}>: MyFn<[T; 1]>,
+{
+    type Output = [T; 1];
+    fn call(self, args: T) -> [T; 1] {
+        let f = Bubble::<[T; 1], {N - 1}>{t: std::marker::PhantomData};
+        f.call([args])
+    }
+}
+
+fn main() {
+}
+
+Bug Trace:
+Compiling clozuer v0.1.0 (/tmp/clozuer)
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/main.rs:1:12
+  |
+1 | #![feature(specialization)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+  = help: consider using `min_specialization` instead, which is more stable and complete
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/main.rs:2:12
+  |
+2 | #![feature(generic_const_exprs)]
+  |            ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+
+warning: unnecessary braces around const expression
+  --> src/main.rs:24:10
+   |
+24 |     [(); {N - 1}]:,
+   |          ^     ^
+   |
+   = note: `#[warn(unused_braces)]` on by default
+help: remove these braces
+   |
+24 -     [(); {N - 1}]:,
+24 +     [(); N - 1]:,
+   | 
+
+error[E0080]: evaluation of `<Bubble<[^0; 1], {N - 1}> as MyFn<[^0; 1]>>::{constant#2}` failed
+  --> src/main.rs:25:23
+   |
+25 |     Bubble::<[T; 1], {N - 1}>: MyFn<[T; 1]>,
+   |                       ^^^^^ attempt to compute `0_u8 - 1_u8`, which would overflow
+
+error[E0080]: evaluation of `<Bubble<[^0; 1], 0_u8> as MyFn<[^0; 1]>>::{constant#2}` failed
+  --> src/main.rs:25:23
+   |
+25 |     Bubble::<[T; 1], {N - 1}>: MyFn<[T; 1]>,
+   |                       ^^^^^ attempt to compute `0_u8 - 1_u8`, which would overflow
+
+thread 'rustc' panicked at 'Overflow should be caught earlier in standard query mode: ErrorReporting', compiler/rustc_trait_selection/src/traits/select/mod.rs:420:14
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/dd549dcab404ec4c7d07b5a83aca5bdd7171138f/library/std/src/panicking.rs:498:5
+   1: core::panicking::panic_fmt
+             at /rustc/dd549dcab404ec4c7d07b5a83aca5bdd7171138f/library/core/src/panicking.rs:107:14
+   2: core::result::unwrap_failed
+             at /rustc/dd549dcab404ec4c7d07b5a83aca5bdd7171138f/library/core/src/result.rs:1613:5
+   3: <&mut rustc_trait_selection::traits::coherence::overlap_within_probe::{closure#2} as core::ops::function::FnMut<(&rustc_infer::traits::Obligation<rustc_middle::ty::Predicate>,)>>::call_mut
+   4: <core::iter::adapters::chain::Chain<core::iter::adapters::copied::Copied<core::slice::iter::Iter<rustc_middle::ty::Predicate>>, alloc::vec::into_iter::IntoIter<rustc_middle::ty::Predicate>> as core::iter::traits::iterator::Iterator>::try_fold::<(), core::iter::adapters::map::map_try_fold<rustc_middle::ty::Predicate, rustc_middle::ty::Predicate, (), core::ops::control_flow::ControlFlow<rustc_infer::traits::Obligation<rustc_middle::ty::Predicate>>, rustc_trait_selection::traits::coherence::overlap_within_probe::{closure#0}, core::iter::adapters::map::map_try_fold<rustc_middle::ty::Predicate, rustc_infer::traits::Obligation<rustc_middle::ty::Predicate>, (), core::ops::control_flow::ControlFlow<rustc_infer::traits::Obligation<rustc_middle::ty::Predicate>>, rustc_trait_selection::traits::coherence::overlap_within_probe::{closure#1}, core::iter::traits::iterator::Iterator::find::check<rustc_infer::traits::Obligation<rustc_middle::ty::Predicate>, &mut rustc_trait_selection::traits::coherence::overlap_within_probe::{closure#2}>::{closure#0}>::{closure#0}>::{closure#0}, core::ops::control_flow::ControlFlow<rustc_infer::traits::Obligation<rustc_middle::ty::Predicate>>>
+   5: rustc_trait_selection::traits::coherence::overlap_within_probe
+   6: <rustc_infer::infer::InferCtxtBuilder>::enter::<bool, rustc_trait_selection::traits::coherence::overlapping_impls<<rustc_middle::traits::specialization_graph::Children as rustc_trait_selection::traits::specialize::specialization_graph::ChildrenExt>::insert::{closure#2}, <rustc_middle::traits::specialization_graph::Children as rustc_trait_selection::traits::specialize::specialization_graph::ChildrenExt>::insert::{closure#3}, core::result::Result<(bool, bool), rustc_trait_selection::traits::specialize::OverlapError>>::{closure#3}>
+   7: rustc_trait_selection::traits::coherence::overlapping_impls::<<rustc_middle::traits::specialization_graph::Children as rustc_trait_selection::traits::specialize::specialization_graph::ChildrenExt>::insert::{closure#2}, <rustc_middle::traits::specialization_graph::Children as rustc_trait_selection::traits::specialize::specialization_graph::ChildrenExt>::insert::{closure#3}, core::result::Result<(bool, bool), rustc_trait_selection::traits::specialize::OverlapError>>
+   8: <rustc_middle::traits::specialization_graph::Children as rustc_trait_selection::traits::specialize::specialization_graph::ChildrenExt>::insert
+   9: <rustc_middle::traits::specialization_graph::Graph as rustc_trait_selection::traits::specialize::specialization_graph::GraphExt>::insert
+  10: rustc_trait_selection::traits::specialize::specialization_graph_provider
+  11: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId, rustc_middle::traits::specialization_graph::Graph>
+  12: rustc_data_structures::stack::ensure_sufficient_stack::<(rustc_middle::traits::specialization_graph::Graph, rustc_query_system::dep_graph::graph::DepNodeIndex), rustc_query_system::query::plumbing::execute_job<rustc_query_impl::plumbing::QueryCtxt, rustc_span::def_id::DefId, rustc_middle::traits::specialization_graph::Graph>::{closure#3}>
+  13: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::ArenaCache<rustc_span::def_id::DefId, rustc_middle::traits::specialization_graph::Graph>>
+  14: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::specialization_graph_of, rustc_query_impl::plumbing::QueryCtxt>
+  15: rustc_typeck::coherence::coherent_trait
+  16: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId, ()>
+  17: rustc_data_structures::stack::ensure_sufficient_stack::<((), rustc_query_system::dep_graph::graph::DepNodeIndex), rustc_query_system::query::plumbing::execute_job<rustc_query_impl::plumbing::QueryCtxt, rustc_span::def_id::DefId, ()>::{closure#3}>
+  18: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::DefId, ()>>
+  19: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::coherent_trait, rustc_query_impl::plumbing::QueryCtxt>
+  20: rustc_typeck::coherence::check_coherence
+  21: <rustc_session::session::Session>::track_errors::<rustc_typeck::check_crate::{closure#3}, ()>
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, (), core::result::Result<(), rustc_errors::ErrorReported>>
+  25: rustc_data_structures::stack::ensure_sufficient_stack::<(core::result::Result<(), rustc_errors::ErrorReported>, rustc_query_system::dep_graph::graph::DepNodeIndex), rustc_query_system::query::plumbing::execute_job<rustc_query_impl::plumbing::QueryCtxt, (), core::result::Result<(), rustc_errors::ErrorReported>>::{closure#3}>
+  26: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), core::result::Result<(), rustc_errors::ErrorReported>>>
+  27: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  28: <rustc_interface::passes::QueryContext>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}::{closure#3}, core::result::Result<(), rustc_errors::ErrorReported>>
+  29: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorReported>>
+  30: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorReported>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  31: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>
+  32: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorReported>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_errors::ErrorReported>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (dd549dcab 2021-11-25) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [specialization_graph_of] building specialization graph of trait `MyFn`
+#1 [coherent_trait] coherence checking all impls of trait `MyFn`
+#2 [analysis] running analysis passes on this crate
+end of query stack
+For more information about this error, try `rustc --explain E0080`.
+warning: `clozuer` (bin "clozuer") generated 3 warnings
+error: could not compile `clozuer` due to 2 previous errors; 3 warnings emitted
+
+Bug Labels:
+A-const-generics, C-bug, F-generic_const_exprs, I-ICE, T-compiler

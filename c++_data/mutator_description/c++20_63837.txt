@@ -1,0 +1,41 @@
+Mutation Operator: Modify Concept Constraints on Non-Type Template Parameter Pack
+
+Target Code Construct: Template class with member templates using non-type template parameter packs constrained by a concept.
+
+Mutation Rule:
+1. Identify a member template within a templated struct or class that uses a non-type template parameter pack constrained by a concept. For example: `template<IsFoo auto... xs>`.
+2. Modify the constraint by removing the concept from the non-type template parameter pack. Change `template<IsFoo auto... xs>` to `template<auto... xs>`.
+3. Add a `requires` clause to the member template to ensure that each element of the parameter pack satisfies the original concept. For example, add `requires (... && IsFoo<decltype(xs)>)` after the parameter list.
+4. Apply this change to both methods and static constexpr fields within the template class.
+
+Example:
+Original Code:
+```
+template<class T>
+concept IsFoo = true;
+
+template<class>
+struct Struct {
+    template<IsFoo auto... xs>
+    void method() {}
+};
+
+template void Struct<void>::method<>();
+```
+
+Mutated Code:
+```
+template<class T>
+concept IsFoo = true;
+
+template<class>
+struct Struct {
+    template<auto... xs>
+    requires (... && IsFoo<decltype(xs)>)
+    void method() {}
+};
+
+template void Struct<void>::method<>();
+```
+
+This mutation operator targets cases where concept-constrained non-type template parameter packs are used in member templates of a templated class, changing the constraint mechanism to potentially expose compiler handling issues related to concepts and parameter packs.

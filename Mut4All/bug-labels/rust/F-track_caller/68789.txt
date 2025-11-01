@@ -1,0 +1,33 @@
+Issue Title:
+ICE due to `#[track_caller]` shim with -Z unleash-the-miri-inside-of-you · Issue #68789 · rust-lang/rust · GitHub
+
+Rust Code:
+// compile-flags: -Z unleash-the-miri-inside-of-you
+
+#![feature(core_intrinsics, const_caller_location, track_caller, const_fn)]
+
+use std::panic::Location;
+use std::intrinsics::caller_location;
+
+type L = &'static Location<'static>;
+
+#[track_caller]
+const fn foo() -> L {
+    caller_location()
+}
+
+const fn bar() -> L {
+    // Why we need `-Z unleash...`:
+    let x: fn() -> L = foo;
+    x()
+}
+
+const CTFE: L = bar();
+
+fn main() {
+    dbg!(bar());
+    dbg!(CTFE); // This is what causes the ICE.
+}
+
+Bug Labels:
+A-codegen, A-const-eval, C-bug, F-track_caller, I-ICE, I-crash, T-compiler, requires-nightly

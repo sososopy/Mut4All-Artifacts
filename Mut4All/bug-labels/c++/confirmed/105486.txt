@@ -1,0 +1,60 @@
+Issue Title:
+crash on evaluation of invalid expr
+
+Source Code & Bug Trace:
+$ cat preproc.cc
+__attribute__((__vector_size__(sizeof(long)))) long m;
+const long long t0 = *0;
+int a = m - t0;
+
+$ ~/repos/llvm/build/bin/clang -xc++ -std=c++20 preproc.cc
+preproc.cc:2:22: error: indirection requires pointer operand ('int' invalid)
+    2 | const long long t0 = *0;
+      |                      ^~
+clang-20: /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/ExprConstant.cpp:16154: bool clang::Expr::EvaluateAsInt(EvalResult &, const ASTContext &, SideEffectsKind, bool) const: Assertion `!isValueDependent() && "Expression evaluator can't be called on a dependent expression."' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang-20 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -dumpdir a- -disable-free -clear-ast-before-backend -main-file-name preproc.cc -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/usr/local/google/home/kadircet/repos/tmp/clangd_crashes/321217557 -fcoverage-compilation-dir=/usr/local/google/home/kadircet/repos/tmp/clangd_crashes/321217557 -resource-dir /usr/local/google/home/kadircet/repos/llvm/build/lib/clang/20 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/x86_64-linux-gnu/c++/14 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/backward -internal-isystem /usr/local/google/home/kadircet/repos/llvm/build/lib/clang/20/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++20 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/preproc-ec90d7.o -x c++ preproc.cc
+1.      preproc.cc:3:15: current parser token ';'
+ #0 0x00005592888ac528 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:723:13
+ #1 0x00005592888aa0fe llvm::sys::RunSignalHandlers() /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Signals.cpp:106:18
+ #2 0x00005592888acbd8 SignalHandler(int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:413:1
+ #3 0x00007f045b4591a0 (/lib/x86_64-linux-gnu/libc.so.6+0x3d1a0)
+ #4 0x00007f045b4a70ec __pthread_kill_implementation ./nptl/pthread_kill.c:44:76
+ #5 0x00007f045b459102 gsignal ./signal/../sysdeps/posix/raise.c:27:6
+ #6 0x00007f045b4424f2 abort ./stdlib/abort.c:81:7
+ #7 0x00007f045b442415 _nl_load_domain ./intl/loadmsgcat.c:1177:9
+ #8 0x00007f045b451d32 (/lib/x86_64-linux-gnu/libc.so.6+0x35d32)
+ #9 0x000055928c0cafa9 (/usr/local/google/home/kadircet/repos/llvm/build/bin/clang-20+0xb726fa9)
+#10 0x000055928b441b7f canConvertIntToOtherIntTy /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExpr.cpp:0:29
+#11 0x000055928b441b7f tryGCCVectorConvertAndSplat(clang::Sema&, clang::ActionResult<clang::Expr*, true>*, clang::ActionResult<clang::Expr*, true>*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExpr.cpp:10009:9
+#12 0x000055928b43c2d0 clang::Sema::CheckVectorOperands(clang::ActionResult<clang::Expr*, true>&, clang::ActionResult<clang::Expr*, true>&, clang::SourceLocation, bool, bool, bool, bool, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExpr.cpp:0:12
+#13 0x000055928b444e04 clang::Sema::CheckSubtractionOperands(clang::ActionResult<clang::Expr*, true>&, clang::ActionResult<clang::Expr*, true>&, clang::SourceLocation, clang::QualType*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExpr.cpp:10986:9
+#14 0x000055928b450ad6 clang::Sema::CreateBuiltinBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExpr.cpp:0:16
+#15 0x000055928b41ec46 clang::Sema::ActOnBinOp(clang::Scope*, clang::SourceLocation, clang::tok::TokenKind, clang::Expr*, clang::Expr*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExpr.cpp:15083:1
+#16 0x000055928aedce67 clang::Parser::ParseRHSOfBinaryExpression(clang::ActionResult<clang::Expr*, true>, clang::prec::Level) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:662:21
+#17 0x000055928aedbb0d clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:0:10
+#18 0x000055928af33f54 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Parse/Parser.h:0:14
+#19 0x000055928af31150 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:2523:7
+#20 0x000055928aeb93d9 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:10
+#21 0x000055928aeb8bf2 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:1266:12
+#22 0x000055928aeb79d9 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:14
+#23 0x000055928aeb5a06 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:758:10
+#24 0x000055928aeb0f5e clang::ParseAST(clang::Sema&, bool, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseAST.cpp:170:5
+#25 0x000055928955ba2f clang::FrontendAction::Execute() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/FrontendAction.cpp:1082:10
+#26 0x00005592894c6a3d getPtr /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:279:42
+#27 0x00005592894c6a3d operator bool /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:242:16
+#28 0x00005592894c6a3d clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/CompilerInstance.cpp:1061:23
+#29 0x0000559289643dce clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:280:25
+#30 0x000055928612cfeb cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/cc1_main.cpp:285:15
+#31 0x00005592861296cd ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:215:12
+#32 0x0000559286128478 clang_main(int, char**, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:256:12
+#33 0x0000559286139c07 main /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/tools/driver/clang-driver.cpp:17:10
+#34 0x00007f045b443b8a __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#35 0x00007f045b443c45 call_init ./csu/../csu/libc-start.c:128:20
+#36 0x00007f045b443c45 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#37 0x0000559286127021 _start (/usr/local/google/home/kadircet/repos/llvm/build/bin/clang-20+0x5783021)
+
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid

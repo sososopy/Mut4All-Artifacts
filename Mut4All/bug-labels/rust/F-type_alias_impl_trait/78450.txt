@@ -1,0 +1,85 @@
+Issue Title:
+type_alias_impl_trait delay_span_bug when type parameter is associated type with non-static lifetime · Issue #78450 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
+#![no_std]
+
+pub trait AssociatedImpl {
+    type ImplTrait;
+
+    fn f() -> Self::ImplTrait;
+}
+
+trait DynTrait<'a> {}
+
+struct S<T>(T);
+struct S2<T>(T);
+struct S3<T>(T);
+
+trait Associated {
+    type A;
+}
+
+// ICE
+impl<'a, T: Associated<A = dyn DynTrait<'a>>> AssociatedImpl for S<T> {
+    type ImplTrait = impl core::future::Future<Output = ()>;
+
+    fn f() -> Self::ImplTrait {
+        async { () }
+    }
+}
+
+// Ok
+impl<'a, T: Associated<A = dyn DynTrait<'a>>> AssociatedImpl for S2<T> {
+    type ImplTrait = core::future::Ready<()>;
+
+    fn f() -> Self::ImplTrait {
+        core::future::ready(())
+    }
+}
+
+// Ok
+impl<T> AssociatedImpl for S3<T> {
+    type ImplTrait = core::future::Ready<()>;
+
+    fn f() -> Self::ImplTrait {
+        core::future::ready(())
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', compiler/rustc_errors/src/lib.rs:961:13
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/panicking.rs:483:5
+   1: std::panicking::begin_panic_fmt
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/panicking.rs:437:5
+   2: rustc_errors::HandlerInner::flush_delayed
+   3: <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop
+   4: core::ptr::drop_in_place
+   5: <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop
+   6: core::ptr::drop_in_place
+   7: rustc_span::with_source_map
+   8: rustc_interface::interface::create_compiler_and_run
+   9: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.49.0-nightly (ffa2e7ae8 2020-10-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental -C link-arg=-fuse-ld=lld --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+C-bug, F-type_alias_impl_trait, I-ICE, T-compiler, glacier, requires-nightly

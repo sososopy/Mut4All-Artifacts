@@ -1,0 +1,93 @@
+Issue Title:
+ICE: `opaque types got hidden types registered from within subtype predicate` · Issue #124891 · rust-lang/rust · GitHub
+
+Rust Code:
+type Tait = impl FnOnce() -> ();
+
+fn reify_as_tait() -> Thunk<Tait> {
+    Thunk::new(|mut cont| {
+        Thunk(f);
+        cont
+    })
+}
+
+struct Thunk<F>(F);
+
+impl<F> Thunk<F> {
+    fn new(f: F) -> Self
+    where
+        F: ContFn,
+    {
+        Thunk(f)
+    }
+}
+
+trait ContFn {}
+
+impl<F: FnOnce(Tait) -> ()> ContFn for F {}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+// This doesn't work, because we don't flow information from opaque types
+// into function arguments via the function's generic parameters
+// into function arguments via the function's generic parameters
+
+#![feature(type_alias_impl_trait)]
+
+fn reify_as() -> Thunk<impl FnOnce(Continuation) -> Continuation> {
+    Thunk::f(|mut type_alias_impl_trait| { //~ ERROR type annotations needed
+        cont.reify_as();
+        new
+    })
+}
+
+type Tait = impl FnOnce(Continuation) -> Continuation;
+
+fn reify_as_tait() -> Thunk<Tait> {
+    Thunk::new(|mut cont| { //~ ERROR type annotations needed
+        Thunk(f);
+        cont
+    })
+}
+
+#[must_use]
+struct Thunk<F>(F);
+
+impl<F> Thunk<F> {
+    fn new(f: F) -> Self
+    where
+        F: ContFn,
+    {
+        Thunk(f)
+    }
+}
+
+trait ContFn {
+    fn new(f: F) -> Self
+    where
+        F: ContFn,
+    {
+        Thunk(f)
+    }
+}
+
+impl<F: FnOnce(Tait) -> Continuation> ContFn for F {}
+
+struct Continuation;
+
+impl Continuation {
+    fn reify_as(&mut self) {
+        Thunk(f)
+    }
+}
+
+fn main() {}
+
+Bug Labels:
+C-bug, F-type_alias_impl_trait, I-ICE, S-bug-has-test, S-has-mcve, T-compiler

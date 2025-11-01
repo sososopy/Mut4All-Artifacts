@@ -1,0 +1,71 @@
+Issue Title:
+ICE on async_fn_in_trait when trait implementation misses a lifetime in different crates · Issue #120648 · rust-lang/rust · GitHub
+
+Rust Code:
+// lib.rs in crate jewel
+#![no_std]
+#[allow(async_fn_in_trait)]
+
+pub trait BleRadio<'a> {
+    fn set_buffer(&mut self, buffer: &'a [u8]);
+    async fn transmit(&mut self);
+}
+
+Bug Trace:
+$ RUST_BACKTRACE=1 cargo build
+   Compiling embassy-nrf v0.1.0 (/home/guiss/projetos/ble/lifetime_different_crates_ice/embassy-nrf)
+error[E0726]: implicit elided lifetime not allowed here
+ --> src/lib.rs:8:6
+  |
+8 | impl BleRadio for Radio {
+  |      ^^^^^^^^ expected lifetime parameter
+  |
+help: indicate the anonymous lifetime
+  |
+8 | impl BleRadio<'_> for Radio {
+  |              ++++
+
+thread 'rustc' panicked at compiler/rustc_middle/src/ty/context.rs:1196:53:
+DefId::expect_local: `DefId(4:12 ~ jewel[24ae]::BleRadio::transmit::{opaque#0}::'a)` isn't local
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/88189a71e4e4376eea82ac61db6a539612eb200a/library/std/src/panicking.rs:647:5
+   1: core::panicking::panic_fmt
+             at /rustc/88189a71e4e4376eea82ac61db6a539612eb200a/library/core/src/panicking.rs:72:14
+   2: <rustc_middle::ty::context::TyCtxt>::is_suitable_region
+   3: <rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError>::try_report
+   4: <rustc_infer::infer::error_reporting::TypeErrCtxt>::try_report_nice_region_error
+   5: <rustc_infer::infer::error_reporting::TypeErrCtxt>::report_region_errors
+   6: <rustc_trait_selection::traits::engine::ObligationCtxt>::resolve_regions_and_report_errors
+   7: rustc_hir_analysis::check::check::check_item_type
+   8: rustc_hir_analysis::check::wfcheck::check_well_formed
+      [... omitted 1 frame ...]
+   9: rustc_hir_analysis::check::wfcheck::check_mod_type_wf
+      [... omitted 1 frame ...]
+  10: rustc_middle::query::plumbing::query_ensure_error_guaranteed::<rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalModDefId, rustc_middle::query::erase::Erased<[u8; 1]>>, ()>
+  11: rustc_hir_analysis::check_crate
+  12: rustc_interface::passes::analysis
+      [... omitted 1 frame ...]
+  13: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please attach the file at `/home/guiss/projetos/ble/lifetime_different_crates_ice/embassy-nrf/rustc-ice-2024-02-04T18_30_27-63563.txt` to your bug report
+
+note: compiler flags: --crate-type lib -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [check_well_formed] checking that `<impl at src/lib.rs:8:1: 8:24>` is well-formed
+#1 [check_mod_type_wf] checking that types are well-formed in top-level module
+#2 [analysis] running analysis passes on this crate
+end of query stack
+For more information about this error, try `rustc --explain E0726`.
+error: could not compile `embassy-nrf` (lib) due to 1 previous error
+
+Bug Labels:
+A-lifetimes, C-bug, I-ICE, T-compiler

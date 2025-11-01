@@ -1,0 +1,44 @@
+Issue Title:
+internal compiler error when evaluate trait associated constants   · Issue #58944 · rust-lang/rust · GitHub
+
+Rust Code:
+pub trait MemoryModel {
+    const ALIGNMENT: isize = mem::size_of::<Self::Item>() as isize;
+    const ALIGN_MASK: isize = Self::ALIGNMENT - 1;
+
+    type Item;
+
+    unsafe fn fetch<P>(p: *const P) -> Self::Item;
+
+    unsafe fn tail<P>(p: *const P, len: isize) -> Self::Item;
+}
+
+pub struct LittenEndianAligned<T>(PhantomData<T>);
+pub struct BigEndianAligned<T>(PhantomData<T>);
+pub struct LittenEndianUnaligned<T>(PhantomData<T>);
+pub struct BigEndianUnaligned<T>(PhantomData<T>);
+
+impl<T> MemoryModel for LittenEndianAligned<T>
+where
+    T: PrimInt + Zero + WrappingShr,
+{
+    type Item = T;
+
+    #[inline(always)]
+    unsafe fn fetch<P>(p: *const P) -> Self::Item {
+        debug_assert!(aligned_to::<Self::Item, _>(p));
+
+        ptr::read(p as *const Self::Item).to_le()
+    }
+
+    #[inline(always)]
+    unsafe fn tail<P>(p: *const P, tail: isize) -> Self::Item {
+        let p = p as *const u8;
+        let shift = ((Self::ALIGNMENT - tail) & Self::ALIGN_MASK) << 3;
+
+        Self::fetch(p) & ((!T::zero()).wrapping_shr(shift as u32))
+    }
+}
+
+Bug Labels:
+A-const-eval, I-ICE, T-compiler

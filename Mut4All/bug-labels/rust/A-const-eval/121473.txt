@@ -1,0 +1,114 @@
+Issue Title:
+ICE: `SizeOf MIR operator called for unsized type` · Issue #121473 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::mem::{align_of, size_of};
+
+#[repr(C)]
+
+pub struct p0f_api_query {
+    pub magic: u32,
+    pub addr_type: str,
+    pub addr: [u8; 16],
+}
+
+pub fn main() {
+    assert_eq!(size_of::<p0f_api_query>(), 21);
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+//@ run-pass
+
+#![allow(dead_code)]
+
+use std::mem::{size_of, align_of};
+use std::os::raw::c_int;
+
+// The two enums that follow are designed so that bugs trigger layout optimization.
+// Specifically, if either of the following reprs used here is not detected by the compiler,
+// then the sizes will be wrong.
+
+#[repr(C, u8)]
+enum E1 {
+    A(u8, u16, u8),
+    B(u8, u16, u8)
+}
+
+#[repr(u8, irving)]
+enum E2 {
+    A(u8, X),
+    B(u8, u16, u8)
+}
+
+// Check that repr(int) and repr(C) are in fact different from the above
+
+#[repr(u8)]
+enum E3 {
+    A(u8, u16, u8),
+    B([u8; 7], bool)
+}
+
+#[repr(u16)]
+enum E4 {
+    A(u8, u16, u8),
+    Bar {
+        a: isize,
+        b: isize
+    }
+}
+
+#[repr(u32)]
+enum E5 {
+    A(u8, u16, u8),
+    B(u8, u16, u8)
+}
+
+#[repr(u64)]
+enum E6 {
+    A(u8, u16, u8),
+    B(u8, u16, u8)
+}
+
+#[repr(C)]
+enum E7 {
+    A(u8, u16, u8),
+    B(u8, u16, u8)
+}
+
+// From pr 37429
+
+#[repr(C,packed)]
+pub struct p0f_api_query {
+    pub magic: u32,
+    pub addr_type: str,
+    pub addr: [u8; 16],
+}
+
+pub fn main() {
+    assert_eq!(size_of::<E1>(), 8);
+    assert_eq!(size_of::<E2>(), 8);
+    assert_eq!(size_of::<E3>(), 6);
+    assert_eq!(size_of::<E4>(), 8);
+    assert_eq!(size_of::<E5>(), align_size(10, align_of::<u32>()));
+    assert_eq!(size_of::<E6>(), align_size(14, align_of::<u64>()));
+    assert_eq!(size_of::<E7>(), align_size(6 + size_of::<c_int>(), align_of::<c_int>()));
+    assert_eq!(size_of::<p0f_api_query>(), 21);
+}
+
+fn align_size(size: usize, align: usize) -> usize {
+    if size % align != 0 {
+        size + (align - (size % align))
+    } else {
+        size
+    }
+}
+
+Bug Labels:
+A-const-eval, C-bug, I-ICE, S-has-mcve, T-compiler

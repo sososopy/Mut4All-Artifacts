@@ -1,0 +1,120 @@
+Issue Title:
+Well-formedness analysis pass on trait impl paniced · Issue #126997 · rust-lang/rust · GitHub
+
+Rust Code:
+pub trait NodeTask: Send + Sync + 'static {
+    type InputId: From<InputId> + Into<InputId>;
+    type PipelineNode: PipelineNode;
+
+    fn sync_node(&mut self, _node: &Self::PipelineNode) {}
+
+    fn connect(&mut self, input_id: Self::InputId, input: &mut ConnectionHandle);
+
+    fn disconnect(&mut self, input_id: Self::InputId);
+
+    fn invalidate(&mut self) {}
+
+    fn run(&mut self) -> impl Future<Output = ()> + Send;
+}
+
+Bug Trace:
+thread 'rustc' panicked at compiler\rustc_middle\src\dep_graph\dep_node.rs:198:17:
+Failed to extract DefId: def_kind dd40d9ca4515edd3-4751067c9257c2f7
+stack backtrace:
+   0:     0x7ffb343733ca - std::backtrace_rs::backtrace::dbghelp64::trace
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\..\..\backtrace\src\backtrace\dbghelp64.rs:99
+   1:     0x7ffb343733ca - std::backtrace_rs::backtrace::trace_unsynchronized
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\..\..\backtrace\src\backtrace\mod.rs:66
+   2:     0x7ffb343733ca - std::sys_common::backtrace::_print_fmt
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\sys_common\backtrace.rs:68
+   3:     0x7ffb343733ca - std::sys_common::backtrace::_print::impl$0::fmt
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\sys_common\backtrace.rs:44
+   4:     0x7ffb343a634b - core::fmt::rt::Argument::fmt
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\core\src\fmt\rt.rs:142
+   5:     0x7ffb343a634b - core::fmt::write
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\core\src\fmt\mod.rs:1153
+   6:     0x7ffb34369ac1 - std::io::Write::write_fmt<std::sys::pal::windows::stdio::Stderr>
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\io\mod.rs:1843
+   7:     0x7ffb343731b6 - std::sys_common::backtrace::print
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\sys_common\backtrace.rs:34
+   8:     0x7ffb3437661f - std::panicking::default_hook::closure$1
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\panicking.rs:272
+   9:     0x7ffb343762b7 - std::panicking::default_hook
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\panicking.rs:292
+  10:     0x7ffafdb9a021 - __longjmp_internal
+  11:     0x7ffb34376c4c - alloc::boxed::impl$49::call
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\alloc\src\boxed.rs:2034
+  12:     0x7ffb34376c4c - std::panicking::rust_panic_with_hook
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\panicking.rs:783
+  13:     0x7ffb34376ad9 - std::panicking::begin_panic_handler::closure$0
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\panicking.rs:657
+  14:     0x7ffb34373cd9 - std::sys_common::backtrace::__rust_end_short_backtrace<std::panicking::begin_panic_handler::closure_env$0,never$>
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\sys_common\backtrace.rs:171
+  15:     0x7ffb34376796 - std::panicking::begin_panic_handler
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\panicking.rs:645
+  16:     0x7ffb343ccec7 - core::panicking::panic_fmt
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\core\src\panicking.rs:72
+  17:     0x7ffafed409a1 - <rustc_middle[df39feebc6eef2ee]::query::on_disk_cache::CacheEncoder as rustc_span[ba973c2acf341f85]::SpanEncoder>::encode_def_index
+  18:     0x7ffafdadef5b - <rustc_query_system[1e50569dbb01445e]::dep_graph::dep_node::DepNode as rustc_middle[df39feebc6eef2ee]::dep_graph::dep_node::DepNodeExt>::extract_def_id
+  19:     0x7ffafe5e181a - <rustc_mir_dataflow[c558c2d92ad223ea]::value_analysis::PlaceIndex as core[a12e26040cc72c4]::fmt::Debug>::fmt
+  20:     0x7ffafd3bd05a - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  21:     0x7ffafd3bcfcd - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  22:     0x7ffafd3bcfcd - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  23:     0x7ffafd3bcfcd - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  24:     0x7ffafd3bcfcd - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  25:     0x7ffafd3bcfcd - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  26:     0x7ffafd3eec35 - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  27:     0x7ffafd4d9972 - rustc_query_impl[35a1e4ec0f2bf1cb]::plumbing::query_key_hash_verify_all
+  28:     0x7ffafd5cb22b - <rustc_trait_selection[9e69fb7763a376db]::traits::fulfill::FulfillProcessor as rustc_data_structures[e247b41676f49f20]::obligation_forest::ObligationProcessor>::process_obligation
+  29:     0x7ffafd53253c - <rustc_lint[2bc506dbb1051515]::BuiltinCombinedModuleLateLintPass as rustc_lint[2bc506dbb1051515]::passes::LateLintPass>::check_fn
+  30:     0x7ffafd56a79e - <rustc_trait_selection[9e69fb7763a376db]::traits::engine::ObligationCtxt>::select_all_or_error
+  31:     0x7ffafdf08b26 - rustc_hir_analysis[9c8c83e03407cb17]::check::compare_impl_item::collect_return_position_impl_trait_in_trait_tys
+  32:     0x7ffafe61d4ab - <rustc_query_impl[35a1e4ec0f2bf1cb]::plumbing::QueryCtxt as rustc_query_system[1e50569dbb01445e]::query::QueryContext>::depth_limit_error
+  33:     0x7ffafd3dfafd - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  34:     0x7ffafc53c097 - <rustc_mir_dataflow[c558c2d92ad223ea]::value_analysis::Map>::find_discr
+  35:     0x7ffafe5e15cf - <rustc_mir_dataflow[c558c2d92ad223ea]::value_analysis::PlaceIndex as core[a12e26040cc72c4]::fmt::Debug>::fmt
+  36:     0x7ffafd3bd05a - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  37:     0x7ffafd3e023b - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  38:     0x7ffafd4ca1d6 - rustc_query_impl[35a1e4ec0f2bf1cb]::plumbing::query_key_hash_verify_all
+  39:     0x7ffafde7ea36 - <rustc_hir_typeck[6aa5b9d150828341]::fn_ctxt::FnCtxt>::method_exists
+  40:     0x7ffafcb1087d - rustc_hir_analysis[9c8c83e03407cb17]::check::wfcheck::check_well_formed
+  41:     0x7ffafd4c80aa - rustc_query_impl[35a1e4ec0f2bf1cb]::plumbing::query_key_hash_verify_all
+  42:     0x7ffafd4240ff - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  43:     0x7ffafc5127f6 - <rustc_mir_dataflow[c558c2d92ad223ea]::value_analysis::Map>::find_discr
+  44:     0x7ffafd3bd05a - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  45:     0x7ffafd3bcd2b - <rustc_mir_dataflow[c558c2d92ad223ea]::impls::initialized::EverInitializedPlaces as rustc_mir_dataflow[c558c2d92ad223ea]::framework::GenKillAnalysis>::terminator_effect
+  46:     0x7ffafc4ae9ea - <rustc_mir_dataflow[c558c2d92ad223ea]::value_analysis::Map>::find_discr
+  47:     0x7ffafc551d5b - rustc_query_impl[35a1e4ec0f2bf1cb]::query_system
+  48:     0x7ffafcb62c57 - rustc_hir_analysis[9c8c83e03407cb17]::check_crate
+  49:     0x7ffafc8ce0eb - <rustc_interface[c379e6340dfc8ff4]::passes::LintStoreExpandImpl as rustc_expand[ac7fa28d9271a0f1]::base::LintStoreExpand>::pre_expansion_lint
+  50:     0x7ffafc53f2ca - <rustc_mir_dataflow[c558c2d92ad223ea]::value_analysis::Map>::find_discr
+  51:     0x7ffafc4b5692 - <rustc_mir_dataflow[c558c2d92ad223ea]::value_analysis::Map>::find_discr
+  52:     0x7ffafc547bf3 - rustc_query_impl[35a1e4ec0f2bf1cb]::query_system
+  53:     0x7ffaf9944256 - _Nan_C
+  54:     0x7ffaf9941777 - _Nan_C
+  55:     0x7ffaf99492b0 - _Nan_C
+  56:     0x7ffb34387d3c - std::sys::pal::windows::thread::impl$0::new::thread_start
+                               at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library\std\src\sys\pal\windows\thread.rs:54
+  57:     0x7ffbebb4257d - BaseThreadInitThunk
+  58:     0x7ffbedb6af28 - RtlUserThreadStart
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.78.0 (9b00956e5 2024-04-29) running on x86_64-pc-windows-msvc
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [evaluate_obligation] evaluating trait selection obligation `pipeline::nodes::process_raw_m_scan::Task: core::marker::Send`
+#1 [collect_return_position_impl_trait_in_trait_tys] comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process
+#2 [type_of] computing type of `pipeline::nodes::process_raw_m_scan::<impl at src\pipeline\nodes\process_raw_m_scan.rs:67:1: 67:23>::{synthetic#0}`
+#3 [check_well_formed] checking that `pipeline::nodes::process_raw_m_scan::<impl at src\pipeline\nodes\process_raw_m_scan.rs:67:1: 67:23>` is well-formed
+#4 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-incr-comp, C-bug, I-ICE, T-compiler

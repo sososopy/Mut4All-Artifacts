@@ -1,0 +1,110 @@
+Issue Title:
+ICE: `assertion failed: layout.is_sized()` · Issue #124182 · rust-lang/rust · GitHub
+
+Rust Code:
+struct LazyLock<T> {
+    data: (Copy, fn() -> T),
+}
+
+impl<T> LazyLock<T> {
+    pub const fn new(f: fn() -> T) -> LazyLock<T> {
+        LazyLock { data: (None, f) }
+    }
+}
+
+struct A<T = i32>(Option<T>);
+
+impl<T> Default for A<T> {
+    fn default() -> Self {
+        A(None)
+    }
+}
+
+static EMPTY_SET: LazyLock<A<i32>> = LazyLock::new(A::default);
+
+fn main() {}
+
+Bug Trace:
+warning: trait objects without an explicit `dyn` are deprecated
+ --> r_crushed_473555.rs:2:12
+  |
+2 |     data: (Copy, fn() -> T),
+  |            ^^^^
+  |
+  = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+  = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+  = note: `#[warn(bare_trait_objects)]` on by default
+help: if this is an object-safe trait, use `dyn`
+  |
+2 |     data: (dyn Copy, fn() -> T),
+  |            +++
+
+error[E0038]: the trait `Copy` cannot be made into an object
+ --> r_crushed_473555.rs:2:12
+  |
+2 |     data: (Copy, fn() -> T),
+  |            ^^^^ `Copy` cannot be made into an object
+  |
+  = note: the trait cannot be made into an object because it requires `Self: Sized`
+  = note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+
+error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
+ --> r_crushed_473555.rs:2:11
+  |
+2 |     data: (Copy, fn() -> T),
+  |           ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+  |
+  = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+  = note: only the last element of a tuple may have a dynamically sized type
+
+error[E0277]: `(dyn Copy + 'static)` cannot be shared between threads safely
+  --> r_crushed_473555.rs:19:19
+   |
+19 | static EMPTY_SET: LazyLock<A<i32>> = LazyLock::new(A::default);
+   |                   ^^^^^^^^^^^^^^^^ `(dyn Copy + 'static)` cannot be shared between threads safely
+   |
+   = help: within `LazyLock<A>`, the trait `Sync` is not implemented for `(dyn Copy + 'static)`, which is required by `LazyLock<A>: Sync`
+   = note: required because it appears within the type `((dyn Copy + 'static), fn() -> A)`
+note: required because it appears within the type `LazyLock<A>`
+  --> r_crushed_473555.rs:1:8
+   |
+1  | struct LazyLock<T> {
+   |        ^^^^^^^^
+   = note: shared static variables must have a type that implements `Sync`
+
+thread 'rustc' panicked at compiler/rustc_const_eval/src/const_eval/eval_queries.rs:54:5:
+assertion failed: layout.is_sized()
+stack backtrace:
+   0: _rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic
+   3: rustc_const_eval::const_eval::eval_queries::eval_static_initializer_provider
+      [... omitted 2 frames ...]
+   4: <rustc_middle::hir::map::Map>::par_body_owners::<rustc_hir_analysis::check_crate::{closure#3}>::{closure#0}
+   5: <rustc_data_structures::sync::parallel::ParallelGuard>::run::<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], <rustc_middle::hir::map::Map>::par_body_owners<rustc_hir_analysis::check_crate::{closure#3}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>
+   6: rustc_hir_analysis::check_crate
+   7: rustc_interface::passes::analysis
+      [... omitted 2 frames ...]
+   8: <rustc_middle::ty::context::GlobalCtxt>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure#3}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+   9: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/Users/jisukbyun/workspace/placeholder/240420_rustexec/rustc-ice-2024-04-20T00_36_22-48540.txt` to your bug report
+
+query stack during panic:
+#0 [eval_static_initializer] evaluating initializer of static `EMPTY_SET`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.
+
+Bug Labels:
+A-const-eval, C-bug, I-ICE, S-bug-has-test, T-compiler

@@ -1,0 +1,93 @@
+Issue Title:
+consteval + modules + NSDMI => Assertion failure: "consteval function should never be emitted"
+
+Source Code & Bug Trace:
+module;
+
+consteval void global() {}
+
+export module a;
+
+consteval void global() {}
+
+import a;
+
+consteval int b() {
+	return 0;
+}
+
+struct bb {
+	int m = b();
+};
+
+void bbb() {
+	bb x;
+}
+
+clang++ -std=c++20 -x c++-module a.cpp --precompile -o a.pcm
+clang++ -std=c++20 -c b.cpp -fmodule-file=a.pcm
+
+clang++: llvm/clang/lib/CodeGen/CodeGenModule.cpp:4193: llvm::Constant *clang::CodeGen::CodeGenModule::GetAddrOfFunction(clang::GlobalDecl, llvm::Type *, bool, bool, clang::CodeGen::ForDefinition_t): Assertion `!cast<FunctionDecl>(GD.getDecl())->isConsteval() && "consteval function should never be emitted"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: clang++ -std=c++2b -c b.cpp -fmodule-file=a.pcm
+1.      <eof> parser at end of file
+2.      Per-file LLVM IR generation
+3.      b.cpp:9:8: Generating code for declaration 'bb::bb'
+ #0 0x00005622142debf1 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (clang+++0x4150bf1)
+ #1 0x00005622142dcafe llvm::sys::RunSignalHandlers() (clang+++0x414eafe)
+ #2 0x00005622142ddfc1 llvm::sys::CleanupOnSignal(unsigned long) (clang+++0x414ffc1)
+ #3 0x000056221425572b CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #4 0x00007fa33e0519e0 (/usr/lib/libc.so.6+0x389e0)
+ #5 0x00007fa33e0a164c (/usr/lib/libc.so.6+0x8864c)
+ #6 0x00007fa33e051938 raise (/usr/lib/libc.so.6+0x38938)
+ #7 0x00007fa33e03b53d abort (/usr/lib/libc.so.6+0x2253d)
+ #8 0x00007fa33e03b45c (/usr/lib/libc.so.6+0x2245c)
+ #9 0x00007fa33e04a486 (/usr/lib/libc.so.6+0x31486)
+#10 0x0000562214651c2c clang::CodeGen::CodeGenModule::GetAddrOfFunction(clang::GlobalDecl, llvm::Type*, bool, bool, clang::CodeGen::ForDefinition_t) (clang+++0x44c3c2c)
+#11 0x0000562214713882 EmitFunctionDeclPointer(clang::CodeGen::CodeGenModule&, clang::GlobalDecl) CGExpr.cpp:0:0
+#12 0x0000562214711ef3 EmitDirectCallee(clang::CodeGen::CodeGenFunction&, clang::GlobalDecl) CGExpr.cpp:0:0
+#13 0x000056221471051d clang::CodeGen::CodeGenFunction::EmitCallee(clang::Expr const*) (clang+++0x458251d)
+#14 0x00005622147100a1 clang::CodeGen::CodeGenFunction::EmitCallExpr(clang::CallExpr const*, clang::CodeGen::ReturnValueSlot) (clang+++0x45820a1)
+#15 0x0000562214812a86 (anonymous namespace)::ScalarExprEmitter::VisitCallExpr(clang::CallExpr const*) CGExprScalar.cpp:0:0
+#16 0x0000562214812677 (anonymous namespace)::ScalarExprEmitter::VisitCXXDefaultInitExpr(clang::CXXDefaultInitExpr*) CGExprScalar.cpp:0:0
+#17 0x0000562214800e3d clang::CodeGen::CodeGenFunction::EmitScalarExpr(clang::Expr const*, bool) (clang+++0x4672e3d)
+#18 0x0000562214838bee clang::CodeGen::CodeGenFunction::EmitScalarInit(clang::Expr const*, clang::ValueDecl const*, clang::CodeGen::LValue, bool) (clang+++0x46aabee)
+#19 0x000056221483e543 clang::CodeGen::CodeGenFunction::EmitExprAsInit(clang::Expr const*, clang::ValueDecl const*, clang::CodeGen::LValue, bool) (clang+++0x46b0543)
+#20 0x00005622147ee496 clang::CodeGen::CodeGenFunction::EmitInitializerForField(clang::FieldDecl*, clang::CodeGen::LValue, clang::Expr*) (clang+++0x4660496)
+#21 0x00005622147fa6ab EmitMemberInitializer(clang::CodeGen::CodeGenFunction&, clang::CXXRecordDecl const*, clang::CXXCtorInitializer*, clang::CXXConstructorDecl const*, clang::CodeGen::FunctionArgList&) CGClass.cpp:0:0
+#22 0x00005622147efdef clang::CodeGen::CodeGenFunction::EmitCtorPrologue(clang::CXXConstructorDecl const*, clang::CXXCtorType, clang::CodeGen::FunctionArgList&) (clang+++0x4661def)
+#23 0x00005622147ef111 clang::CodeGen::CodeGenFunction::EmitConstructorBody(clang::CodeGen::FunctionArgList&) (clang+++0x4661111)
+#24 0x000056221471f14b clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) (clang+++0x459114b)
+#25 0x00005622149aea7b clang::CodeGen::CodeGenModule::codegenCXXStructor(clang::GlobalDecl) (clang+++0x4820a7b)
+#26 0x00005622146a6dfe (anonymous namespace)::ItaniumCXXABI::emitCXXStructor(clang::GlobalDecl) ItaniumCXXABI.cpp:0:0
+#27 0x000056221464793f clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (clang+++0x44b993f)
+#28 0x00005622146366d0 clang::CodeGen::CodeGenModule::EmitDeferred() (clang+++0x44a86d0)
+#29 0x00005622146366fc clang::CodeGen::CodeGenModule::EmitDeferred() (clang+++0x44a86fc)
+#30 0x00005622146340ff clang::CodeGen::CodeGenModule::Release() (clang+++0x44a60ff)
+#31 0x000056221508aaa4 (anonymous namespace)::CodeGeneratorImpl::HandleTranslationUnit(clang::ASTContext&) ModuleBuilder.cpp:0:0
+#32 0x0000562215087f03 clang::BackendConsumer::HandleTranslationUnit(clang::ASTContext&) CodeGenAction.cpp:0:0
+#33 0x000056221679c2c8 clang::ParseAST(clang::Sema&, bool, bool) (clang+++0x660e2c8)
+#34 0x0000562215086595 clang::CodeGenAction::ExecuteAction() (clang+++0x4ef8595)
+#35 0x0000562214f989fe clang::FrontendAction::Execute() (clang+++0x4e0a9fe)
+#36 0x0000562214f00c3f clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (clang+++0x4d72c3f)
+#37 0x0000562215080c76 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (clang+++0x4ef2c76)
+#38 0x0000562212e691fa cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (clang+++0x2cdb1fa)
+#39 0x0000562212e6536a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#40 0x0000562214d5fee2 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_1>(long) Job.cpp:0:0
+#41 0x000056221425542c llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (clang+++0x40c742c)
+#42 0x0000562214d5f68d clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (clang+++0x4bd168d)
+#43 0x0000562214d1ac25 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (clang+++0x4b8cc25)
+#44 0x0000562214d1aeee clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (clang+++0x4b8ceee)
+#45 0x0000562214d3a55f clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (clang+++0x4bac55f)
+#46 0x0000562212e64637 clang_main(int, char**) (clang+++0x2cd6637)
+#47 0x00007fa33e03c290 (/usr/lib/libc.so.6+0x23290)
+#48 0x00007fa33e03c34a __libc_start_main (/usr/lib/libc.so.6+0x2334a)
+#49 0x0000562212e61465 _start (clang+++0x2cd3465)
+clang-16: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 16.0.0 (https://github.com/llvm/llvm-project.git 92b4946aa2f6e061bf0ab9803fc6a0657d9ce969)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+
+Bug Labels:
+clang:frontend, clang:modules, crash

@@ -1,0 +1,166 @@
+Issue Title:
+ICE: `region vid should have been resolved fully before canonicalization` · Issue #118950 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(lazy_type_alias)]
+
+trait ToUnit<'a> {
+    type Unit;
+}
+
+trait Overlap<T> {}
+
+type Assoc<'a, T> = <*const T as ToUnit<'a>>::Unit;
+
+impl<T> Overlap<T> for T {}
+
+impl<T> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T where
+    for<'subset> Fn(Subset<'subset>): Overlap<T>
+{
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zcrate-attr=feature(lazy_type_alias) -Ztrait-solver=next-coherence
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zcrate-attr=feature(lazy_type_alias) -Ztrait-solver=next-coherence
+
+Bug Trace:
+error[E0412]: cannot find type `Subset` in this scope
+  --> /tmp/icemaker_global_tempdir.AftkibdonRHQ/rustc_testrunner_tmpdir_reporting.W3VlDWn8VfkV/mvce.rs:12:21
+   |
+12 |     for<'subset> Fn(Subset<'subset>): Overlap<T>
+   |                     ^^^^^^ not found in this scope
+
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> <crate attribute>:1:9
+  |
+1 | feature(lazy_type_alias)
+  |         ^^^^^^^^^^^^^^^
+  |
+  = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+  = note: `#[warn(incomplete_features)]` on by default
+
+error[E0601]: `main` function not found in crate `mvce`
+  --> /tmp/icemaker_global_tempdir.AftkibdonRHQ/rustc_testrunner_tmpdir_reporting.W3VlDWn8VfkV/mvce.rs:14:2
+   |
+14 | }
+   |  ^ consider adding a `main` function to `/tmp/icemaker_global_tempdir.AftkibdonRHQ/rustc_testrunner_tmpdir_reporting.W3VlDWn8VfkV/mvce.rs`
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> /tmp/icemaker_global_tempdir.AftkibdonRHQ/rustc_testrunner_tmpdir_reporting.W3VlDWn8VfkV/mvce.rs:12:18
+   |
+12 |     for<'subset> Fn(Subset<'subset>): Overlap<T>
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+help: use `dyn`
+   |
+12 |     for<'subset> dyn Fn(Subset<'subset>): Overlap<T>
+   |                  +++
+
+WARN rustc_infer::infer::generalize may incompletely handle alias type: Alias(Weak, AliasTy { args: [ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed(DefId(0:16 ~ mvce[b29f]::{impl#1}::'a), 'a) }), ?1t], def_id: DefId(0:8 ~ mvce[b29f]::Assoc) })
+WARN rustc_infer::infer::generalize may incompletely handle alias type: Alias(Weak, AliasTy { args: [RePlaceholder(!2_BoundRegion { var: 0, kind: BrNamed(DefId(0:16 ~ mvce[b29f]::{impl#1}::'a), 'a) }), ?1t], def_id: DefId(0:8 ~ mvce[b29f]::Assoc) })
+thread 'rustc' panicked at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/compiler/rustc_next_trait_solver/src/canonicalizer.rs:244:17:
+assertion `left == right` failed: region vid should have been resolved fully before canonicalization
+  left: '?7
+ right: '?6
+stack backtrace:
+   0:     0x7f00bf9e645c - std::backtrace_rs::backtrace::libunwind::trace::hcad274c5193737d1
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/../../backtrace/src/backtrace/libunwind.rs:104:5
+   1:     0x7f00bf9e645c - std::backtrace_rs::backtrace::trace_unsynchronized::hd868c2a9f13e8a3c
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f00bf9e645c - std::sys_common::backtrace::_print_fmt::hb0d013630d57f24b
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x7f00bf9e645c - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h4870ba61ea5ddaf5
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f00bfa39510 - core::fmt::rt::Argument::fmt::h41348af25c22a6d8
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/core/src/fmt/rt.rs:142:9
+   5:     0x7f00bfa39510 - core::fmt::write::hd4d539a4852729ee
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/core/src/fmt/mod.rs:1120:17
+   6:     0x7f00bf9da34f - std::io::Write::write_fmt::hb52483fd0e149c62
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/io/mod.rs:1810:15
+   7:     0x7f00bf9e6244 - std::sys_common::backtrace::_print::hc00f54aa9741ca54
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7f00bf9e6244 - std::sys_common::backtrace::print::h8ff155937cf5b40a
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7f00bf9e8f47 - std::panicking::default_hook::{{closure}}::he246a22adfa659a2
+  10:     0x7f00bf9e8caf - std::panicking::default_hook::h096ce5562020712c
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/panicking.rs:292:9
+  11:     0x7f00bc7460a0 - std[fc023000503470de]::panicking::update_hook::<alloc[7352890e1805e014]::boxed::Box<rustc_driver_impl[8e68111a82397b72]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x7f00bf9e9688 - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h275b5afafee12cc2
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/alloc/src/boxed.rs:2029:9
+  13:     0x7f00bf9e9688 - std::panicking::rust_panic_with_hook::h9acea2a18b2c7b6c
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/panicking.rs:783:13
+  14:     0x7f00bf9e93de - std::panicking::begin_panic_handler::{{closure}}::h373ff210f6eaaa51
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/panicking.rs:657:13
+  15:     0x7f00bf9e6926 - std::sys_common::backtrace::__rust_end_short_backtrace::h2522e436e47b8fca
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/sys_common/backtrace.rs:171:18
+  16:     0x7f00bf9e9142 - rust_begin_unwind
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/panicking.rs:645:5
+  17:     0x7f00bfa35bd5 - core::panicking::panic_fmt::h66853b57e5d1bb64
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/core/src/panicking.rs:72:14
+  18:     0x7f00bfa36251 - core::panicking::assert_failed_inner::h37ae61c6086525df
+  19:     0x7f00bd1bd0e7 - core[6da17f8c0104ce5b]::panicking::assert_failed::<rustc_middle[d231bab7eccf029d]::ty::sty::RegionVid, rustc_middle[d231bab7eccf029d]::ty::sty::RegionVid>
+  20:     0x7f00bd1fe6a7 - <rustc_next_trait_solver[197a6fca6a1d35bd]::canonicalizer::Canonicalizer<rustc_infer[63fa48dfc8488a51]::infer::InferCtxt, rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt> as rustc_type_ir[8a215aa1ad7cd6c9]::fold::FallibleTypeFolder<rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>::try_fold_region
+  21:     0x7f00bd1d6ee1 - <rustc_middle[d231bab7eccf029d]::ty::generic_args::GenericArg as rustc_type_ir[8a215aa1ad7cd6c9]::fold::TypeFoldable<rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>::try_fold_with::<rustc_next_trait_solver[197a6fca6a1d35bd]::canonicalizer::Canonicalizer<rustc_infer[63fa48dfc8488a51]::infer::InferCtxt, rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>
+  22:     0x7f00bd1e5a43 - <&rustc_middle[d231bab7eccf029d]::ty::list::List<rustc_middle[d231bab7eccf029d]::ty::generic_args::GenericArg> as rustc_type_ir[8a215aa1ad7cd6c9]::fold::TypeFoldable<rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>::try_fold_with::<rustc_next_trait_solver[197a6fca6a1d35bd]::canonicalizer::Canonicalizer<rustc_infer[63fa48dfc8488a51]::infer::InferCtxt, rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>
+  23:     0x7f00bd1fe8a9 - <rustc_next_trait_solver[197a6fca6a1d35bd]::canonicalizer::Canonicalizer<rustc_infer[63fa48dfc8488a51]::infer::InferCtxt, rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt> as rustc_type_ir[8a215aa1ad7cd6c9]::fold::FallibleTypeFolder<rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>::try_fold_predicate
+  24:     0x7f00bd1d0664 - <rustc_middle[d231bab7eccf029d]::traits::solve::Goal<rustc_middle[d231bab7eccf029d]::ty::Predicate> as rustc_type_ir[8a215aa1ad7cd6c9]::fold::TypeFoldable<rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>::try_fold_with::<rustc_next_trait_solver[197a6fca6a1d35bd]::canonicalizer::Canonicalizer<rustc_infer[63fa48dfc8488a51]::infer::InferCtxt, rustc_middle[d231bab7eccf029d]::ty::context::TyCtxt>>
+  25:     0x7f00bd23ab0e - <rustc_trait_selection[2ce862cd5cb0ce66]::solve::eval_ctxt::EvalCtxt>::canonicalize_goal::<rustc_middle[d231bab7eccf029d]::ty::Predicate>
+  26:     0x7f00bd23fd40 - <rustc_trait_selection[2ce862cd5cb0ce66]::solve::eval_ctxt::EvalCtxt>::evaluate_goal
+  27:     0x7f00bd2ae1e2 - <rustc_infer[63fa48dfc8488a51]::infer::InferCtxt as rustc_trait_selection[2ce862cd5cb0ce66]::solve::eval_ctxt::InferCtxtEvalExt>::evaluate_root_goal
+  28:     0x7f00bd25f17e - <rustc_trait_selection[2ce862cd5cb0ce66]::traits::coherence::AmbiguityCausesVisitor as rustc_trait_selection[2ce862cd5cb0ce66]::solve::inspect::analyse::ProofTreeVisitor>::visit_goal
+  29:     0x7f00bd25f2b0 - <rustc_trait_selection[2ce862cd5cb0ce66]::traits::coherence::AmbiguityCausesVisitor as rustc_trait_selection[2ce862cd5cb0ce66]::solve::inspect::analyse::ProofTreeVisitor>::visit_goal
+  30:     0x7f00bdd4f15d - rustc_trait_selection[2ce862cd5cb0ce66]::traits::coherence::overlap
+  31:     0x7f00be0f55fb - <rustc_middle[d231bab7eccf029d]::traits::specialization_graph::Children as rustc_trait_selection[2ce862cd5cb0ce66]::traits::specialize::specialization_graph::ChildrenExt>::insert
+  32:     0x7f00be0f4c8f - <rustc_middle[d231bab7eccf029d]::traits::specialization_graph::Graph as rustc_trait_selection[2ce862cd5cb0ce66]::traits::specialize::specialization_graph::GraphExt>::insert
+  33:     0x7f00be47d60a - rustc_trait_selection[2ce862cd5cb0ce66]::traits::specialize::specialization_graph_provider
+  34:     0x7f00be47d032 - rustc_query_impl[2787d3bc669434d]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[2787d3bc669434d]::query_impl::specialization_graph_of::dynamic_query::{closure#2}::{closure#0}, rustc_middle[d231bab7eccf029d]::query::erase::Erased<[u8; 8usize]>>
+  35:     0x7f00bda82a54 - rustc_query_system[389093aa2cbda12d]::query::plumbing::try_execute_query::<rustc_query_impl[2787d3bc669434d]::DynamicConfig<rustc_query_system[389093aa2cbda12d]::query::caches::DefaultCache<rustc_span[80bdc2f9576938c1]::def_id::DefId, rustc_middle[d231bab7eccf029d]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[2787d3bc669434d]::plumbing::QueryCtxt, false>
+  36:     0x7f00bdf6eea2 - rustc_query_impl[2787d3bc669434d]::query_impl::specialization_graph_of::get_query_non_incr::__rust_end_short_backtrace
+  37:     0x7f00bdbed591 - rustc_hir_analysis[83d4c0e09a7af85b]::coherence::coherent_trait
+  38:     0x7f00bdbed46f - rustc_query_impl[2787d3bc669434d]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[2787d3bc669434d]::query_impl::coherent_trait::dynamic_query::{closure#2}::{closure#0}, rustc_middle[d231bab7eccf029d]::query::erase::Erased<[u8; 0usize]>>
+  39:     0x7f00be493cbd - rustc_query_system[389093aa2cbda12d]::query::plumbing::try_execute_query::<rustc_query_impl[2787d3bc669434d]::DynamicConfig<rustc_query_system[389093aa2cbda12d]::query::caches::DefaultCache<rustc_span[80bdc2f9576938c1]::def_id::DefId, rustc_middle[d231bab7eccf029d]::query::erase::Erased<[u8; 0usize]>>, false, false, false>, rustc_query_impl[2787d3bc669434d]::plumbing::QueryCtxt, false>
+  40:     0x7f00be493a4d - rustc_query_impl[2787d3bc669434d]::query_impl::coherent_trait::get_query_non_incr::__rust_end_short_backtrace
+  41:     0x7f00be2c906a - rustc_hir_analysis[83d4c0e09a7af85b]::check_crate
+  42:     0x7f00be496d17 - rustc_interface[e01835cfe2cd36f5]::passes::analysis
+  43:     0x7f00be49695d - rustc_query_impl[2787d3bc669434d]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[2787d3bc669434d]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle[d231bab7eccf029d]::query::erase::Erased<[u8; 1usize]>>
+  44:     0x7f00be9a4d72 - rustc_query_system[389093aa2cbda12d]::query::plumbing::try_execute_query::<rustc_query_impl[2787d3bc669434d]::DynamicConfig<rustc_query_system[389093aa2cbda12d]::query::caches::SingleCache<rustc_middle[d231bab7eccf029d]::query::erase::Erased<[u8; 1usize]>>, false, false, false>, rustc_query_impl[2787d3bc669434d]::plumbing::QueryCtxt, false>
+  45:     0x7f00be9a4b79 - rustc_query_impl[2787d3bc669434d]::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+  46:     0x7f00bea42e97 - rustc_interface[e01835cfe2cd36f5]::interface::run_compiler::<core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>, rustc_driver_impl[8e68111a82397b72]::run_compiler::{closure#0}>::{closure#0}
+  47:     0x7f00be9b985a - std[fc023000503470de]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[e01835cfe2cd36f5]::util::run_in_thread_with_globals<rustc_interface[e01835cfe2cd36f5]::util::run_in_thread_pool_with_globals<rustc_interface[e01835cfe2cd36f5]::interface::run_compiler<core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>, rustc_driver_impl[8e68111a82397b72]::run_compiler::{closure#0}>::{closure#0}, core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>>::{closure#0}, core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>>
+  48:     0x7f00be9b9683 - <<std[fc023000503470de]::thread::Builder>::spawn_unchecked_<rustc_interface[e01835cfe2cd36f5]::util::run_in_thread_with_globals<rustc_interface[e01835cfe2cd36f5]::util::run_in_thread_pool_with_globals<rustc_interface[e01835cfe2cd36f5]::interface::run_compiler<core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>, rustc_driver_impl[8e68111a82397b72]::run_compiler::{closure#0}>::{closure#0}, core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>>::{closure#0}, core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[6da17f8c0104ce5b]::result::Result<(), rustc_span[80bdc2f9576938c1]::ErrorGuaranteed>>::{closure#1} as core[6da17f8c0104ce5b]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  49:     0x7f00bf9f3515 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hf2f49d47bee58202
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/alloc/src/boxed.rs:2015:9
+  50:     0x7f00bf9f3515 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h5c193b9bc5179cb7
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/alloc/src/boxed.rs:2015:9
+  51:     0x7f00bf9f3515 - std::sys::unix::thread::Thread::new::thread_start::h4c6c438ab6a6b864
+                               at /rustc/1aa6aefdc92555b3fbc5ae4c99365df9845a3e31/library/std/src/sys/unix/thread.rs:108:17
+  52:     0x7f00b98aa9eb - <unknown>
+  53:     0x7f00b992e7cc - <unknown>
+  54:                0x0 - <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.76.0-nightly (1aa6aefdc 2023-12-14) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z crate-attr=feature(lazy_type_alias) -Z trait-solver=next-coherence -Z dump-mir-dir=dir
+
+query stack during panic:
+#0 [specialization_graph_of] building specialization graph of trait `Overlap`
+#1 [coherent_trait] coherence checking all impls of trait `Overlap`
+#2 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0412, E0601.
+For more information about an error, try `rustc --explain E0412`.
+
+Bug Labels:
+C-bug, F-lazy_type_alias, I-ICE, T-compiler, WG-trait-system-refactor

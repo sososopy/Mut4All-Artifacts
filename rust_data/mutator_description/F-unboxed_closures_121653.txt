@@ -1,0 +1,37 @@
+Mutation Operator 1: Modify Closure Invocation and Output
+
+Target: Trait Implementations with Unboxed Closures
+
+Mutation Rule:
+1. Identify a trait implementation where the trait is implemented for a type `T` that involves unboxed closures.
+2. Within the implementation, locate the function where the closure is invoked. For example, in the provided code, the line is `(self)(&());` inside the `dispatch` method.
+3. Modify the closure invocation by introducing an additional layer of wrapping or altering the expected function signature in a way that might not align with the traits' expected `Output`.
+4. For instance, replace `(self)(&());` with `let _ = async { (self)(&()); };` to introduce a higher-ranked trait bound or different async construct.
+
+Example:
+
+Before Mutation:
+```rust
+impl<T: for<'a> Fn<(&'a (),)>> Dispatch for T
+where
+    for<'a> <T as FnOnce<(&'a (),)>>::Output: Future,
+{
+    fn dispatch(self) {
+        (self)(&());
+    }
+}
+```
+
+After Mutation:
+```rust
+impl<T: for<'a> Fn<(&'a (),)>> Dispatch for T
+where
+    for<'a> <T as FnOnce<(&'a (),)>>::Output: Future,
+{
+    fn dispatch(self) {
+        let _ = async { (self)(&()); };
+    }
+}
+```
+
+This mutation leverages the existing closure and its invocation but introduces a new async context that potentially complicates the future resolution, targeting the compiler's trait selection and monomorphization logic.

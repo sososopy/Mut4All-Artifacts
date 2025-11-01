@@ -1,0 +1,80 @@
+Issue Title:
+crash on invalid involving concepts
+
+Source Code & Bug Trace:
+template <a> auto b() = delete;
+decltype(b<0>()) x;
+
+$ clang -xc++ -fsyntax-only -std=c++20 foo.cc
+foo.cc:1:11: error: unknown type name 'a'
+    1 | template <a> auto b() = delete;
+      |           ^
+foo.cc:2:10: error: call to deleted function 'b'
+    2 | decltype(b<0>()) x;
+      |          ^~~~
+foo.cc:1:19: note: candidate function [with $0 = 0] has been explicitly deleted
+    1 | template <a> auto b() = delete;
+      |                   ^
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: ../../llvm/build/bin/clang -xc++ -fsyntax-only -std=c++20 foo.cc
+1.      foo.cc:2:19: current parser token ';'
+ #0 0x000055655bc57b08 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:723:13
+ #1 0x000055655bc556ce llvm::sys::RunSignalHandlers() /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Signals.cpp:106:18
+ #2 0x000055655bbc67d6 HandleCrash /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:73:5
+ #3 0x000055655bbc67d6 CrashRecoverySignalHandler(int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:390:51
+ #4 0x00007fca1305a510 (/lib/x86_64-linux-gnu/libc.so.6+0x3c510)
+ #5 0x000055655e4c9101 getConceptReference /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/AST/TypeLoc.h:2203:74
+ #6 0x000055655e4c9101 getConceptNameLoc /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/AST/TypeLoc.h:2220:26
+ #7 0x000055655e4c9101 clang::Sema::ActOnVariableDeclarator(clang::Scope*, clang::Declarator&, clang::DeclContext*, clang::TypeSourceInfo*, clang::LookupResult&, llvm::MutableArrayRef<clang::TemplateParameterList*>, bool&, llvm::ArrayRef<clang::BindingDecl*>) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDecl.cpp:7579:55
+ #8 0x000055655e4c0b84 clang::Sema::HandleDeclarator(clang::Scope*, clang::Declarator&, llvm::MutableArrayRef<clang::TemplateParameterList*>) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDecl.cpp:0:11
+ #9 0x000055655e4c015a clang::Sema::ActOnDeclarator(clang::Scope*, clang::Declarator&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDecl.cpp:6145:15
+#10 0x000055655e208c4c clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:0:0
+#11 0x000055655e206c2e clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:2448:7
+#12 0x000055655e191f29 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:10
+#13 0x000055655e191782 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:1269:12
+#14 0x000055655e1905e9 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:14
+#15 0x000055655e18e616 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:762:10
+#16 0x000055655e189c8e clang::ParseAST(clang::Sema&, bool, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseAST.cpp:162:5
+#17 0x000055655c8c38df clang::FrontendAction::Execute() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/FrontendAction.cpp:1082:10
+#18 0x000055655c830ced getPtr /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:276:42
+#19 0x000055655c830ced operator bool /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:239:16
+#20 0x000055655c830ced clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/CompilerInstance.cpp:1062:23
+#21 0x000055655c9a7e3e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:280:25
+#22 0x000055655955dcaf cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/cc1_main.cpp:232:15
+#23 0x000055655955a58d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:215:12
+#24 0x000055655c670399 operator() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:30
+#25 0x000055655c670399 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0>(long) /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:12
+#26 0x000055655bbc6516 operator() /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:0:12
+#27 0x000055655bbc6516 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:426:3
+#28 0x000055655c66fc22 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:7
+#29 0x000055655c62a017 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:199:15
+#30 0x000055655c62a557 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:253:13
+#31 0x000055655c64bbb9 empty /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/SmallVector.h:94:46
+#32 0x000055655c64bbb9 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Driver.cpp:1942:23
+#33 0x0000556559559a8d clang_main(int, char**, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:391:21
+#34 0x000055655956a587 main /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/tools/driver/clang-driver.cpp:17:10
+#35 0x00007fca130456ca __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#36 0x00007fca13045785 call_init ./csu/../csu/libc-start.c:128:20
+#37 0x00007fca13045785 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#38 0x0000556559557ee1 _start (../../llvm/build/bin/clang+0x543fee1)
+clang: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+clang version 19.0.0git (git@github.com:llvm/llvm-project.git a68d20e986053ec571223a9f3ead3e146a27dc82)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/local/google/home/kadircet/repos/llvm/build/bin
+Build config: +assertions
+clang: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang: note: diagnostic msg: /tmp/preprocessed-8dbb7a.cpp
+clang: note: diagnostic msg: /tmp/preprocessed-8dbb7a.sh
+clang: note: diagnostic msg:
+
+********************
+
+
+Bug Labels:
+c++14, clang:frontend, confirmed, crash-on-invalid

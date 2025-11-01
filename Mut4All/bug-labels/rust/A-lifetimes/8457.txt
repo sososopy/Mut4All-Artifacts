@@ -1,0 +1,106 @@
+Issue Title:
+Compiler failure on (invalid) lifetime annotation. · Issue #8457 · rust-lang/rust · GitHub
+
+Rust Code:
+
+mod intern {
+
+    use extra::arc::RWArc;
+    use std::hashmap::HashMap;
+    use std::local_data;
+
+    static KEY_ARC_INTERNER: local_data::Key<RWArc<Interner>> = &local_data::Key;
+    pub fn set_task_local_arc_interner(arc_interner: RWArc<Interner>) {
+        local_data::set(KEY_ARC_INTERNER, arc_interner)
+    }
+
+    struct Interner {
+        str_to_intern: HashMap<~str, Intern>,
+        id_to_str: ~[~str],
+    }
+
+    impl Interner {
+        pub fn new() -> Interner {
+            Interner {
+                str_to_intern: HashMap::new(),
+                id_to_str: ~[]
+            }
+        }
+    }
+
+    struct Intern {
+        id: uint,
+    }
+
+    impl TotalEq for Intern {
+        fn equals(&self, other: &Intern) -> bool {
+            self.id == other.id
+        }
+    }
+
+    impl Eq for Intern {
+        fn eq(&self, other: &Intern) -> bool {
+            self.id == other.id
+        }
+        fn ne(&self, other: &Intern) -> bool {
+            self.id != other.id
+        }
+    }
+
+    impl ToStr for Intern {
+        fn to_str(&self) -> ~str {
+            do local_data::get(KEY_ARC_INTERNER) |maybe_arc_interner| {
+                match maybe_arc_interner {
+                    None => fail!("no interner set for task"),
+                    Some(arc_interner) => {
+                        do arc_interner.read |interner| {
+                            interner.id_to_str[self.id].clone()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Intern a string using the task local interner.
+    pub fn intern(burrowed: &str) -> Intern {
+        do local_data::get(KEY_ARC_INTERNER) |maybe_arc_interner| {
+            match maybe_arc_interner {
+                None => fail!("no task local ARC for global interner"),
+                Some(arc_interner) => {
+                    let maybe_intern: &'self Option<&Intern> = do arc_interner.write |interner| {
+                        interner.str_to_intern.find(&burrowed.to_str())
+                    };
+                    match maybe_intern {
+                        Some(intern) => *intern,
+                        None => {
+                            do arc_interner.write |mut_interner: &mut Interner| {
+                                let intern = do mut_interner.str_to_intern.find_or_insert_with(burrowed.to_str()) |owned| {
+                                    mut_interner.id_to_str.push(owned.clone());
+                                    Intern { id: mut_interner.id_to_str.len() - 1 }
+                                };
+                                *intern
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn intern_strings() {
+        // TODO: This leaves the interner in the task local data after the test
+        // is run. Provide a "do with_test_interner { ... }" function?
+        set_task_local_arc_interner(RWArc::new(Interner::new()));
+        let foo = intern("foo");
+        let bar = intern("bar");
+        let baz = intern("foo");
+        assert!(foo != bar);
+        assert!(foo == baz);
+        assert!(foo.to_str() == ~"foo");
+    }
+}
+
+Bug Labels:
+A-lifetimes, I-ICE

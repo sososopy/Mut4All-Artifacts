@@ -1,0 +1,70 @@
+Issue Title:
+Combining `default impl` with associated type projections leads to `delay_span_bug` ICE · Issue #110171 · rust-lang/rust · GitHub
+
+Rust Code:
+#![no_std]
+#![feature(specialization)]
+#![allow(incomplete_features)]
+
+pub unsafe trait Storage {
+    type Handle;
+}
+
+pub unsafe trait MultipleStorage: Storage {}
+
+default unsafe impl<S> Storage for S
+where
+    S: MultipleStorage,
+{
+}
+
+// the tuple (or any compound type) is required to get an ICE
+pub fn ice<S: Storage>(boxed: (S::Handle,)) -> (S::Handle,) {
+    boxed
+}
+
+Bug Trace:
+= note: delayed at    0: <rustc_errors::HandlerInner>::emit_diagnostic
+             1: <rustc_errors::Handler>::delay_span_bug::<rustc_span::span_encoding::Span, &str>
+             2: <rustc_middle::ty::context::TyCtxt>::ty_error_misc
+             3: rustc_trait_selection::traits::project::normalize_projection_type
+             4: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_ty
+             5: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_ty
+             6: rustc_trait_selection::traits::project::normalize_with_depth_to::<rustc_middle::ty::Predicate>
+             7: <rustc_trait_selection::traits::select::SelectionContext>::impl_or_trait_obligations
+             8: <rustc_trait_selection::traits::select::SelectionContext>::confirm_candidate
+             9: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_stack
+            10: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicate_recursively
+            11: rustc_traits::evaluate_obligation::evaluate_obligation
+            12: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::evaluate_obligation, rustc_query_impl::plumbing::QueryCtxt>
+            13: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+            14: rustc_ty_utils::common_traits::is_item_raw
+            15: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::is_freeze_raw, rustc_query_impl::plumbing::QueryCtxt>
+            16: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::is_freeze_raw
+            17: <rustc_middle::ty::Ty>::is_freeze
+            18: rustc_mir_transform::deduce_param_attrs::deduced_param_attrs
+            19: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::deduced_param_attrs, rustc_query_impl::plumbing::QueryCtxt>
+            20: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::deduced_param_attrs
+            21: <rustc_metadata::rmeta::encoder::EncodeContext>::encode_crate_root
+            22: rustc_metadata::rmeta::encoder::encode_metadata_impl
+            23: rustc_data_structures::sync::join::<rustc_metadata::rmeta::encoder::encode_metadata::{closure#0}, rustc_metadata::rmeta::encoder::encode_metadata::{closure#1}, (), ()>
+            24: rustc_metadata::rmeta::encoder::encode_metadata
+            25: rustc_metadata::fs::encode_and_write_metadata
+            26: rustc_interface::passes::start_codegen
+            27: <rustc_middle::ty::context::GlobalCtxt>::enter::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_span::ErrorGuaranteed>>
+            28: <rustc_interface::queries::Queries>::ongoing_codegen
+            29: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+            30: rustc_span::set_source_map::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}::{closure#0}>
+            31: std::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+            32: <<std::thread::Builder>::spawn_unchecked_<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#1} as core::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+            33: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                       at /rustc/3a8a131e9509c478ece1c58fe0ea2d49463d2300/library/alloc/src/boxed.rs:1976:9
+            34: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                       at /rustc/3a8a131e9509c478ece1c58fe0ea2d49463d2300/library/alloc/src/boxed.rs:1976:9
+            35: std::sys::unix::thread::Thread::new::thread_start
+                       at /rustc/3a8a131e9509c478ece1c58fe0ea2d49463d2300/library/std/src/sys/unix/thread.rs:108:17
+            36: start_thread
+            37: clone
+
+Bug Labels:
+C-bug, F-specialization, I-ICE, T-compiler, requires-incomplete-features, requires-nightly

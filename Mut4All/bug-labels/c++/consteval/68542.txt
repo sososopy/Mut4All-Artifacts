@@ -1,0 +1,85 @@
+Issue Title:
+Clang crashes when a consteval function has multiple diagnostics in flight
+
+Source Code & Bug Trace:
+struct S {
+    int e;
+};
+
+template<class T>
+consteval int get_format()
+{
+	return nullptr;
+}
+
+template<class T>
+constexpr S f(T) noexcept
+{
+	return get_format<T>();
+}
+
+constexpr S x = f(0);
+
+<source>:8:9: error: cannot initialize return object of type 'int' with an rvalue of type 'std::nullptr_t'
+    8 |         return nullptr;
+      |                ^~~~~~~
+<source>:14:9: error: no viable conversion from returned value of type 'int' to function return type 'S'
+   14 |         return get_format<T>();
+      |                ^~~~~~~~~~~~~~~
+<source>:17:17: note: in instantiation of function template specialization 'f<int>' requested here
+   17 | constexpr S x = f(0);
+      |                 ^
+<source>:1:8: note: candidate constructor (the implicit copy constructor) not viable: no known conversion from 'int' to 'const S &' for 1st argument
+    1 | struct S {
+      |        ^
+<source>:1:8: note: candidate constructor (the implicit move constructor) not viable: no known conversion from 'int' to 'S &&' for 1st argument
+    1 | struct S {
+      |        ^
+<source>:17:17: error: call to immediate function 'f<int>' is not a constant expression
+   17 | constexpr S x = f(0);
+      |                 ^
+clang++: /root/llvm-project/clang/lib/Sema/SemaDeclCXX.cpp:2492: void clang::Sema::DiagnoseImmediateEscalatingReason(clang::FunctionDecl*): Assertion `FD->hasBody() && "expected the function to have a body"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 <source> -isystem/opt/compiler-explorer/libs/glm/trunk
+1.	<source>:17:21: current parser token ';'
+ #0 0x00000000037217e8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x37217e8)
+ #1 0x000000000371f4ac llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x371f4ac)
+ #2 0x0000000003668058 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f3dc8118420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x00007f3dc7bdb00b raise (/lib/x86_64-linux-gnu/libc.so.6+0x4300b)
+ #5 0x00007f3dc7bba859 abort (/lib/x86_64-linux-gnu/libc.so.6+0x22859)
+ #6 0x00007f3dc7bba729 (/lib/x86_64-linux-gnu/libc.so.6+0x22729)
+ #7 0x00007f3dc7bcbfd6 (/lib/x86_64-linux-gnu/libc.so.6+0x33fd6)
+ #8 0x00000000062d20d5 (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x62d20d5)
+ #9 0x00000000063bc61a EvaluateAndDiagnoseImmediateInvocation(clang::Sema&, llvm::PointerIntPair<clang::ConstantExpr*, 1u, unsigned int, llvm::PointerLikeTypeTraits<clang::ConstantExpr*>, llvm::PointerIntPairInfo<clang::ConstantExpr*, 1u, llvm::PointerLikeTypeTraits<clang::ConstantExpr*>>>) SemaExpr.cpp:0:0
+#10 0x00000000063fcc9e clang::Sema::PopExpressionEvaluationContext() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63fcc9e)
+#11 0x000000000627e4c8 clang::Sema::ActOnCXXExitDeclInitializer(clang::Scope*, clang::Decl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x627e4c8)
+#12 0x0000000005ea7837 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*)::InitializerScopeRAII::pop() ParseDecl.cpp:0:0
+#13 0x0000000005eb3582 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5eb3582)
+#14 0x0000000005ec0c70 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5ec0c70)
+#15 0x0000000005e8e2eb clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5e8e2eb)
+#16 0x0000000005e8ea1f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.0) Parser.cpp:0:0
+#17 0x0000000005e963c4 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5e963c4)
+#18 0x0000000005e96bed clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5e96bed)
+#19 0x0000000005e89c9a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5e89c9a)
+#20 0x000000000498b388 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x498b388)
+#21 0x00000000041f0b09 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x41f0b09)
+#22 0x0000000004171fde clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4171fde)
+#23 0x00000000042cfcae clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x42cfcae)
+#24 0x0000000000bef2d6 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbef2d6)
+#25 0x0000000000be6b9a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#26 0x0000000003fce1a9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#27 0x0000000003668504 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3668504)
+#28 0x0000000003fce79f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#29 0x0000000003f96965 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3f96965)
+#30 0x0000000003f973cd clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3f973cd)
+#31 0x0000000003f9f2f5 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3f9f2f5)
+#32 0x0000000000bec77c clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbec77c)
+#33 0x0000000000ae6c91 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xae6c91)
+#34 0x00007f3dc7bbc083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#35 0x0000000000be667e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbe667e)
+
+
+Bug Labels:
+clang:frontend, consteval, crash, regression

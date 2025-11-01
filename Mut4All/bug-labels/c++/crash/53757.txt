@@ -1,0 +1,109 @@
+Issue Title:
+Crash when deserializing type of unevaluated lambda
+
+Source Code & Bug Trace:
+template <int> using Broken = decltype([]{});
+
+#include "min.hpp"
+Broken<0> m;
+
+clang -cc1 min.hpp -emit-pch -o min.hpp.pch -std=c++20
+clang -cc1 min.cc -include-pch min.hpp.pch -std=c++20
+
+
+clang: /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/DeclCXX.cpp:1500: clang::NamedDecl *getLambdaCallOperatorHelper(const clang::CXXRecordDecl &): Assertion `!Calls.empty() && "Missing lambda call operator!"' failed.
+PLEASE submit a bug report to https://bugs.llvm.org/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: bin/clang -cc1 /usr/local/google/home/sammccall/min.cc -include-pch /usr/local/google/home/sammccall/min.hpp.pch -std=c++20
+1.	/usr/local/google/home/sammccall/min.hpp:2:7: current parser token 'Broken'
+ #0 0x00000000061eb403 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/google/home/sammccall/src/llvm-project/llvm/lib/Support/Unix/Signals.inc:565:13
+ #1 0x00000000061e90be llvm::sys::RunSignalHandlers() /usr/local/google/home/sammccall/src/llvm-project/llvm/lib/Support/Signals.cpp:98:18
+ #2 0x00000000061eb78a SignalHandler(int) /usr/local/google/home/sammccall/src/llvm-project/llvm/lib/Support/Unix/Signals.inc:407:1
+ #3 0x00007f15ce56e200 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x13200)
+ #4 0x00007f15ce003891 raise ./signal/../sysdeps/unix/sysv/linux/raise.c:50:1
+ #5 0x00007f15cdfed536 abort ./stdlib/abort.c:81:7
+ #6 0x00007f15cdfed41f get_sysdep_segment_value ./intl/loadmsgcat.c:509:8
+ #7 0x00007f15cdfed41f _nl_load_domain ./intl/loadmsgcat.c:970:34
+ #8 0x00007f15cdffc212 (/lib/x86_64-linux-gnu/libc.so.6+0x35212)
+ #9 0x000000000893043e (bin/clang+0x893043e)
+#10 0x0000000008930446 clang::CXXRecordDecl::getLambdaCallOperator() const /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/DeclCXX.cpp:1514:14
+#11 0x0000000008a387b4 initBodyIfNeeded /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/ExprCXX.cpp:1193:65
+#12 0x0000000008a387b4 clang::LambdaExpr::children() /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/ExprCXX.cpp:1283:3
+#13 0x0000000008b42518 clang::Stmt::children() /usr/local/google/home/sammccall/src/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:0:1
+#14 0x0000000008b6c9dc iterator_range /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/ADT/iterator_range.h:41:9
+#15 0x0000000008b6c9dc children /usr/local/google/home/sammccall/src/llvm-project/clang/include/clang/AST/Stmt.h:1259:12
+#16 0x0000000008b6c9dc (anonymous namespace)::StmtProfiler::VisitStmt(clang::Stmt const*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/StmtProfile.cpp:223:33
+#17 0x0000000008b69754 VisitLambdaExpr /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/StmtProfile.cpp:1951:16
+#18 0x0000000008b69754 clang::StmtVisitorBase<llvm::make_const_ptr, (anonymous namespace)::StmtProfiler, void>::Visit(clang::Stmt const*) /usr/local/google/home/sammccall/src/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1159:1
+#19 0x0000000008b68ebe clang::Stmt::Profile(llvm::FoldingSetNodeID&, clang::ASTContext const&, bool) const /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/StmtProfile.cpp:2304:1
+#20 0x000000000876d54b clang::ASTContext::getDecltypeType(clang::Expr*, clang::QualType) const /usr/local/google/home/sammccall/src/llvm-project/clang/lib/AST/ASTContext.cpp:5589:11
+#21 0x0000000006d66660 clang::ASTReader::readTypeRecord(unsigned int) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:0:0
+#22 0x0000000006d604e4 operator[] /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/bits/stl_vector.h:1046:25
+#23 0x0000000006d604e4 clang::ASTReader::GetType(unsigned int) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:7089:5
+#24 0x0000000006d6b79b isNull /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/ADT/PointerUnion.h:133:33
+#25 0x0000000006d6b79b isNull /usr/local/google/home/sammccall/src/llvm-project/clang/include/clang/AST/Type.h:740:31
+#26 0x0000000006d6b79b clang::ASTRecordReader::readTypeSourceInfo() /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:6814:14
+#27 0x0000000006dba69c readTypeSourceInfo /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:123:21
+#28 0x0000000006dba69c clang::ASTDeclReader::VisitTypedefNameDecl(clang::TypedefNameDecl*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:679:27
+#29 0x0000000006dbac54 clang::ASTDeclReader::VisitTypeAliasDecl(clang::TypeAliasDecl*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:699:31
+#30 0x0000000006db8faf clang::ASTDeclReader::Visit(clang::Decl*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:532:34
+#31 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:58:12
+#32 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:105:12
+#33 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:131:12
+#34 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:121:12
+#35 0x0000000006de4410 isa<clang::DeclContext, clang::Decl *> /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:142:10
+#36 0x0000000006de4410 dyn_cast<clang::DeclContext, clang::Decl> /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:345:10
+#37 0x0000000006de4410 clang::ASTReader::ReadDeclRecord(unsigned int) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:3789:18
+#38 0x0000000006d619c0 clang::ASTReader::GetDecl(unsigned int) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:7462:9
+#39 0x0000000006dcc043 cast_or_null<clang::NamedDecl, clang::Decl> /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:310:8
+#40 0x0000000006dcc043 clang::ASTDeclReader::VisitTemplateDecl(clang::TemplateDecl*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:2120:25
+#41 0x0000000006dcc3de clang::ASTDeclReader::VisitRedeclarableTemplateDecl(clang::RedeclarableTemplateDecl*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:2162:28
+#42 0x0000000006db8faf clang::ASTDeclReader::Visit(clang::Decl*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:532:34
+#43 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:58:12
+#44 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:105:12
+#45 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:131:12
+#46 0x0000000006de4410 doit /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:121:12
+#47 0x0000000006de4410 isa<clang::DeclContext, clang::Decl *> /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:142:10
+#48 0x0000000006de4410 dyn_cast<clang::DeclContext, clang::Decl> /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Casting.h:345:10
+#49 0x0000000006de4410 clang::ASTReader::ReadDeclRecord(unsigned int) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:3789:18
+#50 0x0000000006d38552 GetDecl /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:7462:9
+#51 0x0000000006d38552 clang::ASTReader::SetGloballyVisibleDecls(clang::IdentifierInfo*, llvm::SmallVectorImpl<unsigned int> const&, llvm::SmallVectorImpl<clang::Decl*>*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:8499:36
+#52 0x0000000006d77cf6 isSmall /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/ADT/SmallVector.h:125:39
+#53 0x0000000006d77cf6 ~SmallVectorImpl /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/ADT/SmallVector.h:587:16
+#54 0x0000000006d77cf6 ~SmallVector /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/ADT/SmallVector.h:1190:3
+#55 0x0000000006d77cf6 clang::ASTReader::finishPendingActions() /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:9194:5
+#56 0x0000000006d8e8d0 clang::ASTReader::FinishedDeserializing() /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:11565:3
+#57 0x0000000006d721bc clang::ASTReader::get(llvm::StringRef) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Serialization/ASTReader.cpp:8027:1
+#58 0x0000000008f0bdac get /usr/local/google/home/sammccall/src/llvm-project/clang/include/clang/Basic/IdentifierTable.h:604:28
+#59 0x0000000008f0bdac getIdentifierInfo /usr/local/google/home/sammccall/src/llvm-project/clang/include/clang/Lex/Preprocessor.h:1265:25
+#60 0x0000000008f0bdac clang::Preprocessor::LookUpIdentifierInfo(clang::Token&) const /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Lex/Preprocessor.cpp:702:10
+#61 0x0000000008e950f5 isCodeCompletionPoint /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Lex/Lexer.cpp:3108:7
+#62 0x0000000008e950f5 clang::Lexer::LexIdentifierContinue(clang::Token&, char const*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Lex/Lexer.cpp:1814:7
+#63 0x0000000008e9a314 clang::Lexer::LexTokenInternal(clang::Token&, bool) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Lex/Lexer.cpp:0:3
+#64 0x0000000008e99352 clang::Lexer::Lex(clang::Token&) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Lex/Lexer.cpp:3308:3
+#65 0x0000000008f0d044 clang::Preprocessor::Lex(clang::Token&) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Lex/Preprocessor.cpp:0:33
+#66 0x0000000007d1215c is /usr/local/google/home/sammccall/src/llvm-project/clang/include/clang/Lex/Token.h:97:44
+#67 0x0000000007d1215c clang::Parser::ParseUsingDirectiveOrDeclaration(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::SourceLocation&, clang::ParsedAttributesWithRange&) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/ParseDeclCXX.cpp:473:11
+#68 0x0000000007dc28fa clang::Parser::ParseSingleDeclarationAfterTemplate(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::ParsingDeclRAIIObject&, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/ParseTemplate.cpp:0:25
+#69 0x0000000007dc1c00 clang::Parser::ParseTemplateDeclarationOrSpecialization(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/ParseTemplate.cpp:0:0
+#70 0x0000000007dc14ae clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/ParseTemplate.cpp:0:0
+#71 0x0000000007d36120 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributesWithRange&, clang::SourceLocation*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/ParseDecl.cpp:0:18
+#72 0x0000000007d0577a clang::Parser::ParseExternalDeclaration(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/Parser.cpp:0:3
+#73 0x0000000007d0406f clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/Parser.cpp:720:10
+#74 0x0000000007d03857 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/Parser.cpp:592:26
+#75 0x0000000007cfe77e clang::ParseAST(clang::Sema&, bool, bool) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Parse/ParseAST.cpp:0:25
+#76 0x0000000006c20ac0 clang::FrontendAction::Execute() /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Frontend/FrontendAction.cpp:971:10
+#77 0x0000000006b9a8d8 getPtr /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Error.h:271:42
+#78 0x0000000006b9a8d8 operator bool /usr/local/google/home/sammccall/src/llvm-project/llvm/include/llvm/Support/Error.h:234:16
+#79 0x0000000006b9a8d8 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:1036:23
+#80 0x0000000006cdc933 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/local/google/home/sammccall/src/llvm-project/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:263:25
+#81 0x0000000003d3a818 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/local/google/home/sammccall/src/llvm-project/clang/tools/driver/cc1_main.cpp:248:15
+#82 0x0000000003d38700 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) /usr/local/google/home/sammccall/src/llvm-project/clang/tools/driver/driver.cpp:317:12
+#83 0x0000000003d38425 main /usr/local/google/home/sammccall/src/llvm-project/clang/tools/driver/driver.cpp:388:12
+#84 0x00007f15cdfee7ed __libc_start_main ./csu/../csu/libc-start.c:332:16
+#85 0x0000000003d3559a _start (bin/clang+0x3d3559a)
+fish: Job 1, 'bin/clang -cc1 ~/min.cc -includ…' terminated by signal SIGABRT (Abort)
+
+
+Bug Labels:
+c++20, clang:frontend, crash

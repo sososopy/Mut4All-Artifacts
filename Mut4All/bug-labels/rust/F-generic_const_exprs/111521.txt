@@ -1,0 +1,219 @@
+Issue Title:
+ICE: parallel compiler: `deadlock detected` · Issue #111521 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_const_exprs)]
+
+trait TensorDimension {
+    const DIM: usize;
+    const ISSCALAR: bool = Self::DIM == 0;
+    fn is_scalar(&self) -> bool {
+        Self::ISSCALAR
+    }
+}
+
+trait TensorSize: TensorDimension {
+    fn size(&self) -> [usize; Self::DIM];
+    fn inbounds(&self, index: [usize; Self::DIM]) -> bool {
+        index.iter().zip(self.size().iter()).all(|(i, s)| i < s)
+    }
+}
+
+trait Broadcastable: TensorSize + Sized {
+    type Element;
+    fn bget(&self, index: [usize; Self::DIM]) -> Option<Self::Element>;
+    fn lazy_updim<const NEWDIM: usize>(
+        &self,
+        size: [usize; NEWDIM],
+    ) -> LazyUpdim<Self, { Self::DIM }, NEWDIM> {
+        assert!(
+            NEWDIM >= Self::DIM,
+            "Updimmed tensor cannot have fewer indices than the initial one."
+        ); // const generic bounds on nightly. ( )
+        LazyUpdim {
+            size,
+            reference: &self,
+        }
+    }
+    fn bmap<T, F: Fn(Self::Element) -> T>(&self, foo: F) -> BMap<T, Self, F, { Self::DIM }> {
+        BMap {
+            reference: self,
+            closure: foo,
+        }
+    }
+}
+
+struct LazyUpdim<'a, T: Broadcastable, const OLDDIM: usize, const DIM: usize> {
+    size: [usize; DIM],
+    reference: &'a T,
+}
+
+impl<'a, T: Broadcastable, const DIM: usize> TensorDimension for LazyUpdim<'a, T, { T::DIM }, DIM> {
+    const DIM: usize = DIM;
+}
+impl<'a, T: Broadcastable, const DIM: usize> TensorSize for LazyUpdim<'a, T, { T::DIM }, DIM> {
+    fn size(&self) -> [usize; DIM] {
+        self.size
+    }
+}
+impl<'a, T: Broadcastable, const DIM: usize> Broadcastable for LazyUpdim<'a, T, { T::DIM }, DIM> {
+    type Element = T::Element;
+    fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+        assert!(DIM >= T::DIM);
+        if !self.inbounds(index) {
+            return None;
+        }
+        let size = self.size();
+        let newindex: [usize; T::DIM] = Default::default(); //array_init::array_init(|i| if size[i] > 1 {index[i]} else {0});
+        self.reference.bget(newindex)
+    }
+}
+
+struct BMap<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> {
+    reference: &'a T,
+    closure: F,
+}
+
+impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> TensorDimension
+    for BMap<'a, R, T, F, DIM>
+{
+    const DIM: usize = DIM;
+}
+impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> TensorSize
+    for BMap<'a, R, T, F, DIM>
+{
+    fn size(&self) -> [usize; DIM] {
+        self.reference.size()
+    }
+}
+impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> Broadcastable
+    for BMap<'a, R, T, F, DIM>
+{
+    type Element = R;
+    fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+        self.reference.bget(index).map(&self.closure)
+    }
+}
+
+impl<T> TensorDimension for Vec<T> {
+    const DIM: usize = 1;
+}
+impl<T> TensorSize for Vec<T> {
+    fn size(&self) -> [usize; 1] {
+        [self.len()]
+    }
+}
+impl<T: Clone> Broadcastable for Vec<T> {
+    type Element = T;
+    fn bget(&self, index: [usize; 1]) -> Option<T> {
+        self.get(index[0]).cloned()
+    }
+}
+
+fn main() {
+    let v = vec![1, 2, 3];
+    let bv = v.lazy_updim([3, 4]);
+    let bbv = bv.bmap(|x| x * x);
+
+    println!(
+        "The size of v is {:?}",
+        bbv.bget([0, 2]).expect("Out of bounds.")
+    );
+}
+
+Bug Trace:
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> /home/matthias/vcs/github/glacier2/fixed/83765.rs:1:12
+  |
+1 | #![feature(generic_const_exprs)]
+  |            ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+  = note: `#[warn(incomplete_features)]` on by default
+
+thread '<unnamed>' panicked at 'assertion failed: found_cycle', /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/job.rs:556:5
+stack backtrace:
+   0:     0x7f76a530abf6 - std::backtrace_rs::backtrace::libunwind::trace::h74804ffdd8fa53e7
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7f76a530abf6 - std::backtrace_rs::backtrace::trace_unsynchronized::h7428ab2b67b36e0c
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f76a530abf6 - std::sys_common::backtrace::_print_fmt::h8de225fa5d864a16
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:65:5
+   3:     0x7f76a530abf6 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hf186862c319ab6b0
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f76a53af698 - core::fmt::rt::Argument::fmt::h6eb98e918eb80ebd
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/rt.rs:138:9
+   5:     0x7f76a53af698 - core::fmt::write::hfa7c5695b2a1784c
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/mod.rs:1094:21
+   6:     0x7f76a53151bf - std::io::Write::write_fmt::h8780fc8b700f7b89
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/io/mod.rs:1712:15
+   7:     0x7f76a530a9f5 - std::sys_common::backtrace::_print::h4ce540e460b36e22
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7f76a530a9f5 - std::sys_common::backtrace::print::h6954c2242c47d1db
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7f76a532bebc - std::panicking::default_hook::{{closure}}::h7efa3c73d7318a2f
+  10:     0x7f76a532bb92 - std::panicking::default_hook::h478ef42d51f84426
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:288:9
+  11:     0x7f76a7cfe63b - <alloc[32b43e9536c01a3]::boxed::Box<dyn for<'a, 'b> core[c5d5d662f7508502]::ops::function::Fn<(&'a core[c5d5d662f7508502]::panic::panic_info::PanicInfo<'b>,), Output = ()> + core[c5d5d662f7508502]::marker::Send + core[c5d5d662f7508502]::marker::Sync> as core[c5d5d662f7508502]::ops::function::Fn<(&core[c5d5d662f7508502]::panic::panic_info::PanicInfo,)>>::call
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1999:9
+  12:     0x7f76a7cfe63b - rustc_driver_impl[fa47bdc6a12b5fac]::install_ice_hook::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver_impl/src/lib.rs:1258:13
+  13:     0x7f76a532c75a - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::hfea6944ca11513b1
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1999:9
+  14:     0x7f76a532c75a - std::panicking::rust_panic_with_hook::h3d7c73761f67633f
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:695:13
+  15:     0x7f76a530baa1 - std::panicking::begin_panic_handler::{{closure}}::h0004dd01860b01c3
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:580:13
+  16:     0x7f76a530acd6 - std::sys_common::backtrace::__rust_end_short_backtrace::hccbfe31830e0f553
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:150:18
+  17:     0x7f76a532c2c2 - rust_begin_unwind
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:578:5
+  18:     0x7f76a53cb363 - core::panicking::panic_fmt::h98b1dd38c1edb68b
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:67:14
+  19:     0x7f76a53cb3f5 - core::panicking::panic::he5f7c6779e1d5164
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:117:5
+  20:     0x7f76a7cce4d4 - rustc_query_system[8ee2d68ce6f1a061]::query::job::deadlock::<rustc_middle[d62e0ab363fca640]::dep_graph::dep_node::DepKind>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/job.rs:556:5
+  21:     0x7f76a7d44fad - rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals::<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/util.rs:191:35
+  22:     0x7f76a7d44fad - std[68c29493de10bea]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:134:18
+  23:     0x7f76a7cee5c3 - <std[68c29493de10bea]::thread::Builder>::spawn_unchecked_::<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>::{closure#1}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:529:17
+  24:     0x7f76a7cee5c3 - <core[c5d5d662f7508502]::panic::unwind_safe::AssertUnwindSafe<<std[68c29493de10bea]::thread::Builder>::spawn_unchecked_<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>::{closure#1}::{closure#0}> as core[c5d5d662f7508502]::ops::function::FnOnce<()>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panic/unwind_safe.rs:271:9
+  25:     0x7f76a7cee5c3 - std[68c29493de10bea]::panicking::try::do_call::<core[c5d5d662f7508502]::panic::unwind_safe::AssertUnwindSafe<<std[68c29493de10bea]::thread::Builder>::spawn_unchecked_<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>::{closure#1}::{closure#0}>, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:485:40
+  26:     0x7f76a7cee5c3 - std[68c29493de10bea]::panicking::try::<(), core[c5d5d662f7508502]::panic::unwind_safe::AssertUnwindSafe<<std[68c29493de10bea]::thread::Builder>::spawn_unchecked_<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>::{closure#1}::{closure#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:449:19
+  27:     0x7f76a7cee5c3 - std[68c29493de10bea]::panic::catch_unwind::<core[c5d5d662f7508502]::panic::unwind_safe::AssertUnwindSafe<<std[68c29493de10bea]::thread::Builder>::spawn_unchecked_<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>::{closure#1}::{closure#0}>, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panic.rs:140:14
+  28:     0x7f76a7cee5c3 - <std[68c29493de10bea]::thread::Builder>::spawn_unchecked_::<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:528:30
+  29:     0x7f76a7cee5c3 - <<std[68c29493de10bea]::thread::Builder>::spawn_unchecked_<rustc_interface[f00717bbd5e2d5b3]::util::run_in_thread_pool_with_globals<rustc_interface[f00717bbd5e2d5b3]::interface::run_compiler<core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>, rustc_driver_impl[fa47bdc6a12b5fac]::run_compiler::{closure#1}>::{closure#0}, core[c5d5d662f7508502]::result::Result<(), rustc_span[9849ed9ca8d6c267]::ErrorGuaranteed>>::{closure#1}::{closure#1}, ()>::{closure#1} as core[c5d5d662f7508502]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+  30:     0x7f76a531d69a - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h59b61553bfddebc8
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1985:9
+  31:     0x7f76a531d69a - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h0ce3d7a7bade6491
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1985:9
+  32:     0x7f76a5303b15 - std::sys::unix::thread::Thread::new::thread_start::h6e446945f062d041
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys/unix/thread.rs:108:17
+  33:     0x7f76a50a6bb5 - <unknown>
+  34:     0x7f76a5128d90 - <unknown>
+  35:                0x0 - <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.71.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z threads=300
+
+query stack during panic:
+end of query stack
+deadlock handler panicked, aborting process
+[1]    1559687 IOT instruction  ~/.rustup/toolchains/local-debug-assertions/bin/rustc -Zthreads=300
+
+Bug Labels:
+A-const-generics, C-bug, F-generic_const_exprs, I-ICE, T-compiler, WG-compiler-parallel

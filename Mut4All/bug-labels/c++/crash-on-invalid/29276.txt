@@ -1,0 +1,112 @@
+Issue Title:
+clang crashes (ICE) when compiling a program with complex noexcept declaration
+
+Source Code & Bug Trace:
+$ clang-4.0 -std=c++11 variant.cpp
+variant.cpp:300:46: error: no type named 'type' in 'strict_variant::detail::return_typer<strict_variant::detail::false_, strict_variant::detail::storage<int, float>,
+      strict_variant::some_visitor>::noexcept_prop<0>'
+  using type = mpl::TypeList<typename F<us>::type...>;
+                             ~~~~~~~~~~~~~~~~^~~~
+variant.cpp:407:64: note: in instantiation of template class 'strict_variant::mpl::ulist_map<return_typer<false_, storage<int, float>, some_visitor>::noexcept_prop, strict_variant::mpl::ulist<0, 1> >' requested
+      here
+                                                 typename mpl::ulist_map<return_typer<Internal, Storage, Visitor>::template noexcept_prop,
+                                                               ^
+variant.cpp:601:68: note: in instantiation of exception specification for 'operator()<strict_variant::detail::storage<int, float>, strict_variant::some_visitor>' requested here
+apply_visitor(Visitor && visitor, Visitable && visitable) noexcept(APPLY_VISITOR_UNEVALUATED_EXPR)
+                                                                   ^
+variant.cpp:572:5: note: expanded from macro 'APPLY_VISITOR_UNEVALUATED_EXPR'
+    std::declval<Visitable>().get_visitor_dispatch()(                             \
+    ^
+variant.cpp:637:24: note: in instantiation of exception specification for 'apply_visitor<strict_variant::some_visitor, strict_variant::variant<int, float> >' requested here
+static_assert(noexcept(apply_visitor(some_visitor{}, std::declval<variant<int, float>>())), "Apply visitor noexcept annotation not working!");
+                       ^
+variant.cpp:601:68: error: argument to noexcept specifier must be a constant expression
+apply_visitor(Visitor && visitor, Visitable && visitable) noexcept(APPLY_VISITOR_UNEVALUATED_EXPR)
+                                                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+variant.cpp:572:5: note: expanded from macro 'APPLY_VISITOR_UNEVALUATED_EXPR'
+    std::declval<Visitable>().get_visitor_dispatch()(                             \
+    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+variant.cpp:637:24: note: in instantiation of exception specification for 'apply_visitor<strict_variant::some_visitor, strict_variant::variant<int, float> >' requested here
+static_assert(noexcept(apply_visitor(some_visitor{}, std::declval<variant<int, float>>())), "Apply visitor noexcept annotation not working!");
+                       ^
+variant.cpp:601:68: note: non-constexpr function 'declval<strict_variant::variant<int, float> >' cannot be used in a constant expression
+apply_visitor(Visitor && visitor, Visitable && visitable) noexcept(APPLY_VISITOR_UNEVALUATED_EXPR)
+                                                                   ^
+variant.cpp:572:5: note: expanded from macro 'APPLY_VISITOR_UNEVALUATED_EXPR'
+    std::declval<Visitable>().get_visitor_dispatch()(                             \
+    ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/6.1.1/../../../../include/c++/6.1.1/type_traits:2257:5: note: declared here
+    declval() noexcept
+    ^
+variant.cpp:637:1: error: static_assert failed "Apply visitor noexcept annotation not working!"
+static_assert(noexcept(apply_visitor(some_visitor{}, std::declval<variant<int, float>>())), "Apply visitor noexcept annotation not working!");
+^             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#0 0x00007ffb3efbeca8 llvm::sys::PrintStackTrace(llvm::raw_ostream&) (/usr/lib/x86_64-linux-gnu/libLLVM-4.0.so.1+0x68aca8)
+#1 0x00007ffb3efbce1e llvm::sys::RunSignalHandlers() (/usr/lib/x86_64-linux-gnu/libLLVM-4.0.so.1+0x688e1e)
+#2 0x00007ffb3efbcf6c (/usr/lib/x86_64-linux-gnu/libLLVM-4.0.so.1+0x688f6c)
+#3 0x00007ffb415683d0 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x113d0)
+#4 0x000000000155832d clang::ASTContext::getSubstTemplateTypeParmType(clang::TemplateTypeParmType const*, clang::QualType) const (/usr/lib/llvm-4.0/bin/clang+0x155832d)
+#5 0x00000000011adf80 (/usr/lib/llvm-4.0/bin/clang+0x11adf80)
+#6 0x00000000011af44a (/usr/lib/llvm-4.0/bin/clang+0x11af44a)
+#7 0x00000000011ba215 (/usr/lib/llvm-4.0/bin/clang+0x11ba215)
+#8 0x00000000011bd950 (/usr/lib/llvm-4.0/bin/clang+0x11bd950)
+#9 0x00000000011c12ac (/usr/lib/llvm-4.0/bin/clang+0x11c12ac)
+#10 0x00000000011b63d5 (/usr/lib/llvm-4.0/bin/clang+0x11b63d5)
+#11 0x00000000011c5a7f (/usr/lib/llvm-4.0/bin/clang+0x11c5a7f)
+#12 0x00000000011b6684 (/usr/lib/llvm-4.0/bin/clang+0x11b6684)
+#16 0x00000000011b6684 (/usr/lib/llvm-4.0/bin/clang+0x11b6684)
+#17 0x00000000011c5a7f (/usr/lib/llvm-4.0/bin/clang+0x11c5a7f)
+#18 0x00000000011b6684 (/usr/lib/llvm-4.0/bin/clang+0x11b6684)
+#19 0x00000000011c7a3b (/usr/lib/llvm-4.0/bin/clang+0x11c7a3b)
+#20 0x00000000011c7c6b clang::Sema::SubstExceptionSpec(clang::FunctionDecl*, clang::FunctionProtoType const*, clang::MultiLevelTemplateArgumentList const&) (/usr/lib/llvm-4.0/bin/clang+0x11c7c6b)
+#21 0x00000000011d41ad clang::Sema::InstantiateExceptionSpec(clang::SourceLocation, clang::FunctionDecl*) (/usr/lib/llvm-4.0/bin/clang+0x11d41ad)
+#22 0x0000000000f6f4b7 clang::Sema::ResolveExceptionSpec(clang::SourceLocation, clang::FunctionProtoType const*) (/usr/lib/llvm-4.0/bin/clang+0xf6f4b7)
+#23 0x0000000000f72a15 (/usr/lib/llvm-4.0/bin/clang+0xf72a15)
+#24 0x0000000000f7463a clang::Sema::canThrow(clang::Expr const*) (/usr/lib/llvm-4.0/bin/clang+0xf7463a)
+#25 0x0000000000fdd57e clang::Sema::BuildCXXNoexceptExpr(clang::SourceLocation, clang::Expr*, clang::SourceLocation) (/usr/lib/llvm-4.0/bin/clang+0xfdd57e)
+#26 0x0000000000fdd71f clang::Sema::ActOnNoexceptExpr(clang::SourceLocation, clang::SourceLocation, clang::Expr*, clang::SourceLocation) (/usr/lib/llvm-4.0/bin/clang+0xfdd71f)
+#27 0x0000000000cc1fa3 clang::Parser::ParseCastExpression(bool, bool, bool&, clang::Parser::TypeCastState) (/usr/lib/llvm-4.0/bin/clang+0xcc1fa3)
+#28 0x0000000000cc2d6d clang::Parser::ParseCastExpression(bool, bool, clang::Parser::TypeCastState) (/usr/lib/llvm-4.0/bin/clang+0xcc2d6d)
+#29 0x0000000000cc1334 clang::Parser::ParseCastExpression(bool, bool, bool&, clang::Parser::TypeCastState) (/usr/lib/llvm-4.0/bin/clang+0xcc1334)
+#30 0x0000000000cc2d6d clang::Parser::ParseCastExpression(bool, bool, clang::Parser::TypeCastState) (/usr/lib/llvm-4.0/bin/clang+0xcc2d6d)
+#31 0x0000000000cc75be clang::Parser::ParseConstantExpression(clang::Parser::TypeCastState) (/usr/lib/llvm-4.0/bin/clang+0xcc75be)
+#32 0x0000000000cb193c clang::Parser::ParseStaticAssertDeclaration(clang::SourceLocation&) (/usr/lib/llvm-4.0/bin/clang+0xcb193c)
+#33 0x0000000000ca6fe7 clang::Parser::ParseDeclaration(unsigned int, clang::SourceLocation&, clang::Parser::ParsedAttributesWithRange&) (/usr/lib/llvm-4.0/bin/clang+0xca6fe7)
+#34 0x0000000000c86e81 clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/usr/lib/llvm-4.0/bin/clang+0xc86e81)
+#35 0x0000000000cb3d4b clang::Parser::ParseInnerNamespace(std::vector<clang::SourceLocation, std::allocator<clang::SourceLocation> >&, std::vector<clang::IdentifierInfo*, std::allocator<clang::IdentifierInfo*> >&, std::vector<clang::SourceLocation, std::allocator<clang::SourceLocation> >&, unsigned int, clang::SourceLocation&, clang::ParsedAttributes&, clang::BalancedDelimiterTracker&) (/usr/lib/llvm-4.0/bin/clang+0xcb3d4b)
+#36 0x0000000000cb44a9 clang::Parser::ParseNamespace(unsigned int, clang::SourceLocation&, clang::SourceLocation) (/usr/lib/llvm-4.0/bin/clang+0xcb44a9)
+#37 0x0000000000ca709d clang::Parser::ParseDeclaration(unsigned int, clang::SourceLocation&, clang::Parser::ParsedAttributesWithRange&) (/usr/lib/llvm-4.0/bin/clang+0xca709d)
+#38 0x0000000000c86e81 clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/usr/lib/llvm-4.0/bin/clang+0xc86e81)
+#39 0x0000000000c8784c clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&) (/usr/lib/llvm-4.0/bin/clang+0xc8784c)
+#40 0x0000000000c7c7ab clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/llvm-4.0/bin/clang+0xc7c7ab)
+#41 0x0000000000a43e2e clang::FrontendAction::Execute() (/usr/lib/llvm-4.0/bin/clang+0xa43e2e)
+#42 0x0000000000a16316 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/llvm-4.0/bin/clang+0xa16316)
+#43 0x0000000000abf2d2 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/llvm-4.0/bin/clang+0xabf2d2)
+#44 0x000000000071f518 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/lib/llvm-4.0/bin/clang+0x71f518)
+#45 0x0000000000712029 main (/usr/lib/llvm-4.0/bin/clang+0x712029)
+#46 0x00007ffb3dce4830 __libc_start_main /build/glibc-GKVZIf/glibc-2.23/csu/../csu/libc-start.c:325:0
+#47 0x000000000071d889 _start (/usr/lib/llvm-4.0/bin/clang+0x71d889)
+Stack dump:
+0.	Program arguments: /usr/lib/llvm-4.0/bin/clang -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all -disable-free -disable-llvm-verifier -discard-value-names -main-file-name variant.cpp -mrelocation-model static -mthread-model posix -mdisable-fp-elim -fmath-errno -masm-verbose -mconstructor-aliases -munwind-tables -fuse-init-array -target-cpu x86-64 -dwarf-column-info -debugger-tuning=gdb -resource-dir /usr/lib/llvm-4.0/bin/../lib/clang/4.0.0 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/6.1.1/../../../../include/c++/6.1.1 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/6.1.1/../../../../include/x86_64-linux-gnu/c++/6.1.1 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/6.1.1/../../../../include/x86_64-linux-gnu/c++/6.1.1 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/6.1.1/../../../../include/c++/6.1.1/backward -internal-isystem /usr/local/include -internal-isystem /usr/lib/llvm-4.0/bin/../lib/clang/4.0.0/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++11 -fdeprecated-macro -fdebug-compilation-dir /home/chris/ice_testcase -ferror-limit 19 -fmessage-length 211 -fobjc-runtime=gcc -fcxx-exceptions -fexceptions -fdiagnostics-show-option -fcolor-diagnostics -o /tmp/variant-71f7bb.o -x c++ variant.cpp 
+1.	variant.cpp:638:98: current parser token ','
+2.	variant.cpp:625:1: parsing namespace 'strict_variant'
+clang: error: unable to execute command: Segmentation fault (core dumped)
+clang: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 4.0.0-svn277311-1~exp1 (trunk)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang: note: diagnostic msg: PLEASE submit a bug report to http://llvm.org/bugs/ and include the crash backtrace, preprocessed source, and associated run script.
+clang: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang: note: diagnostic msg: /tmp/variant-37fb1f.cpp
+clang: note: diagnostic msg: /tmp/variant-37fb1f.sh
+clang: note: diagnostic msg: 
+
+********************
+
+Bug Labels:
+bugzilla, c++11, clang:frontend, crash-on-invalid

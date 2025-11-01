@@ -1,0 +1,85 @@
+Issue Title:
+clang crashes when casting array returned by va_arg to pointer
+
+Source Code & Bug Trace:
+#include "stdint.h"
+#include "stdarg.h"
+#include "string.h"
+
+void foo(uint32_t size, ...) 
+{
+    va_list args;
+    va_start(args, size);
+
+    (uint8_t*)va_arg(args, uint8_t[size]);
+
+    va_end(args);
+}
+
+int main()
+{
+    foo(4, 1);
+}
+
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-19.1.0/bin/clang -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -fno-verbose-asm -S --gcc-toolchain=/opt/compiler-explorer/gcc-13.2.0 -fcolor-diagnostics -fno-crash-diagnostics <source>
+1.	<source>:15:1: current parser token 'int'
+2.	<source>:5:6: LLVM IR generation of declaration 'foo'
+3.	<source>:5:6: Generating code for declaration 'foo'
+ #0 0x00000000036fdb08 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x36fdb08)
+ #1 0x00000000036fbc74 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x36fbc74)
+ #2 0x0000000003647be8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x000079f47b642520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x0000000003e67115 clang::CodeGen::CodeGenFunction::EmitAggregateCopy(clang::CodeGen::LValue, clang::CodeGen::LValue, clang::QualType, clang::CodeGen::AggValueSlot::Overlap_t, bool) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e67115)
+ #5 0x0000000003e67e35 (anonymous namespace)::AggExprEmitter::EmitCopy(clang::QualType, clang::CodeGen::AggValueSlot const&, clang::CodeGen::AggValueSlot const&) (.isra.0) CGExprAgg.cpp:0:0
+ #6 0x0000000003e68cf5 (anonymous namespace)::AggExprEmitter::EmitFinalDestCopy(clang::QualType, clang::CodeGen::LValue const&, clang::CodeGen::CodeGenFunction::ExprValueKind) CGExprAgg.cpp:0:0
+ #7 0x0000000003e69763 clang::CodeGen::CodeGenFunction::EmitAggFinalDestCopy(clang::QualType, clang::CodeGen::AggValueSlot, clang::CodeGen::LValue const&, clang::CodeGen::CodeGenFunction::ExprValueKind) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e69763)
+ #8 0x0000000003e4ad8f clang::CodeGen::CodeGenFunction::EmitLoadOfAnyValue(clang::CodeGen::LValue, clang::CodeGen::AggValueSlot, clang::SourceLocation) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e4ad8f)
+ #9 0x0000000003beebf7 (anonymous namespace)::X86_64ABIInfo::EmitVAArg(clang::CodeGen::CodeGenFunction&, clang::CodeGen::Address, clang::QualType, clang::CodeGen::AggValueSlot) const X86.cpp:0:0
+#10 0x0000000003dba113 clang::CodeGen::CodeGenFunction::EmitVAArg(clang::VAArgExpr*, clang::CodeGen::Address&, clang::CodeGen::AggValueSlot) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3dba113)
+#11 0x0000000003e6c908 (anonymous namespace)::AggExprEmitter::Visit(clang::Expr*) CGExprAgg.cpp:0:0
+#12 0x0000000003e6d439 clang::CodeGen::CodeGenFunction::EmitAggExpr(clang::Expr const*, clang::CodeGen::AggValueSlot) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e6d439)
+#13 0x0000000003e6e0dd clang::CodeGen::CodeGenFunction::EmitAggExprToLValue(clang::Expr const*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e6e0dd)
+#14 0x0000000003e5068e clang::CodeGen::CodeGenFunction::EmitLValueHelper(clang::Expr const*, clang::CodeGen::KnownNonNull_t) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e5068e)
+#15 0x0000000003e54005 clang::CodeGen::CodeGenFunction::EmitArrayToPointerDecay(clang::Expr const*, clang::CodeGen::LValueBaseInfo*, clang::CodeGen::TBAAAccessInfo*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e54005)
+#16 0x0000000003eaf0eb (anonymous namespace)::ScalarExprEmitter::VisitCastExpr(clang::CastExpr*) CGExprScalar.cpp:0:0
+#17 0x0000000003ea7492 clang::StmtVisitorBase<std::add_pointer, (anonymous namespace)::ScalarExprEmitter, llvm::Value*>::Visit(clang::Stmt*) CGExprScalar.cpp:0:0
+#18 0x0000000003ea8e8b (anonymous namespace)::ScalarExprEmitter::Visit(clang::Expr*) CGExprScalar.cpp:0:0
+#19 0x0000000003eada5b (anonymous namespace)::ScalarExprEmitter::VisitCastExpr(clang::CastExpr*) CGExprScalar.cpp:0:0
+#20 0x0000000003ea6c81 clang::StmtVisitorBase<std::add_pointer, (anonymous namespace)::ScalarExprEmitter, llvm::Value*>::Visit(clang::Stmt*) CGExprScalar.cpp:0:0
+#21 0x0000000003eac182 clang::CodeGen::CodeGenFunction::EmitScalarExpr(clang::Expr const*, bool) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3eac182)
+#22 0x0000000003e405ce clang::CodeGen::CodeGenFunction::EmitAnyExpr(clang::Expr const*, clang::CodeGen::AggValueSlot, bool) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e405ce)
+#23 0x0000000003e5ee6d clang::CodeGen::CodeGenFunction::EmitIgnoredExpr(clang::Expr const*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3e5ee6d)
+#24 0x0000000003a3a4da clang::CodeGen::CodeGenFunction::EmitStmt(clang::Stmt const*, llvm::ArrayRef<clang::Attr const*>) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3a3a4da)
+#25 0x0000000003a41059 clang::CodeGen::CodeGenFunction::EmitCompoundStmtWithoutScope(clang::CompoundStmt const&, bool, clang::CodeGen::AggValueSlot) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3a41059)
+#26 0x0000000003aa74aa clang::CodeGen::CodeGenFunction::EmitFunctionBody(clang::Stmt const*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3aa74aa)
+#27 0x0000000003ab4478 clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3ab4478)
+#28 0x0000000003b0d86b clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3b0d86b)
+#29 0x0000000003b09595 clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3b09595)
+#30 0x0000000003b09ef0 clang::CodeGen::CodeGenModule::EmitGlobal(clang::GlobalDecl) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3b09ef0)
+#31 0x0000000003b13177 clang::CodeGen::CodeGenModule::EmitTopLevelDecl(clang::Decl*) (.part.0) CodeGenModule.cpp:0:0
+#32 0x0000000003fd0a1e (anonymous namespace)::CodeGeneratorImpl::HandleTopLevelDecl(clang::DeclGroupRef) ModuleBuilder.cpp:0:0
+#33 0x0000000003fc2519 clang::BackendConsumer::HandleTopLevelDecl(clang::DeclGroupRef) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3fc2519)
+#34 0x0000000005f18764 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x5f18764)
+#35 0x0000000003fce825 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3fce825)
+#36 0x0000000004274201 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x4274201)
+#37 0x00000000041f699b clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x41f699b)
+#38 0x000000000435a843 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x435a843)
+#39 0x0000000000c874dc cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0xc874dc)
+#40 0x0000000000c8146d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#41 0x0000000004017309 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#42 0x0000000003648013 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3648013)
+#43 0x0000000004017529 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#44 0x0000000003fdd947 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3fdd947)
+#45 0x0000000003fde2fd clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3fde2fd)
+#46 0x0000000003fe7d4c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0x3fe7d4c)
+#47 0x0000000000c847f1 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-19.1.0/bin/clang+0xc847f1)
+#48 0x0000000000b5c2d4 main (/opt/compiler-explorer/clang-19.1.0/bin/clang+0xb5c2d4)
+#49 0x000079f47b629d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#50 0x000079f47b629e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#51 0x0000000000c80f0e _start (/opt/compiler-explorer/clang-19.1.0/bin/clang+0xc80f0e)
+clang: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+Bug Labels:
+clang:codegen, clang:frontend, confirmed, crash-on-valid

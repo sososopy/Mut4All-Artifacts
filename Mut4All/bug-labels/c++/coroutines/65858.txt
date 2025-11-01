@@ -1,0 +1,62 @@
+Issue Title:
+VLA in coroutine produces internal clang segfault
+
+Source Code & Bug Trace:
+void use(int*);
+dd::generator<int> g(int i) {
+    co_yield 1;
+    int arr[i];
+    use(arr);
+}
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-16.0.0/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-12.2.0 -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 -O3 -DNDEBUG <source>
+1.	<eof> parser at end of file
+2.	Optimizer
+3.	While splitting coroutine @_Z1gi
+ #0 0x000055f89f40e8df llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x3ba18df)
+ #1 0x000055f89f40c90c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x3b9f90c)
+ #2 0x000055f89f35f518 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fee176a3420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x000055f89ec3f4dc llvm::AllocaInst::getAllocationSize(llvm::DataLayout const&) const (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x33d24dc)
+ #5 0x000055f8a09dbcc6 void std::__unguarded_linear_insert<(anonymous namespace)::AllocaInfo*, __gnu_cxx::__ops::_Val_comp_iter<(anonymous namespace)::FrameTypeBuilder::addFieldForAllocas(llvm::Function const&, (anonymous namespace)::FrameDataInfo&, llvm::coro::Shape&)::'lambda3'(auto const&, auto const&)>>(auto, auto) CoroFrame.cpp:0:0
+ #6 0x000055f8a09dc0e8 void std::__insertion_sort<(anonymous namespace)::AllocaInfo*, __gnu_cxx::__ops::_Iter_comp_iter<(anonymous namespace)::FrameTypeBuilder::addFieldForAllocas(llvm::Function const&, (anonymous namespace)::FrameDataInfo&, llvm::coro::Shape&)::'lambda3'(auto const&, auto const&)>>(auto, auto, auto) CoroFrame.cpp:0:0
+ #7 0x000055f8a09de6fc buildFrameType(llvm::Function&, llvm::coro::Shape&, (anonymous namespace)::FrameDataInfo&) CoroFrame.cpp:0:0
+ #8 0x000055f8a09e6409 llvm::coro::buildCoroutineFrame(llvm::Function&, llvm::coro::Shape&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x5179409)
+ #9 0x000055f8a09c88cc llvm::CoroSplitPass::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x515b8cc)
+#10 0x000055f8a08cde66 llvm::detail::PassModel<llvm::LazyCallGraph::SCC, llvm::CoroSplitPass, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x5060e66)
+#11 0x000055f89e348724 llvm::PassManager<llvm::LazyCallGraph::SCC, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x2adb724)
+#12 0x000055f89edecee6 llvm::detail::PassModel<llvm::LazyCallGraph::SCC, llvm::PassManager<llvm::LazyCallGraph::SCC, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x357fee6)
+#13 0x000055f89e34c3be llvm::DevirtSCCRepeatedPass::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x2adf3be)
+#14 0x000055f89edece96 llvm::detail::PassModel<llvm::LazyCallGraph::SCC, llvm::DevirtSCCRepeatedPass, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x357fe96)
+#15 0x000055f89e3498bb llvm::ModuleToPostOrderCGSCCPassAdaptor::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x2adc8bb)
+#16 0x000055f89edf4e3d llvm::ModuleInlinerWrapperPass::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x3587e3d)
+#17 0x000055f8a0771196 llvm::detail::PassModel<llvm::Module, llvm::ModuleInlinerWrapperPass, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x4f04196)
+#18 0x000055f89ecbffb9 llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x3452fb9)
+#19 0x000055f89f7f1b44 (anonymous namespace)::EmitAssemblyHelper::RunOptimizationPipeline(clang::BackendAction, std::unique_ptr<llvm::raw_pwrite_stream, std::default_delete<llvm::raw_pwrite_stream>>&, std::unique_ptr<llvm::ToolOutputFile, std::default_delete<llvm::ToolOutputFile>>&) BackendUtil.cpp:0:0
+#20 0x000055f89f7f4bd6 clang::EmitBackendOutput(clang::DiagnosticsEngine&, clang::HeaderSearchOptions const&, clang::CodeGenOptions const&, clang::TargetOptions const&, clang::LangOptions const&, llvm::StringRef, llvm::Module*, clang::BackendAction, std::unique_ptr<llvm::raw_pwrite_stream, std::default_delete<llvm::raw_pwrite_stream>>) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x3f87bd6)
+#21 0x000055f8a06ff238 clang::BackendConsumer::HandleTranslationUnit(clang::ASTContext&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x4e92238)
+#22 0x000055f8a1923d5d clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x60b6d5d)
+#23 0x000055f8a06fe865 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x4e91865)
+#24 0x000055f89ffda671 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x476d671)
+#25 0x000055f89ff5e993 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x46f1993)
+#26 0x000055f8a00beb3b clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x4851b3b)
+#27 0x000055f89cbe741c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x137a41c)
+#28 0x000055f89cbe2bdc ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#29 0x000055f89fdbfce9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#30 0x000055f89f35f977 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x3af2977)
+#31 0x000055f89fdbff1c clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#32 0x000055f89fd883fc clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x451b3fc)
+#33 0x000055f89fd88ded clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x451bded)
+#34 0x000055f89fd9323c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x452623c)
+#35 0x000055f89cbe5523 clang_main(int, char**) (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x1378523)
+#36 0x00007fee17151083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#37 0x000055f89cbded1e _start (/opt/compiler-explorer/clang-16.0.0/bin/clang+++0x1371d1e)
+clang-16: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+
+
+Bug Labels:
+clang:frontend, confirmed, coroutines, crash, good first issue

@@ -1,0 +1,97 @@
+Issue Title:
+ICE when using a7 register in `asm!` on RISC-V · Issue #72487 · rust-lang/rust · GitHub
+
+Rust Code:
+// Compile with target riscv64imac-unknown-none-elf 
+#![feature(asm)]
+#![no_std]
+#[inline]
+pub fn sbi_putchar(byte: u8) {
+    unsafe { asm!("ecall", in("a0") byte, in("a7") 1, out("a0") _, options(nomem, nostack)) };
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'already borrowed: BorrowMutError', /rustc/215f2d3294b08dbdcf8f7d40de21ef1e7eae0a2d/src/libcore/cell.rs:877:9
+stack backtrace:
+   0:     0x7fec76700c85 - backtrace::backtrace::libunwind::trace::h678b9599e62f63eb
+                               at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1:     0x7fec76700c85 - backtrace::backtrace::trace_unsynchronized::hb47d77776d18cf5b
+                               at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2:     0x7fec76700c85 - std::sys_common::backtrace::_print_fmt::he1b14c2dc4d370e2
+                               at src/libstd/sys_common/backtrace.rs:78
+   3:     0x7fec76700c85 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h0e056b70ceff915d
+                               at src/libstd/sys_common/backtrace.rs:59
+   4:     0x7fec7673e21c - core::fmt::write::hdf236390fbd68d3d
+                               at src/libcore/fmt/mod.rs:1069
+   5:     0x7fec766f2d63 - std::io::Write::write_fmt::h5b95d57b9d83617e
+                               at src/libstd/io/mod.rs:1537
+   6:     0x7fec76705c90 - std::sys_common::backtrace::_print::hde4f93cf630dd149
+                               at src/libstd/sys_common/backtrace.rs:62
+   7:     0x7fec76705c90 - std::sys_common::backtrace::print::hab894e5c65d4445d
+                               at src/libstd/sys_common/backtrace.rs:49
+   8:     0x7fec76705c90 - std::panicking::default_hook::{{closure}}::h069a26eaaf53ac74
+                               at src/libstd/panicking.rs:198
+   9:     0x7fec767059dc - std::panicking::default_hook::he2b0e031648f6bed
+                               at src/libstd/panicking.rs:218
+  10:     0x7fec76e20903 - rustc_driver::report_ice::h864f92c6660c2aa4
+  11:     0x7fec7670633c - std::panicking::rust_panic_with_hook::hd8d0481ab65c637b
+                               at src/libstd/panicking.rs:490
+  12:     0x7fec76705f1b - rust_begin_unwind
+                               at src/libstd/panicking.rs:388
+  13:     0x7fec7673adc1 - core::panicking::panic_fmt::hd101a87121fa411f
+                               at src/libcore/panicking.rs:101
+  14:     0x7fec7673aa33 - core::option::expect_none_failed::h4f0e89faa3179bf7
+                               at src/libcore/option.rs:1272
+  15:     0x7fec79a81756 - scoped_tls::ScopedKey<T>::with::h0c59400fce946cfb
+  16:     0x7fec79a86e8f - rustc_span::symbol::Symbol::intern::hf7b193cb16f76a3b
+  17:     0x7fec77c27d32 - rustc_span::symbol::Symbol::with::h3ff849883396e5de
+  18:     0x7fec77c190ed - rustc_ast_lowering::expr::<impl rustc_ast_lowering::LoweringContext>::lower_expr_asm::{{closure}}::{{closure}}::ha7652ca923ba2406
+  19:     0x7fec77c13ae7 - core::ops::function::impls::<impl core::ops::function::FnMut<A> for &mut F>::call_mut::h35d009477216bdbf
+  20:     0x7fec77c68ce4 - <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter::hfb35bbed4de46821
+  21:     0x7fec77bd8c7f - rustc_ast_lowering::expr::<impl rustc_ast_lowering::LoweringContext>::lower_expr_asm::h45695c17fad94a17
+  22:     0x7fec77c29a18 - rustc_data_structures::stack::ensure_sufficient_stack::h63d594414d58746a
+  23:     0x7fec77bf8833 - rustc_ast_lowering::LoweringContext::lower_block_noalloc::hf80819afafca832e
+  24:     0x7fec77c29a47 - rustc_data_structures::stack::ensure_sufficient_stack::h63d594414d58746a
+  25:     0x7fec77bf9152 - rustc_ast_lowering::LoweringContext::lower_stmt::h80362b7f4b7b4f60
+  26:     0x7fec77bf88a7 - rustc_ast_lowering::LoweringContext::lower_block_noalloc::hf80819afafca832e
+  27:     0x7fec77bf8a0f - rustc_ast_lowering::LoweringContext::lower_block_expr::hbacd80e1f392c6a5
+  28:     0x7fec77be6138 - rustc_ast_lowering::item::<impl rustc_ast_lowering::LoweringContext>::lower_fn_body_block::h343df06d5b6d2222
+  29:     0x7fec77bdfd4e - rustc_ast_lowering::item::<impl rustc_ast_lowering::LoweringContext>::lower_item::h794a0696e56843c0
+  30:     0x7fec77bf13d6 - rustc_ast_lowering::LoweringContext::with_hir_id_owner::habedf129ecf94fdb
+  31:     0x7fec77c19a90 - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_mod::h16b02ab3483cc197
+  32:     0x7fec77c506f3 - rustc_ast::visit::walk_crate::hbbe895ddb8c52f51
+  33:     0x7fec77bee327 - rustc_ast_lowering::lower_crate::h163b139c9c35f9ce
+  34:     0x7fec770aeacb - rustc_interface::passes::BoxedResolver::access::{{closure}}::h7b4593563584a020
+  35:     0x7fec7702c5c0 - rustc_interface::passes::configure_and_expand::{{closure}}::h3d13b6e2f246eae1
+  36:     0x7fec770ae864 - rustc_interface::passes::BoxedResolver::access::he5eb97cd61e7545a
+  37:     0x7fec76fd093f - rustc_interface::queries::Queries::lower_to_hir::h044c80e6e51847cc
+  38:     0x7fec76fd1603 - rustc_interface::queries::Queries::global_ctxt::h39b02c18f41870e6
+  39:     0x7fec76def779 - rustc_interface::interface::run_compiler_in_existing_thread_pool::hef112f594372c48d
+  40:     0x7fec76e39c7d - scoped_tls::ScopedKey<T>::set::h69e1a141c393ad1c
+  41:     0x7fec76e35a92 - rustc_ast::attr::with_globals::ha3ef908e777fd200
+  42:     0x7fec76e3b54c - std::sys_common::backtrace::__rust_begin_short_backtrace::h7985516cd0bcf4ac
+  43:     0x7fec76df20ee - core::ops::function::FnOnce::call_once{{vtable.shim}}::h4e23f4c492cf485e
+  44:     0x7fec76715b9a - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::hb59dd7261bcac217
+                               at /rustc/215f2d3294b08dbdcf8f7d40de21ef1e7eae0a2d/src/liballoc/boxed.rs:1057
+  45:     0x7fec76715b9a - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::hb7a91030439e6548
+                               at /rustc/215f2d3294b08dbdcf8f7d40de21ef1e7eae0a2d/src/liballoc/boxed.rs:1057
+  46:     0x7fec76715b9a - std::sys::unix::thread::Thread::new::thread_start::h1e42ba00cae086d8
+                               at src/libstd/sys/unix/thread.rs:87
+  47:     0x7fec764776db - start_thread
+                               at /build/glibc-OTsEL5/glibc-2.27/nptl/pthread_create.c:463
+  48:     0x7fec75d7188f - __clone
+  49:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.0-nightly (215f2d329 2020-05-22) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+A-inline-assembly, C-bug, F-asm, I-ICE, O-riscv, T-compiler, requires-nightly

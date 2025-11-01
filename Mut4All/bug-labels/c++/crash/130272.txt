@@ -1,0 +1,48 @@
+Issue Title:
+[clang] Assertion hit in  CallExpr::getBeginLoc() :  assert(HasFirstArg)  fails
+
+Source Code & Bug Trace:
+clang-21: /freebsd/data/linux/git-net/llvm-project/clang/lib/AST/Expr.cpp:1660: SourceLocation clang::CallExpr::getBeginLoc() const: Assertion `HasFirstArg' failed.
+
+
+1.	/home/jan/git/ldgr/src/ldgr/args.cppm:290:20: current parser token ')'
+2.	/home/jan/git/ldgr/src/ldgr/args.cppm:86:1: parsing namespace 'ldgr'
+3.	/home/jan/git/ldgr/src/ldgr/args.cppm:204:1: parsing struct/union/class body 'ldgr::argument_option_impl'
+4.	/home/jan/git/ldgr/src/ldgr/args.cppm:288:5: parsing function body 'ldgr::argument_option_impl::next_arg'
+5.	/home/jan/git/ldgr/src/ldgr/args.cppm:288:5: in compound statement ('{}')
+ #0 0x000055603d52b588 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /freebsd/data/linux/git-net/llvm-project/llvm/lib/Support/Unix/Signals.inc:804:13
+ #1 0x000055603d529690 llvm::sys::RunSignalHandlers() /freebsd/data/linux/git-net/llvm-project/llvm/lib/Support/Signals.cpp:106:18
+ #2 0x000055603d52bc01 SignalHandler(int, siginfo_t*, void*) /freebsd/data/linux/git-net/llvm-project/llvm/lib/Support/Unix/Signals.inc:0:3
+ #3 0x00007fb403e558c0 __restore_rt libc_sigaction.c:0:0
+ #4 0x00007fb403ea462c __pthread_kill_implementation ./nptl/pthread_kill.c:44:76
+ #5 0x00007fb403e55822 gsignal ./signal/../sysdeps/posix/raise.c:27:6
+ #6 0x00007fb403e3e4af abort ./stdlib/abort.c:81:7
+ #7 0x00007fb403e3e3d7 _nl_load_domain.cold ./intl/loadmsgcat.c:1177:9
+ #8 0x00007fb403e4e342 (/usr/lib/libc.so.6+0x38342)
+ #9 0x000055603ffb696c clang::CallExpr::getBeginLoc() const /freebsd/data/linux/git-net/llvm-project/clang/lib/AST/Expr.cpp:1666:26
+#10 0x000055603f7bd395 TryImplicitConversion(clang::Sema&, clang::Expr*, clang::QualType, bool, clang::Sema::AllowedExplicit, bool, bool, bool, bool) /freebsd/data/linux/git-net/llvm-project/clang/lib/Sema/SemaOverload.cpp:1795:10
+#11 0x000055603f7ccb87 TryCopyInitialization(clang::Sema&, clang::Expr*, clang::QualType, bool, bool, bool, bool) /freebsd/data/linux/git-net/llvm-project/clang/lib/Sema/SemaOverload.cpp:5759:10
+#12 0x000055603f7d09c8 clang::Sema::AddConversionCandidate(clang::CXXConversionDecl*, clang::DeclAccessPair, clang::CXXRecordDecl*, clang::Expr*, clang::QualType, clang::OverloadCandidateSet&, bool, bool, bool, bool) /freebsd/data/linux/git-net/llvm-project/clang/lib/Sema/SemaOverload.cpp:8160:7
+#13 0x000055603f7c358e IsUserDefinedConversion(clang::Sema&, clang::Expr*, clang::QualType, clang::UserDefinedConversionSequence&, clang::OverloadCandidateSet&, clang::Sema::AllowedExplicit, bool) /freebsd/data/linux/git-net/llvm-project/clang/lib/Sema/SemaOverload.cpp:3978:13
+#14 0x000055603f7f0296 TryUserDefinedConversion(clang::Sema&, clang::Expr*, clang::QualType, bool, clang::Sema::AllowedExplicit, bool, bool, bool, bool) /freebsd/data/linux/git-net/llvm-project/clang/lib/Sema/SemaOverload.cpp:1665:3
+#15 0x000055603f7bd5b3 TryImplicitConversion(clang::Sema&, clang::Expr*, clang::QualType, bool, clang::Sema::AllowedExplicit, bool, bool, bool, bool) /freebsd/data/linux/git-net/llvm-project/clang/lib/Sema/SemaOverload.cpp:0:10
+
+
+286                                                                                                                                                                                             
+287     bool next_arg(std::string_view& current_arg, argument_input_iterator& in, ldgr::util::any_sentinel s)                                                                                   
+288     {                                                                                                                                                                                       
+289         ++in;                                                                                                                                                                               
+290         if (in == s) {         // <----- it crashes here
+291             throw args_parse_error{std::format("option '--{}' needs an argument", long_name_)};                                                                                             
+292         }                                                                                                                                                                                   
+293         return this->set_result(current_arg, in, *in);                                                                                                                                      
+294     }                   
+
+    template <std::sentinel_for<It> S>
+    bool operator==(this input_iterator_ref self, const S& s)
+    {
+        return *self.it_ == s;
+    }
+
+Bug Labels:
+clang:frontend, crash

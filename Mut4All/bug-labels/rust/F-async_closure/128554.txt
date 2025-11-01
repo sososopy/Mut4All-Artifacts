@@ -1,0 +1,107 @@
+Issue Title:
+ICE in async closure that takes ref to boxed dyn trait · Issue #128554 · rust-lang/rust · GitHub
+
+Rust Code:
+let thread_rx: flume::Receiver<(Uuid, Box<dyn ResourceLoader>)> =
+        runtime.render_resource_manager.thread_rx.clone();
+    let thread_tx: flume::Sender<(Uuid, Box<dyn Any + Send>)> =
+        runtime.render_resource_manager.thread_tx.clone();
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let rx = thread_rx;
+        let tx = thread_tx;
+
+        rt.spawn(async move {
+            let futures = FuturesUnordered::new();
+            loop {
+                let tx = tx.clone();
+                match rx.recv_async().await {
+                    // loader has type of Box<dyn ResourceLoader>
+                    Ok((uuid, mut loader)) => futures.push(async move || {
+                        // this line is causing the problem! I am using async_trait so that also could be a problem
+                        let result: Box<dyn Any + Send> = loader.start_loading().await;
+
+                        tx.send((uuid, result)).unwrap();
+                    }),
+                    Err(_) => continue,
+                }
+            }
+        });
+    });
+
+Bug Trace:
+stack backtrace:
+   0:     0x7ffd09aa4be4 - std::backtrace_rs::backtrace::dbghelp64::trace
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\..\..\backtrace\src\backtrace\dbghelp64.rs:91
+   1:     0x7ffd09aa4be4 - std::backtrace_rs::backtrace::trace_unsynchronized
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\..\..\backtrace\src\backtrace\mod.rs:66
+   2:     0x7ffd09aa4be4 - std::sys::backtrace::_print_fmt
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\sys\backtrace.rs:66
+   3:     0x7ffd09aa4be4 - std::sys::backtrace::impl$0::print::impl$0::fmt
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\sys\backtrace.rs:39
+   4:     0x7ffd09ad7049 - core::fmt::rt::Argument::fmt
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\core\src\fmt\rt.rs:173
+   5:     0x7ffd09ad7049 - core::fmt::write
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\core\src\fmt\mod.rs:1178
+   6:     0x7ffd09a9ad27 - std::io::Write::write_fmt<std::sys::pal::windows::stdio::Stderr>
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\io\mod.rs:1823
+   7:     0x7ffd09aa7d09 - std::panicking::default_hook::closure$1
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\panicking.rs:266
+   8:     0x7ffd09aa788c - std::panicking::default_hook
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\panicking.rs:293
+   9:     0x7ffcc09bfd2e - memchr
+  10:     0x7ffd09aa871b - alloc::boxed::impl$50::call
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\alloc\src\boxed.rs:2162
+  11:     0x7ffd09aa871b - std::panicking::rust_panic_with_hook
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\panicking.rs:805
+  12:     0x7ffcc2098cc3 - <rustc_hir_pretty[99277ba3afdbe1ab]::State>::print_variant
+  13:     0x7ffcc208a6a9 - <rustc_hir_pretty[99277ba3afdbe1ab]::State>::print_variant
+  14:     0x7ffcc208a659 - <rustc_hir_pretty[99277ba3afdbe1ab]::State>::print_variant
+  15:     0x7ffcc20a49c5 - <rustc_errors[5ead45fd6cada2bd]::diagnostic::BugAbort as rustc_errors[5ead45fd6cada2bd]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  16:     0x7ffcc1fb0f92 - rustc_middle[e966a2a8e22d7b51]::util::bug::bug_fmt
+  17:     0x7ffcc1f90f3d - rustc_middle[e966a2a8e22d7b51]::ty::consts::const_param_default
+  18:     0x7ffcc1f90d76 - rustc_middle[e966a2a8e22d7b51]::ty::consts::const_param_default
+  19:     0x7ffcc1fb0e92 - rustc_middle[e966a2a8e22d7b51]::util::bug::bug_fmt
+  20:     0x7ffcc07c1dcd - <rustc_middle[e966a2a8e22d7b51]::mir::tcx::PlaceTy>::projection_ty
+  21:     0x7ffcbf8f2b0a - <rustc_mir_transform[f0390e7c3912931f]::validate::Validator as rustc_middle[e966a2a8e22d7b51]::mir::MirPass>::run_pass
+  22:     0x7ffcbf8eb414 - <rustc_mir_transform[f0390e7c3912931f]::validate::Validator as rustc_middle[e966a2a8e22d7b51]::mir::MirPass>::run_pass
+  23:     0x7ffcbf850d50 - <rustc_mir_transform[f0390e7c3912931f]::simplify::SimplifyCfg as rustc_middle[e966a2a8e22d7b51]::mir::MirPass>::run_pass
+  24:     0x7ffcbf850af0 - <rustc_mir_transform[f0390e7c3912931f]::simplify::SimplifyCfg as rustc_middle[e966a2a8e22d7b51]::mir::MirPass>::run_pass
+  25:     0x7ffcbf9171df - rustc_mir_transform[f0390e7c3912931f]::optimized_mir
+  26:     0x7ffcbffd4280 - rustc_query_impl[5107b6b60d76bada]::plumbing::query_key_hash_verify_all
+  27:     0x7ffcbfebb79c - rustc_ty_utils[e8eaf8771b960b53]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  28:     0x7ffcbffdae15 - rustc_query_impl[5107b6b60d76bada]::plumbing::query_key_hash_verify_all
+  29:     0x7ffcc086c35d - <rustc_middle[e966a2a8e22d7b51]::query::on_disk_cache::CacheEncoder as rustc_span[250df4fc029fb3ce]::SpanEncoder>::encode_def_id
+  30:     0x7ffcc1fb0b00 - <rustc_middle[e966a2a8e22d7b51]::ty::context::TyCtxt>::coroutine_layout
+  31:     0x7ffcbfe563db - rustc_ty_utils[e8eaf8771b960b53]::instance::resolve_instance_raw
+  32:     0x7ffcbfe6d02e - rustc_ty_utils[e8eaf8771b960b53]::layout::layout_of
+  33:     0x7ffcbffd60a3 - rustc_query_impl[5107b6b60d76bada]::plumbing::query_key_hash_verify_all
+  34:     0x7ffcbfed7d5b - rustc_ty_utils[e8eaf8771b960b53]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  35:     0x7ffcbffe4bdc - rustc_query_impl[5107b6b60d76bada]::plumbing::query_key_hash_verify_all
+  36:     0x7ffcbf892b74 - <rustc_mir_transform[f0390e7c3912931f]::known_panics_lint::KnownPanicsLint as rustc_mir_transform[f0390e7c3912931f]::pass_manager::MirLint>::run_lint
+  37:     0x7ffcbf851542 - <rustc_mir_transform[f0390e7c3912931f]::simplify::SimplifyCfg as rustc_middle[e966a2a8e22d7b51]::mir::MirPass>::run_pass
+  38:     0x7ffcbf91470f - rustc_mir_transform[f0390e7c3912931f]::mir_drops_elaborated_and_const_checked
+  39:     0x7ffcbffd5bcb - rustc_query_impl[5107b6b60d76bada]::plumbing::query_key_hash_verify_all
+  40:     0x7ffcbff13bfc - rustc_ty_utils[e8eaf8771b960b53]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  41:     0x7ffcbffdaae3 - rustc_query_impl[5107b6b60d76bada]::plumbing::query_key_hash_verify_all
+  42:     0x7ffcbf4846ae - rustc_interface[450cdcfa57d2d7e7]::passes::analysis
+  43:     0x7ffcbf061b3b - <dyn std[db62a364dcd0dace]::io::Write as nu_ansi_term[1633cf21b6749445]::write::AnyWrite>::write_str
+  44:     0x7ffcbef7cba7 - rustc_ty_utils[e8eaf8771b960b53]::ty::adt_sized_constraint
+  45:     0x7ffcbf067447 - rustc_query_impl[5107b6b60d76bada]::query_system
+  46:     0x7ffcbc4e38b9 - __ImageBase
+  47:     0x7ffcbc4df27f - __ImageBase
+  48:     0x7ffcbc4ecf5b - __ImageBase
+  49:     0x7ffd09ab9acd - alloc::boxed::impl$48::call_once
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\alloc\src\boxed.rs:2148
+  50:     0x7ffd09ab9acd - alloc::boxed::impl$48::call_once
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\alloc\src\boxed.rs:2148
+  51:     0x7ffd09ab9acd - std::sys::pal::windows::thread::impl$0::new::thread_start
+                               at /rustc/8e86c9567154dc5a9ada15ab196d23eae2bd7d89/library\std\src\sys\pal\windows\thread.rs:55
+  52:     0x7ffd82c8257d - BaseThreadInitThunk
+  53:     0x7ffd83a2af28 - RtlUserThreadStart
+
+Bug Labels:
+C-bug, F-async_closure, I-ICE, T-compiler

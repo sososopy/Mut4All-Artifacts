@@ -1,0 +1,832 @@
+Issue Title:
+ICE in  clang::ASTContext::getSubstTemplateTypeParmType
+
+Source Code & Bug Trace:
+#include <concepts>
+#include <type_traits>
+#include <utility>
+
+namespace stdlite {
+
+  template <class Tp>
+  Tp&& _declval() noexcept;
+
+  struct _cp {
+    template <class Tp>
+    using _f = Tp;
+  };
+
+  struct _cpc {
+    template <class Tp>
+    using _f = const Tp;
+  };
+
+  struct _cplr {
+    template <class Tp>
+    using _f = Tp&;
+  };
+
+  struct _cprr {
+    template <class Tp>
+    using _f = Tp&&;
+  };
+
+  struct _cpclr {
+    template <class Tp>
+    using _f = const Tp&;
+  };
+
+  struct _cpcrr {
+    template <class Tp>
+    using _f = const Tp&&;
+  };
+
+  template <class>
+  extern _cp _cpcvr;
+  template <class Tp>
+  extern _cpc _cpcvr<const Tp>;
+  template <class Tp>
+  extern _cplr _cpcvr<Tp&>;
+  template <class Tp>
+  extern _cprr _cpcvr<Tp&&>;
+  template <class Tp>
+  extern _cpclr _cpcvr<const Tp&>;
+  template <class Tp>
+  extern _cpcrr _cpcvr<const Tp&&>;
+  template <class Tp>
+  using _copy_cvref_fn = decltype(_cpcvr<Tp>);
+
+  template <class From, class To>
+  using _copy_cvref_t = typename _copy_cvref_fn<From>::template _f<To>;
+
+  template <class Fun, class... As>
+  concept _callable =
+    requires(Fun&& _fun, As&&... _as) {
+      ((Fun&&) _fun)((As&&) _as...);
+    };
+  template <class Fun, class... As>
+  concept _nothrow_callable =
+    _callable<Fun, As...> &&
+    requires(Fun&& _fun, As&&... _as) {
+      { ((Fun&&) _fun)((As&&) _as...) } noexcept;
+    };
+
+  template <class Ty, class Up>
+  concept _decays_to = std::same_as<std::decay_t<Ty>, Up>;
+
+  template <class...>
+  struct _undefined;
+
+  struct _ignore {
+    _ignore() = default;
+
+    constexpr _ignore(auto&&...) noexcept {
+    }
+  };
+
+  template <class Ty>
+  struct _mtype {
+    using _t = Ty;
+  };
+
+  template <class...>
+  struct _types;
+
+  template <class Tp, class Up>
+  using _mfirst = Tp;
+
+  template <std::size_t Np>
+  using _msize_t = char[Np + 1];
+
+  template <class Tp>
+  extern const _undefined<Tp> _v;
+
+  template <std::size_t Ip>
+  inline constexpr std::size_t _v<char[Ip]> = Ip - 1;
+
+  template <bool>
+  struct _i {
+    template <template <class...> class Fn, class... Args>
+    using _g = Fn<Args...>;
+  };
+
+  template <class...>
+  concept Ok = true;
+
+  template <template <class...> class Fn, class... Args>
+  using _meval = typename _i<Ok<Args...>>::template _g<Fn, Args...>;
+
+  template <class Fn, class... Args>
+  using _minvoke = _meval<Fn::template _f, Args...>;
+
+  template <template <class...> class Fn>
+  struct _q {
+    template <class... Args>
+    using _f = _meval<Fn, Args...>;
+  };
+
+  template <template <class...> class Tp, class... Args>
+  concept _valid = requires { typename _meval<Tp, Args...>; };
+
+  template <template <class...> class Tp, class... Args>
+  concept _invalid = !_valid<Tp, Args...>;
+
+  template <class Fn, class... Args>
+  concept _minvocable = _valid<Fn::template _f, Args...>;
+
+  template <bool>
+  struct _if_ {
+    template <class True, class...>
+    using _f = True;
+  };
+
+  template <>
+  struct _if_<false> {
+    template <class, class False>
+    using _f = False;
+  };
+
+  template <bool Pred, class True = void, class... False>
+    requires(sizeof...(False) <= 1)
+  using _if_c = _minvoke<_if_<Pred>, True, False...>;
+
+  template <class Tp>
+  struct _mexpand;
+
+  template <template <class...> class Ap, class... As>
+  struct _mexpand<Ap<As...>> {
+    template <class Fn, class... Bs>
+    using _f = _minvoke<Fn, Bs..., As...>;
+  };
+
+  template <class Fn, class List>
+  using _mapply = _minvoke<_mexpand<List>, Fn>;
+
+  template <class Fn, class List>
+  concept _mapplicable = _minvocable<_mexpand<List>, Fn>;
+
+  template <class Fun, class... As>
+  using _call_result_t = decltype(_declval<Fun>()(_declval<As>()...));
+
+  template <class Ty>
+  const Ty& _cref_fn(const Ty&);
+
+  template <class Ty>
+  using _cref_t = decltype(stdlite::_cref_fn(_declval<Ty>()));
+
+  template <class... Lists>
+    requires (_mapplicable<_q<_types>, Lists> &&...)
+  struct _mzip_with_
+    : _mzip_with_<_mapply<_q<_types>, Lists>...> { };
+
+  template <class... Cs>
+  struct _mzip_with_<_types<Cs...>> {
+    template <class Fn, class Continuation>
+    using _f = _minvoke<Continuation, _minvoke<Fn, Cs>...>;
+  };
+
+  template <class... Cs, class... Ds>
+  struct _mzip_with_<_types<Cs...>, _types<Ds...>> {
+    template <class Fn, class Continuation>
+    using _f = _minvoke<Continuation, _minvoke<Fn, Cs, Ds>...>;
+  };
+
+  template <class Fn, class Continuation = _q<_types>>
+  struct _mzip_with {
+    template <class... Lists>
+    using _f = _minvoke<_mzip_with_<Lists...>, Fn, Continuation>;
+  };
+
+  template <std::size_t>
+  using _ignore_t = _ignore;
+
+  template <class Indices>
+  struct _nth_pack_element_;
+
+  template <std::size_t... Is>
+  struct _nth_pack_element_<std::index_sequence<Is...>> {
+    template <class Ty, class... Us>
+    constexpr Ty&& operator()(_ignore_t<Is>..., Ty&& _ty, Us&&...) const noexcept {
+      return (Ty&&) _ty;
+    }
+  };
+
+  template <std::size_t Nn>
+  using _nth_pack_element = _nth_pack_element_<std::make_index_sequence<Nn>>;
+
+#if __has_builtin(__type_pack_element)
+  template <std::size_t _Np, class... _Ts>
+  using _m_at = __type_pack_element<_Np, _Ts...>;
+#else
+  template <std::size_t>
+  using _void_ptr = void*;
+
+  template <class _Ty>
+  using _mtype_ptr = _mtype<_Ty>*;
+
+  template <class _Ty>
+  struct _m_at_;
+
+  template <std::size_t... _Is>
+  struct _m_at_<std::index_sequence<_Is...>> {
+    template <class _Up, class... _Us>
+    static _Up _f_(_void_ptr<_Is>..., _Up*, _Us*...);
+    template <class... _Ts>
+    using _f = typename decltype(_m_at_::_f_(_mtype_ptr<_Ts>()...))::_t;
+  };
+
+  template <std::size_t _Np, class... _Ts>
+  using _m_at = _minvoke<_m_at_<std::make_index_sequence<_Np>>, _Ts...>;
+#endif
+
+#if __has_builtin(__is_nothrow_constructible)
+  template <class Ty, class... As>
+  concept _nothrow_constructible_from =
+    std::constructible_from<Ty, As...> && __is_nothrow_constructible(Ty, As...);
+#else
+  template <class Ty, class... As>
+  concept _nothrow_constructible_from =
+    std::constructible_from<Ty, As...> && std::is_nothrow_constructible_v<Ty, As...>;
+#endif
+
+  template <class Ty>
+  concept _nothrow_decay_copyable = _nothrow_constructible_from<std::decay_t<Ty>, Ty>;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // tuple implementation begins here:
+  template <std::size_t Ny, class Impl>
+  struct _tuple;
+
+  namespace _tup {
+    template <std::size_t Ny, class Impl, class Ty>
+      requires std::same_as<_tuple<Ny, Impl>, Ty>
+    void _is_tuple_(const _tuple<Ny, Impl>&, const Ty&);
+
+    template <class Ty>
+    concept _is_tuple = requires(Ty&& t) { _tup::_is_tuple_(t, t); };
+  }
+
+  template <_tup::_is_tuple Tuple>
+  extern const std::size_t tuple_size_v;
+
+  template <std::size_t Ny, class Impl>
+  struct _mexpand<_tuple<Ny, Impl>>;
+
+  namespace _tup {
+    struct _base { };
+
+    template <class Ty>
+    struct _wrapper;
+
+    template <class Ty>
+    struct _wrapper<Ty&> {
+      using type = Ty;
+      using reference_wrapper = _wrapper;
+      Ty& _val_;
+
+      /*implicit*/ constexpr _wrapper(Ty& t) noexcept
+        : _val_(t) {
+      }
+
+      constexpr operator Ty&() const noexcept {
+        return _val_;
+      }
+    };
+
+    // Also works with std::reference_wrapper:
+    template <class Ty>
+    using _unwrapped_t = typename Ty::reference_wrapper::type;
+
+    struct _wrap_fn {
+      template <class Ty>
+        requires _invalid<_unwrapped_t, Ty>
+      constexpr auto operator()(const Ty&&) const = delete;
+
+      template <class Ty>
+        requires _invalid<_unwrapped_t, Ty>
+      constexpr auto operator()(Ty& _ty) const noexcept -> _wrapper<Ty&> {
+        return _ty;
+      }
+
+      template <class Ty>
+        requires _valid<_unwrapped_t, Ty>
+      constexpr auto operator()(Ty _ty) const noexcept -> _wrapper<_unwrapped_t<Ty>&> {
+        return static_cast<_unwrapped_t<Ty>&>(_ty);
+      }
+    };
+
+    template <class Ty>
+    struct _any_convertible_to {
+      virtual constexpr operator Ty() = 0;
+
+      friend constexpr Ty _move_capture(_any_convertible_to& _self) {
+        return static_cast<Ty>(_self);
+      }
+    };
+    template <class Ty>
+    struct _any_convertible_to<_any_convertible_to<Ty>>;
+
+    template <class Ty, class Uy>
+      requires std::convertible_to<Uy, Ty>
+    struct _convertible_from : _any_convertible_to<Ty> {
+      Uy&& _src_;
+
+      constexpr _convertible_from(Uy&& _src) noexcept
+        : _src_((Uy&&) _src) {
+      }
+
+      constexpr operator Ty() override {
+        return static_cast<Ty>(static_cast<Uy&&>(_src_));
+      }
+    };
+
+    struct _self_fn {
+      template <class Ty, class Uy>
+      using _value = _if_c<std::same_as<Ty&&, Uy&&>, Uy&&, Ty>;
+      template <class Ty>
+      using _param = Ty;
+    };
+
+    struct _tie_fn {
+      template <class Ty, class>
+      using _value = _wrapper<Ty>;
+      template <class Ty>
+      using _param = _wrapper<Ty>;
+    };
+
+    struct _convert_fn {
+      template <class Ty, class Uy>
+      using _value = _convertible_from<Ty, Uy>;
+      template <class Ty>
+      using _param = _any_convertible_to<Ty>&&;
+    };
+
+    template <class Ty>
+    extern const _self_fn _wrap;
+    template <class Ty>
+    extern const _tie_fn _wrap<Ty&>;
+    template <class Ty>
+      requires(!std::move_constructible<Ty>)
+    extern const _convert_fn _wrap<Ty>;
+
+    template <class Ty, class Uy>
+    using _value_t = typename decltype(_wrap<Ty>)::template _value<Ty, Uy>;
+    template <class Ty>
+    using _param_t = typename decltype(_wrap<Ty>)::template _param<Ty>;
+
+    template <class Ty>
+    auto _unwrap(Ty&&, long) -> Ty&&;
+    template <class Ty>
+    auto _unwrap(Ty, int) -> _unwrapped_t<Ty>&;
+    template <class Ty>
+    using _unwrap_t = decltype(_tup::_unwrap(_declval<Ty>(), 0));
+
+    template <class Ty>
+    auto _unconst(Ty&&) -> Ty;
+    template <class Ty>
+    auto _unconst(Ty&) -> Ty&;
+    template <class Ty>
+    auto _unconst(const Ty&&) -> Ty;
+    template <class Ty>
+    auto _unconst(const Ty&) -> Ty&;
+    template <class Ty>
+    using _unconst_t = decltype(_tup::_unconst(_declval<Ty>()));
+
+    struct _access {
+      template <_is_tuple Tuple>
+      static constexpr decltype(auto) _get_impl(Tuple&& _tup) noexcept {
+        return (((Tuple&&) _tup)._fn_);
+      }
+    };
+
+    template <class Tuple>
+    using _impl_of = decltype(_access::_get_impl(_declval<Tuple>()));
+
+    struct _apply_impl {
+      template <class Fun, class Impl>
+      constexpr auto operator()(Fun&& _fn, Impl&& _impl) const
+        noexcept(_nothrow_callable<_unconst_t<Impl>, Impl, Fun>)
+          -> _call_result_t<_unconst_t<Impl>, Impl, Fun> {
+        return const_cast<_unconst_t<Impl>&&>(_impl)((Impl&&) _impl, (Fun&&) _fn);
+      }
+    };
+
+    template <class Fun, _is_tuple Tuple>
+    constexpr auto apply(Fun&& _fn, Tuple&& _self) noexcept(
+      _nothrow_callable<_apply_impl, Fun, _impl_of<Tuple>>)
+      -> _call_result_t<_apply_impl, Fun, _impl_of<Tuple>> {
+      return _apply_impl()((Fun&&) _fn, _access::_get_impl((Tuple&&) _self));
+    }
+
+    template <class Fun, _is_tuple Tuple>
+    using _apply_result_t = //
+      _call_result_t<_apply_impl, Fun, _impl_of<Tuple>>;
+
+    template <class Fun, class Tuple>
+    concept _applicable = //
+      _callable<_apply_impl, Fun, _impl_of<Tuple>>;
+
+    template <class Fun, class Tuple>
+    concept _nothrow_applicable = //
+      _nothrow_callable<_apply_impl, Fun, _impl_of<Tuple>>;
+
+    struct _impl_types_ {
+      template <class... Ts>
+      auto operator()(Ts&&...) const -> _types<Ts...>;
+    };
+
+    template <class Impl>
+    using _impl_types = //
+      _call_result_t<_apply_impl, _impl_types_, Impl>;
+
+    template <class Tuple>
+    using _types_of = _impl_types<_impl_of<Tuple>>;
+
+    template <class Ty>
+    constexpr Ty&& _move_capture(Ty& _ty) noexcept {
+      return (Ty&&) _ty;
+    }
+
+    template <class Ty>
+    using _rvalue_t = decltype(_move_capture(_declval<Ty&>()));
+
+    template <class Self, class Ty>
+    using _element_t = _unwrap_t<_copy_cvref_t<Self, _rvalue_t<Ty>>>;
+
+    template <class Ty>
+    void _decay_copy(Ty) noexcept;
+
+    template <class From, class To>
+    concept _decay_convertible_to = //
+      requires(From&& _from, _param_t<To>& _w) {
+        static_cast<_param_t<To>>(static_cast<_value_t<To, From>>((From&&) _from));
+        _tup::_decay_copy(_move_capture(_w));
+      };
+
+    template <class... Ts>
+    inline constexpr bool _nothrow_lambda_capture = (_nothrow_decay_copyable<_rvalue_t<Ts>> && ...);
+
+    template <
+      class... Ts,
+      auto GenImpl = []<class... Us>(Us&&... _us) noexcept(_nothrow_lambda_capture<Us...>) {
+        return [... _ts = _move_capture(_us)]                                           //
+            <class Self, class Fun>(Self&&, Fun && _fn) constexpr mutable           //
+             noexcept(_nothrow_callable<_unconst_t<Fun>, _element_t<Self, Ts>...>) //
+             -> _call_result_t<_unconst_t<Fun>, _element_t<Self, Ts>...> {
+               return const_cast<_unconst_t<Fun>&&>(_fn)(
+                 static_cast<_element_t<Self, Ts>&&>(_ts)...);
+             };
+      }>
+    constexpr auto
+      _make_impl(Ts&&... _ts) noexcept(_nothrow_lambda_capture<Ts...>) {
+        return GenImpl((Ts&&) _ts...);
+      }
+
+    template <class Ret, class... Args>
+    Ret _impl_for_(Ret (*)(Args...));
+
+    template <class... Ts>
+    using _impl_for = decltype(_tup::_impl_for_(&_make_impl<_param_t<Ts>...>));
+
+    template <class... Ts>
+    using _tuple_for = _tuple<sizeof...(Ts), _impl_for<Ts...>>;
+
+    struct _make_tuple_fn {
+      template <std::move_constructible... Ts>
+      constexpr _tuple_for<Ts...> operator()(Ts... _ts) const
+        noexcept(_nothrow_constructible_from<_tuple_for<Ts...>, Ts...>) {
+        return _tuple_for<Ts...>((Ts&&) _ts...);
+      }
+    };
+
+    template <class Ty>
+    struct _make_default {
+      operator Ty() const noexcept(noexcept(Ty())) {
+        return (Ty());
+      }
+    };
+
+    template <class Ty>
+    using _default_init_for = _if_c<std::move_constructible<Ty>, Ty, _make_default<Ty>>;
+
+    template <class... Ts>
+    struct _construct_impl {
+      template <class... Us>
+        requires(_decay_convertible_to<Us, Ts> && ...)
+      constexpr auto operator()(Us&&... us) const noexcept(noexcept(
+        _tup::_make_impl<_param_t<Ts>...>(static_cast<_value_t<Ts, Us>>((Us&&) us)...)))
+        -> _impl_for<Ts...> {
+        return _tup::_make_impl<_param_t<Ts>...>(
+          static_cast<_value_t<Ts, Us>>((Us&&) us)...);
+      };
+    };
+
+    template <class... Ts>
+    struct _default_init_impl {
+      constexpr auto operator()() noexcept(
+        _nothrow_callable<_construct_impl<Ts...>, _default_init_for<Ts>...>)
+        requires(std::default_initializable<Ts> && ...)
+      {
+        return _construct_impl<Ts...>()(_default_init_for<Ts>()...);
+      }
+    };
+
+    template <class Ty, class U>
+    concept _nothrow_assignable_from = //
+      requires(Ty&& t, U&& u) {
+        { ((Ty&&) t) = ((U&&) u) } noexcept;
+      };
+
+    struct _assign_tuple {
+      template <class... Ts>
+      constexpr auto operator()(Ts&&... _ts) const noexcept {
+        return [&]<class... Us>(Us && ... us) noexcept(
+          (_nothrow_assignable_from<Ts, Us> && ...))
+          requires(std::assignable_from<Ts, Us> && ...)
+        {
+          ((void) (((Ts&&) _ts) = ((Us&&) us)), ...);
+        };
+      }
+    };
+
+    template <class To, class From>
+    concept _tuple_assignable_from = //
+      _applicable<_apply_result_t<_assign_tuple, To>, From>;
+
+    template <class To, class From>
+    concept _nothrow_tuple_assignable_from = //
+      _nothrow_applicable<_apply_result_t<_assign_tuple, To>, From>;
+
+    template <std::size_t Nn, _is_tuple Tuple>
+    constexpr auto get(Tuple&& _tup) noexcept
+      -> _apply_result_t<_nth_pack_element<Nn>, Tuple> {
+      return _tup::apply(_nth_pack_element<Nn>(), (Tuple&&) _tup);
+    }
+  } // namespace _tup
+
+  template <std::size_t Size, class Impl>
+  struct _tuple : private _tup::_base {
+   private:
+    friend _tup::_access;
+    using _types = _tup::_impl_types<Impl>;
+    using _construct_impl = _mapply<_q<_tup::_construct_impl>, _types>;
+    using _default_init_impl = _mapply<_q<_tup::_default_init_impl>, _types>;
+
+    template <std::size_t, class>
+    friend struct _tuple;
+
+    Impl _fn_;
+
+   public:
+    constexpr _tuple() noexcept(_nothrow_callable<_default_init_impl>)
+      requires _callable<_default_init_impl>
+      : _fn_(_default_init_impl()()) {
+    }
+
+    _tuple(_tuple&&) = default;
+    _tuple(_tuple const &) = default;
+    _tuple& operator=(_tuple&&) = default;
+    _tuple& operator=(_tuple const &) = default;
+
+    template <class... Us>
+      requires(sizeof...(Us) == Size) && _callable<_construct_impl, Us...>
+    explicit(sizeof...(Us) == 1) constexpr _tuple(Us&&... _us) noexcept(
+      _nothrow_callable<_construct_impl, Us...>)
+      : _fn_(_construct_impl()((Us&&) _us...)) {
+    }
+
+    template <_tup::_is_tuple Other>
+      requires(!_decays_to<Other, _tuple>) && _tup::_applicable<_construct_impl, Other>
+    explicit constexpr _tuple(Other&& _other) noexcept(
+      _tup::_nothrow_applicable<_construct_impl, Other>)
+      : _fn_(_tup::apply(_construct_impl(), (Other&&) _other)) {
+    }
+
+    template <_tup::_is_tuple Other>
+      requires _tup::_tuple_assignable_from<_tuple, Other>
+    constexpr _tuple&& operator=(Other&& _other) && noexcept(
+      _tup::_nothrow_tuple_assignable_from<_tuple, Other>) {
+      _tup::apply(_tup::apply(_tup::_assign_tuple(), (_tuple&&) *this), (Other&&) _other);
+      return (_tuple&&) *this;
+    }
+
+    template <_tup::_is_tuple Other>
+      requires _tup::_tuple_assignable_from<_tuple&, Other>
+    constexpr _tuple& operator=(Other&& _other) & noexcept(
+      _tup::_nothrow_tuple_assignable_from<_tuple&, Other>) {
+      _tup::apply(_tup::apply(_tup::_assign_tuple(), *this), (Other&&) _other);
+      return *this;
+    }
+
+    template <_tup::_is_tuple Other>
+      requires _tup::_tuple_assignable_from<const _tuple&, Other>
+    constexpr const _tuple& operator=(Other&& _other) const & noexcept(
+      _tup::_nothrow_tuple_assignable_from<const _tuple&, Other>) {
+      _tup::apply(_tup::apply(_tup::_assign_tuple(), *this), (Other&&) _other);
+      return *this;
+    }
+  };
+
+  using _tup::get;
+  using _tup::apply;
+  using _tup::_apply_result_t;
+  using _tup::_applicable;
+  using _tup::_nothrow_applicable;
+
+  // From _meta.hpp:
+  template <std::size_t Size, class Impl>
+  struct _mexpand<_tuple<Size, Impl>> {
+    template <class MetaFn>
+    using _f = _mapply<MetaFn, _tup::_impl_types<Impl>>;
+  };
+
+  template <std::size_t Size, class Impl>
+  inline constexpr std::size_t tuple_size_v<_tuple<Size, Impl>> = Size;
+
+  inline constexpr _tup::_wrap_fn ref{};
+  inline constexpr _tup::_make_tuple_fn make_tuple{};
+
+  template <class... Ts>
+  using tuple = _tuple<sizeof...(Ts), _tup::_impl_for<Ts...>>;
+}
+
+namespace std {
+  template <class>
+  struct tuple_size;
+
+  template <size_t Size, class Impl>
+  struct tuple_size<stdlite::_tuple<Size, Impl>> : integral_constant<size_t, Size> { };
+
+  template <size_t Size, class Impl>
+  struct tuple_size<const stdlite::_tuple<Size, Impl>> : integral_constant<size_t, Size> { };
+
+  template <size_t Nn>
+  struct _tuple_element_ {
+    template <class... Ts>
+    using _f = stdlite::_m_at<Nn, Ts...>;
+  };
+
+  template <size_t Nn, size_t Size, class Impl>
+    requires(Nn < Size)
+  struct tuple_element<Nn, stdlite::_tuple<Size, Impl>> {
+    using type = stdlite::_mapply<_tuple_element_<Nn>, stdlite::_tuple<Size, Impl>>;
+  };
+
+}
+
+struct immovable {
+  int i_;
+  immovable(int i) : i_(i) {}
+  immovable(immovable&&) = delete;
+};
+
+struct make_immovable {
+  operator immovable() const {
+    return {42};
+  }
+};
+
+struct canthrow {
+  canthrow() {}
+  canthrow(canthrow&&) {}
+};
+
+struct Int {
+  operator int() const { return 0; }
+};
+
+int main() {
+  using namespace stdlite;
+
+  tuple<int, immovable, char const*> t{42, make_immovable(), "hello"};
+  tuple<immovable> t2{make_immovable()};
+
+  apply([](int&,immovable&,char const*&){}, t);
+  immovable& m = get<1>(t);
+
+  static_assert(std::move_constructible<tuple<int>>);
+  static_assert(std::is_nothrow_move_constructible_v<tuple<int>>);
+
+  static_assert(std::constructible_from<tuple<long>, tuple<int>>);
+  static_assert(_nothrow_constructible_from<tuple<long>, tuple<int>>);
+  static_assert(!_nothrow_constructible_from<tuple<long>, tuple<Int>>);
+
+  static_assert(std::move_constructible<tuple<canthrow>>);
+  static_assert(!std::is_nothrow_move_constructible_v<tuple<canthrow>>);
+
+  static_assert(std::is_nothrow_constructible_v<tuple<int>, int>);
+
+  tuple<int> i{42}, j{53};
+  i = j;
+}
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++2b <source>
+1.	<source>:709:3: at annotation token
+2.	<source>:706:12: parsing function body 'main'
+3.	<source>:706:12: in compound statement ('{}')
+4.	<source>:477:7: instantiating function definition 'stdlite::_tup::_make_impl<int, stdlite::_tup::_any_convertible_to<immovable> &&, const char *, stdlite::_tup::(lambda at <source>:467:22){}>'
+5.	<source>:467:22: instantiating function definition 'stdlite::_tup::(anonymous class)::operator()<>'
+ #0 0x000055c57b9a538f llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x35ea38f)
+ #1 0x000055c57b9a33bc llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x35e83bc)
+ #2 0x000055c57b8f50a8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f42af346420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x000055c57ecaa9c4 clang::ASTContext::getSubstTemplateTypeParmType(clang::QualType, clang::Decl*, unsigned int, std::optional<unsigned int>) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x68ef9c4)
+ #5 0x000055c57e96b233 (anonymous namespace)::TemplateInstantiator::BuildSubstTemplateTypeParmType(clang::TypeLocBuilder&, bool, bool, clang::Decl*, unsigned int, std::optional<unsigned int>, clang::TemplateArgument, clang::SourceLocation) SemaTemplateInstantiate.cpp:0:0
+ #6 0x000055c57e96d141 (anonymous namespace)::TemplateInstantiator::TransformTemplateTypeParmType(clang::TypeLocBuilder&, clang::TemplateTypeParmTypeLoc, bool) SemaTemplateInstantiate.cpp:0:0
+ #7 0x000055c57e98f78d clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+ #8 0x000055c57e992cb1 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReferenceType(clang::TypeLocBuilder&, clang::ReferenceTypeLoc) SemaTemplateInstantiate.cpp:0:0
+ #9 0x000055c57e98fdc8 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#10 0x000055c57e992fb9 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#11 0x000055c57e99bd69 clang::Sema::SubstType(clang::TypeSourceInfo*, clang::MultiLevelTemplateArgumentList const&, clang::SourceLocation, clang::DeclarationName, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65e0d69)
+#12 0x000055c57e9a4048 clang::Sema::SubstParmVarDecl(clang::ParmVarDecl*, clang::MultiLevelTemplateArgumentList const&, int, std::optional<unsigned int>, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65e9048)
+#13 0x000055c57e9a58e8 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformFunctionTypeParams(clang::SourceLocation, llvm::ArrayRef<clang::ParmVarDecl*>, clang::QualType const*, clang::FunctionType::ExtParameterInfo const*, llvm::SmallVectorImpl<clang::QualType>&, llvm::SmallVectorImpl<clang::ParmVarDecl*>*, clang::Sema::ExtParameterInfoBuilder&, unsigned int*) SemaTemplateInstantiate.cpp:0:0
+#14 0x000055c57e97fb9b clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformLambdaExpr(clang::LambdaExpr*) SemaTemplateInstantiate.cpp:0:0
+#15 0x000055c57e981642 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#16 0x000055c57e982765 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformInitializer(clang::Expr*, bool) SemaTemplateInstantiate.cpp:0:0
+#17 0x000055c57e983e57 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) SemaTemplateInstantiate.cpp:0:0
+#18 0x000055c57e9b1da3 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#19 0x000055c57e9b6ce5 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65fbce5)
+#20 0x000055c57e9ffa48 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6644a48)
+#21 0x000055c57e020ee5 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5c65ee5)
+#22 0x000055c57e9026f9 clang::Sema::DeduceReturnType(clang::FunctionDecl*, clang::SourceLocation, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65476f9)
+#23 0x000055c57e3dc0c7 clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60210c7)
+#24 0x000055c57e74ca8e CreateFunctionRefExpr(clang::Sema&, clang::FunctionDecl*, clang::NamedDecl*, clang::Expr const*, bool, clang::SourceLocation, clang::DeclarationNameLoc const&) SemaOverload.cpp:0:0
+#25 0x000055c57e791778 clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x63d6778)
+#26 0x000055c57e445bc5 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x608abc5)
+#27 0x000055c57e44af0b clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x608ff0b)
+#28 0x000055c57e98a523 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) SemaTemplateInstantiate.cpp:0:0
+#29 0x000055c57e981afa clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#30 0x000055c57e982765 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformInitializer(clang::Expr*, bool) SemaTemplateInstantiate.cpp:0:0
+#31 0x000055c57e983e57 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) SemaTemplateInstantiate.cpp:0:0
+#32 0x000055c57e9b1da3 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#33 0x000055c57e9b6ce5 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65fbce5)
+#34 0x000055c57e9ffa48 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6644a48)
+#35 0x000055c57e020ee5 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5c65ee5)
+#36 0x000055c57e9026f9 clang::Sema::DeduceReturnType(clang::FunctionDecl*, clang::SourceLocation, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65476f9)
+#37 0x000055c57e902b80 GetTypeOfFunction(clang::Sema&, clang::OverloadExpr::FindResult const&, clang::FunctionDecl*) SemaTemplateDeduction.cpp:0:0
+#38 0x000055c57e93e6f4 ResolveOverloadForDeduction(clang::Sema&, clang::TemplateParameterList*, clang::Expr*, clang::QualType, bool) SemaTemplateDeduction.cpp:0:0
+#39 0x000055c57e93f79d DeduceTemplateArgumentsFromCallArgument(clang::Sema&, clang::TemplateParameterList*, unsigned int, clang::QualType, clang::Expr*, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg>&, bool, unsigned int, unsigned int) SemaTemplateDeduction.cpp:0:0
+#40 0x000055c57e94e740 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6593740)
+#41 0x000055c57e77b101 clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind, clang::OverloadCandidateParamOrder) (.constprop.1) SemaOverload.cpp:0:0
+#42 0x000055c57e77c61f clang::Sema::AddOverloadedCallCandidates(clang::UnresolvedLookupExpr*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x63c161f)
+#43 0x000055c57e77c938 clang::Sema::buildOverloadedCallSet(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::OverloadCandidateSet*, clang::ActionResult<clang::Expr*, true>*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x63c1938)
+#44 0x000055c57e788608 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x63cd608)
+#45 0x000055c57e4459fa clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x608a9fa)
+#46 0x000055c57e44af0b clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x608ff0b)
+#47 0x000055c57e98a523 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) SemaTemplateInstantiate.cpp:0:0
+#48 0x000055c57e981afa clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#49 0x000055c57e98f813 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#50 0x000055c57e992fb9 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#51 0x000055c57e99485e clang::Sema::SubstType(clang::QualType, clang::MultiLevelTemplateArgumentList const&, clang::SourceLocation, clang::DeclarationName) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65d985e)
+#52 0x000055c57e851e47 clang::Sema::CheckTemplateIdType(clang::TemplateName, clang::SourceLocation, clang::TemplateArgumentListInfo&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6496e47)
+#53 0x000055c57e99a267 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateSpecializationType(clang::TypeLocBuilder&, clang::TemplateSpecializationTypeLoc, clang::TemplateName) SemaTemplateInstantiate.cpp:0:0
+#54 0x000055c57e99015b clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#55 0x000055c57e9a1b73 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformElaboratedType(clang::TypeLocBuilder&, clang::ElaboratedTypeLoc) SemaTemplateInstantiate.cpp:0:0
+#56 0x000055c57e98ee22 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#57 0x000055c57e992fb9 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#58 0x000055c57e995c2e clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArgument(clang::TemplateArgumentLoc const&, clang::TemplateArgumentLoc&, bool) SemaTemplateInstantiate.cpp:0:0
+#59 0x000055c57e99a36a clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateSpecializationType(clang::TypeLocBuilder&, clang::TemplateSpecializationTypeLoc, clang::TemplateName) SemaTemplateInstantiate.cpp:0:0
+#60 0x000055c57e99015b clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#61 0x000055c57e9a1b73 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformElaboratedType(clang::TypeLocBuilder&, clang::ElaboratedTypeLoc) SemaTemplateInstantiate.cpp:0:0
+#62 0x000055c57e98ee22 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#63 0x000055c57e992fb9 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#64 0x000055c57e99485e clang::Sema::SubstType(clang::QualType, clang::MultiLevelTemplateArgumentList const&, clang::SourceLocation, clang::DeclarationName) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65d985e)
+#65 0x000055c57e851e47 clang::Sema::CheckTemplateIdType(clang::TemplateName, clang::SourceLocation, clang::TemplateArgumentListInfo&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6496e47)
+#66 0x000055c57e854e62 clang::Sema::ActOnTemplateIdType(clang::Scope*, clang::CXXScopeSpec&, clang::SourceLocation, clang::OpaquePtr<clang::TemplateName>, clang::IdentifierInfo*, clang::SourceLocation, clang::SourceLocation, llvm::MutableArrayRef<clang::ParsedTemplateArgument>, clang::SourceLocation, bool, bool, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6499e62)
+#67 0x000055c57dfcd2db clang::Parser::AnnotateTemplateIdTokenAsType(clang::CXXScopeSpec&, clang::ImplicitTypenameContext, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5c122db)
+#68 0x000055c57deca2ea clang::Parser::TryAnnotateTypeOrScopeTokenAfterScopeSpec(clang::CXXScopeSpec&, bool, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b0f2ea)
+#69 0x000055c57deca82f clang::Parser::TryAnnotateName(clang::CorrectionCandidateCallback*, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b0f82f)
+#70 0x000055c57dfb506f clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5bfa06f)
+#71 0x000055c57dfb6483 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5bfb483)
+#72 0x000055c57dfb734a clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5bfc34a)
+#73 0x000055c57dfb8702 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5bfd702)
+#74 0x000055c57ded4561 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b19561)
+#75 0x000055c57df061af clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b4b1af)
+#76 0x000055c57dece9d7 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b139d7)
+#77 0x000055c57decfb2f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.0) Parser.cpp:0:0
+#78 0x000055c57ded75b4 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b1c5b4)
+#79 0x000055c57ded8b6d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b1db6d)
+#80 0x000055c57dec7eea clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b0ceea)
+#81 0x000055c57cb08e35 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x474de35)
+#82 0x000055c57c3f3001 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x4038001)
+#83 0x000055c57c3752b3 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3fba2b3)
+#84 0x000055c57c4d3623 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x4118623)
+#85 0x000055c57923db4c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xe82b4c)
+#86 0x000055c5792390bf ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#87 0x000055c57c1cfcfd void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#88 0x000055c57b8f5507 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x353a507)
+#89 0x000055c57c1cff3c clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#90 0x000055c57c19741c clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3ddc41c)
+#91 0x000055c57c197e0d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3ddce0d)
+#92 0x000055c57c1a243c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3de743c)
+#93 0x000055c57923b67f clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xe8067f)
+#94 0x000055c57913a3c5 main (/opt/compiler-explorer/clang-trunk/bin/clang+++0xd7f3c5)
+#95 0x00007f42aedf4083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#96 0x000055c57923529e _start (/opt/compiler-explorer/clang-trunk/bin/clang+++0xe7a29e)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid, worksforme

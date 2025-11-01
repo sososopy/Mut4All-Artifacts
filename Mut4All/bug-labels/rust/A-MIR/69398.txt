@@ -1,0 +1,101 @@
+Issue Title:
+ICE issue-36839.rs could not fully normalize `<() as Foo>::Bar`  with --emit=mir · Issue #69398 · rust-lang/rust · GitHub
+
+Rust Code:
+// check-pass
+
+pub trait Foo {
+    type Bar;
+}
+
+pub trait Broken {
+    type Assoc;
+    fn broken(&self) where Self::Assoc: Foo;
+}
+
+impl<T> Broken for T {
+    type Assoc = ();
+    fn broken(&self) where Self::Assoc: Foo {
+        let _x: <Self::Assoc as Foo>::Bar;
+    }
+}
+
+fn main() {
+    let _m: &dyn Broken<Assoc=()> = &();
+}
+
+Bug Trace:
+error: internal compiler error: src/librustc_traits/normalize_erasing_regions.rs:35: could not fully normalize `<() as Foo>::Bar`
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:881:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1052
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1428
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:204
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:224
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:474
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc::ty::context::tls::with_opt::{{closure}}
+  17: rustc::ty::context::tls::with_opt
+  18: rustc::util::bug::opt_span_bug_fmt
+  19: rustc::util::bug::bug_fmt
+  20: rustc::ty::context::GlobalCtxt::enter_local
+  21: rustc_traits::normalize_erasing_regions::normalize_ty_after_erasing_regions
+  22: rustc::ty::query::__query_compute::normalize_ty_after_erasing_regions
+  23: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::normalize_ty_after_erasing_regions>::compute
+  24: rustc::dep_graph::graph::DepGraph::with_task_impl
+  25: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  26: <rustc::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc::ty::fold::TypeFolder>::fold_ty
+  27: rustc::ty::util::<impl rustc::ty::TyS>::needs_drop
+  28: rustc_mir::dataflow::drop_flag_effects::on_all_children_bits::on_all_children_bits
+  29: <rustc_mir::transform::elaborate_drops::ElaborateDrops as rustc_mir::transform::MirPass>::run_pass
+  30: rustc_mir::transform::run_passes
+  31: rustc_mir::transform::run_optimization_passes
+  32: rustc_mir::transform::optimized_mir
+  33: rustc::ty::query::__query_compute::optimized_mir
+  34: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::optimized_mir>::compute
+  35: rustc::dep_graph::graph::DepGraph::with_task_impl
+  36: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  37: rustc_mir::util::pretty::write_mir_pretty
+  38: rustc_mir::transform::dump_mir::emit_mir
+  39: rustc_interface::passes::start_codegen
+  40: rustc::ty::context::tls::enter_global
+  41: rustc_interface::queries::Queries::ongoing_codegen
+  42: rustc_interface::interface::run_compiler_in_existing_thread_pool
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.43.0-nightly (436494b8f 2020-02-22) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [normalize_ty_after_erasing_regions] normalizing `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All, def_id: None }, value: <() as Foo>::Bar }`
+#1 [optimized_mir] processing `<T as Broken>::broken`
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-MIR, C-bug, I-ICE, P-medium, T-compiler, glacier, regression-from-stable-to-stable

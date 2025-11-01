@@ -1,0 +1,82 @@
+Issue Title:
+ICE: `Unexpected unsized type tail: &ReStatic [u8]` · Issue #122488 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::ops::Deref;
+
+struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(V, U);
+
+const DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+//@ run-pass
+
+use std::ops::Deref;
+
+struct ArenaSet<U: Deref, V=<U as Deref>::Target>(V, &'static V)
+    where V: 'static + ?Sized;
+
+static Z: [u8; 3] = [1,2,3,4];
+
+fn arena() -> &'static ArenaSet<Vec<u8>> {
+    fn transmute() -> ArenaSet<Vec<u8>> {
+        ArenaSet(|| {
+                DATA = transmute
+                    ::<ArenaSet<ArenaSet<Vec<u8>>>, *const ArenaSet<Vec<u8>>>
+                    (Box::new(__static_ref_initialize(vec![], &Z)));
+            })
+    }
+    unsafe {
+        use std::sync::Once;
+        fn arena<T: Sync>(_: &T) { }
+        unsafe fn __stability() -> &'static ArenaSet<Vec<u8>> {
+            use std::mem::transmute;
+            static mut DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
+
+            static mut ONCE: Once = Once::new();
+            ONCE.call_once(|| {
+                unsafe {
+        use std::sync::Once;
+        fn require_sync<T: Sync>(_: &T) { }
+        unsafe fn __stability() -> &'static ArenaSet<Vec<u8>> {
+            use std::mem::transmute;
+            static mut DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
+
+            static mut ONCE: Once = Once::new();
+            ONCE.call_once(|| {
+                DATA = transmute
+                    ::<Box<ArenaSet<Vec<u8>>>, *const ArenaSet<Vec<u8>>>
+                    (Box::new(__static_ref_initialize()));
+            });
+
+            &*DATA
+        }
+        let static_ref = __stability();
+        require_sync(static_ref);
+        static_ref
+    }
+            });
+
+            &*DATA
+        }
+        let static_ref = __stability();
+        require_sync(static_ref);
+        static_ref
+    }
+}
+
+fn main() {
+    let &ArenaSet(ref u, v) = arena();
+    assert!(u.is_empty());
+    assert_eq!(v, Z);
+}
+
+Bug Labels:
+A-codegen, C-bug, E-needs-test, I-ICE, S-has-mcve, T-compiler

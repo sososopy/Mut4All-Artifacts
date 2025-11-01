@@ -1,0 +1,117 @@
+Issue Title:
+Clang-21 crash with: Assertion `qualifier->getPrefix()' failed.
+
+Source Code & Bug Trace:
+template <class T>
+struct A
+{
+  template <class V>
+  struct B
+  {
+    int MEM;
+  };
+};
+struct D {};
+struct C: public A<int>::B<D>
+{};
+template <class T, class U, class V>
+auto k(T t, U u, V v) -> decltype (t.U::template B<V>::MEM)
+{}
+int main()
+{
+  k( C(), A<int>(), D() );
+}
+
+$ clang -v
+Ubuntu clang version 21.0.0 (++20250415083614+85eb44e304e0-1~exp~20250415203631.375)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/local/llvm-21/bin
+Found candidate GCC installation: /usr/local/bin/../lib/gcc/x86_64-pc-linux-gnu/15.0.0
+Found candidate GCC installation: /usr/local/bin/../lib/gcc/x86_64-pc-linux-gnu/15.0.1
+Selected GCC installation: /usr/local/bin/../lib/gcc/x86_64-pc-linux-gnu/15.0.1
+Candidate multilib: .;@m64
+Selected multilib: .;@m64
+
+clang++ bug.cpp  -O3 -Wall -Wextra -fno-strict-aliasing -fwrapv -g -fsanitize=address  -c -o bug.o
+
+<source>:14:15: warning: unused parameter 'u' [-Wunused-parameter]
+   14 | auto k(T t, U u, V v) -> decltype (t.U::template B<V>::MEM)
+      |               ^
+<source>:14:20: warning: unused parameter 'v' [-Wunused-parameter]
+   14 | auto k(T t, U u, V v) -> decltype (t.U::template B<V>::MEM)
+      |                    ^
+clang++: /root/llvm-project/llvm/tools/clang/lib/AST/ItaniumMangle.cpp:2230: void {anonymous}::CXXNameMangler::manglePrefix(clang::NestedNameSpecifier*): Assertion `qualifier->getPrefix()' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -fno-verbose-asm -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -O3 -Wall -Wextra -fno-strict-aliasing -fwrapv -g -fsanitize=address <source>
+1.	<eof> parser at end of file
+2.	<source>:16:5: LLVM IR generation of declaration 'main'
+3.	<source>:16:5: Generating code for declaration 'main'
+4.	<source>:14:6: Mangling declaration 'k'
+ #0 0x0000000003edfde8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3edfde8)
+ #1 0x0000000003edda74 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3edda74)
+ #2 0x0000000003e225b8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x0000751c19042520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x0000751c190969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x0000751c19042476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x0000751c190287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x0000751c1902871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x0000751c19039e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x0000000007a38fb4 (anonymous namespace)::CXXNameMangler::manglePrefix(clang::NestedNameSpecifier*) ItaniumMangle.cpp:0:0
+#10 0x0000000007a39244 (anonymous namespace)::CXXNameMangler::mangleTemplatePrefix(clang::TemplateName) ItaniumMangle.cpp:0:0
+#11 0x0000000007a39a8f (anonymous namespace)::CXXNameMangler::mangleUnresolvedPrefix(clang::NestedNameSpecifier*, bool) ItaniumMangle.cpp:0:0
+#12 0x0000000007a3b039 (anonymous namespace)::CXXNameMangler::mangleUnresolvedName(clang::NestedNameSpecifier*, clang::DeclarationName, clang::TemplateArgumentLoc const*, unsigned int, unsigned int) ItaniumMangle.cpp:0:0
+#13 0x0000000007a2af90 (anonymous namespace)::CXXNameMangler::mangleExpression(clang::Expr const*, unsigned int, bool) ItaniumMangle.cpp:0:0
+#14 0x0000000007a2230d (anonymous namespace)::CXXNameMangler::mangleType(clang::QualType) ItaniumMangle.cpp:0:0
+#15 0x0000000007a2e89e (anonymous namespace)::CXXNameMangler::mangleBareFunctionType(clang::FunctionProtoType const*, bool, clang::FunctionDecl const*) ItaniumMangle.cpp:0:0
+#16 0x0000000007a2ff25 (anonymous namespace)::CXXNameMangler::mangleFunctionEncoding(clang::GlobalDecl) ItaniumMangle.cpp:0:0
+#17 0x0000000007a31047 (anonymous namespace)::CXXNameMangler::mangle(clang::GlobalDecl) ItaniumMangle.cpp:0:0
+#18 0x0000000007a336d1 (anonymous namespace)::ItaniumMangleContextImpl::mangleCXXName(clang::GlobalDecl, llvm::raw_ostream&) ItaniumMangle.cpp:0:0
+#19 0x0000000007a58463 clang::MangleContext::mangleName(clang::GlobalDecl, llvm::raw_ostream&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x7a58463)
+#20 0x000000000444e934 getMangledNameImpl(clang::CodeGen::CodeGenModule&, clang::GlobalDecl, clang::NamedDecl const*, bool) CodeGenModule.cpp:0:0
+#21 0x00000000044665bd clang::CodeGen::CodeGenModule::getMangledName(clang::GlobalDecl) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x44665bd)
+#22 0x00000000044a07d5 clang::CodeGen::CodeGenModule::GetAddrOfFunction(clang::GlobalDecl, llvm::Type*, bool, bool, clang::CodeGen::ForDefinition_t) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x44a07d5)
+#23 0x000000000421830e clang::CodeGen::CodeGenModule::getRawFunctionPointer(clang::GlobalDecl, llvm::Type*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x421830e)
+#24 0x0000000004224724 EmitDirectCallee(clang::CodeGen::CodeGenFunction&, clang::GlobalDecl) CGExpr.cpp:0:0
+#25 0x0000000004243912 clang::CodeGen::CodeGenFunction::EmitCallee(clang::Expr const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4243912)
+#26 0x000000000424388f clang::CodeGen::CodeGenFunction::EmitCallee(clang::Expr const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x424388f)
+#27 0x00000000042456a3 clang::CodeGen::CodeGenFunction::EmitCallExpr(clang::CallExpr const*, clang::CodeGen::ReturnValueSlot, llvm::CallBase**) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x42456a3)
+#28 0x00000000042b72e4 (anonymous namespace)::ScalarExprEmitter::VisitCallExpr(clang::CallExpr const*) CGExprScalar.cpp:0:0
+#29 0x00000000042aa550 clang::StmtVisitorBase<std::add_pointer, (anonymous namespace)::ScalarExprEmitter, llvm::Value*>::Visit(clang::Stmt*) CGExprScalar.cpp:0:0
+#30 0x00000000042b02dc clang::CodeGen::CodeGenFunction::EmitScalarExpr(clang::Expr const*, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x42b02dc)
+#31 0x000000000421c68e clang::CodeGen::CodeGenFunction::EmitAnyExpr(clang::Expr const*, clang::CodeGen::AggValueSlot, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x421c68e)
+#32 0x000000000424360d clang::CodeGen::CodeGenFunction::EmitIgnoredExpr(clang::Expr const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x424360d)
+#33 0x00000000043b5e2e clang::CodeGen::CodeGenFunction::EmitStmt(clang::Stmt const*, llvm::ArrayRef<clang::Attr const*>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x43b5e2e)
+#34 0x00000000043bdd9c clang::CodeGen::CodeGenFunction::EmitCompoundStmtWithoutScope(clang::CompoundStmt const&, bool, clang::CodeGen::AggValueSlot) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x43bdd9c)
+#35 0x0000000004423c52 clang::CodeGen::CodeGenFunction::EmitFunctionBody(clang::Stmt const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4423c52)
+#36 0x0000000004437005 clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4437005)
+#37 0x00000000044a0d9a clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x44a0d9a)
+#38 0x000000000449bb34 clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x449bb34)
+#39 0x000000000449bf4b clang::CodeGen::CodeGenModule::EmitGlobal(clang::GlobalDecl) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x449bf4b)
+#40 0x00000000044a67a3 clang::CodeGen::CodeGenModule::EmitTopLevelDecl(clang::Decl*) (.part.0) CodeGenModule.cpp:0:0
+#41 0x0000000004880ab6 (anonymous namespace)::CodeGeneratorImpl::HandleTopLevelDecl(clang::DeclGroupRef) ModuleBuilder.cpp:0:0
+#42 0x00000000048705b4 clang::BackendConsumer::HandleTopLevelDecl(clang::DeclGroupRef) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x48705b4)
+#43 0x000000000652bfc4 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x652bfc4)
+#44 0x000000000487cc58 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x487cc58)
+#45 0x0000000004b6f1f5 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4b6f1f5)
+#46 0x0000000004aee25e clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4aee25e)
+#47 0x0000000004c5e51e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4c5e51e)
+#48 0x0000000000d99d8f cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xd99d8f)
+#49 0x0000000000d9149a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#50 0x00000000048e3139 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#51 0x0000000003e22a54 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3e22a54)
+#52 0x00000000048e374f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#53 0x00000000048a5bad clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x48a5bad)
+#54 0x00000000048a6c3e clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x48a6c3e)
+#55 0x00000000048aea95 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x48aea95)
+#56 0x0000000000d96ad8 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xd96ad8)
+#57 0x0000000000c21504 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc21504)
+#58 0x0000751c19029d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#59 0x0000751c19029e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#60 0x0000000000d90f45 _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xd90f45)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Compiler returned: 134
+
+Bug Labels:
+c++, clang:frontend, confirmed, crash-on-valid, regression

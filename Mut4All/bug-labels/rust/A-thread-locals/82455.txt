@@ -1,0 +1,102 @@
+Issue Title:
+Compiler panic with incorrect JoinHandle in thread_local var · Issue #82455 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+thread_local! {
+    static shutting_down: AtomicBool = AtomicBool::new(false);
+    static thread_handle: Option<std::thread::JoinHandle<_>> = None;
+}
+
+fn activate() {
+    thread_handle = std::thread::spawn(|_| {
+        shutting_down.with(|b| {
+            b.store(true, Ordering::SeqCst);
+        });
+    });
+}
+
+fn deactivate() {
+    shutting_down.with(|b| b.store(true, Ordering::SeqCst));
+    match thread_handle {
+        Some(handle) => handle.join(),
+        None => (),
+    }
+}
+
+fn main() {
+    activate();
+    std::thread::sleep(Duration::from_secs(4));
+    deactivate();
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:958:9
+stack backtrace:
+   0:        0x10c3030d4 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h34f76b2ca42fab41
+   1:        0x10c367ecd - core::fmt::write::h8f13d857463c51c1
+   2:        0x10c2f47c6 - std::io::Write::write_fmt::h0a6214ccb1a8468b
+   3:        0x10c306d39 - std::panicking::default_hook::{{closure}}::hb14d90e928578cc7
+   4:        0x10c3068c0 - std::panicking::default_hook::h460969f1dc8f738d
+   5:        0x10dc77718 - rustc_driver::report_ice::h77e24d066f5581ac
+   6:        0x10c30751e - std::panicking::rust_panic_with_hook::h28bf9d6c3916221e
+   7:        0x1122c7321 - std::panicking::begin_panic::{{closure}}::h0e87840b5c6a9c59
+   8:        0x1122c7289 - std::sys_common::backtrace::__rust_end_short_backtrace::h8659a1b4220fd63a
+   9:        0x1127042f1 - std::panicking::begin_panic::hc47dd84e1beec546
+  10:        0x1122f8d13 - rustc_errors::HandlerInner::bug::h6bbed7e088c34809
+  11:        0x1122f7327 - rustc_errors::Handler::bug::h69a183c778d5ab5c
+  12:        0x111d1df04 - rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}::h65cee2a5516e95bd
+  13:        0x111d19a36 - rustc_middle::ty::context::tls::with_opt::{{closure}}::h3109336967579a63
+  14:        0x111d199f3 - rustc_middle::ty::context::tls::with_opt::h747ffbbb3f367dd7
+  15:        0x111d1de2b - rustc_middle::util::bug::opt_span_bug_fmt::h33901786874da521
+  16:        0x1126e3dbf - rustc_middle::util::bug::bug_fmt::hb55b8e744ef28c0f
+  17:        0x111b5e19a - rustc_infer::infer::lexical_region_resolve::LexicalResolver::lub_concrete_regions::h25839f4cb0abe2e5
+  18:        0x111b5b7fd - rustc_infer::infer::lexical_region_resolve::LexicalResolver::infer_variable_values::h6d32fa8f3f8f2754
+  19:        0x111b59b01 - rustc_infer::infer::lexical_region_resolve::resolve::hcf63f6be23912b63
+  20:        0x111b154dd - rustc_infer::infer::InferCtxt::resolve_regions_and_report_errors::hc9caef24111df0da
+  21:        0x11033363b - rustc_typeck::check::regionck::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::regionck_expr::haa3793715e7f2998
+  22:        0x11057c54a - rustc_infer::infer::InferCtxtBuilder::enter::h219a0127bc30dfa9
+  23:        0x1105c4cea - rustc_typeck::check::diagnostic_only_typeck::h364621c3f9d76391
+  24:        0x1105b623d - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::diagnostic_only_typeck>::compute::h1f32e05a03f066b6
+  25:        0x110462571 - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h871477445a5c3693
+  26:        0x1103e4f61 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h03400ef36b8989e6
+  27:        0x1104b390f - rustc_data_structures::stack::ensure_sufficient_stack::h38c0e137943d87a2
+  28:        0x110386a18 - rustc_query_system::query::plumbing::get_query_impl::hbecd58d42846f8f4
+  29:        0x1105d174b - rustc_typeck::collect::type_of::infer_placeholder_type::h22e10397e5ac1d54
+  30:        0x1105cefcf - rustc_typeck::collect::type_of::type_of::he2d37f03223ed220
+  31:        0x1104ac850 - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::type_of>::compute::h1177527bd609fe45
+  32:        0x11045fe49 - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h4005953a1bc6e47b
+  33:        0x1103e6461 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h2125767b4b5e2499
+  34:        0x1104bb67c - rustc_data_structures::stack::ensure_sufficient_stack::hb47cec0d499cab41
+  35:        0x11033efda - rustc_query_system::query::plumbing::get_query_impl::h11eb5153002162a8
+  36:        0x1103ac87f - rustc_query_system::query::plumbing::ensure_query_impl::hf9e2988dcb524633
+  37:        0x1104e3fb5 - <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_item::ha5fe187c567fa04e
+  38:        0x110408354 - rustc_middle::hir::map::Map::visit_item_likes_in_module::ha83fa66bba1fe8d2
+  39:        0x1104e3695 - rustc_typeck::collect::collect_mod_item_types::hde1f69db390f9b7d
+  40:        0x1105003dd - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::collect_mod_item_types>::compute::h2ba13d9ebb52cab7
+  41:        0x11045dc5a - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h17016b44bff25730
+  42:        0x1103ec72f - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h4cb97ebae8a3285a
+  43:        0x1104bc800 - rustc_data_structures::stack::ensure_sufficient_stack::hc1ed859f375895e8
+  44:        0x11036859e - rustc_query_system::query::plumbing::get_query_impl::h6acef74b409bd4f4
+  45:        0x1103ab938 - rustc_query_system::query::plumbing::ensure_query_impl::h42b23e091773e4a0
+  46:        0x110520fa7 - rustc_typeck::check_crate::h6c812b48d37b63e5
+  47:        0x10de538eb - rustc_interface::passes::analysis::h4f77077d0d32c92e
+  48:        0x10dcbd30a - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute::h751d24ab2e450beb
+  49:        0x10dcbf1c4 - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::he6976e5544ffecfa
+  50:        0x10dc410ee - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h88d3b296bfb5ed36
+  51:        0x10dc8596e - rustc_data_structures::stack::ensure_sufficient_stack::hd0a9f62ff4f35515
+  52:        0x10dc2f570 - rustc_query_system::query::plumbing::get_query_impl::h1fa86c7589ee7005
+  53:        0x10dcbf5aa - rustc_interface::passes::QueryContext::enter::hdda9d64e1568ae83
+  54:        0x10dc9b5a1 - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::h23c3663acd2f252b
+  55:        0x10dc7a8be - rustc_span::with_source_map::had6878a53046d568
+  56:        0x10dc9c584 - rustc_interface::interface::create_compiler_and_run::he48253d83781cb39
+  57:        0x10dc86a84 - std::sys_common::backtrace::__rust_begin_short_backtrace::hfb8be6fd991a375d
+  58:        0x10dc1cc19 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h898af6dc0dda933c
+  59:        0x10c3145cd - std::sys::unix::thread::Thread::new::thread_start::he19012de44640be6
+  60:     0x7fff6bbc42eb - __pthread_body
+  61:     0x7fff6bbc7249 - __pthread_start
+
+Bug Labels:
+A-thread-locals, C-bug, I-ICE, ICEBreaker-Cleanup-Crew, P-medium, T-compiler, glacier, regression-from-stable-to-stable

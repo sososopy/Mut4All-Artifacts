@@ -1,0 +1,126 @@
+Issue Title:
+Rustc panic caused by invalid identifier in proc-macro · Issue #78737 · rust-lang/rust · GitHub
+
+Rust Code:
+#![crate_type = "proc-macro"]
+
+use proc_macro::TokenStream;
+use quote::quote;
+
+#[proc_macro_derive(Problematic)]
+pub fn problematic(_input: TokenStream) -> TokenStream {
+    let rogue_ident = quote::format_ident!(",");
+    let result = quote! {
+        struct Aux {
+            #rogue_ident : i32
+        }
+    };
+    TokenStream::from(result)
+}
+
+Bug Trace:
+thread 'rustc' panicked at '`","` is not a valid identifier', compiler/rustc_expand/src/proc_macro_server.rs:332:13
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_expand::proc_macro_server::Ident::new
+   3: <proc_macro::bridge::server::Dispatcher<proc_macro::bridge::server::MarkedTypes<S>> as proc_macro::bridge::server::DispatcherTrait>::dispatch
+   4: <proc_macro::bridge::closure::Closure<A,R> as core::convert::From<&mut F>>::from::call
+   5: proc_macro::bridge::closure::Closure<A,R>::call
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/closure.rs:27:18
+   6: proc_macro::bridge::client::Ident::new::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:244:25
+   7: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::with::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:336:47
+   8: proc_macro::bridge::client::BridgeState::with::{{closure}}::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:293:17
+   9: proc_macro::bridge::scoped_cell::ScopedCell<T>::replace
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/scoped_cell.rs:75:9
+  10: proc_macro::bridge::client::BridgeState::with::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:291:13
+  11: std::thread::local::LocalKey<T>::try_with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/thread/local.rs:272:16
+  12: std::thread::local::LocalKey<T>::with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/thread/local.rs:248:9
+  13: proc_macro::bridge::client::BridgeState::with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:290:9
+  14: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:329:9
+  15: proc_macro::bridge::client::Ident::new
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:237:17
+  16: proc_macro2::imp::Ident::new
+             at /Users/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.24/src/wrapper.rs:668:50
+  17: proc_macro2::Ident::new
+             at /Users/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.24/src/lib.rs:895:21
+  18: quote::__private::mk_ident
+             at /Users/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/quote-1.0.7/src/runtime.rs:336:17
+  19: proc_boi::problematic
+             at ./proc-boi/src/lib.rs:8:23
+  20: core::ops::function::FnOnce::call_once
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/core/src/ops/function.rs:227:5
+  21: proc_macro::bridge::client::Client<fn(proc_macro::TokenStream) .> proc_macro::TokenStream>::expand1::run::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:410:40
+  22: proc_macro::bridge::client::run_client::{{closure}}::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:377:26
+  23: proc_macro::bridge::scoped_cell::ScopedCell<T>::set::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/scoped_cell.rs:80:33
+  24: proc_macro::bridge::scoped_cell::ScopedCell<T>::replace
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/scoped_cell.rs:75:9
+  25: proc_macro::bridge::scoped_cell::ScopedCell<T>::set
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/scoped_cell.rs:80:9
+  26: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:325:35
+  27: std::thread::local::LocalKey<T>::try_with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/thread/local.rs:272:16
+  28: std::thread::local::LocalKey<T>::with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/thread/local.rs:248:9
+  29: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:325:9
+  30: proc_macro::bridge::client::run_client::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:370:9
+  31: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/panic.rs:308:9
+  32: std::panicking::try::do_call
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/panicking.rs:381:40
+  33: ___rust_try
+  34: std::panicking::try
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/panicking.rs:345:19
+  35: std::panic::catch_unwind
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/panic.rs:382:14
+  36: proc_macro::bridge::client::run_client
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:369:5
+  37: proc_macro::bridge::client::Client<fn(proc_macro::TokenStream) .> proc_macro::TokenStream>::expand1::run
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:410:13
+  38: proc_macro::bridge::server::run_server
+  39: <rustc_expand::proc_macro::ProcMacroDerive as rustc_expand::base::MultiItemModifier>::expand
+  40: rustc_expand::expand::MacroExpander::fully_expand_fragment
+  41: rustc_expand::expand::MacroExpander::expand_crate
+  42: rustc_interface::passes::configure_and_expand_inner
+  43: rustc_interface::passes::configure_and_expand::{{closure}}
+  44: rustc_data_structures::box_region::PinnedGenerator<I,A,R>::new
+  45: rustc_interface::passes::configure_and_expand
+  46: rustc_interface::queries::Queries::expansion
+  47: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  48: rustc_span::with_source_map
+  49: rustc_interface::interface::create_compiler_and_run
+  50: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.49.0-nightly (ffa2e7ae8 2020-10-24) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+error: proc-macro derive panicked
+
+Bug Labels:
+A-proc-macros, C-bug, I-ICE, T-compiler

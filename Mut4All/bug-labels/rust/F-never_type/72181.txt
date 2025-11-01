@@ -1,0 +1,125 @@
+Issue Title:
+ICE: index out of bounds: the len is 0 but the index is 0' with --emit mir and mir-opt-level >1 · Issue #72181 · rust-lang/rust · GitHub
+
+Rust Code:
+// This should fail even without validation
+// compile-flags: -Zmiri-disable-validation
+
+#![feature(never_type)]
+#![allow(unused, invalid_value)]
+
+enum Void {}
+
+fn f(v: Void) -> ! {
+    match v {} //~ ERROR entering unreachable code
+}
+
+fn main() {
+    let v: Void = unsafe {
+        std::mem::transmute::<(), Void>(())
+    };
+    f(v); //~ inside `main`
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'index out of bounds: the len is 0 but the index is 0', src/librustc_middle/ty/mod.rs:2455:19
+stack backtrace:
+   0:     0x7f232747aa64 - backtrace::backtrace::libunwind::trace::h98d3444f0ad70429
+                               at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1:     0x7f232747aa64 - backtrace::backtrace::trace_unsynchronized::h371770250c47e40d
+                               at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2:     0x7f232747aa64 - std::sys_common::backtrace::_print_fmt::hff04dc7e915a3c85
+                               at src/libstd/sys_common/backtrace.rs:78
+   3:     0x7f232747aa64 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h61891c439a79f00d
+                               at src/libstd/sys_common/backtrace.rs:59
+   4:     0x7f23274b896c - core::fmt::write::hdf236390fbd68d3d
+                               at src/libcore/fmt/mod.rs:1069
+   5:     0x7f232746c433 - std::io::Write::write_fmt::h1a1f8616ed2f90f9
+                               at src/libstd/io/mod.rs:1537
+   6:     0x7f232747fa85 - std::sys_common::backtrace::_print::h78339381acb79e1b
+                               at src/libstd/sys_common/backtrace.rs:62
+   7:     0x7f232747fa85 - std::sys_common::backtrace::print::h525aa9f9405c80a1
+                               at src/libstd/sys_common/backtrace.rs:49
+   8:     0x7f232747fa85 - std::panicking::default_hook::{{closure}}::hace90b8a218287e6
+                               at src/libstd/panicking.rs:198
+   9:     0x7f232747f7d7 - std::panicking::default_hook::h160b6beccc49b335
+                               at src/libstd/panicking.rs:218
+  10:     0x7f2327a99c23 - rustc_driver::report_ice::h4f38da7fac8ebd4c
+  11:     0x7f232748013d - std::panicking::rust_panic_with_hook::h36f6804eea3f553a
+                               at src/libstd/panicking.rs:481
+  12:     0x7f232747fd1b - rust_begin_unwind
+                               at src/libstd/panicking.rs:385
+  13:     0x7f23274b5601 - core::panicking::panic_fmt::hd101a87121fa411f
+                               at src/libcore/panicking.rs:89
+  14:     0x7f23274b55c2 - core::panicking::panic_bounds_check::ha0668dcff6357ef4
+                               at src/libcore/panicking.rs:65
+  15:     0x7f232a2858b8 - rustc_middle::ty::AdtDef::discriminant_def_for_variant::hb8665f68c3c8925f
+  16:     0x7f23290981a4 - rustc_middle::ty::sty::<impl rustc_middle::ty::TyS>::discriminant_for_variant::hf8f2b2d0f600757c
+  17:     0x7f23290dcc63 - rustc_mir::interpret::operand::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::read_discriminant::h04383a786f9e5f5c
+  18:     0x7f2328e8ed6b - rustc_mir::const_eval::destructure_const::hea137a6a8b6323b8
+  19:     0x7f2328debda4 - core::ops::function::FnOnce::call_once::he49d534148327124
+  20:     0x7f2329fb2fb1 - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::destructure_const>::compute::hfa7b6d2252302ba6
+  21:     0x7f232a060885 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::hb3d4c13d744e715a
+  22:     0x7f232a3ab702 - rustc_data_structures::stack::ensure_sufficient_stack::hdcee244c83eb407b
+  23:     0x7f232a1763a4 - rustc_query_system::query::plumbing::get_query_impl::hef1678ca65220230
+  24:     0x7f2329fa1302 - rustc_middle::ty::print::pretty::PrettyPrinter::pretty_print_const::h583cec005ac559c3
+  25:     0x7f232a0a999f - rustc_middle::mir::pretty_print_const::ha73776b5fc4e1f49
+  26:     0x7f23274b896c - core::fmt::write::hdf236390fbd68d3d
+                               at src/libcore/fmt/mod.rs:1069
+  27:     0x7f23274b9794 - core::fmt::Formatter::write_fmt::h95caeeba181649fe
+                               at src/libcore/fmt/mod.rs:1498
+  28:     0x7f232a3c2d74 - <&T as core::fmt::Debug>::fmt::hc537246aca244980
+  29:     0x7f23274b896c - core::fmt::write::hdf236390fbd68d3d
+                               at src/libcore/fmt/mod.rs:1069
+  30:     0x7f23274b9794 - core::fmt::Formatter::write_fmt::h95caeeba181649fe
+                               at src/libcore/fmt/mod.rs:1498
+  31:     0x7f232a0a6f58 - <rustc_middle::mir::Operand as core::fmt::Debug>::fmt::h666dba9a1334652c
+  32:     0x7f23274b896c - core::fmt::write::hdf236390fbd68d3d
+                               at src/libcore/fmt/mod.rs:1069
+  33:     0x7f23274b9794 - core::fmt::Formatter::write_fmt::h95caeeba181649fe
+                               at src/libcore/fmt/mod.rs:1498
+  34:     0x7f232a0a56b2 - <rustc_middle::mir::TerminatorKind as core::fmt::Debug>::fmt::h3ca5eba4a9e4e295
+  35:     0x7f23274b88db - core::fmt::run::h9b3b3bec27be60ec
+                               at src/libcore/fmt/mod.rs:1103
+  36:     0x7f23274b88db - core::fmt::write::hdf236390fbd68d3d
+                               at src/libcore/fmt/mod.rs:1078
+  37:     0x7f23274ab812 - core::fmt::Write::write_fmt::h0a4283ca6cdb8567
+                               at /rustc/769d12eec1d0bc3708841dfc149d3ec98b04bec6/src/libcore/fmt/mod.rs:193
+  38:     0x7f23274ab812 - alloc::fmt::format::h657722b395b07d36
+                               at src/liballoc/fmt.rs:586
+  39:     0x7f2328f26e46 - rustc_mir::util::pretty::write_mir_pretty::h5f0518bd9dc7a33c
+  40:     0x7f232916ad2f - rustc_mir::transform::dump_mir::emit_mir::h3ac1a091dc0e3c6e
+  41:     0x7f2327e4fead - rustc_interface::passes::start_codegen::h459335c6dd01052b
+  42:     0x7f2327d37b29 - rustc_middle::ty::context::tls::enter_global::h739103a57ae08ef8
+  43:     0x7f2327d52806 - rustc_interface::queries::Queries::ongoing_codegen::hfa82dc9d28eff2f3
+  44:     0x7f2327a680ff - rustc_interface::interface::run_compiler_in_existing_thread_pool::h9607844d06857db5
+  45:     0x7f2327aa77bd - scoped_tls::ScopedKey<T>::set::haf4c7963bcdf05e7
+  46:     0x7f2327aa04a4 - rustc_ast::attr::with_globals::h6a7f645f85d913be
+  47:     0x7f2327aa8abe - std::sys_common::backtrace::__rust_begin_short_backtrace::hc1d7bb4af8e37486
+  48:     0x7f2327bf666e - core::ops::function::FnOnce::call_once{{vtable.shim}}::h274c438c26ba3928
+  49:     0x7f23274900aa - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::h5b84f52b19042f22
+                               at /rustc/769d12eec1d0bc3708841dfc149d3ec98b04bec6/src/liballoc/boxed.rs:1034
+  50:     0x7f23274900aa - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::h6e1ef057e35f3144
+                               at /rustc/769d12eec1d0bc3708841dfc149d3ec98b04bec6/src/liballoc/boxed.rs:1034
+  51:     0x7f23274900aa - std::sys::unix::thread::Thread::new::thread_start::h8b0ae441dc3343d4
+                               at src/libstd/sys/unix/thread.rs:87
+  52:     0x7f23273a446f - start_thread
+  53:     0x7f23272c43d3 - clone
+  54:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.0-nightly (769d12eec 2020-05-12) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z mir-opt-level=2
+
+query stack during panic:
+#0 [destructure_const] destructure constant
+end of query stack
+
+Bug Labels:
+A-mir-opt, C-bug, F-never_type, I-ICE, T-compiler, glacier, requires-nightly

@@ -1,0 +1,95 @@
+Issue Title:
+type parameter `T/#1` (T/1) out of range when substituting, substs=[()] · Issue #105305 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(inherent_associated_types)]
+#![allow(incomplete_features)]
+
+struct S<T>(T);
+
+impl<T, 'a> S<T> { // Also repros with any other lifetimes such as '_  ,switching order to 'a, T also repros.
+    type P = T;
+}
+
+fn main() {
+    type A = S<()>::P;
+}
+
+Bug Trace:
+error: lifetime parameters must be declared prior to type and const parameters
+ --> src\main.rs:6:9
+  |
+6 | impl<T, 'a> S<T> {
+  |     ----^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, T>`
+
+error: internal compiler error: compiler\rustc_middle\src\ty\subst.rs:810:9: type parameter `T/#1` (T/1) out of range when substituting, substs=[()]
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/53e4b9dd74c29cc9308b8d0f10facac70bb101a7\compiler\rustc_errors\src\lib.rs:1576:9
+stack backtrace:
+   0:     0x7ffd384e9e42 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h7e70883c575183bf
+   1:     0x7ffd3852615b - core::fmt::write::h33a76bcc6f834c12
+   2:     0x7ffd384dca6a - <std::io::IoSliceMut as core::fmt::Debug>::fmt::he6739634bf80651d
+   3:     0x7ffd384e9b8b - std::sys::common::alloc::realloc_fallback::h79800d247b25f9cf
+   4:     0x7ffd384ed4b9 - std::panicking::default_hook::hf73f2b3eda2ba841
+   5:     0x7ffd384ed13b - std::panicking::default_hook::hf73f2b3eda2ba841
+   6:     0x7ffcaaf7c72d - rustc_driver[6fdaf07c6b144b62]::describe_lints
+   7:     0x7ffd384ede20 - std::panicking::rust_panic_with_hook::h026ab977c6c77b06
+   8:     0x7ffcad304063 - <rustc_middle[d0f48cd9e4ec2207]::ty::query::ExternProviders as core[d9f7351a480f3995]::clone::Clone>::clone
+   9:     0x7ffcad300a39 - <rustc_middle[d0f48cd9e4ec2207]::ty::query::ExternProviders as core[d9f7351a480f3995]::clone::Clone>::clone
+  10:     0x7ffcad2bb7c9 - <rustc_middle[d0f48cd9e4ec2207]::ty::sty::ExistentialProjection as rustc_middle[d0f48cd9e4ec2207]::ty::context::Lift>::lift_to_tcx
+  11:     0x7ffcad2d0fe9 - <rustc_middle[d0f48cd9e4ec2207]::ty::instance::InstanceDef as rustc_middle[d0f48cd9e4ec2207]::ty::context::Lift>::lift_to_tcx
+  12:     0x7ffcad2ce080 - <rustc_middle[d0f48cd9e4ec2207]::ty::instance::InstanceDef as rustc_middle[d0f48cd9e4ec2207]::ty::context::Lift>::lift_to_tcx
+  13:     0x7ffcad2cdb72 - <rustc_middle[d0f48cd9e4ec2207]::ty::instance::InstanceDef as rustc_middle[d0f48cd9e4ec2207]::ty::context::Lift>::lift_to_tcx
+  14:     0x7ffcad2ad8c8 - <rustc_middle[d0f48cd9e4ec2207]::ty::sty::Binder<rustc_middle[d0f48cd9e4ec2207]::ty::TraitPredicate>>::print_modifiers_and_trait_path
+  15:     0x7ffcad2af5b8 - rustc_middle[d0f48cd9e4ec2207]::util::bug::bug_fmt
+  16:     0x7ffcad2af535 - rustc_middle[d0f48cd9e4ec2207]::util::bug::bug_fmt
+  17:     0x7ffcad30ca6f - <rustc_middle[d0f48cd9e4ec2207]::ty::list::List<rustc_middle[d0f48cd9e4ec2207]::ty::subst::GenericArg>>::try_as_type_list
+  18:     0x7ffcaae61bee - <rustc_middle[d0f48cd9e4ec2207]::ty::subst::SubstFolder as rustc_middle[d0f48cd9e4ec2207]::ty::fold::TypeFolder>::fold_ty
+  19:     0x7ffcaa202ce8 - <dyn rustc_hir_analysis[e14abbd9f0df36ca]::astconv::AstConv>::ast_region_to_region
+  20:     0x7ffcaa20a396 - <dyn rustc_hir_analysis[e14abbd9f0df36ca]::astconv::AstConv>::ast_region_to_region
+  21:     0x7ffcaa218816 - <dyn rustc_hir_analysis[e14abbd9f0df36ca]::astconv::AstConv>::ty_of_fn
+  22:     0x7ffcaa8e9c28 - <rustc_span[395f7c3a127106b9]::symbol::Symbol as rustc_serialize[99e1dbb5522d458d]::serialize::Encodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheEncoder>>::encode
+  23:     0x7ffcaa9c39fc - <rustc_span[395f7c3a127106b9]::symbol::Symbol as rustc_serialize[99e1dbb5522d458d]::serialize::Encodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheEncoder>>::encode
+  24:     0x7ffcaa2344bd - <rustc_hir_analysis[e14abbd9f0df36ca]::collect::ItemCtxt as rustc_hir_analysis[e14abbd9f0df36ca]::astconv::AstConv>::normalize_ty
+  25:     0x7ffcaa255646 - rustc_hir_analysis[e14abbd9f0df36ca]::check::fn_maybe_err
+  26:     0x7ffca8ebbe91 - <rustc_hir_analysis[e14abbd9f0df36ca]::check::intrinsicck::InlineAsmCtxt>::check_asm
+  27:     0x7ffca9149a89 - <rustc_const_eval[cb9b3011c5bf7f16]::transform::check_consts::resolver::State as core[d9f7351a480f3995]::clone::Clone>::clone_from
+  28:     0x7ffca91d3e75 - <&[(rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::ExportedSymbol, rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::SymbolExportInfo)] as rustc_serialize[99e1dbb5522d458d]::serialize::Decodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheDecoder>>::decode
+  29:     0x7ffcaa9713fd - <rustc_span[395f7c3a127106b9]::symbol::Symbol as rustc_serialize[99e1dbb5522d458d]::serialize::Encodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheEncoder>>::encode
+  30:     0x7ffca9325952 - <&[(rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::ExportedSymbol, rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::SymbolExportInfo)] as rustc_serialize[99e1dbb5522d458d]::serialize::Decodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheDecoder>>::decode
+  31:     0x7ffca8ec8850 - <rustc_hir_analysis[e14abbd9f0df36ca]::check::check::check_opaque_for_inheriting_lifetimes::ProhibitOpaqueVisitor as rustc_middle[d0f48cd9e4ec2207]::ty::visit::TypeVisitor>::visit_ty
+  32:     0x7ffca8ea2da5 - <<dyn rustc_hir_analysis[e14abbd9f0df36ca]::astconv::AstConv>::create_substs_for_ast_path::{closure#0}::SubstsForAstPathCtxt as rustc_hir_analysis[e14abbd9f0df36ca]::astconv::CreateSubstsForGenericArgsCtxt>::inferred_kind
+  33:     0x7ffca8e96703 - rustc_hir_analysis[e14abbd9f0df36ca]::check_crate
+  34:     0x7ffca8767f65 - rustc_interface[9a86922769a86bfa]::passes::analysis
+  35:     0x7ffca914c45f - <rustc_const_eval[cb9b3011c5bf7f16]::transform::check_consts::resolver::State as core[d9f7351a480f3995]::clone::Clone>::clone_from
+  36:     0x7ffca91f2139 - <&[(rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::ExportedSymbol, rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::SymbolExportInfo)] as rustc_serialize[99e1dbb5522d458d]::serialize::Decodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheDecoder>>::decode
+  37:     0x7ffca92a1c52 - <&[(rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::ExportedSymbol, rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::SymbolExportInfo)] as rustc_serialize[99e1dbb5522d458d]::serialize::Decodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheDecoder>>::decode
+  38:     0x7ffca932af3f - <&[(rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::ExportedSymbol, rustc_middle[d0f48cd9e4ec2207]::middle::exported_symbols::SymbolExportInfo)] as rustc_serialize[99e1dbb5522d458d]::serialize::Decodable<rustc_query_impl[2fbc64f93e3032cd]::on_disk_cache::CacheDecoder>>::decode
+  39:     0x7ffca872be44 - <unknown>
+  40:     0x7ffca873cb96 - <rustc_middle[d0f48cd9e4ec2207]::ty::SymbolName as core[d9f7351a480f3995]::fmt::Display>::fmt
+  41:     0x7ffca873be98 - rustc_driver[6fdaf07c6b144b62]::args::arg_expand_all
+  42:     0x7ffca872cdb9 - <unknown>
+  43:     0x7ffca8723e9d - <unknown>
+  44:     0x7ffd385001ac - std::sys::windows::thread::Thread::new::hc3d1b043254b2748
+  45:     0x7ffd9f2554e0 - BaseThreadInitThunk
+  46:     0x7ffda0be485b - RtlUserThreadStart
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.67.0-nightly (53e4b9dd7 2022-12-04) running on x86_64-pc-windows-msvc
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [type_of] expanding type alias `main::A`
+#1 [collect_mod_item_types] collecting item types in top-level module
+#2 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `rust_test` due to previous error
+
+Bug Labels:
+C-bug, F-inherent_associated_types, I-ICE, T-compiler, glacier, requires-nightly

@@ -1,0 +1,183 @@
+Issue Title:
+ICE · Issue #84727 · rust-lang/rust · GitHub
+
+Rust Code:
+pub struct Color<T>(pub T);
+
+pub struct Cell<Fg, Bg = Fg> {
+    foreground: Color<Fg>,
+    background: Color<Bg>,
+}
+
+pub trait Over<Bottom, Output> {
+    fn over(self, bottom: Bottom) -> Output;
+}
+
+// Cell: Over<Color, Cell>
+impl<C, Fg, Bg, NewFg, NewBg> Over<Color<C>, Cell<NewFg, NewBg>> for Cell<Fg, Bg>
+where
+    Fg: Over<C, NewFg>,
+    Bg: Over<C, NewBg>,
+{
+    fn over(self, _: Color<C>) -> Cell<NewFg, NewBg> {
+        todo!();
+    }
+}
+
+// Cell: Over<Cell, Cell>
+impl<TopFg, TopBg, BottomFg, BottomBg, NewFg, NewBg>
+    Over<Cell<BottomFg, BottomBg>, Cell<NewFg, NewBg>> for Cell<TopFg, TopBg>
+where
+    Self: Over<Color<BottomBg>, Cell<NewFg, NewBg>>,
+{
+    fn over(self, bottom: Cell<BottomFg, BottomBg>) -> Cell<NewFg, NewBg> {
+        self.over(bottom.background);
+        todo!();
+    }
+}
+
+// Cell: Over<&mut Cell, ()>
+impl<'b, TopFg, TopBg, BottomFg, BottomBg> Over<&'b mut Cell<BottomFg, BottomBg>, ()>
+    for Cell<TopFg, TopBg>
+where
+    Cell<TopFg, TopBg>: Over<Cell<BottomFg, BottomBg>, Cell<BottomFg, BottomBg>>,
+{
+    fn over(self, _: &'b mut Cell<BottomFg, BottomBg>) {
+        todo!();
+    }
+}
+
+// &Cell: Over<&mut Cell, ()>
+impl<'t, 'b, TopFg, TopBg, BottomFg, BottomBg> Over<&'b mut Cell<BottomFg, BottomBg>, ()>
+    for &'t Cell<TopFg, TopBg>
+where
+    Cell<TopFg, TopBg>: Over<Cell<BottomFg, BottomBg>, Cell<BottomFg, BottomBg>>,
+{
+    fn over(self, _: &'b mut Cell<BottomFg, BottomBg>) {
+        todo!();
+    }
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_trait_selection/src/traits/select/confirmation.rs:201:17: Where clause `Binder(<style::color::Color<TopBg> as style::Over<style::cell::Cell<BottomFg, BottomBg>, style::cell::Cell<NewFg, NewBg>>>, [])` was applicable to `Obligation(predicate=Binder(TraitPredicate(<style::color::Color<TopBg> as style::Over<style::cell::Cell<_, _>, style::cell::Cell<_, _>>>), []), depth=2)` but now is not
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/42816d61ead7e46d462df997958ccfd514f8c21c/library/std/src/panic.rs:59:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_trait_selection::traits::select::confirmation::<impl rustc_trait_selection::traits::select::SelectionContext>::confirm_candidate
+   8: rustc_infer::infer::InferCtxt::probe
+   9: rustc_trait_selection::traits::select::SelectionContext::evaluate_candidate
+  10: rustc_trait_selection::traits::select::SelectionContext::evaluate_stack
+  11: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  12: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  13: rustc_trait_selection::traits::select::SelectionContext::evaluate_trait_predicate_recursively
+  14: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively::{{closure}}
+  15: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively
+  16: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicates_recursively
+  17: rustc_infer::infer::InferCtxt::probe
+  18: rustc_trait_selection::traits::select::SelectionContext::evaluate_candidate
+  19: rustc_trait_selection::traits::select::SelectionContext::evaluate_stack
+  20: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  21: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  22: rustc_trait_selection::traits::select::SelectionContext::evaluate_trait_predicate_recursively
+  23: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively::{{closure}}
+  24: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively
+  25: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicates_recursively
+  26: rustc_infer::infer::InferCtxt::probe
+  27: rustc_trait_selection::traits::select::SelectionContext::evaluate_candidate
+  28: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  29: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  30: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::candidate_from_obligation_no_cache
+  31: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  32: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  33: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::candidate_from_obligation
+  34: rustc_trait_selection::traits::select::SelectionContext::evaluate_stack
+  35: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  36: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  37: rustc_trait_selection::traits::select::SelectionContext::evaluate_trait_predicate_recursively
+  38: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively::{{closure}}
+  39: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively
+  40: rustc_infer::infer::InferCtxt::probe
+  41: rustc_trait_selection::traits::select::SelectionContext::evaluate_root_obligation
+  42: rustc_infer::infer::InferCtxtBuilder::enter_with_canonical
+  43: rustc_traits::evaluate_obligation::evaluate_obligation
+  44: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::evaluate_obligation>::compute
+  45: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  46: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  47: rustc_data_structures::stack::ensure_sufficient_stack
+  48: rustc_query_system::query::plumbing::force_query_with_job
+  49: rustc_query_system::query::plumbing::get_query_impl
+  50: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::evaluate_obligation
+  51: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation
+  52: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+  53: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::predicate_may_hold
+  54: rustc_infer::infer::InferCtxt::probe
+  55: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  56: rustc_typeck::check::method::probe::ProbeContext::pick_method
+  57: rustc_typeck::check::method::probe::ProbeContext::pick_core
+  58: rustc_typeck::check::method::probe::ProbeContext::pick
+  59: rustc_infer::infer::InferCtxt::probe
+  60: rustc_typeck::check::method::probe::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::probe_for_name
+  61: rustc_typeck::check::method::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::lookup_probe
+  62: rustc_typeck::check::method::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::lookup_method
+  63: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  64: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  65: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  66: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  67: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  68: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  69: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  70: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  71: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  72: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  73: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  74: rustc_typeck::check::check::check_fn
+  75: rustc_infer::infer::InferCtxtBuilder::enter
+  76: rustc_typeck::check::typeck
+  77: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  78: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  79: rustc_data_structures::stack::ensure_sufficient_stack
+  80: rustc_query_system::query::plumbing::force_query_with_job
+  81: rustc_query_system::query::plumbing::get_query_impl
+  82: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  83: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  84: rustc_typeck::check::typeck_item_bodies
+  85: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  86: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  87: rustc_data_structures::stack::ensure_sufficient_stack
+  88: rustc_query_system::query::plumbing::force_query_with_job
+  89: rustc_query_system::query::plumbing::get_query_impl
+  90: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck_item_bodies
+  91: rustc_session::utils::<impl rustc_session::session::Session>::time
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (42816d61e 2021-04-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [evaluate_obligation] evaluating trait selection obligation `style::cell::Cell<TopFg, TopBg>: style::Over<^1_0, ^1_1>`
+#1 [typeck] type-checking `style::cell::<impl at src/style/cell.rs:74:1: 91:2>::over`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `tender`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-trait-system, C-bug, E-needs-test, I-ICE, S-has-mcve, T-compiler, glacier

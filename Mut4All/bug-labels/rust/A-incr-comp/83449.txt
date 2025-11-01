@@ -1,0 +1,72 @@
+Issue Title:
+rustc bug · Issue #83449 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(decl_macro, proc_macro_hygiene)]
+
+extern crate rocket;
+extern crate reqwest;
+
+use rocket::http::RawStr;
+use rocket::*;
+
+
+use std::time::Duration;
+use reqwest::blocking::ClientBuilder;
+
+
+#[get("/")]
+fn index() -> &'static str {
+    "Navigate to http://localhost:8000/check/<GitHub username>"
+}
+
+#[get("/check/<user>")]
+fn check(user: &RawStr) -> Result<String, Box<dyn std::error::Error>> {
+    let request_url = format!("https://api.github.com/users/{}", user);
+    
+    let timeout = Duration::new(5, 0);
+    let client = ClientBuilder::new().timeout(timeout).build()?;
+    let response = client.head(&request_url).send()?;
+
+    if response.status().is_success() {
+        Ok(format!("{} is a user!", user))
+    } else {
+        Ok(format!("{} is not a user!", user))
+    }
+}
+
+fn main() {
+    rocket::ignite().mount("/", routes![index, check]).launch();
+}
+
+Bug Trace:
+Running `rustc --crate-name rocket_app --edition=2018 src\main.rs --error-format=json --json=diagnostic-rendered-ansi --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 -C metadata=b3bb01611ddf2544 --out-dir "C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps" -C "incremental=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\incremental" -L "dependency=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps" --extern "reqwest=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps\libreqwest-3e1f2b0cf47b967b.rlib" --extern "rocket=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps\librocket-64cb0b69549258b9.rlib" --extern "rocket_codegen=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps\rocket_codegen-1838ff5816fa3924.dll"`
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[f48f]::convert::From): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::marker::Sized>)), C:\Users\Secretaria Educacion\.rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\core\src\convert\mod.rs:365:20: 365:25 (#0)), (Binder(TraitPredicate(<T as std::marker::Sized>)), C:\Users\Secretaria Educacion\.rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\core\src\convert\mod.rs:365:16: 365:17 (#0)), (Binder(TraitPredicate(<Self as std::convert::From<T>>)), C:\Users\Secretaria Educacion\.rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\core\src\convert\mod.rs:365:1: 365:25 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b\compiler\rustc_query_system\src\query\plumbing.rs:593:5
+stack backtrace:
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::convert::From`
+#1 [typeck] type-checking `check`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `rocket-app`
+
+Caused by:
+  process didn't exit successfully: `rustc --crate-name rocket_app --edition=2018 src\main.rs --error-format=json --json=diagnostic-rendered-ansi --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 -C metadata=b3bb01611ddf2544 --out-dir "C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps" -C "incremental=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\incremental" -L "dependency=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps" --extern "reqwest=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps\libreqwest-3e1f2b0cf47b967b.rlib" --extern "rocket=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps\librocket-64cb0b69549258b9.rlib" --extern "rocket_codegen=C:\Users\Secretaria Educacion\Documents\Developer\rust-backend\rocket-app\target\debug\deps\rocket_codegen-1838ff5816fa3924.dll"` (exit code: 101)
+
+Bug Labels:
+A-incr-comp, C-bug, I-ICE, T-compiler

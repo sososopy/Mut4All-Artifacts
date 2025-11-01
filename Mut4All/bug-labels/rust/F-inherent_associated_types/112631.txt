@@ -1,0 +1,74 @@
+Issue Title:
+ice: `... was a subtype of ... during selection but now it is not` · Issue #112631 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(inherent_associated_types)]
+#![allow(incomplete_features)]
+
+struct Foo<T>(T);
+
+impl<'a> Foo<fn(&'a ())> {
+    type Assoc = &'a ();
+}
+
+fn bar(_: for<'a> fn(Foo<fn(Foo<fn(&'static ())>::Assoc)>::Assoc)) {}
+
+fn main() {}
+
+Bug Trace:
+error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+
+error: internal compiler error: Foo<fn(Foo<fn(&())>::Assoc)> was a subtype of Foo<fn(&())> during selection but now it is not
+  |
+  = note: delayed at compiler/rustc_trait_selection/src/traits/project.rs:1356:22
+             0: <rustc_errors::HandlerInner>::emit_diagnostic
+             1: <rustc_errors::Handler>::delay_span_bug::<rustc_span::span_encoding::Span, alloc::string::String>
+             2: rustc_trait_selection::traits::project::compute_inherent_assoc_ty_substs
+             3: <rustc_trait_selection::traits::wf::WfPredicates>::compute
+             4: rustc_trait_selection::traits::wf::obligations
+             5: rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::compute_implied_outlives_bounds_inner
+             6: <rustc_infer::infer::InferCtxtBuilder as rustc_trait_selection::infer::InferCtxtBuilderExt>::enter_canonical_trait_query::<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, alloc::vec::Vec<rustc_middle::traits::query::OutlivesBound>, rustc_traits::implied_outlives_bounds::implied_outlives_bounds::{closure#0}>
+             7: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::implied_outlives_bounds::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+             8: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>>, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+             9: rustc_query_impl::query_impl::implied_outlives_bounds::get_query_non_incr::__rust_end_short_backtrace
+            10: rustc_borrowck::type_check::free_region_relations::create
+            11: rustc_borrowck::type_check::type_check
+            12: rustc_borrowck::nll::compute_regions
+            13: rustc_borrowck::do_mir_borrowck
+            14: rustc_borrowck::mir_borrowck
+            15: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::mir_borrowck::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+            16: <rustc_query_impl::query_impl::mir_borrowck::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+            17: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+            18: rustc_query_impl::query_impl::mir_borrowck::get_query_non_incr::__rust_end_short_backtrace
+            19: rustc_data_structures::sync::par_for_each_in::<&[rustc_span::def_id::LocalDefId], <rustc_middle::hir::map::Map>::par_body_owners<rustc_interface::passes::analysis::{closure#1}::{closure#0}>::{closure#0}>
+            20: <rustc_session::session::Session>::time::<(), rustc_interface::passes::analysis::{closure#1}>
+            21: rustc_interface::passes::analysis
+            22: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 1]>>
+            23: <rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, ())>>::call_once
+            24: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+            25: rustc_query_impl::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+            26: <rustc_middle::ty::context::GlobalCtxt>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+            27: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+            28: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+            29: std::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+            30: <<std::thread::Builder>::spawn_unchecked_<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#1} as core::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+            31: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                       at /rustc/7b0eac438ace0ba305b4633328b00474fbbf5120/library/alloc/src/boxed.rs:1985:9
+            32: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                       at /rustc/7b0eac438ace0ba305b4633328b00474fbbf5120/library/alloc/src/boxed.rs:1985:9
+            33: std::sys::unix::thread::Thread::new::thread_start
+                       at /rustc/7b0eac438ace0ba305b4633328b00474fbbf5120/library/std/src/sys/unix/thread.rs:108:17
+            34: <unknown>
+            35: <unknown>
+
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.72.0-nightly (7b0eac438 2023-06-14) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+end of query stack
+error: aborting due to 2 previous errors; 3 warnings emitted
+
+Bug Labels:
+C-bug, F-inherent_associated_types, I-ICE, T-compiler, glacier, requires-incomplete-features, requires-nightly

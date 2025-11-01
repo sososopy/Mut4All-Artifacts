@@ -1,0 +1,49 @@
+Issue Title:
+Reordering type parameters bounds in trait vs impl causes ICE during trans · Issue #6334 · rust-lang/rust · GitHub
+
+Rust Code:
+
+trait A {
+    fn a(&self) -> uint;
+}
+
+trait B {
+    fn b(&self) -> uint;
+}
+
+trait C {
+    fn combine<T:A+B>(&self, t: &T) -> uint;
+}
+
+struct Foo;
+
+impl A for Foo {
+    fn a(&self) -> uint { 1 }
+}
+
+impl B for Foo {
+    fn b(&self) -> uint { 2 }
+}
+
+struct Bar;
+
+impl C for Bar {
+    // Note below: bounds in impl decl are in reverse order.
+    fn combine<T:B+A>(&self, t: &T) -> uint {
+        (t.a() * 100) + t.b()
+    }
+}
+
+fn use_c<S:C, T:B+A>(s: &S, t: &T) -> uint {
+    s.combine(t)
+}
+
+fn main() {
+    let foo = Foo;
+    let bar = Bar;
+    let r = use_c(&bar, &foo);
+    assert_eq!(r, 102);
+}
+
+Bug Labels:
+A-codegen, A-trait-system, I-ICE

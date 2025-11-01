@@ -1,0 +1,160 @@
+Issue Title:
+[ICE] Const generics + Const normalization + Specialization · Issue #72845 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+#![feature(specialization)]
+#![allow(incomplete_features)]
+
+trait Depth {
+    const C: usize;
+}
+trait Type {
+    type AT: Depth;
+}
+enum Predicate<const B: bool> {}
+
+trait Satisfied {}
+
+impl Satisfied for Predicate<true> {}
+
+
+trait Spec1 {}
+
+impl<T: Type> Spec1 for T where Predicate<{T::AT::C > 0}>: Satisfied {}
+
+trait Spec2: Spec1 {}
+
+impl<T: Type + Spec1> Spec2 for T where Predicate<{T::AT::C > 1}>: Satisfied {}
+
+trait Foo {
+    fn Bar();
+}
+
+impl<T: Spec1> Foo for T {
+    default fn Bar() {}
+}
+
+impl<T: Spec2> Foo for T {
+    fn Bar() {}
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:907:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1076
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1537
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:490
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  17: rustc_middle::ty::context::tls::with_opt
+  18: rustc_middle::util::bug::opt_span_bug_fmt
+  19: rustc_middle::util::bug::bug_fmt
+  20: rustc_middle::ty::context::GlobalCtxt::enter_local
+  21: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions
+  22: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::normalize_generic_arg_after_erasing_regions>::compute
+  23: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  24: rustc_data_structures::stack::ensure_sufficient_stack
+  25: rustc_query_system::query::plumbing::get_query_impl
+  26: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_const
+  27: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::subst_and_normalize_erasing_regions
+  28: rustc_mir::interpret::operand::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_operand
+  29: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+  30: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+  31: rustc_mir::const_eval::eval_queries::const_eval_raw_provider
+  32: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_raw>::compute
+  33: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  34: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+  35: rustc_query_system::query::plumbing::get_query_impl
+  36: rustc_mir::const_eval::eval_queries::const_eval_validated_provider
+  37: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_validated>::compute
+  38: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  39: rustc_data_structures::stack::ensure_sufficient_stack
+  40: rustc_query_system::query::plumbing::get_query_impl
+  41: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  42: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  43: rustc_infer::infer::InferCtxt::const_eval_resolve
+  44: <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation::{{closure}}
+  45: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  46: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  47: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_all_or_error
+  48: rustc_infer::infer::InferCtxt::save_and_restore_in_snapshot_flag
+  49: rustc_trait_selection::traits::specialize::fulfill_implication
+  50: rustc_middle::ty::context::GlobalCtxt::enter_local
+  51: rustc_trait_selection::traits::specialize::specializes
+  52: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::specializes>::compute
+  53: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  54: rustc_data_structures::stack::ensure_sufficient_stack
+  55: rustc_query_system::query::plumbing::get_query_impl
+  56: rustc_middle::ty::context::GlobalCtxt::enter_local
+  57: rustc_trait_selection::traits::coherence::overlapping_impls
+  58: <rustc_middle::traits::specialization_graph::Children as rustc_trait_selection::traits::specialize::specialization_graph::ChildrenExt>::insert
+  59: <rustc_middle::traits::specialization_graph::Graph as rustc_trait_selection::traits::specialize::specialization_graph::GraphExt>::insert
+  60: rustc_trait_selection::traits::specialize::specialization_graph_provider
+  61: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::specialization_graph_of>::compute
+  62: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  63: rustc_data_structures::stack::ensure_sufficient_stack
+  64: rustc_query_system::query::plumbing::get_query_impl
+  65: rustc_query_system::query::plumbing::ensure_query_impl
+  66: rustc_typeck::coherence::coherent_trait
+  67: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::coherent_trait>::compute
+  68: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  69: rustc_data_structures::stack::ensure_sufficient_stack
+  70: rustc_query_system::query::plumbing::get_query_impl
+  71: rustc_query_system::query::plumbing::ensure_query_impl
+  72: rustc_typeck::coherence::check_coherence
+  73: rustc_typeck::check_crate
+  74: rustc_interface::passes::analysis
+  75: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  76: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  77: rustc_query_system::query::plumbing::get_query_impl
+  78: rustc_middle::ty::context::tls::enter_global
+  79: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  80: rustc_ast::attr::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.0-nightly (74e804683 2020-05-30) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [normalize_generic_arg_after_erasing_regions] normalizing `<<T as Type>::AT as Depth>::C`
+#1 [const_eval_raw] const-evaluating `<T as Spec2>::{{constant}}#0`
+#2 [const_eval_validated] const-evaluating + checking `<T as Spec2>::{{constant}}#0`
+#3 [specializes] computing whether impls specialize one another
+#4 [specialization_graph_of] building specialization graph of trait `Foo`
+#5 [coherent_trait] coherence checking all impls of trait `Foo`
+#6 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-const-generics, C-bug, E-needs-test, F-generic_const_exprs, F-specialization, I-ICE, T-compiler, glacier, regression-from-stable-to-stable

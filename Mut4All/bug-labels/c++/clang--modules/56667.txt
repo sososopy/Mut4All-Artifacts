@@ -1,0 +1,141 @@
+Issue Title:
+[Modules] Clang crashes when instantiating struct in another module
+
+Source Code & Bug Trace:
+module;
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/unordered_map.hpp>
+export module msg;
+
+namespace ipc = boost::interprocess;
+
+export struct msg {
+    using manager = ipc::managed_shared_memory::segment_manager;
+
+    using string_type = ipc::basic_string<char, std::char_traits<char>, ipc::allocator<char, manager>>;
+
+    boost::unordered_map<int, int, boost::hash<int>, std::equal_to<string_type>> envadds;
+};
+
+module;
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/unordered_map.hpp>
+export module send;
+    
+import msg;
+
+void a() { msg a; }
+
+module;
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/unordered_map.hpp>
+export module msg;
+
+namespace ipc = boost::interprocess;
+
+export struct msg {
+    using manager = ipc::managed_shared_memory::segment_manager;
+
+    using string_type = ipc::basic_string<char, std::char_traits<char>, ipc::allocator<char, manager>>;
+
+    boost::unordered_map<int, int, boost::hash<int>, std::equal_to<string_type>> envadds;
+};
+
+void a() { msg a; }
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: clang++ -std=c++2b -stdlib=libc++ -fmodules -Xclang -emit-module-interface -c send.cc -o send.pcm -fmodule-file=msg=msg.pcm
+1.      <eof> parser at end of file
+2.      /usr/include/boost/unordered/unordered_map.hpp:86:7: instantiating function definition 'boost::unordered::unordered_map<int, int, boost::hash<int>,  #0 0x00007f16758d553a (/usr/lib/libLLVM-14.so+0xcd553a)
+ #1 0x00007f16758d2bcf llvm::sys::RunSignalHandlers() (/usr/lib/libLLVM-14.so+0xcd2bcf)
+ #2 0x00007f16758d2d1d (/usr/lib/libLLVM-14.so+0xcd2d1d)
+ #3 0x00007f167443e8e0 (/usr/lib/libc.so.6+0x3e8e0)
+ #4 0x00007f167cab3382 (/usr/lib/libclang-cpp.so.14+0xcb3382)
+ #5 0x00007f167cab3301 (/usr/lib/libclang-cpp.so.14+0xcb3301)
+ #6 0x00007f167cab388b (/usr/lib/libclang-cpp.so.14+0xcb388b)
+ #7 0x00007f167cab4072 (/usr/lib/libclang-cpp.so.14+0xcb4072)
+ #8 0x00007f167cab4a70 (/usr/lib/libclang-cpp.so.14+0xcb4a70)
+ #9 0x00007f167cab5914 (/usr/lib/libclang-cpp.so.14+0xcb5914)
+#10 0x00007f167cab7f19 clang::QualType::print(clang::Type const*, clang::Qualifiers, llvm::raw_ostream&, clang::PrintingPolicy const&, llvm::Twine const&, unsigned int) (/usr/lib/libclang-cpp.so.14+0xcb7f19)
+#11 0x00007f167ca83280 clang::TemplateArgument::print(clang::PrintingPolicy const&, llvm::raw_ostream&, bool) const (/usr/lib/libclang-cpp.so.14+0xc83280)
+#12 0x00007f167cab3c57 (/usr/lib/libclang-cpp.so.14+0xcb3c57)
+#13 0x00007f167cab4a70 (/usr/lib/libclang-cpp.so.14+0xcb4a70)
+#14 0x00007f167cab5914 (/usr/lib/libclang-cpp.so.14+0xcb5914)
+#15 0x00007f167cab7f19 clang::QualType::print(clang::Type const*, clang::Qualifiers, llvm::raw_ostream&, clang::PrintingPolicy const&, llvm::Twine const&, unsigned int) (/usr/lib/libclang-cpp.so.14+0xcb7f19)
+#16 0x00007f167ca83280 clang::TemplateArgument::print(clang::PrintingPolicy const&, llvm::raw_ostream&, bool) const (/usr/lib/libclang-cpp.so.14+0xc83280)
+#17 0x00007f167cab3c57 (/usr/lib/libclang-cpp.so.14+0xcb3c57)
+#18 0x00007f167c861775 clang::NamedDecl::printNestedNameSpecifier(llvm::raw_ostream&, clang::PrintingPolicy const&) const (/usr/lib/libclang-cpp.so.14+0xa61775)
+#19 0x00007f167c861d57 clang::NamedDecl::printQualifiedName(llvm::raw_ostream&, clang::PrintingPolicy const&) const (/usr/lib/libclang-cpp.so.14+0xa61d57)
+#20 0x00007f167c86262d clang::FunctionDecl::getNameForDiagnostic(llvm::raw_ostream&, clang::PrintingPolicy const&, bool) const (/usr/lib/libclang-cpp.so.14+0xa6262d)
+#21 0x00007f167c8559a3 clang::PrettyDeclStackTraceEntry::print(llvm::raw_ostream&) const (/usr/lib/libclang-cpp.so.14+0xa559a3)
+#22 0x00007f167581a2a7 (/usr/lib/libLLVM-14.so+0xc1a2a7)
+#23 0x00007f16758d2bcf llvm::sys::RunSignalHandlers() (/usr/lib/libLLVM-14.so+0xcd2bcf)
+#24 0x00007f16757bfac9 (/usr/lib/libLLVM-14.so+0xbbfac9)
+#25 0x00007f167443e8e0 (/usr/lib/libc.so.6+0x3e8e0)
+#26 0x00007f167cab3382 (/usr/lib/libclang-cpp.so.14+0xcb3382)
+#27 0x00007f167cab3301 (/usr/lib/libclang-cpp.so.14+0xcb3301)
+#28 0x00007f167cab388b (/usr/lib/libclang-cpp.so.14+0xcb388b)
+#29 0x00007f167cab4072 (/usr/lib/libclang-cpp.so.14+0xcb4072)
+#30 0x00007f167cab4a70 (/usr/lib/libclang-cpp.so.14+0xcb4a70)
+#31 0x00007f167cab5914 (/usr/lib/libclang-cpp.so.14+0xcb5914)
+#32 0x00007f167cab7f19 clang::QualType::print(clang::Type const*, clang::Qualifiers, llvm::raw_ostream&, clang::PrintingPolicy const&, llvm::Twine const&, unsigned int) (/usr/lib/libclang-cpp.so.14+0xcb7f19)
+#33 0x00007f167ca83280 clang::TemplateArgument::print(clang::PrintingPolicy const&, llvm::raw_ostream&, bool) const (/usr/lib/libclang-cpp.so.14+0xc83280)
+#34 0x00007f167cab3c57 (/usr/lib/libclang-cpp.so.14+0xcb3c57)
+#35 0x00007f167cab4a70 (/usr/lib/libclang-cpp.so.14+0xcb4a70)
+#36 0x00007f167cab5914 (/usr/lib/libclang-cpp.so.14+0xcb5914)
+#37 0x00007f167cab7f19 clang::QualType::print(clang::Type const*, clang::Qualifiers, llvm::raw_ostream&, clang::PrintingPolicy const&, llvm::Twine const&, unsigned int) (/usr/lib/libclang-cpp.so.14+0xcb7f19)
+#38 0x00007f167ca83280 clang::TemplateArgument::print(clang::PrintingPolicy const&, llvm::raw_ostream&, bool) const (/usr/lib/libclang-cpp.so.14+0xc83280)
+#39 0x00007f167cab3c57 (/usr/lib/libclang-cpp.so.14+0xcb3c57)
+#40 0x00007f167c861775 clang::NamedDecl::printNestedNameSpecifier(llvm::raw_ostream&, clang::PrintingPolicy const&) const (/usr/lib/libclang-cpp.so.14+0xa61775)
+#41 0x00007f167c861d57 clang::NamedDecl::printQualifiedName(llvm::raw_ostream&, clang::PrintingPolicy const&) const (/usr/lib/libclang-cpp.so.14+0xa61d57)
+#42 0x00007f167c8c24f0 clang::PredefinedExpr::ComputeName[abi:cxx11](clang::PredefinedExpr::IdentKind, clang::Decl const*) (/usr/lib/libclang-cpp.so.14+0xac24f0)
+#43 0x00007f167ced2d2a clang::Sema::BuildPredefinedExpr(clang::SourceLocation, clang::PredefinedExpr::IdentKind) (/usr/lib/libclang-cpp.so.14+0x10d2d2a)
+#44 0x00007f167d20a4ec (/usr/lib/libclang-cpp.so.14+0x140a4ec)
+#45 0x00007f167d2202b6 (/usr/lib/libclang-cpp.so.14+0x14202b6)
+#46 0x00007f167d20f70e (/usr/lib/libclang-cpp.so.14+0x140f70e)
+#47 0x00007f167d212401 (/usr/lib/libclang-cpp.so.14+0x1412401)
+#48 0x00007f167d210da2 (/usr/lib/libclang-cpp.so.14+0x1410da2)
+#49 0x00007f167d213e85 (/usr/lib/libclang-cpp.so.14+0x1413e85)
+#50 0x00007f167d22b201 (/usr/lib/libclang-cpp.so.14+0x142b201)
+#51 0x00007f167d22daaf (/usr/lib/libclang-cpp.so.14+0x142daaf)
+#52 0x00007f167d22b67c clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/usr/lib/libclang-cpp.so.14+0x142b67c)
+#53 0x00007f167d257635 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/usr/lib/libclang-cpp.so.14+0x1457635)
+#54 0x00007f167d257f13 clang::Sema::PerformPendingInstantiations(bool) (/usr/lib/libclang-cpp.so.14+0x1457f13)
+#55 0x00007f167d257722 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/usr/lib/libclang-cpp.so.14+0x1457722)
+#56 0x00007f167d257f13 clang::Sema::PerformPendingInstantiations(bool) (/usr/lib/libclang-cpp.so.14+0x1457f13)
+#57 0x00007f167d257722 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/usr/lib/libclang-cpp.so.14+0x1457722)
+#58 0x00007f167d257f13 clang::Sema::PerformPendingInstantiations(bool) (/usr/lib/libclang-cpp.so.14+0x1457f13)
+#59 0x00007f167d257722 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/usr/lib/libclang-cpp.so.14+0x1457722)
+#60 0x00007f167d257f13 clang::Sema::PerformPendingInstantiations(bool) (/usr/lib/libclang-cpp.so.14+0x1457f13)
+#61 0x00007f167ccd2551 (/usr/lib/libclang-cpp.so.14+0xed2551)
+#62 0x00007f167ccc5e55 clang::Sema::ActOnEndOfTranslationUnit() (/usr/lib/libclang-cpp.so.14+0xec5e55)
+#63 0x00007f167c68fc91 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/usr/lib/libclang-cpp.so.14+0x88fc91)
+#64 0x00007f167c5d9e38 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/libclang-cpp.so.14+0x7d9e38)
+#65 0x00007f167dbb3929 clang::FrontendAction::Execute() (/usr/lib/libclang-cpp.so.14+0x1db3929)
+#66 0x00007f167db52df7 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/libclang-cpp.so.14+0x1d52df7)
+#67 0x00007f167dc0a78a clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/libclang-cpp.so.14+0x1e0a78a)
+#68 0x000055b93c51b6f1 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/bin/clang-14+0x176f1)
+#69 0x000055b93c51d337 (/usr/bin/clang-14+0x19337)
+#70 0x00007f167d8aa699 (/usr/lib/libclang-cpp.so.14+0x1aaa699)
+#71 0x00007f16757bfb97 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/usr/lib/libLLVM-14.so+0xbbfb97)
+#72 0x00007f167d8b01ff (/usr/lib/libclang-cpp.so.14+0x1ab01ff)
+#73 0x00007f167d8c5903 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const (/usr/lib/libclang-cpp.so.14+0x1ac5903)
+#74 0x00007f167d8c5cd9 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const (/usr/lib/libclang-cpp.so.14+0x1ac5cd9)
+#75 0x00007f167d8ce012 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) (/usr/lib/libclang-cpp.so.14+0x1ace012)
+#76 0x000055b93c51246a main (/usr/bin/clang-14+0xe46a)
+#77 0x00007f1674429290 (/usr/lib/libc.so.6+0x29290)
+#78 0x00007f167442934a __libc_start_main (/usr/lib/libc.so.6+0x2934a)
+#79 0x000055b93c513655 _start (/usr/bin/clang-14+0xf655)
+./build.sh: line 4: 372918 Segmentation fault      (core dumped) clang++ -std=c++2b -stdlib=libc++ -fmodules -Xclang -emit-module-interface -c send.cc -o send.pcm -fmodule-file=msg=msg.pcm
+
+#!/bin/sh
+clang++ -std=c++2b -stdlib=libc++ -fmodules -Xclang -emit-module-interface -c msg.cc -o msg.pcm
+clang++ -std=c++2b -stdlib=libc++ -fmodules -Xclang -emit-module-interface -c send.cc -o send.pcm -fmodule-file=msg=msg.pcm
+
+Bug Labels:
+clang:frontend, clang:modules, crash

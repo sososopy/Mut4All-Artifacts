@@ -1,0 +1,126 @@
+Issue Title:
+ICE with impl Generator: self.has_escaping_regions · Issue #49537 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generators, generator_trait)]
+
+use std::ops::Generator;
+
+macro_rules! yield_from {
+    ($e:expr) => {{
+        let mut gen = $e;
+        loop {
+            match unsafe { ::std::ops::Generator::resume(&mut gen) } {
+                ::std::ops::GeneratorState::Yielded(e) => yield e,
+                ::std::ops::GeneratorState::Complete(e) => break e,
+            }
+        }
+    }};
+}
+
+pub fn unpinned<'a, T: 'a, F, G>(
+    data: &'a mut T,
+    f: F,
+) -> impl Generator<Yield = G::Yield, Return = G::Return> + 'a
+where
+    F: FnOnce(&'a mut T) -> G + 'a,
+    G: Generator + 'a,
+{
+    move || yield_from!(f(data))
+}
+
+#[derive(Debug)]
+struct Foo;
+
+impl Foo {
+    pub fn foo(&mut self) {
+        println!("{:?} at {:?}", *self, &*self as *const Self);
+    }
+}
+
+fn bar<'a>(foo: &'a mut Foo) -> impl Generator<Yield = (), Return = ()> + 'a {
+    move || {
+        let inner = unpinned(foo, |foo| {
+            move || {
+                foo.foo();
+                yield ();
+                foo.foo();
+            }
+        });
+        yield_from!(inner)
+    }
+}
+
+fn main() {
+    let mut foo = Foo;
+    let mut baz = bar(&mut foo);
+    println!("{:?}", unsafe { baz.resume() });
+    println!("{:?}", unsafe { baz.resume() });
+}
+
+Bug Trace:
+#![feature(pin, generators, generator_trait, arbitrary_self_types)]
+
+use std::mem::Pin;
+use std::ops::Generator;
+
+macro_rules! yield_from {
+    ($e:expr) => ({
+        let mut gen = $e;
+        loop {
+            let gen = &mut gen;
+            // The above is to force a borrow across yield point to ensure we're
+            // in an immovable generator, just in case $e is an immovable
+            // generator (hopefully we can detect this in the future somehow).
+            match unsafe { ::std::ops::Generator::resume(gen) } {
+                ::std::ops::GeneratorState::Yielded(e) => yield e,
+                ::std::ops::GeneratorState::Complete(e) => break e,
+            }
+        }
+    })
+}
+
+pub fn pinned<'a, T: 'a, F, G>(
+    data: T,
+    f: F,
+) -> impl Generator<Yield = G::Yield, Return = G::Return> + 'a
+where
+    F: FnOnce(Pin<'a, T>) -> G + 'a,
+    G: Generator + 'a,
+{
+    static move || {
+        let data = data;
+        yield_from!(f(unsafe { Pin::new_unchecked(&mut data) }))
+    }
+}
+
+#[derive(Debug)]
+struct Foo;
+
+impl Foo {
+    pub fn foo(self: Pin<Self>) {
+        println!("{:?} at {:?}", *self, &*self as *const Self);
+    }
+}
+
+fn bar() -> impl Generator<Yield = (), Return = ()> {
+    static move || {
+        let inner = pinned(Foo, |foo| {
+            static move || {
+                foo.foo();
+                yield ();
+                foo.foo();
+            }
+        });
+        yield_from!(inner)
+    }
+}
+
+fn main() {
+    let mut baz = bar();
+    println!("{:?}", unsafe { baz.resume() });
+    println!("{:?}", unsafe { baz.resume() });
+}
+
+Bug Labels:
+A-coroutines, C-bug, I-ICE, T-compiler

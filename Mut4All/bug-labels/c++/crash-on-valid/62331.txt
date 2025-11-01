@@ -1,0 +1,69 @@
+Issue Title:
+[clang++] crash when compiling templated method in templated class
+
+Source Code & Bug Trace:
+// file essence.cpp
+template <typename>
+struct SomeImpl {};
+
+template <template <typename> class T1>
+class A1 {
+   public:
+    template <typename T2>
+    void b(T1<T2> = T1<T2>());
+};
+
+template <>
+template <typename T2>
+void A1<SomeImpl>::b(SomeImpl<T2>) {}
+
+void bug1() {
+    A1<SomeImpl> a;
+    a.b<int>();
+    //When providing an argument the compiler does not crash.
+    //a.b<int>(SomeImpl<int>());
+}
+
+int main() {}
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /usr/lib/llvm-17/bin/clang -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-ll
+vm-verifier -discard-value-names -main-file-name essence.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -
+fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fcoverage-compilation-dir=/home/user/Development/tmp -resource-dir /usr/lib/llvm-17/lib/clang/17 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12 -internal-i
+system /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../..
+/include/c++/12/backward -internal-isystem /usr/lib/llvm-17/lib/clang/17/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib/gcc/x86_
+64-linux-gnu/12/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-extern
+c-isystem /usr/include -fdeprecated-macro -fdebug-compilation-dir=/home/user/Development/tmp -ferror-limit 19 -fgnuc-version=4.2.1 -fcxx-exceptions -f
+exceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/essence-6e6535.o -x c++ essence.cpp
+1.	essence.cpp:18:14: current parser token ')'
+2.	essence.cpp:16:13: parsing function body 'bug1'
+3.	essence.cpp:16:13: in compound statement ('{}')
+#0 0x00007fb09e422ac6 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-17/bin/../lib/libLLVM-17.so.1+0xc22ac6)
+#1 0x00007fb09e420c60 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-17/bin/../lib/libLLVM-17.so.1+0xc20c60)
+#2 0x00007fb09e42315b (/usr/lib/llvm-17/bin/../lib/libLLVM-17.so.1+0xc2315b)
+#3 0x00007fb09d042520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+clang++-17: error: unable to execute command: Segmentation fault (core dumped)
+clang++-17: error: clang frontend command failed due to signal (use -v to see invocation)
+Ubuntu clang version 17.0.0 (++20230417095441+43ac269bdd00-1~exp1~20230417215605.872)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang++-17: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++-17: note: diagnostic msg: /tmp/essence-99723d.cpp
+clang++-17: note: diagnostic msg: /tmp/essence-99723d.sh
+clang++-17: note: diagnostic msg:
+
+********************
+
+# Crash reproducer for Ubuntu clang version 17.0.0 (++20230417095441+43ac269bdd00-1~exp1~20230417215605.872)
+# Driver args: "--driver-mode=g++" "-c" "essence.cpp" "-emit-llvm" "-Xclang" "-disable-llvm-passes"
+# Original command:  "/usr/lib/llvm-17/bin/clang" "-cc1" "-triple" "x86_64-pc-linux-gnu" "-emit-llvm-bc" "-emit-llvm-uselists" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "essence.cpp" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/home/user/Development/tmp" "-resource-dir" "/usr/lib/llvm-17/lib/clang/17" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward" "-internal-isystem" "/usr/lib/llvm-17/lib/clang/17/include" "-internal-isystem" "/usr/local/include" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../x86_64-linux-gnu/include" "-internal-externc-isystem" "/usr/include/x86_64-linux-gnu" "-internal-externc-isystem" "/include" "-internal-externc-isystem" "/usr/include" "-fdeprecated-macro" "-fdebug-compilation-dir=/home/user/Development/tmp" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-disable-llvm-passes" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-o" "essence.bc" "-x" "c++" "essence.cpp"
+ "/usr/lib/llvm-17/bin/clang" "-cc1" "-triple" "x86_64-pc-linux-gnu" "-emit-llvm-bc" "-emit-llvm-uselists" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "essence.cpp" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/home/user/Development/tmp" "-fdeprecated-macro" "-fdebug-compilation-dir=/home/user/Development/tmp" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-disable-llvm-passes" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-x" "c++" "essence-5c4631.cpp"
+
+Bug Labels:
+c++, clang:frontend, confirmed, crash-on-valid

@@ -1,0 +1,48 @@
+Issue Title:
+codegen bug with a slightly modified run-pass/trait-generic.rs · Issue #7355 · rust-lang/rust · GitHub
+
+Rust Code:
+
+use std::int;
+
+trait to_str {
+    fn to_str(&self) -> ~str;
+}
+impl to_str for int {
+    fn to_str(&self) -> ~str { int::to_str(*self) }
+}
+impl to_str for ~str {
+    fn to_str(&self) -> ~str { self.clone() }
+}
+impl to_str for () {
+    fn to_str(&self) -> ~str { ~"()" }
+}
+
+trait map<T> {
+    fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U];
+}
+impl<T> map<T> for ~[T] {
+    fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
+        let mut r = ~[];
+        /*for std::vec::each(*self) |x| { r += ~[f(x)]; }*/
+        for self.iter().advance |x| { r += ~[f(x)]; }
+        r
+    }
+}
+
+fn foo<U, T: map<U>>(x: T) -> ~[~str] {
+    x.map(|_e| ~"hi" )
+}
+fn bar<U:to_str,T:map<U>>(x: T) -> ~[~str] {
+    x.map(|_e| _e.to_str() )
+}
+
+pub fn main() {
+    assert_eq!(foo(~[1]), ~[~"hi"]);
+    assert_eq!(bar::<int, ~[int]>(~[4, 5]), ~[~"4", ~"5"]);
+    assert_eq!(bar::<~str, ~[~str]>(~[~"x", ~"y"]), ~[~"x", ~"y"]);
+    assert_eq!(bar::<(), ~[()]>(~[()]), ~[~"()"]);
+}
+
+Bug Labels:
+A-codegen, I-ICE

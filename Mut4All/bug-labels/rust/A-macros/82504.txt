@@ -1,0 +1,50 @@
+Issue Title:
+ICE when path-exporting and using a `macro`-generated `macro_rules!` macro · Issue #82504 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(decl_macro, trace_macros)]
+
+// trace_macros!(true); /* to debug: the expansion works successfully */
+
+module::recurse! { 1 1 1 }
+
+pub mod module {
+    pub(super) use private::recurse;
+
+    mod private {
+        macro __helper__ ([$dol:tt] $exported_name:ident) {
+            macro_rules! $exported_name {(
+                $dol(1 $dol($rest:tt)*)?
+            ) => (
+                $dol(
+                //  the idea is for this to have def-site hygiene here
+                //  vvvv
+                    self::$exported_name! { $dol($rest)* }
+                )?
+            )} pub(crate) use $exported_name;
+        }
+        __helper__! { [$] recurse }
+    }
+}
+
+Bug Trace:
+stack backtrace:
+   …
+   5:        0x1020a36a8 - rustc_driver::report_ice::hcdbc085c8141570d
+   …
+  10:        0x1093532ab - std::panicking::begin_panic_fmt::hba7ec5d426758edb
+  11:        0x10600ee16 - rustc_errors::HandlerInner::flush_delayed::h161e3beabf00546a
+  12:        0x10600b10b - <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop::hde0ac14a81f422db
+  13:        0x1020ab07d - core::ptr::drop_in_place<rustc_session::parse::ParseSess>::h0cb46aa2558b566b
+  14:        0x1020afda8 - <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop::h5a4e1115e34fca86
+  15:        0x102110835 - core::ptr::drop_in_place<rustc_interface::interface::Compiler>::hbf9fc4b317f8829b
+  16:        0x10210cd08 - rustc_span::with_source_map::hdc8b53d5836d0f69
+  17:        0x1020ba394 - rustc_interface::interface::create_compiler_and_run::h2e5f4f156384205a
+  18:        0x1020b2db9 - scoped_tls::ScopedKey<T>::set::hb5d8ea6cc29ec656
+  19:        0x1020b4101 - std::sys_common::backtrace::__rust_begin_short_backtrace::h316820ab0a243dd5
+  20:        0x1020d85e9 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h0dcd073e2532982e
+  21:        0x1092d897d - std::sys::unix::thread::Thread::new::thread_start::h4da435b3f287e7dd
+  22:     0x7fff20323950 - __pthread_start
+
+Bug Labels:
+A-macros, C-bug, E-needs-test, F-decl_macro, I-ICE, T-compiler, glacier

@@ -1,0 +1,92 @@
+Issue Title:
+Explicit object parameter parsing bug in clang++
+
+Source Code & Bug Trace:
+#include <string>
+
+struct Thing {
+    template<typename Self, typename ... Args>
+    Thing(this Self&& self, Args&& ... args) { }
+};
+
+class Server : public Thing {
+    std::string name_;
+};
+
+clang version 18.0.0 (https://github.com/llvm/llvm-project.git 7a3db658d923f0f0119c77e3fe849c5650c83601)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /opt/compiler-explorer/clang-trunk/bin
+Found candidate GCC installation: /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0
+Selected GCC installation: /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0
+Candidate multilib: .;@m64
+Candidate multilib: 32;@m32
+Candidate multilib: x32;@mx32
+Selected multilib: .;@m64
+ (in-process)
+ "/opt/compiler-explorer/clang-trunk-20231023/bin/clang-18" -cc1 -triple x86_64-unknown-linux-gnu -S -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name example.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/app -v -fcoverage-compilation-dir=/app -resource-dir /opt/compiler-explorer/clang-trunk-20231023/lib/clang/18 -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../include/c++/14.0.0 -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../include/c++/14.0.0/x86_64-linux-gnu -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../include/c++/14.0.0/backward -internal-isystem /opt/compiler-explorer/clang-trunk-20231023/lib/clang/18/include -internal-isystem /usr/local/include -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++23 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -fcolor-diagnostics -mllvm --x86-asm-syntax=intel -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /app/output.s -x c++ <source>
+clang -cc1 version 18.0.0 based upon LLVM 18.0.0git default target x86_64-unknown-linux-gnu
+ignoring nonexistent directory "/opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../x86_64-linux-gnu/include"
+ignoring nonexistent directory "/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../include/c++/14.0.0
+ /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../include/c++/14.0.0/x86_64-linux-gnu
+ /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/14.0.0/../../../../include/c++/14.0.0/backward
+ /opt/compiler-explorer/clang-trunk-20231023/lib/clang/18/include
+ /usr/local/include
+ /usr/include/x86_64-linux-gnu
+ /usr/include
+End of search list.
+<source>:5:11: error: an explicit object parameter cannot appear in a constructor
+    5 |     Thing(this Self&& self, Args&& ... args) { }
+      |     ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++23 -v <source>
+1.	<source>:10:2: current parser token ';'
+2.	<source>:8:1: parsing struct/union/class body 'Server'
+ #0 0x0000000003445898 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3445898)
+ #1 0x00000000034439c4 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x34439c4)
+ #2 0x00000000033918b8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f6debf83420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x00000000064fbbb1 DeduceTemplateArgumentsFromCallArgument(clang::Sema&, clang::TemplateParameterList*, unsigned int, clang::QualType, clang::QualType, clang::Expr::Classification, clang::Expr*, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg>&, bool, unsigned int, unsigned int, clang::TemplateSpecCandidateSet*) SemaTemplateDeduction.cpp:0:0
+ #5 0x0000000006522acb clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6522acb)
+ #6 0x0000000006340540 clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind, clang::OverloadCandidateParamOrder, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6340540)
+ #7 0x0000000006209198 clang::Sema::LookupSpecialMember(clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, bool, bool, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6209198)
+ #8 0x0000000005ef00ea specialMemberIsConstexpr(clang::Sema&, clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, unsigned int, bool, clang::CXXConstructorDecl*, clang::Sema::InheritedConstructorInfo*) SemaDeclCXX.cpp:0:0
+ #9 0x0000000005ef04c6 defaultedSpecialMemberIsConstexpr(clang::Sema&, clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, clang::CXXConstructorDecl*, clang::Sema::InheritedConstructorInfo*) SemaDeclCXX.cpp:0:0
+#10 0x0000000005ef714c clang::Sema::DeclareImplicitCopyConstructor(clang::CXXRecordDecl*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5ef714c)
+#11 0x0000000005ef8cf3 clang::Sema::AddImplicitlyDeclaredMembersToClass(clang::CXXRecordDecl*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5ef8cf3)
+#12 0x0000000005da65a0 clang::Sema::ActOnFields(clang::Scope*, clang::SourceLocation, clang::Decl*, llvm::ArrayRef<clang::Decl*>, clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributesView const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5da65a0)
+#13 0x0000000005efcdb7 clang::Sema::ActOnFinishCXXMemberSpecification(clang::Scope*, clang::SourceLocation, clang::Decl*, clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributesView const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5efcdb7)
+#14 0x0000000005abfc40 clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributes&, unsigned int, clang::Decl*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5abfc40)
+#15 0x0000000005ac1e19 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5ac1e19)
+#16 0x0000000005a91d64 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a91d64)
+#17 0x0000000005a6418d clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a6418d)
+#18 0x0000000005a6503f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.0) Parser.cpp:0:0
+#19 0x0000000005a6de12 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a6de12)
+#20 0x0000000005a6efd7 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a6efd7)
+#21 0x0000000005a5e64a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a5e64a)
+#22 0x000000000464dc3d clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x464dc3d)
+#23 0x0000000003eef031 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3eef031)
+#24 0x0000000003e6dd0b clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3e6dd0b)
+#25 0x0000000003fce953 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3fce953)
+#26 0x0000000000bff6e6 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xbff6e6)
+#27 0x0000000000bf816d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#28 0x0000000003cbb329 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#29 0x0000000003391ce3 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3391ce3)
+#30 0x0000000003cbb549 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#31 0x0000000003c834f7 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3c834f7)
+#32 0x0000000003c83ead clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3c83ead)
+#33 0x0000000003c8dc1c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3c8dc1c)
+#34 0x0000000000bfcb01 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xbfcb01)
+#35 0x0000000000af8341 main (/opt/compiler-explorer/clang-trunk/bin/clang+++0xaf8341)
+#36 0x00007f6deba27083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#37 0x0000000000bf796e _start (/opt/compiler-explorer/clang-trunk/bin/clang+++0xbf796e)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+
+Bug Labels:
+clang:frontend, crash

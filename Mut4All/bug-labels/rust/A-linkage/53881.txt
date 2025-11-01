@@ -1,0 +1,54 @@
+Issue Title:
+Compiler panick when linking against static library on windows with static-nobundle · Issue #53881 · rust-lang/rust · GitHub
+
+Rust Code:
+extern crate bindgen;
+extern crate env_logger;
+
+use std::env;
+use std::path;
+
+fn main() {
+    env_logger::init().unwrap();
+    let v8_libs_dir = env::var("V8_LIBS").unwrap();
+    let libs = ["inspector", "icui18n", "icuuc", "v8_base", "v8_libbase", "v8_external_snapshot", "v8_libplatform", "v8_libsampler"];
+    for l in &libs {
+        println!("cargo:rustc-link-lib=static-nobundle={}.lib", l);
+    }
+    println!("cargo:rustc-link-search={}", v8_libs_dir);
+    let bindings = bindgen::Builder::default()
+        .header("src/wrapper.hpp")
+        .rust_target(bindgen::RustTarget::Nightly)
+        .clang_arg("--std=c++14")
+        .whitelist_type("v8::.*")
+        .whitelist_type("rust_v8_impls::.*")
+        .whitelist_function("v8::.*")
+        .whitelist_function("rust_v8_impls::.*")
+        .whitelist_var("v8::.*")
+        .whitelist_var("rust_v8_impls::.*")
+        // Because there are some layout problems with these
+        .opaque_type("std::.*")
+        // For some reason bindgen output is corrupt (syntax errors) for these types
+        // .blacklist_type("v8::JitCodeEvent__bindgen.*")
+        // .blacklist_type(".*DisallowJavascriptExecutionScope.*")
+        // .blacklist_type(".*SuppressMicrotaskExecutionScope.*")
+        // We want to re-structure the modules a bit and hide the "root" module
+        .raw_line("#[doc(hidden)]")
+        .generate_inline_functions(true)
+        .enable_cxx_namespaces()
+        .derive_debug(true)
+        .derive_hash(true)
+        .derive_eq(true)
+        .derive_partialeq(true)
+        .generate()
+        .expect("unable to generate v8 bindings");
+
+    let out_path = path::PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR env var not set"));
+
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("unable to write bindings file");
+}
+
+Bug Labels:
+A-linkage, C-bug, E-needs-mcve, I-ICE, P-low, T-compiler

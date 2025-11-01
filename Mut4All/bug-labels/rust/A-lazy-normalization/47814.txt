@@ -1,0 +1,89 @@
+Issue Title:
+Rust compiler panics when trying to reference impl-ed constants with Self · Issue #47814 · rust-lang/rust · GitHub
+
+Rust Code:
+struct ArpIPv4<'a> {
+    s: &'a u8
+}
+
+impl<'a> ArpIPv4<'a> {
+    const LENGTH: usize = 20;
+
+    pub fn to_buffer() -> [u8; Self::LENGTH] {
+        unimplemented!()
+    }
+}
+Bug Trace:
+[nix-shell:~/Code/nerd-stack]$ RUST_BACKTRACE=1 cargo run --verbose                                                                
+       Fresh libc v0.2.36                                                                                                    
+   Compiling nerd-stack v0.1.0 (file:///home/richard/Code/nerd-stack)                                                           
+     Running `rustc --crate-name nerd_stack src/lib.rs --crate-type lib --emit=dep-info,link -C debuginfo=2 -C metadata=320d9acf78f2e38b -C extra-filename=-320d9acf78f2e38b --out-dir /home/richard/Code/nerd-stack
+/target/debug/deps -C incremental=/home/richard/Code/nerd-stack/target/debug/incremental -L dependency=/home/richard/Code/nerd-stack/target/debug/deps --extern libc=/home/richard/Code/nerd-stack/target/debug/deps
+/liblibc-1d53503271082800.rlib`        
+warning: unused imports: `ipv4_to_string`, `mac_to_string`      
+ --> src/protocols/arp.rs:1:26               
+  |                                        
+1 | use address::{MAC, IPv4, mac_to_string, ipv4_to_string};                         
+  |                          ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+  |                                        
+  = note: #[warn(unused_imports)] on by default
+                                             
+error: internal compiler error: unexpected panic
+                                                  
+note: the compiler unexpectedly panicked. this is a bug.
+                                
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+                                      
+note: rustc 1.24.0-nightly (9389e23a8 2017-12-31) running on x86_64-unknown-linux-gnu
+          
+note: run with `RUST_BACKTRACE=1` for a backtrace                                                                                                                                                                                                                                                                                                                                                                                       thread 'rustc' panicked at 'assertion failed: `(left == right)`        
+  left: `Some(NodeId(820))`,
+ right: `None`: free_scope: DefId(0/0:83 ~ nerd_stack[3074]::protocols[0]::arp[0]::{{impl}}[2]) not recognized by the region scope tree for None / Some(DefId(0/0:86 ~ nerd_stack[3074]::protocols[0]::arp[0]::{{imp
+l}}[2]::to_buffer[0]))', /checkout/src/librustc/middle/region.rs:729:13
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+stack backtrace:
+   0: std::sys::unix::backtrace::tracing::imp::unwind_backtrace
+   1: std::sys_common::backtrace::print
+   2: std::panicking::default_hook::{{closure}}
+   3: std::panicking::default_hook
+   4: std::panicking::rust_panic_with_hook
+   5: std::panicking::begin_panic
+   6: std::panicking::begin_panic_fmt
+   7: rustc::middle::region::ScopeTree::early_free_scope
+   8: rustc::middle::free_region::RegionRelations::is_subregion_of
+   9: rustc::infer::lexical_region_resolve::resolve
+  10: rustc::infer::InferCtxt::resolve_regions_and_report_errors_inner
+  11: rustc_typeck::check::regionck::<impl rustc_typeck::check::FnCtxt<'a, 'gcx, 'tcx>>::regionck_expr
+  12: <std::thread::local::LocalKey<T>>::with
+  13: rustc::infer::InferCtxtBuilder::enter
+  14: rustc_typeck::check::typeck_tables_of
+  15: rustc::ty::maps::<impl rustc::ty::maps::queries::typeck_tables_of<'tcx>>::compute_result
+  16: rustc::dep_graph::graph::DepGraph::with_task_impl
+  17: rustc_errors::Handler::track_diagnostics
+  18: rustc::ty::maps::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::cycle_check
+  19: rustc::ty::maps::<impl rustc::ty::maps::queries::typeck_tables_of<'tcx>>::force
+  20: rustc::ty::maps::plumbing::force_from_dep_node
+  21: rustc::dep_graph::graph::DepGraph::try_mark_green
+  22: rustc::ty::maps::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::try_mark_green_and_read
+  23: rustc::ty::maps::<impl rustc::ty::maps::queries::const_eval<'tcx>>::try_get
+  24: rustc::ty::maps::TyCtxtAt::const_eval
+  25: <rustc::traits::project::AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> as rustc::ty::fold::TypeFolder<'gcx, 'tcx>>::fold_const
+  26: rustc::ty::structural_impls::<impl rustc::ty::fold::TypeFoldable<'tcx> for &'tcx rustc::ty::TyS<'tcx>>::super_fold_with
+  27: <rustc::traits::project::AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> as rustc::ty::fold::TypeFolder<'gcx, 'tcx>>::fold_ty
+  28: <rustc_data_structures::accumulate_vec::AccumulateVec<A> as core::iter::traits::FromIterator<<A as rustc_data_structures::array_vec::Array>::Element>>::from_iter
+  29: rustc::ty::fold::TypeFoldable::fold_with
+  30: rustc::traits::project::normalize
+  31: rustc_typeck::check::FnCtxt::normalize_associated_types_in
+  32: <std::thread::local::LocalKey<T>>::with
+  33: rustc::infer::InferCtxtBuilder::enter
+  34: rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor::check_associated_item
+  35: rustc::hir::Crate::visit_all_item_likes
+  36: rustc::session::Session::track_errors
+  37: rustc_typeck::check_crate
+  38: <std::thread::local::LocalKey<T>>::with
+  39: <std::thread::local::LocalKey<T>>::with
+  40: rustc::ty::context::TyCtxt::create_and_enter
+  41: rustc_driver::driver::compile_input
+  42: rustc_driver::run_compiler
+Bug Labels:
+A-lazy-normalization, C-bug, E-needs-test, I-ICE, T-compiler, glacier

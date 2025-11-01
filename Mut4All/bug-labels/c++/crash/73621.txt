@@ -1,0 +1,78 @@
+Issue Title:
+Assertion failure in C++17 mode in  TreeTransform<Derived>::TransformExceptionSpec
+
+Source Code & Bug Trace:
+/root/llvm-project/clang/lib/Sema/TreeTransform.h:6168:
+  bool clang::TreeTransform<Derived>::TransformExceptionSpec(clang::SourceLocation, clang::FunctionProtoType::ExceptionSpecInfo&, llvm::SmallVectorImpl<clang::QualType>&, bool&)
+  [with Derived = {anonymous}::SubstituteDeducedTypeTransform]:
+  Assertion `ESI.Type != EST_Uninstantiated && ESI.Type != EST_Unevaluated' failed.
+
+
+/root/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:2667:
+  bool clang::Sema::SubstExceptionSpec(clang::SourceLocation, clang::FunctionProtoType::ExceptionSpecInfo&, llvm::SmallVectorImpl<clang::QualType>&, const clang::MultiLevelTemplateArgumentList&):
+  Assertion `ESI.Type != EST_Uninstantiated' failed.
+
+
+  template <class> struct c {
+    template <class> void bar() noexcept(0);
+  };
+
+  void (c<int>::*tmp)() = &c<int>::bar<int>;
+
+/root/llvm-project/clang/lib/Sema/TreeTransform.h:6187:
+  bool clang::TreeTransform<Derived>::TransformExceptionSpec(clang::SourceLocation, clang::FunctionProtoType::ExceptionSpecInfo&, llvm::SmallVectorImpl<clang::QualType>&, bool&)
+  [with Derived = {anonymous}::SubstituteDeducedTypeTransform]:
+  Assertion `ESI.Type != EST_Uninstantiated && ESI.Type != EST_Unevaluated' failed.
+
+
+
+  namespace a {
+  inline namespace c {
+  template <class e> constexpr bool f = __is_member_object_pointer(e);
+  struct g {
+    template <class h, class... i>
+    static auto ae(h p1, i... j) -> decltype(p1(j...));
+  };
+  template <class h, class k = h, bool = f<k>> struct l;
+  template <class h, class k> struct l<h, k, false> : g {};
+  template <class h, class m, class... r>
+  auto ag(h p1, m j, r... o) -> decltype(l<h>::ae(p1, j, o...));
+  struct ai {
+    template <class m, class n> auto operator()(m p1, n j) -> decltype(p1 > j);
+  };
+  template <class e, e...> struct q {};
+  template <class e, e as> using at = __make_integer_seq<q, e, as>;
+  template <long... au> using av = q<unsigned long, au...>;
+  template <long as> using aw = at<unsigned long, as>;
+  template <class... i> using ax = aw<sizeof...(i)>;
+  int bg;
+  struct t {
+    template <class bo, class... p>
+    static auto ae(bo p1, p... j) -> decltype(ag(p1, j...));
+  };
+  template <class bq, unsigned long... br, class bs, class bt, class bl>
+  auto bu(bq, av<br...>, bs o, bt, bl) -> decltype(bq ::ae(o, br...));
+  template <class, class, class... i> class bw {
+    using bx = ax<i...>;
+    int ca;
+
+  public:
+    template <class...> auto operator()() noexcept(noexcept(ca)) {
+      ai s;
+      return bu(t{}, bx{}, s, ca, bg);
+    }
+  };
+  template <class bo, class... i> bw<int, bo, i...> bind(bo, i...);
+  } // namespace c
+  } // namespace a
+  struct F {
+    template <typename b,
+              typename = decltype(static_cast<bool (b::*)()>(&b::operator()))>
+    F(b *);
+  };
+  int cb;
+  a::bw cc = bind(a::ai(), 0, cb);
+  F d() { return &cc; }
+
+Bug Labels:
+clang:frontend, crash

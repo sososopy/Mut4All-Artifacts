@@ -1,0 +1,381 @@
+Issue Title:
+Clang frontend segfaults during CTAD with nested initializer_lists
+
+Source Code & Bug Trace:
+$ clang++ --version
+clang version 16.0.0
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+
+$ g++ --version
+g++ (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0
+Copyright (C) 2019 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+#include <cstddef>
+#include <initializer_list>
+
+template <typename T, typename... Ts>
+struct InferRepeatedTypeHelper {
+  // In the interest of keeping this example simple, just assume every typename
+  // in the pack matches the first one.
+  using Result = T;
+};
+
+template <typename... Ts>
+using InferRepeatedType = typename InferRepeatedTypeHelper<Ts...>::Result;
+
+template <typename T, std::size_t>
+class Foo {
+ public:
+  explicit Foo(std::initializer_list<std::initializer_list<T>> list_of_lists) {}
+};
+
+// This deduction guide unpacks the top-level initializer_list to count its
+// elements, uses the result for CTAD, and then lets the real constructor
+// operate on the original, top-level initializer_list while knowing its size.
+// Note: Checking sizeof...(Ts) instead of sizeof...(init_lists) in the
+// deduction guide prevents the crash.
+template <typename... Ts>
+explicit Foo(std::initializer_list<Ts>... lists)
+    -> Foo<InferRepeatedType<Ts...>, sizeof...(lists)>;
+
+int main(int argc, char* argv[]) {
+  Foo foo{{0, 1, 2}, {3, 4, 5}, {6, 7, 8}};
+  return 0;
+}
+
+#include <cstddef>
+#include <initializer_list>
+
+template <typename T, std::size_t>
+class Foo {
+ public:
+  Foo(std::initializer_list<std::initializer_list<T>>) {}
+};
+
+// Note: Checking sizeof...(Ts) instead of sizeof...(init_lists) in the
+// deduction guide prevents the crash.
+template <typename... Ts>
+Foo(std::initializer_list<Ts>... init_lists) -> Foo<int, sizeof...(init_lists)>;
+
+int main() {
+  Foo{{2}};
+  return 0;
+}
+
+# 1 "failing_example_reduced.cc"
+# 1 "<built-in>" 1
+# 1 "<built-in>" 3
+# 447 "<built-in>" 3
+# 1 "<command line>" 1
+# 1 "<built-in>" 2
+# 1 "failing_example_reduced.cc" 2
+# 1 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/cstddef" 1 3
+# 43 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/cstddef" 3
+
+
+
+
+
+
+# 1 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 1 3
+# 256 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 3
+namespace std
+{
+  typedef long unsigned int size_t;
+  typedef long int ptrdiff_t;
+
+
+  typedef decltype(nullptr) nullptr_t;
+
+}
+# 278 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 3
+namespace std
+{
+  inline namespace __cxx11 __attribute__((__abi_tag__ ("cxx11"))) { }
+}
+namespace __gnu_cxx
+{
+  inline namespace __cxx11 __attribute__((__abi_tag__ ("cxx11"))) { }
+}
+# 528 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 3
+# 1 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/os_defines.h" 1 3
+# 39 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/os_defines.h" 3
+# 1 "/usr/include/features.h" 1 3 4
+# 439 "/usr/include/features.h" 3 4
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+# 440 "/usr/include/features.h" 2 3 4
+# 461 "/usr/include/features.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 1 3 4
+# 452 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/wordsize.h" 1 3 4
+# 453 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 2 3 4
+# 1 "/usr/include/x86_64-linux-gnu/bits/long-double.h" 1 3 4
+# 454 "/usr/include/x86_64-linux-gnu/sys/cdefs.h" 2 3 4
+# 462 "/usr/include/features.h" 2 3 4
+# 485 "/usr/include/features.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 1 3 4
+# 10 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 3 4
+# 1 "/usr/include/x86_64-linux-gnu/gnu/stubs-64.h" 1 3 4
+# 11 "/usr/include/x86_64-linux-gnu/gnu/stubs.h" 2 3 4
+# 486 "/usr/include/features.h" 2 3 4
+# 40 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/os_defines.h" 2 3
+# 529 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 2 3
+
+
+# 1 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/cpu_defines.h" 1 3
+# 532 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 2 3
+# 694 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 3
+# 1 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/pstl/pstl_config.h" 1 3
+# 695 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9/bits/c++config.h" 2 3
+# 50 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/cstddef" 2 3
+# 1 "/usr/lib/clang/16/include/stddef.h" 1 3
+# 35 "/usr/lib/clang/16/include/stddef.h" 3
+typedef long int ptrdiff_t;
+# 46 "/usr/lib/clang/16/include/stddef.h" 3
+typedef long unsigned int size_t;
+# 60 "/usr/lib/clang/16/include/stddef.h" 3
+typedef long unsigned int rsize_t;
+# 109 "/usr/lib/clang/16/include/stddef.h" 3
+# 1 "/usr/lib/clang/16/include/__stddef_max_align_t.h" 1 3
+# 19 "/usr/lib/clang/16/include/__stddef_max_align_t.h" 3
+typedef struct {
+  long long __clang_max_align_nonce1
+      __attribute__((__aligned__(__alignof__(long long))));
+  long double __clang_max_align_nonce2
+      __attribute__((__aligned__(__alignof__(long double))));
+} max_align_t;
+# 110 "/usr/lib/clang/16/include/stddef.h" 2 3
+# 51 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/cstddef" 2 3
+
+extern "C++"
+{
+
+namespace std
+{
+
+  using ::max_align_t;
+}
+
+
+
+namespace std
+{
+
+
+
+
+  enum class byte : unsigned char {};
+
+  template<typename _IntegerType> struct __byte_operand { };
+  template<> struct __byte_operand<bool> { using __type = byte; };
+  template<> struct __byte_operand<char> { using __type = byte; };
+  template<> struct __byte_operand<signed char> { using __type = byte; };
+  template<> struct __byte_operand<unsigned char> { using __type = byte; };
+
+  template<> struct __byte_operand<wchar_t> { using __type = byte; };
+
+
+  template<> struct __byte_operand<char8_t> { using __type = byte; };
+
+  template<> struct __byte_operand<char16_t> { using __type = byte; };
+  template<> struct __byte_operand<char32_t> { using __type = byte; };
+  template<> struct __byte_operand<short> { using __type = byte; };
+  template<> struct __byte_operand<unsigned short> { using __type = byte; };
+  template<> struct __byte_operand<int> { using __type = byte; };
+  template<> struct __byte_operand<unsigned int> { using __type = byte; };
+  template<> struct __byte_operand<long> { using __type = byte; };
+  template<> struct __byte_operand<unsigned long> { using __type = byte; };
+  template<> struct __byte_operand<long long> { using __type = byte; };
+  template<> struct __byte_operand<unsigned long long> { using __type = byte; };
+# 110 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/cstddef" 3
+  template<typename _IntegerType>
+    struct __byte_operand<const _IntegerType>
+    : __byte_operand<_IntegerType> { };
+  template<typename _IntegerType>
+    struct __byte_operand<volatile _IntegerType>
+    : __byte_operand<_IntegerType> { };
+  template<typename _IntegerType>
+    struct __byte_operand<const volatile _IntegerType>
+    : __byte_operand<_IntegerType> { };
+
+  template<typename _IntegerType>
+    using __byte_op_t = typename __byte_operand<_IntegerType>::__type;
+
+  template<typename _IntegerType>
+    constexpr __byte_op_t<_IntegerType>&
+    operator<<=(byte& __b, _IntegerType __shift) noexcept
+    { return __b = byte(static_cast<unsigned char>(__b) << __shift); }
+
+  template<typename _IntegerType>
+    constexpr __byte_op_t<_IntegerType>
+    operator<<(byte __b, _IntegerType __shift) noexcept
+    { return byte(static_cast<unsigned char>(__b) << __shift); }
+
+  template<typename _IntegerType>
+    constexpr __byte_op_t<_IntegerType>&
+    operator>>=(byte& __b, _IntegerType __shift) noexcept
+    { return __b = byte(static_cast<unsigned char>(__b) >> __shift); }
+
+  template<typename _IntegerType>
+    constexpr __byte_op_t<_IntegerType>
+    operator>>(byte __b, _IntegerType __shift) noexcept
+    { return byte(static_cast<unsigned char>(__b) >> __shift); }
+
+  constexpr byte&
+  operator|=(byte& __l, byte __r) noexcept
+  {
+    return __l =
+      byte(static_cast<unsigned char>(__l) | static_cast<unsigned char>(__r));
+  }
+
+  constexpr byte
+  operator|(byte __l, byte __r) noexcept
+  {
+    return
+      byte(static_cast<unsigned char>(__l) | static_cast<unsigned char>(__r));
+  }
+
+  constexpr byte&
+  operator&=(byte& __l, byte __r) noexcept
+  {
+   return __l =
+     byte(static_cast<unsigned char>(__l) & static_cast<unsigned char>(__r));
+  }
+
+  constexpr byte
+  operator&(byte __l, byte __r) noexcept
+  {
+    return
+      byte(static_cast<unsigned char>(__l) & static_cast<unsigned char>(__r));
+  }
+
+  constexpr byte&
+  operator^=(byte& __l, byte __r) noexcept
+  {
+    return __l =
+      byte(static_cast<unsigned char>(__l) ^ static_cast<unsigned char>(__r));
+  }
+
+  constexpr byte
+  operator^(byte __l, byte __r) noexcept
+  {
+    return
+      byte(static_cast<unsigned char>(__l) ^ static_cast<unsigned char>(__r));
+  }
+
+  constexpr byte
+  operator~(byte __b) noexcept
+  { return byte(~static_cast<unsigned char>(__b)); }
+
+  template<typename _IntegerType>
+    constexpr _IntegerType
+    to_integer(__byte_op_t<_IntegerType> __b) noexcept
+    { return _IntegerType(__b); }
+
+
+}
+
+}
+# 2 "failing_example_reduced.cc" 2
+# 1 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/initializer_list" 1 3
+# 34 "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/initializer_list" 3
+
+
+
+
+
+#pragma GCC visibility push(default)
+
+
+
+namespace std
+{
+
+  template<class _E>
+    class initializer_list
+    {
+    public:
+      typedef _E value_type;
+      typedef const _E& reference;
+      typedef const _E& const_reference;
+      typedef size_t size_type;
+      typedef const _E* iterator;
+      typedef const _E* const_iterator;
+
+    private:
+      iterator _M_array;
+      size_type _M_len;
+
+
+      constexpr initializer_list(const_iterator __a, size_type __l)
+      : _M_array(__a), _M_len(__l) { }
+
+    public:
+      constexpr initializer_list() noexcept
+      : _M_array(0), _M_len(0) { }
+
+
+      constexpr size_type
+      size() const noexcept { return _M_len; }
+
+
+      constexpr const_iterator
+      begin() const noexcept { return _M_array; }
+
+
+      constexpr const_iterator
+      end() const noexcept { return begin() + size(); }
+    };
+
+
+
+
+
+
+  template<class _Tp>
+    constexpr const _Tp*
+    begin(initializer_list<_Tp> __ils) noexcept
+    { return __ils.begin(); }
+
+
+
+
+
+
+  template<class _Tp>
+    constexpr const _Tp*
+    end(initializer_list<_Tp> __ils) noexcept
+    { return __ils.end(); }
+}
+
+#pragma GCC visibility pop
+# 3 "failing_example_reduced.cc" 2
+
+template <typename T, std::size_t>
+class Foo {
+ public:
+  Foo(std::initializer_list<std::initializer_list<T>>) {}
+};
+
+
+
+template <typename... Ts>
+Foo(std::initializer_list<Ts>... init_lists) -> Foo<int, sizeof...(init_lists)>;
+
+int main() {
+  Foo{{2}};
+  return 0;
+}
+
+# Crash reproducer for clang version 16.0.0
+# Driver args: "--driver-mode=g++" "--std=c++20" "failing_example_reduced.cc"
+# Original command:  "/usr/bin/clang-16" "-cc1" "-triple" "x86_64-unknown-linux-gnu" "-emit-obj" "-mrelax-all" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "failing_example_reduced.cc" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-mllvm" "-treat-scalable-fixed-error-as-warning" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/home/mrguenther/win_profile/src/mrg/clang_bug_report" "-resource-dir" "/usr/lib/clang/16" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/backward" "-internal-isystem" "/usr/lib/clang/16/include" "-internal-isystem" "/usr/local/include" "-internal-isystem" "/usr/bin/../lib/gcc/x86_64-linux-gnu/9/../../../../x86_64-linux-gnu/include" "-internal-externc-isystem" "/usr/include/x86_64-linux-gnu" "-internal-externc-isystem" "/include" "-internal-externc-isystem" "/usr/include" "--std=c++20" "-fdeprecated-macro" "-fdebug-compilation-dir=/home/mrguenther/win_profile/src/mrg/clang_bug_report" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fno-implicit-modules" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-o" "/tmp/failing_example_reduced-7f404f.o" "-x" "c++" "failing_example_reduced.cc"
+ "/usr/bin/clang-16" "-cc1" "-triple" "x86_64-unknown-linux-gnu" "-emit-obj" "-mrelax-all" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "failing_example_reduced.cc" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-mllvm" "-treat-scalable-fixed-error-as-warning" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/home/mrguenther/win_profile/src/mrg/clang_bug_report" "--std=c++20" "-fdeprecated-macro" "-fdebug-compilation-dir=/home/mrguenther/win_profile/src/mrg/clang_bug_report" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fno-implicit-modules" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-x" "c++" "failing_example_reduced-763f77.cpp"
+
+Bug Labels:
+clang:frontend, confirmed, crash

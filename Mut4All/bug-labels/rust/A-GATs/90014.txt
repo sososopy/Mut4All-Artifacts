@@ -1,0 +1,91 @@
+Issue Title:
+ICE with lifetime GAT and `impl Future` and `async` block · Issue #90014 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+#![feature(type_alias_impl_trait)]
+
+use core::future::Future;
+
+trait MakeFut {
+    type Fut<'a>;
+    fn make_fut<'a>(&'a self) -> Self::Fut<'a>;
+}
+
+impl MakeFut for &'_ mut () {
+    type Fut<'a> = impl Future<Output = ()>;
+
+    fn make_fut<'a>(&'a self) -> Self::Fut<'a> {
+        async { () }
+    }
+}
+
+Bug Trace:
+stack backtrace:
+   0:     0x7ffe1aca8dbf - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h4287336b592e4e30
+   1:     0x7ffe1acd2a2a - core::fmt::write::h8a2c40ddb66ccc71
+   2:     0x7ffe1ac9b5b8 - <std::io::IoSliceMut as core::fmt::Debug>::fmt::hd15f09e3fd3eac54
+   3:     0x7ffe1acac516 - std::panicking::take_hook::hf14c76592f73c762
+   4:     0x7ffe1acabffc - std::panicking::take_hook::hf14c76592f73c762
+   5:     0x7ffd9c0b4645 - <sha1::Sha1 as std::io::Write>::flush::hb2f1a973b0edcfa2
+   6:     0x7ffe1acace29 - std::panicking::rust_panic_with_hook::hbc0e9c80ca88eac0
+   7:     0x7ffe1acac89f - rust_begin_unwind
+   8:     0x7ffe1aca96f7 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h4287336b592e4e30
+   9:     0x7ffe1acac829 - rust_begin_unwind
+  10:     0x7ffe1ad08dc0 - core::panicking::panic_fmt::hc1b1ca620e7a2c9f
+  11:     0x7ffe1ad08d0c - core::panicking::panic::hfef5cee9afdef02a
+  12:     0x7ffda0502b16 - <rustc_infer::infer::free_regions::FreeRegionMap as rustc_infer::infer::free_regions::FreeRegionRelations>::sub_free_regions::h8a00c3bb3c8107a2
+  13:     0x7ffd9eb7d817 - <<rustc_typeck::coherence::inherent_impls_overlap::InherentOverlapChecker as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_item::RegionId as core::fmt::Debug>::fmt::he3bd1df440cd4f35
+  14:     0x7ffd9eb19589 - <rustc_typeck::check::op::TypeParamEraser as rustc_middle::ty::fold::TypeFolder>::fold_ty::h3b7304a8357fa87d
+  15:     0x7ffd9ea4b14d - rustc_typeck::check::method::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_fully_qualified_call::hbfbc4cffb91597dd
+  16:     0x7ffd9eb1a613 - <rustc_typeck::check::regionck::RegionCtxt as rustc_hir::intravisit::Visitor>::visit_expr::h0d6e8eed806b81f8
+  17:     0x7ffd9ea4aebf - rustc_typeck::check::method::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_fully_qualified_call::hbfbc4cffb91597dd
+  18:     0x7ffd9eb1a613 - <rustc_typeck::check::regionck::RegionCtxt as rustc_hir::intravisit::Visitor>::visit_expr::h0d6e8eed806b81f8
+  19:     0x7ffd9eb1a613 - <rustc_typeck::check::regionck::RegionCtxt as rustc_hir::intravisit::Visitor>::visit_expr::h0d6e8eed806b81f8
+  20:     0x7ffd9eb19564 - <rustc_typeck::check::op::TypeParamEraser as rustc_middle::ty::fold::TypeFolder>::fold_ty::h3b7304a8357fa87d
+  21:     0x7ffd9ea08e83 - rustc_typeck::check::regionck::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::regionck_item::h5100c502a9d66f7e
+  22:     0x7ffd9eb4bcde - <<rustc_typeck::coherence::inherent_impls_overlap::InherentOverlapChecker as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_item::RegionId as core::fmt::Debug>::fmt::he3bd1df440cd4f35
+  23:     0x7ffd9ea5a60c - rustc_typeck::check::provide::he1765e5a850a1dd7
+  24:     0x7ffd9f86c876 - ZN16rustc_query_impl13on_disk_cache260_$LT$impl$u20$rustc_serialize..serialize..Decodable$LT$rustc_query_impl..on_disk_cache..CacheDecoder$GT$$u20$for$u20$$RF$std..collections..hash..set..HashSet$LT$rustc_span..def_id..LocalDefId$C$core..hash..BuildHasher
+  25:     0x7ffd9f90277e - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_mark_green::hd5d86015fdc5f141
+  26:     0x7ffd9f845985 - rustc_query_impl::profiling_support::alloc_self_profile_query_strings::h3380ba2778e75590
+  27:     0x7ffd9f5dcb15 - <rustc_mir_dataflow::framework::cursor::CursorPosition as core::fmt::Debug>::fmt::h758f734727003b57
+  28:     0x7ffd9f8c5a8a - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_mark_green::hd5d86015fdc5f141
+  29:     0x7ffd9ebed6b0 - <rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator as rustc_hir::intravisit::Visitor>::visit_trait_item::h5b51903b5461e205
+  30:     0x7ffd9ea4c648 - rustc_typeck::check::method::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_fully_qualified_call::hbfbc4cffb91597dd
+  31:     0x7ffd9ebecafd - <rustc_typeck::bounds::Bounds as core::fmt::Debug>::fmt::hb9cf79e2c6d9abfc
+  32:     0x7ffd9ebe53c2 - <rustc_typeck::coherence::unsafety::UnsafetyChecker as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_item::hff504c604602b8e0
+  33:     0x7ffd9f86c1ff - ZN16rustc_query_impl13on_disk_cache260_$LT$impl$u20$rustc_serialize..serialize..Decodable$LT$rustc_query_impl..on_disk_cache..CacheDecoder$GT$$u20$for$u20$$RF$std..collections..hash..set..HashSet$LT$rustc_span..def_id..LocalDefId$C$core..hash..BuildHasher
+  34:     0x7ffd9f911563 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_mark_green::hd5d86015fdc5f141
+  35:     0x7ffd9f82d13f - rustc_query_impl::profiling_support::alloc_self_profile_query_strings::h3380ba2778e75590
+  36:     0x7ffd9f5db5e9 - <rustc_mir_dataflow::framework::cursor::CursorPosition as core::fmt::Debug>::fmt::h758f734727003b57
+  37:     0x7ffd9f78af8e - <rustc_mir_dataflow::framework::cursor::CursorPosition as core::fmt::Debug>::fmt::h758f734727003b57
+  38:     0x7ffd9ebd0fa6 - rustc_typeck::check::check::check_item_type::h165f01a5aac878da
+  39:     0x7ffd9eaed058 - <rustc_typeck::check::closure::ExpectedSig as core::fmt::Debug>::fmt::h54a456a019c1001d
+  40:     0x7ffd9ebd994d - rustc_typeck::check::check::check_item_type::h165f01a5aac878da
+  41:     0x7ffd9f8700c6 - ZN16rustc_query_impl13on_disk_cache260_$LT$impl$u20$rustc_serialize..serialize..Decodable$LT$rustc_query_impl..on_disk_cache..CacheDecoder$GT$$u20$for$u20$$RF$std..collections..hash..set..HashSet$LT$rustc_span..def_id..LocalDefId$C$core..hash..BuildHasher
+  42:     0x7ffd9f92daab - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_mark_green::hd5d86015fdc5f141
+  43:     0x7ffd9f83bebb - rustc_query_impl::profiling_support::alloc_self_profile_query_strings::h3380ba2778e75590
+  44:     0x7ffd9f688a5e - <rustc_mir_dataflow::framework::cursor::CursorPosition as core::fmt::Debug>::fmt::h758f734727003b57
+  45:     0x7ffd9f8c51ca - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_mark_green::hd5d86015fdc5f141
+  46:     0x7ffd9eaec52e - <rustc_typeck::check::closure::ExpectedSig as core::fmt::Debug>::fmt::h54a456a019c1001d
+  47:     0x7ffd9ead847b - <rustc_typeck::check::closure::ExpectedSig as core::fmt::Debug>::fmt::h54a456a019c1001d
+  48:     0x7ffd9ea8dd51 - rustc_typeck::check_crate::h0d388ad5b039e2f6
+  49:     0x7ffd9c22915f - rustc_interface::passes::analysis::ha16b07cb40233921
+  50:     0x7ffd9f86dc9b - ZN16rustc_query_impl13on_disk_cache260_$LT$impl$u20$rustc_serialize..serialize..Decodable$LT$rustc_query_impl..on_disk_cache..CacheDecoder$GT$$u20$for$u20$$RF$std..collections..hash..set..HashSet$LT$rustc_span..def_id..LocalDefId$C$core..hash..BuildHasher
+  51:     0x7ffd9f8f991d - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_mark_green::hd5d86015fdc5f141
+  52:     0x7ffd9f829aa2 - rustc_query_impl::profiling_support::alloc_self_profile_query_strings::h3380ba2778e75590
+  53:     0x7ffd9f6e6639 - <rustc_mir_dataflow::framework::cursor::CursorPosition as core::fmt::Debug>::fmt::h758f734727003b57
+  54:     0x7ffd9f8c2ca5 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_mark_green::hd5d86015fdc5f141
+  55:     0x7ffd9c143020 - <rustc_driver::args::Error as core::fmt::Debug>::fmt::h9b97ef65e0d6092b
+  56:     0x7ffd9c11f4c3 - <rustc_middle::ty::SymbolName as core::fmt::Debug>::fmt::h18ae4379a1be382c
+  57:     0x7ffd9c0d3ab6 - rustc_driver::pretty::print_after_hir_lowering::h15ef402ed2a3b92f
+  58:     0x7ffd9c11bb35 - <rustc_middle::ty::SymbolName as core::fmt::Debug>::fmt::h18ae4379a1be382c
+  59:     0x7ffd9c0d8f6c - <tracing_subscriber::util::TryInitError as core::fmt::Display>::fmt::hd227e57b2fd7a492
+  60:     0x7ffd9c1493a8 - <rustc_driver::args::Error as core::fmt::Debug>::fmt::h9b97ef65e0d6092b
+  61:     0x7ffe1acb94ec - std::sys::windows::thread::Thread::new::he49a5cdb1d3d1cfc
+  62:     0x7ffe36ca54e0 - BaseThreadInitThunk
+  63:     0x7ffe38c0485b - RtlUserThreadStart
+
+Bug Labels:
+A-GATs, C-bug, E-needs-test, F-generic_associated_types, F-type_alias_impl_trait, GATs-triaged, I-ICE, T-compiler, requires-nightly

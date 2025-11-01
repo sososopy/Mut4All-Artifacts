@@ -1,0 +1,128 @@
+Issue Title:
+ICE: "can't hash a TyVid" when failing to infer a const generic · Issue #62536 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+
+struct S<T, const N: usize>([T; N]);
+
+fn f<T, const N: usize>(x: T) -> S<T, {N}> { panic!() }
+
+fn main() {
+	f(0u8);
+}
+
+Bug Trace:
+carado@ram:~/tmp/rust13 $ RUST_BACKTRACE=full cargo check
+    Checking rust13 v0.1.0 (/home/carado/tmp/rust13)
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+ --> src/main.rs:1:12
+  |
+1 | #![feature(const_generics)]
+  |            ^^^^^^^^^^^^^^
+
+error: internal compiler error: src/librustc/ich/impls_ty.rs:213: ty::TyKind::hash_stable() - can't hash a TyVid _#0t.
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:649:9
+stack backtrace:
+   0:     0x7fe25657923b - backtrace::backtrace::libunwind::trace::h4f04af92f39f2b78
+                               at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.29/src/backtrace/libunwind.rs:88
+   1:     0x7fe25657923b - backtrace::backtrace::trace_unsynchronized::hb28ce8d2b7fb3e31
+                               at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.29/src/backtrace/mod.rs:66
+   2:     0x7fe25657923b - std::sys_common::backtrace::_print::he3f49d2d13a51ff1
+                               at src/libstd/sys_common/backtrace.rs:47
+   3:     0x7fe25657923b - std::sys_common::backtrace::print::h46c2f3b13519e9bf
+                               at src/libstd/sys_common/backtrace.rs:36
+   4:     0x7fe25657923b - std::panicking::default_hook::{{closure}}::h6694acddafc67583
+                               at src/libstd/panicking.rs:200
+   5:     0x7fe256578f17 - std::panicking::default_hook::hb4761d2feeb6d93c
+                               at src/libstd/panicking.rs:214
+   6:     0x7fe25833eab1 - rustc::util::common::panic_hook::h048f1ff4bc2b561b
+   7:     0x7fe256579a99 - std::panicking::rust_panic_with_hook::h7a5f9620b0a832bc
+                               at src/libstd/panicking.rs:481
+   8:     0x7fe2587d3f5d - std::panicking::begin_panic::hb73227afb9857db6
+   9:     0x7fe2587f8f7f - rustc_errors::Handler::bug::h2054eb06936e67b5
+  10:     0x7fe257f6d4e3 - rustc::util::bug::opt_span_bug_fmt::{{closure}}::h3c0421ab2fdc9ea6
+  11:     0x7fe257f6ca73 - rustc::ty::context::tls::with_opt::{{closure}}::hd2fbc2b0ebae2095
+  12:     0x7fe257f6c4e8 - rustc::ty::context::tls::with_context_opt::h941a3adb8b126e2b
+  13:     0x7fe257f6c527 - rustc::ty::context::tls::with_opt::h3eb1995ec6f2c295
+  14:     0x7fe257f6d3f8 - rustc::util::bug::opt_span_bug_fmt::h5a2a260784b50bee
+  15:     0x7fe257f6d362 - rustc::util::bug::bug_fmt::h7e4e2350b3fe730c
+  16:     0x7fe25840f4b2 - rustc::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc::ich::hcx::StableHashingContext> for rustc::ty::sty::TyVid>::hash_stable::h1463ce28b76e87fc
+  17:     0x7fe258470fa7 - rustc::ty::sty::_DERIVE_rustc_data_structures_stable_hasher_HashStable_rustc_ich_StableHashingContext_ctx_FOR_TyKind::<impl rustc_data_structures::stable_hasher::HashStable<rustc::ich::hcx::StableHashingContext> for rustc::ty::sty::TyKind>::hash_stable::h7dcfc11871930cfb
+  18:     0x7fe257eb7be2 - rustc::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc::ich::hcx::StableHashingContext> for rustc::ty::subst::Kind>::hash_stable::h5c3796ae412cb81f
+  19:     0x7fe2584eb052 - rustc::infer::canonical::_DERIVE_rustc_data_structures_stable_hasher_HashStable_rustc_ich_StableHashingContext_ctx_FOR_Canonical::<impl rustc_data_structures::stable_hasher::HashStable<rustc::ich::hcx::StableHashingContext> for rustc::infer::canonical::Canonical<V>>::hash_stable::h8e0f5f69f3ed9b3c
+  20:     0x7fe257e5c85b - rustc::dep_graph::graph::DepGraph::with_task_impl::hebe93126a1c46ef0
+  21:     0x7fe2580f06e3 - rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query::h668eeb3ee62e8a11
+  22:     0x7fe257ddde3c - rustc::traits::query::dropck_outlives::<impl rustc::infer::at::At>::dropck_outlives::hb3441b0093584465
+  23:     0x7fe25700a8f9 - rustc_typeck::check::dropck::check_safety_of_destructor_if_necessary::h39fe2f333c370e50
+  24:     0x7fe256f839d7 - rustc_typeck::check::regionck::RegionCtxt::check_safety_of_rvalue_destructor_if_necessary::h5dee61f898d3b300
+  25:     0x7fe256f82296 - <rustc_typeck::check::regionck::RegionCtxt as rustc::hir::intravisit::Visitor>::visit_expr::h170804856875af5e
+  26:     0x7fe2570c872f - rustc::hir::intravisit::walk_expr::h7747ebb77c7fd9e3
+  27:     0x7fe256f8277b - <rustc_typeck::check::regionck::RegionCtxt as rustc::hir::intravisit::Visitor>::visit_expr::h170804856875af5e
+  28:     0x7fe256f80f5e - rustc_typeck::check::regionck::RegionCtxt::visit_fn_body::hf253f947ee1a5219
+  29:     0x7fe256f171a9 - rustc_typeck::check::regionck::<impl rustc_typeck::check::FnCtxt>::regionck_fn::h0fc45e22409227c9
+  30:     0x7fe2570a325a - rustc::ty::context::GlobalCtxt::enter_local::h7659f32b1ea661a0
+  31:     0x7fe256f4a755 - rustc_typeck::check::typeck_tables_of::hfb1f10d39fb5fa69
+  32:     0x7fe256f6bbbe - rustc::ty::query::__query_compute::typeck_tables_of::h037cb95db35bf44f
+  33:     0x7fe25701f5db - rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_tables_of>::compute::h535de4befaa63b09
+  34:     0x7fe256fa0c72 - rustc::dep_graph::graph::DepGraph::with_task_impl::hbcc48ac4d5a17f83
+  35:     0x7fe25705b74d - rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query::h7a171614700603c7
+  36:     0x7fe25701c3ef - rustc::ty::<impl rustc::ty::context::TyCtxt>::par_body_owners::h14b7ec1cc219548f
+  37:     0x7fe256f4a25d - rustc_typeck::check::typeck_item_bodies::h09210f3d89e8e316
+  38:     0x7fe256f6c019 - rustc::ty::query::__query_compute::typeck_item_bodies::h2b59bdafb83bcacf
+  39:     0x7fe256fa18a4 - rustc::dep_graph::graph::DepGraph::with_task_impl::hc80a68025f840170
+  40:     0x7fe257039316 - rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query::h2d01be60148cc515
+  41:     0x7fe256f70b5e - rustc::util::common::time::h3ea0d1c7348e741b
+  42:     0x7fe257140557 - rustc_typeck::check_crate::h2dccc5ff35a7fab7
+  43:     0x7fe256b31795 - rustc_interface::passes::analysis::hcc2364d20e32d836
+  44:     0x7fe256ab5f05 - rustc::ty::query::__query_compute::analysis::hb6494d9db9853dcd
+  45:     0x7fe256ab8439 - rustc::dep_graph::graph::DepGraph::with_task_impl::hc526faaa29e0549a
+  46:     0x7fe256a24e4e - rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query::hc2ff9ebdf5b52ec2
+  47:     0x7fe256a4299a - rustc_interface::passes::BoxedGlobalCtxt::access::{{closure}}::h14f5a411e02f867a
+  48:     0x7fe256b7932a - rustc_interface::passes::create_global_ctxt::{{closure}}::h373e0b54add389be
+  49:     0x7fe256a454a8 - rustc_interface::interface::run_compiler_in_existing_thread_pool::he615c75133ce557e
+  50:     0x7fe256a589e2 - std::thread::local::LocalKey<T>::with::h01d8730b937bafe6
+  51:     0x7fe256a6bc61 - scoped_tls::ScopedKey<T>::set::h93202ef68249584c
+  52:     0x7fe256a837e4 - syntax::with_globals::hec7bd40bfbb002de
+  53:     0x7fe256aad39d - std::sys_common::backtrace::__rust_begin_short_backtrace::h1b4bf6169be40163
+  54:     0x7fe25658a4fa - __rust_maybe_catch_panic
+                               at src/libpanic_unwind/lib.rs:82
+  55:     0x7fe256a2bfd9 - core::ops::function::FnOnce::call_once{{vtable.shim}}::hb217ce5152f7b02c
+  56:     0x7fe25655ce7f - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::h352281c34878505f
+                               at /rustc/78ca1bda3522b14bc0336bc01dd1d49fdba2cda7/src/liballoc/boxed.rs:766
+  57:     0x7fe2565891e0 - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::h77507a97b5d0b6ca
+                               at /rustc/78ca1bda3522b14bc0336bc01dd1d49fdba2cda7/src/liballoc/boxed.rs:766
+  58:     0x7fe2565891e0 - std::sys_common::thread::start_thread::h8e874688d93a6d97
+                               at src/libstd/sys_common/thread.rs:13
+  59:     0x7fe2565891e0 - std::sys::unix::thread::Thread::new::thread_start::hbfd3b1248521427e
+                               at src/libstd/sys/unix/thread.rs:79
+  60:     0x7fe2564bffa8 - start_thread
+                               at /builddir/glibc-2.29/nptl/pthread_create.c:486
+  61:     0x7fe2563e1b9f - __GI___clone
+  62:                0x0 - <unknown>
+query stack during panic:
+#0 [dropck_outlives] computing dropck types for `Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Const(U0) }], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing, def_id: None }, value: S<u8, _: usize> } }`
+#1 [typeck_tables_of] processing `main`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.38.0-nightly (78ca1bda3 2019-07-08) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+error: Could not compile `rust13`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, I-ICE, T-compiler, requires-nightly

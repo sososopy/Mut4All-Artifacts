@@ -1,0 +1,57 @@
+Issue Title:
+SIGILL when compiling `asm!("global.get <number>")` for wasm32-unknown-unknown · Issue #111471 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(asm_experimental_arch)]
+#![no_std]
+
+#[panic_handler]
+fn panic_handler(_: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
+#[no_mangle]
+pub unsafe fn get_global() -> i64 {
+    let ret;
+    core::arch::asm!("global.get 0", "local.set {0}", out(local) ret);
+    ret
+}
+
+Bug Trace:
+#0  0x00007ffff2522a3a in (anonymous namespace)::WebAssemblyMCCodeEmitter::encodeInstruction(llvm::MCInst const&, llvm::raw_ostream&, llvm::SmallVectorImpl<llvm::MCFixup>&, llvm::MCSubtargetInfo const&) const ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#1  0x00007ffff1940adc in llvm::MCWasmStreamer::emitInstToData(llvm::MCInst const&, llvm::MCSubtargetInfo const&) () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#2  0x00007ffff0bc4d26 in llvm::MCObjectStreamer::emitInstruction(llvm::MCInst const&, llvm::MCSubtargetInfo const&) [clone .cold.0] ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#3  0x00007ffff251ba4e in (anonymous namespace)::WebAssemblyAsmParser::MatchAndEmitInstruction(llvm::SMLoc, unsigned int&, llvm::SmallVectorImpl<std::unique_ptr<llvm::MCParsedAsmOperand, std::default_delete<llvm::MCParsedAsmOperand> > >&, llvm::MCStreamer&, unsigned long&, bool) () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#4  0x00007ffff06b12ee in (anonymous namespace)::AsmParser::parseAndMatchAndEmitTargetInstruction((anonymous namespace)::ParseStatementInfo&, llvm::StringRef, llvm::AsmToken, llvm::SMLoc) ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#5  0x00007ffff06b0d3f in (anonymous namespace)::AsmParser::parseStatement((anonymous namespace)::ParseStatementInfo&, llvm::MCAsmParserSemaCallback*) ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#6  0x00007ffff063cb76 in (anonymous namespace)::AsmParser::Run(bool, bool) [clone .llvm.10166338383570117828] () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#7  0x00007ffff05bd4a9 in llvm::AsmPrinter::emitInlineAsm(llvm::StringRef, llvm::MCSubtargetInfo const&, llvm::MCTargetOptions const&, llvm::MDNode const*, llvm::InlineAsm::AsmDialect) const ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#8  0x00007ffff05bcb20 in llvm::AsmPrinter::emitInlineAsm(llvm::MachineInstr const*) const () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#9  0x00007ffff018c174 in llvm::AsmPrinter::emitFunctionBody() () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#10 0x00007ffff24dd83f in llvm::WebAssemblyAsmPrinter::runOnMachineFunction(llvm::MachineFunction&) () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#11 0x00007ffff023ac41 in llvm::FPPassManager::runOnModule(llvm::Module&) () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#12 0x00007ffff0115c6d in llvm::legacy::PassManagerImpl::run(llvm::Module&) () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/libLLVM-16-rust-1.71.0-nightly.so
+#13 0x00007ffff60fb816 in LLVMRustWriteOutputFile () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/librustc_driver-d7843847813d1387.so
+#14 0x00007ffff60fb228 in rustc_codegen_llvm[268f5a08f5351377]::back::write::write_output_file () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/librustc_driver-d7843847813d1387.so
+#15 0x00007ffff60f92e2 in rustc_codegen_llvm[268f5a08f5351377]::back::write::codegen () from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/librustc_driver-d7843847813d1387.so
+#16 0x00007ffff60b2e46 in rustc_codegen_ssa[8edfcb7c9bad7299]::back::write::finish_intra_module_work::<rustc_codegen_llvm[268f5a08f5351377]::LlvmCodegenBackend> ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/librustc_driver-d7843847813d1387.so
+#17 0x00007ffff60b2223 in rustc_codegen_ssa[8edfcb7c9bad7299]::back::write::execute_work_item::<rustc_codegen_llvm[268f5a08f5351377]::LlvmCodegenBackend> ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/librustc_driver-d7843847813d1387.so
+#18 0x00007ffff60b0a24 in std[468ab6db55de55b5]::sys_common::backtrace::__rust_begin_short_backtrace::<<rustc_codegen_llvm[268f5a08f5351377]::LlvmCodegenBackend as rustc_codegen_ssa[8edfcb7c9bad7299]::traits::backend::ExtraBackendMethods>::spawn_named_thread<rustc_codegen_ssa[8edfcb7c9bad7299]::back::write::spawn_work<rustc_codegen_llvm[268f5a08f5351377]::LlvmCodegenBackend>::{closure#0}, ()>::{closure#0}, ()> ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/librustc_driver-d7843847813d1387.so
+#19 0x00007ffff60827d6 in <<std[468ab6db55de55b5]::thread::Builder>::spawn_unchecked_<<rustc_codegen_llvm[268f5a08f5351377]::LlvmCodegenBackend as rustc_codegen_ssa[8edfcb7c9bad7299]::traits::backend::ExtraBackendMethods>::spawn_named_thread<rustc_codegen_ssa[8edfcb7c9bad7299]::back::write::spawn_work<rustc_codegen_llvm[268f5a08f5351377]::LlvmCodegenBackend>::{closure#0}, ()>::{closure#0}, ()>::{closure#1} as core[b1830eda9a6e2491]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0} ()
+   from /nix/store/5zi26l69yxmivmfrmczi38h25ig8zw90-rust-minimal-1.71.0-nightly-2023-05-01/lib/librustc_driver-d7843847813d1387.so
+#20 0x00007ffff39258c5 in alloc::boxed::{impl#47}::call_once<(), dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global> () at library/alloc/src/boxed.rs:1985
+#21 alloc::boxed::{impl#47}::call_once<(), alloc::boxed::Box<dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global>, alloc::alloc::Global> () at library/alloc/src/boxed.rs:1985
+#22 std::sys::unix::thread::{impl#2}::new::thread_start () at library/std/src/sys/unix/thread.rs:108
+#23 0x00007ffff36c0e24 in start_thread () from /nix/store/0z5kcds7b6qmm373s3b5w9ykvqbgw87i-glibc-2.37-8/lib/libc.so.6
+#24 0x00007ffff37429b0 in clone3 () from /nix/store/0z5kcds7b6qmm373s3b5w9ykvqbgw87i-glibc-2.37-8/lib/libc.so.6
+
+Bug Labels:
+A-LLVM, A-inline-assembly, C-bug, I-ICE, T-compiler, llvm-fixed-upstream

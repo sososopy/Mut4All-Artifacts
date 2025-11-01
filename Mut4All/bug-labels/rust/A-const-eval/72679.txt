@@ -1,0 +1,102 @@
+Issue Title:
+ICE: delay_span_bug const-construct-call.rs with mir-opt-level=2 · Issue #72679 · rust-lang/rust · GitHub
+
+Rust Code:
+#![cfg_attr(const_fn, feature(const_fn))]
+
+// Ctor(..) is transformed to Ctor { 0: ... } in HAIR lowering, so directly
+// calling constructors doesn't require them to be const.
+
+type ExternalType = std::panic::AssertUnwindSafe<(Option<i32>, Result<i32, bool>)>;
+
+const fn call_external_constructors_in_local_vars() -> ExternalType {
+    let f = Some;
+    let g = Err;
+    let h = std::panic::AssertUnwindSafe;
+    let x = f(5);
+    let y = g(false);
+    let z = h((x, y));
+    z
+}
+
+const CALL_EXTERNAL_CONSTRUCTORS_IN_LOCAL_VARS: ExternalType = {
+    let f = Some;
+    let g = Err;
+    let h = std::panic::AssertUnwindSafe;
+    let x = f(5);
+    let y = g(false);
+    let z = h((x, y));
+    z
+};
+
+
+fn main() {
+    assert_eq!(
+        (call_external_constructors_in_local_vars().0,),
+        (CALL_EXTERNAL_CONSTRUCTORS_IN_LOCAL_VARS.0,)
+    );
+}
+
+Bug Trace:
+error: internal compiler error: error during interning should later cause validation failure
+  --> ./src/test/ui/consts/const_constructor/const-construct-call.rs:16:19
+   |
+16 |     let z = h((x, y));
+   |                   ^
+
+error: internal compiler error: error during interning should later cause validation failure
+  --> ./src/test/ui/consts/const_constructor/const-construct-call.rs:16:15
+   |
+16 |     let z = h((x, y));
+   |               ^^^^^^
+
+error: internal compiler error: error during interning should later cause validation failure
+   --> /home/matthias/vcs/github/rust/src/libstd/panic.rs:190:1
+    |
+190 | pub struct AssertUnwindSafe<T>(#[stable(feature = "catch_unwind", since = "1.9.0")] pub T);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: error during interning should later cause validation failure
+  --> ./src/test/ui/consts/const_constructor/const-construct-call.rs:17:5
+   |
+17 |     z
+   |     ^
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', src/librustc_errors/lib.rs:366:17
+stack backtrace:
+   0:     0x7f62dc1a0da7 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h6321961b115ad0ed
+   1:     0x7f62dc1ecacd - core::fmt::write::h65255e7874586eb2
+   2:     0x7f62dc16fb15 - std::io::Write::write_fmt::h2bb22b139579a2ee
+   3:     0x7f62dc1830b0 - std::panicking::default_hook::{{closure}}::h7148d55d8fc14777
+   4:     0x7f62dc182dfa - std::panicking::default_hook::h0efe9af18be782dc
+   5:     0x7f62ddb1f153 - rustc_driver::report_ice::hfd0fa22509dd31ed
+   6:     0x7f62dc18379c - std::panicking::rust_panic_with_hook::h3927854bf3e90637
+   7:     0x7f62e1bbc09e - std::panicking::begin_panic::h8403099e8fc58511
+   8:     0x7f62e1bc6dfe - <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop::h5f5494b6c3d74ec2
+   9:     0x7f62ddb64256 - core::ptr::drop_in_place::h0e133354b600ff56
+  10:     0x7f62ddb6f7d6 - <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop::hbc25d3d2bfed6b41
+  11:     0x7f62ddafdf8d - core::ptr::drop_in_place::h92b501bcb6da9fde
+  12:     0x7f62ddae3d95 - rustc_interface::interface::run_compiler_in_existing_thread_pool::h03e608bcbd3c7d88
+  13:     0x7f62ddb30860 - rustc_ast::attr::with_globals::ha3a08bb414c4a8b6
+  14:     0x7f62ddb31d4a - std::sys_common::backtrace::__rust_begin_short_backtrace::h4ed2765ed1f89ac8
+  15:     0x7f62ddae77ee - core::ops::function::FnOnce::call_once{{vtable.shim}}::h60fb29569624bd70
+  16:     0x7f62dc183f2a - std::sys::unix::thread::Thread::new::thread_start::h61e3081ddeb255e9
+  17:     0x7f62dbeb046f - start_thread
+  18:     0x7f62dbfcd3d3 - clone
+  19:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z mir-opt-level=2
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+A-const-eval, A-mir-opt, C-bug, I-ICE, T-compiler, glacier, requires-nightly

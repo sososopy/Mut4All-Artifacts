@@ -1,0 +1,54 @@
+Issue Title:
+resolving bounds after type-checking: predict trait for std::ops::FnMut  · Issue #70746 · rust-lang/rust · GitHub
+
+Rust Code:
+pub trait Trait1 {
+  type C;
+}
+
+struct T1;
+impl Trait1 for T1 {
+  type C = usize;
+}
+pub trait Callback<T: Trait1>: FnMut(<T as Trait1>::C) {}
+impl<T: Trait1, F: FnMut(<T as Trait1>::C)> Callback<T> for F { }
+
+
+pub struct State<T: Trait1> {
+  callback: Option<Box<dyn Callback<T>>>,
+}
+impl<T: Trait1> State<T> {
+  fn new() -> Self { Self { callback: None } }
+  fn test_cb(&mut self, d: <T as Trait1>::C) {
+    (self.callback.as_mut().unwrap())(d)
+  }
+}
+
+fn main() {
+  let mut s = State::<T1>::new();
+  s.test_cb(1);
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:873:9
+stack backtrace:
+   0: <unknown>
+   1: <unknown>
+   2: <unknown>
+   3: <unknown>
+   4: <unknown>
+   5: <unknown>
+   6: <unknown>
+   7: <unknown>
+   8: <unknown>
+   9: <unknown>
+  10: <unknown>
+...
+
+query stack during panic:
+#0 [codegen_fulfill_obligation] checking if `std::ops::FnMut` fulfills its obligations
+#1 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+
+Bug Labels:
+A-trait-system, C-bug, E-needs-test, I-ICE, ICEBreaker-Cleanup-Crew, P-medium, T-compiler, glacier

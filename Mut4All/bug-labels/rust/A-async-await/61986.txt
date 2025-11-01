@@ -1,0 +1,41 @@
+Issue Title:
+ICE compiling with futures compat · Issue #61986 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_await)]
+use std::io;
+use futures::StreamExt;
+use futures::executor;
+use hyper::{Body, Request, Response};
+use hyper::service::service_fn_ok;
+use romio::TcpListener;
+use futures::compat::Compat;
+
+fn req_res(_: Request<Body>) -> Response<Body> {
+    Response::new(Body::from(""))
+}
+
+async fn listen() -> io::Result<()> {
+    let mut listener = TcpListener::bind(&"127.0.0.1:8080".parse().unwrap())?;
+    let mut streams = listener.incoming();
+
+    let http = hyper::server::conn::Http::new();
+    while let Some(stream) = streams.next().await {
+        let stream = stream?;
+
+        let mut compat_stream = Compat::new(stream);
+        
+        // Comment out = No ICE
+        http.serve_connection(compat_stream, service_fn_ok(req_res));
+    }
+
+    Ok(())
+}
+
+fn main() {
+    // Comment out = No ICE
+    executor::block_on(listen());
+}
+
+Bug Labels:
+A-async-await, AsyncAwait-Polish, I-ICE, T-compiler

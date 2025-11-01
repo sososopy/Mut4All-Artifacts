@@ -1,0 +1,13 @@
+Mutation Operator: Replace Dot-Based Member Call with Pointer-to-Member Expression Target Code Construct: Member Function Call Expression 
+Mutation Rule: 
+1. Match dot-based member function calls (`obj.foo()`), excluding arrow calls (`obj->foo()`). 
+2. Extract the variable declaration of the instance `obj`, and determine the class type it belongs to. 
+3. For each unique instance declaration:  Insert a new pointer-to-member variable with the form `auto mut5_obj_foo_ptr = ClassType::foo;`, directly after the original variable declaration.  Track the inserted variable using a map to avoid duplicate insertion. 
+4. Replace the original member function call (`obj.foo()`) with a call through pointer-to-member:  `obj.foo()` → `(obj.mut5_obj_foo_ptr)()`  Prefix with comment `/mut5/` to denote transformation. 
+5. Perform this replacement consistently for all matching member calls that originate from the same variable instance. 
+Example: 
+Original Code: 
+class A { public: void bar() {} }; void func() { A obj; obj.bar(); } 
+Mutated Code: 
+class A { public: void bar() {} }; void func() { A obj; /mut5/auto mut5_obj_bar_ptr = A::bar; /mut5/(obj.mut5_obj_bar_ptr)(); } 
+Instructions:  Only apply this transformation if the class type is known and fully declared (i.e., a valid `CXXRecordDecl`).  Skip arrow (`->`) member calls or cases where the base is not a simple variable reference.  Ensure inserted pointer-to-member declarations do not conflict with existing names.  Maintain semantic equivalence while changing call style to stress the compiler's handling of member pointer indirection.

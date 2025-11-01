@@ -1,0 +1,183 @@
+Issue Title:
+ICE: type mismatch when copying · Issue #76510 · rust-lang/rust · GitHub
+
+Rust Code:
+use core::mem::{transmute, ManuallyDrop};
+
+const S: &'static mut str = &mut " hello ";
+
+const fn trigger() -> [(); unsafe {
+      let s = transmute::<(*const u8, usize), &ManuallyDrop<str>>((S.as_ptr(), 3));
+      0
+  }] {
+    [(); 0]
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+error[E0764]: mutable references are not allowed in constants
+ --> src/lib.rs:3:29
+  |
+3 | const S: &'static mut str = &mut " hello ";
+  |                             ^^^^^^^^^^^^^^ `&mut` is only allowed in `const fn`
+
+error[E0019]: constant contains unimplemented expression type
+ --> src/lib.rs:3:29
+  |
+3 | const S: &'static mut str = &mut " hello ";
+  |                             ^^^^^^^^^^^^^^
+  |
+  = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+ --> src/lib.rs:3:29
+  |
+3 | const S: &'static mut str = &mut " hello ";
+  |                             ^^^^^^^^^^^^^^ cannot borrow as mutable
+
+error: internal compiler error: src/librustc_mir/interpret/place.rs:860:13: type mismatch when copying!
+src: &str,
+dest: &mut str
+ --> src/lib.rs:3:29
+  |
+3 | const S: &'static mut str = &mut " hello ";
+  |                             ^^^^^^^^^^^^^^
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/04488afe34512aa4c33566eb16d8c912a3ae04f9/src/libstd/macros.rs:13:23
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1076
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1537
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:217
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:530
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::span_bug
+  14: rustc_errors::Handler::span_bug
+  15: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  17: rustc_middle::ty::context::tls::with_opt
+  18: rustc_middle::util::bug::opt_span_bug_fmt
+  19: rustc_middle::util::bug::span_bug_fmt
+  20: rustc_mir::interpret::place::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::copy_op_no_validate
+  21: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+  22: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+  23: rustc_mir::const_eval::eval_queries::const_eval_raw_provider
+  24: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_raw>::compute
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::get_query_impl
+  28: rustc_mir::const_eval::eval_queries::const_eval_validated_provider
+  29: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_validated>::compute
+  30: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  31: rustc_data_structures::stack::ensure_sufficient_stack
+  32: rustc_query_system::query::plumbing::get_query_impl
+  33: rustc_mir::const_eval::eval_queries::const_eval_validated_provider
+  34: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_validated>::compute
+  35: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  36: rustc_data_structures::stack::ensure_sufficient_stack
+  37: rustc_query_system::query::plumbing::get_query_impl
+  38: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  39: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  40: <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const
+  41: <rustc_infer::infer::at::At as rustc_trait_selection::traits::query::normalize::AtExt>::normalize
+  42: rustc_infer::infer::InferCtxtBuilder::enter
+  43: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions
+  44: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::normalize_generic_arg_after_erasing_regions>::compute
+  45: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  46: rustc_data_structures::stack::ensure_sufficient_stack
+  47: rustc_query_system::query::plumbing::get_query_impl
+  48: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_const
+  49: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::subst_and_normalize_erasing_regions
+  50: rustc_mir::interpret::operand::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_operand
+  51: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+  52: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+  53: rustc_mir::const_eval::eval_queries::const_eval_raw_provider
+  54: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_raw>::compute
+  55: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  56: rustc_data_structures::stack::ensure_sufficient_stack
+  57: rustc_query_system::query::plumbing::get_query_impl
+  58: rustc_mir::const_eval::eval_queries::const_eval_validated_provider
+  59: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_validated>::compute
+  60: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  61: rustc_data_structures::stack::ensure_sufficient_stack
+  62: rustc_query_system::query::plumbing::get_query_impl
+  63: rustc_mir::const_eval::eval_queries::const_eval_validated_provider
+  64: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_validated>::compute
+  65: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  66: rustc_data_structures::stack::ensure_sufficient_stack
+  67: rustc_query_system::query::plumbing::get_query_impl
+  68: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  69: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  70: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const
+  71: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  72: rustc_middle::ty::fold::TypeFoldable::fold_with
+  73: rustc_trait_selection::traits::project::AssocTypeNormalizer::fold
+  74: rustc_trait_selection::traits::project::normalize
+  75: <rustc_infer::infer::InferCtxt as rustc_trait_selection::infer::InferCtxtExt>::partially_normalize_associated_types_in
+  76: rustc_typeck::check::FnCtxt::normalize_associated_types_in
+  77: rustc_infer::infer::InferCtxtBuilder::enter
+  78: rustc_typeck::check::wfcheck::check_item_well_formed
+  79: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_item_well_formed>::compute
+  80: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  81: rustc_data_structures::stack::ensure_sufficient_stack
+  82: rustc_query_system::query::plumbing::get_query_impl
+  83: rustc_query_system::query::plumbing::ensure_query_impl
+  84: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::itemlikevisit::ParItemLikeVisitor>::visit_item
+  85: rustc_data_structures::sync::par_for_each_in
+  86: rustc_hir::hir::Crate::par_visit_all_item_likes
+  87: rustc_session::session::Session::track_errors
+  88: rustc_typeck::check_crate
+  89: rustc_interface::passes::analysis
+  90: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  91: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  92: rustc_query_system::query::plumbing::get_query_impl
+  93: rustc_middle::ty::context::tls::enter_global
+  94: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  95: rustc_span::with_source_map
+  96: rustc_interface::interface::create_compiler_and_run
+  97: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.46.0 (04488afe3 2020-08-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [const_eval_raw] const-evaluating `S`
+#1 [const_eval_validated] const-evaluating + checking `S`
+#2 [const_eval_validated] const-evaluating + checking `S`
+#3 [normalize_generic_arg_after_erasing_regions] normalizing `S`
+#4 [const_eval_raw] const-evaluating `trigger::{{constant}}#0`
+#5 [const_eval_validated] const-evaluating + checking `trigger::{{constant}}#0`
+#6 [const_eval_validated] const-evaluating + checking `trigger::{{constant}}#0`
+#7 [check_item_well_formed] checking that `trigger` is well-formed
+#8 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 4 previous errors
+
+Bug Labels:
+A-const-eval, C-bug, E-needs-test, I-ICE, T-compiler, glacier

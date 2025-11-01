@@ -1,0 +1,80 @@
+Issue Title:
+ICE: could not fully normalize `<&Extern as Trait>::Type` on `#[inline]` function · Issue #91231 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(extern_types)]
+#![allow(dead_code)]
+
+extern {
+    type Extern;
+}
+
+trait Trait {
+    type Type;
+}
+
+#[inline]
+fn f<'a>(_: <&'a Extern as Trait>::Type) where &'a Extern: Trait {}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_traits/src/normalize_erasing_regions.rs:54:32: could not fully normalize `<&Extern as Trait>::Type`
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1169:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::bug
+   3: <rustc_errors::Handler>::bug
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>
+   5: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_infer::infer::InferCtxtBuilder>::enter::<rustc_middle::ty::subst::GenericArg, rustc_traits::normalize_erasing_regions::normalize_after_erasing_regions<rustc_middle::ty::subst::GenericArg>::{closure#0}>
+   8: <rustc_traits::normalize_erasing_regions::provide::{closure#0} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::subst::GenericArg>)>>::call_once
+   9: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::subst::GenericArg>, rustc_middle::ty::subst::GenericArg>
+  10: rustc_data_structures::stack::ensure_sufficient_stack::<(rustc_middle::ty::subst::GenericArg, rustc_query_system::dep_graph::graph::DepNodeIndex), rustc_query_system::query::plumbing::execute_job<rustc_query_impl::plumbing::QueryCtxt, rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::subst::GenericArg>, rustc_middle::ty::subst::GenericArg>::{closure#3}>
+  11: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::subst::GenericArg>, rustc_middle::ty::subst::GenericArg>>
+  12: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::normalize_generic_arg_after_erasing_regions
+  13: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  14: rustc_mir_dataflow::drop_flag_effects::on_all_children_bits::on_all_children_bits::<rustc_mir_dataflow::drop_flag_effects::on_all_drop_children_bits<<rustc_mir_transform::elaborate_drops::ElaborateDropsCtxt>::collect_drop_flags::{closure#0}>::{closure#0}>
+  15: <rustc_mir_transform::elaborate_drops::ElaborateDrops as rustc_middle::mir::MirPass>::run_pass
+  16: rustc_mir_transform::run_passes
+  17: rustc_mir_transform::mir_drops_elaborated_and_const_checked
+  18: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>
+  19: rustc_data_structures::stack::ensure_sufficient_stack::<(&rustc_data_structures::steal::Steal<rustc_middle::mir::Body>, rustc_query_system::dep_graph::graph::DepNodeIndex), rustc_query_system::query::plumbing::execute_job<rustc_query_impl::plumbing::QueryCtxt, rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>::{closure#3}>
+  20: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>>
+  21: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_drops_elaborated_and_const_checked
+  22: rustc_mir_transform::optimized_mir
+  23: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId, &rustc_middle::mir::Body>
+  24: rustc_data_structures::stack::ensure_sufficient_stack::<(&rustc_middle::mir::Body, rustc_query_system::dep_graph::graph::DepNodeIndex), rustc_query_system::query::plumbing::execute_job<rustc_query_impl::plumbing::QueryCtxt, rustc_span::def_id::DefId, &rustc_middle::mir::Body>::{closure#3}>
+  25: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::DefId, &rustc_middle::mir::Body>>
+  26: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::optimized_mir
+  27: <rustc_metadata::rmeta::encoder::EncodeContext>::encode_crate_root
+  28: rustc_metadata::rmeta::encoder::encode_metadata_impl
+  29: rustc_data_structures::sync::join::<rustc_metadata::rmeta::encoder::encode_metadata::{closure#0}, rustc_metadata::rmeta::encoder::encode_metadata::{closure#1}, rustc_metadata::rmeta::encoder::EncodedMetadata, ()>
+  30: rustc_metadata::rmeta::encoder::encode_metadata
+  31: <rustc_interface::queries::Queries>::ongoing_codegen
+  32: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorReported>>
+  33: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorReported>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  34: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>
+  35: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorReported>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_errors::ErrorReported>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (b426445c6 2021-11-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [normalize_generic_arg_after_erasing_regions] normalizing `<&Extern as Trait>::Type`
+#1 [mir_drops_elaborated_and_const_checked] elaborating drops for `f`
+#2 [optimized_mir] optimizing MIR for `f`
+end of query stack
+error: could not compile `extern_type_ice_repro`
+
+Bug Labels:
+A-associated-items, C-bug, I-ICE, T-compiler, requires-nightly

@@ -1,0 +1,75 @@
+Issue Title:
+ICE when RPITIT method has multiple type parameters · Issue #102541 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(return_position_impl_trait_in_trait)]
+
+trait Foo {
+    fn foo<A, B>(self) -> impl Foo;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn foo<A, B>(self) -> impl Foo {
+        self
+    }
+}
+
+fn main() {}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_middle/src/ty/subst.rs:687:9: type parameter `B/#1` (B/1) out of range when substituting, substs=[B]
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/3f83906b30798bf61513fa340524cebf6676f9db/compiler/rustc_errors/src/lib.rs:1496:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::bug::<&alloc::string::String>
+   3: <rustc_errors::Handler>::bug::<&alloc::string::String>
+   4: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>::{closure#0}, ()>
+   5: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_middle::ty::subst::SubstFolder>::type_param_out_of_range
+   8: <rustc_middle::ty::subst::SubstFolder as rustc_middle::ty::fold::FallibleTypeFolder>::try_fold_ty
+   9: <rustc_middle::ty::generics::GenericPredicates>::instantiate_into
+  10: <rustc_middle::ty::generics::GenericPredicates>::instantiate
+  11: rustc_trait_selection::traits::project::opt_normalize_projection_type
+  12: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  13: <rustc_infer::infer::InferCtxt as rustc_trait_selection::infer::InferCtxtExt>::partially_normalize_associated_types_in::<rustc_middle::ty::sty::FnSig>
+  14: <rustc_trait_selection::traits::engine::ObligationCtxt>::normalize::<rustc_middle::ty::sty::FnSig>
+  15: <rustc_infer::infer::InferCtxtBuilder>::enter::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_typeck::check::compare_method::compare_predicate_entailment::{closure#0}>
+  16: rustc_typeck::check::compare_method::compare_impl_method
+  17: rustc_typeck::check::check::check_item_type
+  18: rustc_typeck::check::check::check_mod_item_types
+  19: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId, ()>
+  20: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, ()>>
+  21: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::check_mod_item_types, rustc_query_impl::plumbing::QueryCtxt>
+  22: <rustc_middle::hir::map::Map>::for_each_module::<rustc_typeck::check_crate::{closure#6}::{closure#0}>
+  23: rustc_typeck::check_crate
+  24: rustc_interface::passes::analysis
+  25: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, (), core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+  26: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), core::result::Result<(), rustc_errors::ErrorGuaranteed>>>
+  27: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  28: <rustc_interface::passes::QueryContext>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}::{closure#3}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+  29: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>
+  30: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.66.0-nightly (3f83906b3 2022-09-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [check_mod_item_types] checking item types in top-level module
+#1 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+C-bug, F-return_position_impl_trait_in_trait, I-ICE, T-compiler, requires-nightly

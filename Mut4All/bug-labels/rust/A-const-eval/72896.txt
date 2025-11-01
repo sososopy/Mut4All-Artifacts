@@ -1,0 +1,115 @@
+Issue Title:
+ICE when structurally matching a struct containing an associated type on latest Nightly. · Issue #72896 · rust-lang/rust · GitHub
+
+Rust Code:
+trait EnumSetType: Copy + Eq {
+    type Repr;
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum Enum8 { }
+impl EnumSetType for Enum8 {
+    type Repr = u8;
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+struct EnumSet<T: EnumSetType> {
+    __enumset_underlying: T::Repr,
+}
+
+const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
+
+#[test]
+fn match_const_test() {
+    match CONST_SET {
+        CONST_SET => { /* ok */ }
+        _ => panic!("match fell through?"),
+    }
+}
+
+Bug Trace:
+Compiling test_crate v0.1.0 (/home/[...]/enumset_test)
+error: internal compiler error: src/librustc_mir_build/hair/pattern/const_to_pat.rs:137: use of a constant whose type is a projection inside a pattern
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:907:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1076
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1537
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:490
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  17: rustc_middle::ty::context::tls::with_opt
+  18: rustc_middle::util::bug::opt_span_bug_fmt
+  19: rustc_middle::util::bug::bug_fmt
+  20: rustc_mir_build::hair::pattern::const_to_pat::ConstToPat::to_pat
+  21: rustc_middle::ty::context::GlobalCtxt::enter_local
+  22: rustc_mir_build::hair::pattern::PatCtxt::lower_path
+  23: rustc_mir_build::hair::pattern::PatCtxt::lower_pattern
+  24: rustc_mir_build::hair::pattern::check_match::MatchVisitor::lower_pattern
+  25: <core::iter::adapters::Map<I,F> as core::iter::traits::iterator::Iterator>::fold
+  26: <rustc_mir_build::hair::pattern::check_match::MatchVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  27: <rustc_mir_build::hair::pattern::check_match::MatchVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  28: rustc_mir_build::hair::pattern::check_match::check_match
+  29: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_match>::compute
+  30: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: rustc_query_system::query::plumbing::ensure_query_impl
+  35: rustc_session::utils::<impl rustc_session::session::Session>::time
+  36: rustc_session::utils::<impl rustc_session::session::Session>::time
+  37: rustc_interface::passes::analysis
+  38: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  39: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  40: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  41: rustc_query_system::query::plumbing::get_query_impl
+  42: rustc_middle::ty::context::tls::enter_global
+  43: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  44: rustc_ast::attr::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.0-nightly (5fd2f06e9 2020-05-31) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [check_match] processing `match_const_test`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `test_crate`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-associated-items, A-const-eval, A-patterns, C-bug, I-ICE, P-critical, T-compiler, regression-from-stable-to-nightly

@@ -1,0 +1,78 @@
+Issue Title:
+Clang assertion failure in clang::CodeGen::LValue::getPointer when accessing a bitfield in an asm block: Assertion `isSimple()' failed
+
+Source Code & Bug Trace:
+$ cat t.c
+struct {
+  unsigned bf:1;
+} s;
+void f()
+{
+   __asm { mov s.bf,eax }
+}
+
+$ clang --version
+clang version 16.0.0 (https://github.com/tahonermann/llvm-project.git 6073e0a2f7018fb01283f48e946a45aff5512eae)
+Target: x86_64-unknown-linux-gnu
+...
+
+$ clang -c -fasm-blocks t.c
+clang: /iusers/thonerma/llvm-project/clang/lib/CodeGen/CGValue.h:338: llvm::Value* clang::CodeGen::LValue::getPointer(clang::CodeGen::CodeGenFunction&) const: Assertion `isSimple()' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /iusers/thonerma/build-llvm-project-main-Debug-On/bin/clang -c -fasm-blocks t.c
+1.      <eof> parser at end of file
+2.      t.c:4:6: LLVM IR generation of declaration 'f'
+3.      t.c:4:6: Generating code for declaration 'f'
+ #0 0x0000000005aa8fbd llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /iusers/thonerma/llvm-project/llvm/lib/Support/Unix/Signals.inc:569:22
+ #1 0x0000000005aa9074 PrintStackTraceSignalHandler(void*) /iusers/thonerma/llvm-project/llvm/lib/Support/Unix/Signals.inc:636:1
+ #2 0x0000000005aa6fe2 llvm::sys::RunSignalHandlers() /iusers/thonerma/llvm-project/llvm/lib/Support/Signals.cpp:103:20
+ #3 0x0000000005aa8908 llvm::sys::CleanupOnSignal(unsigned long) /iusers/thonerma/llvm-project/llvm/lib/Support/Unix/Signals.inc:361:31
+ #4 0x00000000059d2605 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) /iusers/thonerma/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:77:5
+ #5 0x00000000059d2aeb CrashRecoverySignalHandler(int) /iusers/thonerma/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:398:1
+ #6 0x00007f24d6c64b20 __restore_rt sigaction.c:0:0
+ #7 0x00007f24d574537f raise (/lib64/libc.so.6+0x3737f)
+ #8 0x00007f24d572fdb5 abort (/lib64/libc.so.6+0x21db5)
+ #9 0x00007f24d572fc89 _nl_load_domain.cold.0 loadmsgcat.c:0:0
+#10 0x00007f24d573da76 .annobin___GI___assert_fail.end assert.c:0:0
+#11 0x00000000060e6e97 clang::CodeGen::LValue::getPointer(clang::CodeGen::CodeGenFunction&) const /iusers/thonerma/llvm-project/clang/lib/CodeGen/CGValue.h:339:12
+#12 0x00000000060e6edf clang::CodeGen::LValue::getAddress(clang::CodeGen::CodeGenFunction&) const /iusers/thonerma/llvm-project/clang/lib/CodeGen/CGValue.h:342:12
+#13 0x00000000060e13de clang::CodeGen::CodeGenFunction::EmitAsmStmt(clang::AsmStmt const&) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CGStmt.cpp:2457:47
+#14 0x00000000060d7c1f clang::CodeGen::CodeGenFunction::EmitStmt(clang::Stmt const*, llvm::ArrayRef<clang::Attr const*>) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CGStmt.cpp:157:75
+#15 0x00000000060d8d41 clang::CodeGen::CodeGenFunction::EmitCompoundStmtWithoutScope(clang::CompoundStmt const&, bool, clang::CodeGen::AggValueSlot) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CGStmt.cpp:496:3
+#16 0x000000000618e328 clang::CodeGen::CodeGenFunction::EmitFunctionBody(clang::Stmt const*) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenFunction.cpp:1239:36
+#17 0x000000000618f1c1 clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenFunction.cpp:1447:21
+#18 0x00000000061bdce1 clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenModule.cpp:5322:3
+#19 0x00000000061b6885 clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenModule.cpp:3597:47
+#20 0x00000000061b5828 clang::CodeGen::CodeGenModule::EmitGlobal(clang::GlobalDecl) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenModule.cpp:3338:5
+#21 0x00000000061c1dde clang::CodeGen::CodeGenModule::EmitTopLevelDecl(clang::Decl*) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenModule.cpp:6181:37
+#22 0x0000000007356136 (anonymous namespace)::CodeGeneratorImpl::HandleTopLevelDecl(clang::DeclGroupRef) /iusers/thonerma/llvm-project/clang/lib/CodeGen/ModuleBuilder.cpp:188:7
+#23 0x000000000734e264 clang::BackendConsumer::HandleTopLevelDecl(clang::DeclGroupRef) /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenAction.cpp:234:11
+#24 0x0000000008e8f302 clang::ParseAST(clang::Sema&, bool, bool) /iusers/thonerma/llvm-project/clang/lib/Parse/ParseAST.cpp:166:20
+#25 0x0000000006a1a751 clang::ASTFrontendAction::ExecuteAction() /iusers/thonerma/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1152:11
+#26 0x000000000734b9ef clang::CodeGenAction::ExecuteAction() /iusers/thonerma/llvm-project/clang/lib/CodeGen/CodeGenAction.cpp:1145:5
+#27 0x0000000006a1a07d clang::FrontendAction::Execute() /iusers/thonerma/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1049:38
+#28 0x00000000069580ba clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /iusers/thonerma/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:1043:42
+#29 0x0000000006b9f80c clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /iusers/thonerma/llvm-project/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:266:38
+#30 0x0000000002710caf cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /iusers/thonerma/llvm-project/clang/tools/driver/cc1_main.cpp:250:40
+#31 0x00000000027028fb ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) /iusers/thonerma/llvm-project/clang/tools/driver/driver.cpp:317:20
+#32 0x000000000682995d clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()::operator()() const /iusers/thonerma/llvm-project/clang/lib/Driver/Job.cpp:428:32
+#33 0x0000000006829ec4 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) /iusers/thonerma/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:46:40
+#34 0x00000000047bd23c llvm::function_ref<void ()>::operator()() const /iusers/thonerma/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:68:62
+#35 0x00000000059d2ca5 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /iusers/thonerma/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:434:10
+#36 0x0000000006829b4a clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const /iusers/thonerma/llvm-project/clang/lib/Driver/Job.cpp:428:7
+#37 0x00000000067d1a6c clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /iusers/thonerma/llvm-project/clang/lib/Driver/Compilation.cpp:200:22
+#38 0x00000000067d1da5 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const /iusers/thonerma/llvm-project/clang/lib/Driver/Compilation.cpp:254:62
+#39 0x00000000067e2612 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) /iusers/thonerma/llvm-project/clang/lib/Driver/Driver.cpp:1783:28
+#40 0x0000000002703d1a clang_main(int, char**) /iusers/thonerma/llvm-project/clang/tools/driver/driver.cpp:513:39
+#41 0x000000000272d22d main /iusers/thonerma/build-llvm-project-main-Debug-On/tools/clang/tools/driver/clang-driver.cpp:11:63
+#42 0x00007f24d5731493 __libc_start_main (/lib64/libc.so.6+0x23493)
+#43 0x000000000270120e _start (/iusers/thonerma/build-llvm-project-main-Debug-On/bin/clang+0x270120e)
+clang-15: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 16.0.0 (https://github.com/tahonermann/llvm-project.git 6073e0a2f7018fb01283f48e946a45aff5512eae)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /iusers/thonerma/build-llvm-project-main-Debug-On/bin
+
+Bug Labels:
+clang:frontend, crash

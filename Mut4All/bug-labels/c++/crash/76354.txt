@@ -1,0 +1,101 @@
+Issue Title:
+clang parser crashed 
+
+Source Code & Bug Trace:
+#include <memory>
+
+class Mgr
+{
+
+};
+
+enum class Bar
+{
+    None = 0
+};
+
+class Foo
+{
+    Foo(Mgr&mgr, Bar bar, uint32_t id): mgr_(mgr), bar_(bar), id_(id){
+
+    }
+    Mgr& mgr_;
+    Bar bar_;
+    uint32_t id_;
+};
+template<typename Tp, typename... TArgs>
+std::shared_ptr<Tp> crash(TArgs&& ...args)
+{
+    return std::make_shared<Tp>(std::forward < TArgs > (args)...);
+}
+
+int main() {
+    Mgr mgr;
+    Bar bar = Bar::None;
+    uint32_t id = 0;
+    auto x = crash<Foo, Mgr&, Bar, uint32_t>(mgr, bar, id);
+}
+
+<source>:32:14: error: no matching function for call to 'crash'
+   32 |     auto x = crash<Foo, Mgr&, Bar, uint32_t>(mgr, bar, id);
+      |              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-17.0.1/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-13.2.0 -fcolor-diagnostics -fno-crash-diagnostics <source>
+1.	<source>:32:58: current parser token ')'
+2.	<source>:28:12: parsing function body 'main'
+3.	<source>:28:12: in compound statement ('{}')
+ #0 0x0000000003349f18 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3349f18)
+ #1 0x0000000003348044 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3348044)
+ #2 0x000000000329c028 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f95ec442520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x0000000006188b5a DiagnoseBadConversion(clang::Sema&, clang::OverloadCandidate*, unsigned int, bool) SemaOverload.cpp:0:0
+ #5 0x00000000061a9fe7 clang::OverloadCandidateSet::NoteCandidates(clang::Sema&, llvm::ArrayRef<clang::Expr*>, llvm::ArrayRef<clang::OverloadCandidate*>, llvm::StringRef, clang::SourceLocation) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x61a9fe7)
+ #6 0x00000000061aad49 clang::OverloadCandidateSet::NoteCandidates(std::pair<clang::SourceLocation, clang::PartialDiagnostic>, clang::Sema&, clang::OverloadCandidateDisplayKind, llvm::ArrayRef<clang::Expr*>, llvm::StringRef, clang::SourceLocation, llvm::function_ref<bool (clang::OverloadCandidate&)>) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x61aad49)
+ #7 0x00000000061ab214 FinishOverloadedCallExpr(clang::Sema&, clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, clang::OverloadCandidateSet*, clang::OverloadCandidate**, clang::OverloadingResult, bool) SemaOverload.cpp:0:0
+ #8 0x00000000061ac310 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x61ac310)
+ #9 0x0000000005e69526 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x5e69526)
+#10 0x0000000005e6f73c clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x5e6f73c)
+#11 0x00000000059307ff clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59307ff)
+#12 0x0000000005927a41 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x5927a41)
+#13 0x0000000005928fac clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x5928fac)
+#14 0x000000000592ac9a clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x592ac9a)
+#15 0x000000000592ae39 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x592ae39)
+#16 0x00000000058e88ec clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58e88ec)
+#17 0x00000000058fca30 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58fca30)
+#18 0x00000000058fddfd clang::Parser::ParseSimpleDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, bool, clang::Parser::ForRangeInit*, clang::SourceLocation*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58fddfd)
+#19 0x00000000058fe2df clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58fe2df)
+#20 0x00000000059a9a32 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59a9a32)
+#21 0x00000000059aa342 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59aa342)
+#22 0x00000000059ab149 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59ab149)
+#23 0x00000000059ac40a clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59ac40a)
+#24 0x00000000058cabc8 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58cabc8)
+#25 0x00000000058fcb79 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58fcb79)
+#26 0x00000000058c5212 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58c5212)
+#27 0x00000000058c632f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.0) Parser.cpp:0:0
+#28 0x00000000058cda8f clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58cda8f)
+#29 0x00000000058cef0a clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58cef0a)
+#30 0x00000000058be95a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58be95a)
+#31 0x00000000044f8b05 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x44f8b05)
+#32 0x0000000003dd5f21 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3dd5f21)
+#33 0x0000000003d5b9fb clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3d5b9fb)
+#34 0x0000000003eb5c23 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3eb5c23)
+#35 0x0000000000bd50c5 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xbd50c5)
+#36 0x0000000000bce42d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#37 0x0000000003ba7489 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#38 0x000000000329c453 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x329c453)
+#39 0x0000000003ba76a9 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#40 0x0000000003b6f477 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3b6f477)
+#41 0x0000000003b6fe2d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3b6fe2d)
+#42 0x0000000003b79d0c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3b79d0c)
+#43 0x0000000000bd2d31 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xbd2d31)
+#44 0x0000000000acf511 main (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xacf511)
+#45 0x00007f95ec429d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#46 0x00007f95ec429e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#47 0x0000000000bcdc2e _start (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xbcdc2e)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+
+Bug Labels:
+clang:frontend, confirmed, crash

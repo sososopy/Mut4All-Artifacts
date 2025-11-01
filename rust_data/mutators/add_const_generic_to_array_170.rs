@@ -1,0 +1,84 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Add_Const_Generic_To_Array_170;
+
+impl Mutator for Add_Const_Generic_To_Array_170 {
+    fn name(&self) -> &str {
+        "Add_Const_Generic_To_Array_170"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let Item::Fn(func) = item {
+                let mut new_generics = func.sig.generics.clone();
+                let mut modified = false;
+
+                for input in &mut func.sig.inputs {
+                    if let FnArg::Typed(PatType { ty, .. }) = input {
+                        if let Type::Reference(ref mut type_ref) = **ty {
+                            if let Type::Array(ref mut type_array) = *type_ref.elem {
+                                if let Expr::Lit(ref expr_lit) = type_array.len {
+                                    if let syn::Lit::Int(ref lit_int) = expr_lit.lit {
+                                        let generic_ident = Ident::new("N", lit_int.span());
+                                        if !new_generics.params.iter().any(|param| {
+                                            if let GenericParam::Const(const_param) = param {
+                                                const_param.ident == generic_ident
+                                            } else {
+                                                false
+                                            }
+                                        }) {
+                                            new_generics.params.push(GenericParam::Const(syn::ConstParam {
+                                                attrs: Vec::new(),
+                                                const_token: token::Const(Span::call_site()),
+                                                ident: generic_ident.clone(),
+                                                colon_token: token::Colon(Span::call_site()),
+                                                ty: Type::Path(TypePath {
+                                                    qself: None,
+                                                    path: parse_quote!(usize),
+                                                }),
+                                                eq_token: None,
+                                                default: None,
+                                            }));
+                                            type_array.len = Expr::Path(ExprPath {
+                                                attrs: Vec::new(),
+                                                qself: None,
+                                                path: SynPath::from(generic_ident.clone()),
+                                            });
+                                            modified = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if modified {
+                    func.sig.generics = new_generics;
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator targets function signatures, specifically those with parameters involving referenced slices or arrays. It introduces a generic constant expression by adding a const generic parameter placeholder. This increases the complexity of the type system in the function signature, which can expose potential compiler bugs related to type inference and const evaluation."
+    }
+}

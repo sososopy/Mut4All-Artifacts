@@ -1,0 +1,125 @@
+Issue Title:
+ICE checking transmutability of NaughtyLenArray · Issue #103783 · rust-lang/rust · GitHub
+
+Rust Code:
+#![crate_type = "lib"]
+#![feature(transmutability)]
+#![allow(dead_code)]
+
+mod assert {
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    pub struct Context;
+
+    pub fn is_maybe_transmutable<Src, Dst>()
+    where
+        Dst: BikeshedIntrinsicFrom<Src, Context, {
+            Assume {
+                alignment: true,
+                lifetimes: true,
+                safety: true,
+                validity: true,
+            }
+        }>
+    {}
+}
+
+fn test() {
+    type NaughtyLenArray = [u32; 3.14159]; //~ ERROR mismatched types
+    type JustUnit = ();
+    assert::is_maybe_transmutable::<JustUnit, NaughtyLenArray>();
+}
+
+Bug Trace:
+error[E0308]: mismatched types
+  --> nn.rs:23:34
+   |
+23 |     type NaughtyLenArray = [u32; 3.14159]; //~ ERROR mismatched types
+   |                                  ^^^^^^^ expected `usize`, found floating-point number
+
+thread 'rustc' panicked at 'called `Option::unwrap()` on a `None` value', compiler/rustc_transmute/src/layout/tree.rs:287:31
+stack backtrace:
+   0:        0x1103b58a2 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h98e7719cdb057d8f
+   1:        0x11040d74a - core::fmt::write::he324e6f3a7ef7ed0
+   2:        0x1103a797c - std::io::Write::write_fmt::h295c914c323e508a
+   3:        0x1103b566a - std::sys_common::backtrace::print::hb2f2bd76d0a1d9b2
+   4:        0x1103b8a76 - std::panicking::default_hook::{{closure}}::h7f2a23a911934152
+   5:        0x1103b87c7 - std::panicking::default_hook::h576cf5867894044c
+   6:        0x11b67462d - rustc_driver[ba5c792b9438c2b]::DEFAULT_HOOK::{closure#0}::{closure#0}
+   7:        0x1103b9271 - std::panicking::rust_panic_with_hook::hf0781b554a936fbf
+   8:        0x1103b8fc2 - std::panicking::begin_panic_handler::{{closure}}::h8d2525e276d552d8
+   9:        0x1103b5d38 - std::sys_common::backtrace::__rust_end_short_backtrace::hf3badbbd5492e2d6
+  10:        0x1103b8ccd - _rust_begin_unwind
+  11:        0x11043a1b3 - core::panicking::panic_fmt::h15d4409e62dc090a
+  12:        0x11043a287 - core::panicking::panic::h503de31a4470d5f7
+  13:        0x11fc3198d - <rustc_transmute[3cf315cfec3b6969]::layout::tree::Tree<rustc_transmute[3cf315cfec3b6969]::layout::rustc::Def, rustc_transmute[3cf315cfec3b6969]::layout::rustc::Ref>>::from_ty
+  14:        0x11fc2163a - <rustc_transmute[3cf315cfec3b6969]::maybe_transmutable::MaybeTransmutableQuery<rustc_middle[298407787cc28eff]::ty::Ty, rustc_middle[298407787cc28eff]::ty::context::TyCtxt>>::answer
+  15:        0x11fc230a3 - <rustc_transmute[3cf315cfec3b6969]::rustc::TransmuteTypeEnv>::is_transmutable
+  16:        0x11fbdbb73 - <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::confirm_candidate
+  17:        0x11fb6b676 - <rustc_infer[b40902abbc4e8850]::infer::InferCtxt>::probe::<core[13371b8ce97f01bb]::result::Result<rustc_middle[298407787cc28eff]::traits::select::EvaluationResult, rustc_middle[298407787cc28eff]::traits::select::OverflowError>, <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluation_probe<<rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluate_candidate::{closure#0}::{closure#0}>::{closure#0}>
+  18:        0x11fbd6ad0 - <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluate_stack
+  19:        0x11fb7a861 - <rustc_query_system[fd3d689380a50de4]::dep_graph::graph::DepGraph<rustc_middle[298407787cc28eff]::dep_graph::dep_node::DepKind>>::with_anon_task::<rustc_middle[298407787cc28eff]::ty::context::TyCtxt, <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::in_task<<rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluate_trait_predicate_recursively::{closure#0}::{closure#2}, core[13371b8ce97f01bb]::result::Result<rustc_middle[298407787cc28eff]::traits::select::EvaluationResult, rustc_middle[298407787cc28eff]::traits::select::OverflowError>>::{closure#0}, core[13371b8ce97f01bb]::result::Result<rustc_middle[298407787cc28eff]::traits::select::EvaluationResult, rustc_middle[298407787cc28eff]::traits::select::OverflowError>>
+  20:        0x11fbe710b - <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluate_trait_predicate_recursively
+  21:        0x11fbe5251 - <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluate_predicate_recursively
+  22:        0x11fb6ba96 - <rustc_infer[b40902abbc4e8850]::infer::InferCtxt>::probe::<core[13371b8ce97f01bb]::result::Result<rustc_middle[298407787cc28eff]::traits::select::EvaluationResult, rustc_middle[298407787cc28eff]::traits::select::OverflowError>, <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluation_probe<<rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluate_root_obligation::{closure#0}>::{closure#0}>
+  23:        0x11fbd685f - <rustc_trait_selection[9c2b695c7caa8425]::traits::select::SelectionContext>::evaluate_root_obligation
+  24:        0x11ebac72c - rustc_traits[885df869f77fc2f3]::evaluate_obligation::evaluate_obligation
+  25:        0x11ee43048 - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<rustc_middle[298407787cc28eff]::infer::canonical::Canonical<rustc_middle[298407787cc28eff]::ty::ParamEnvAnd<rustc_middle[298407787cc28eff]::ty::Predicate>>, core[13371b8ce97f01bb]::result::Result<rustc_middle[298407787cc28eff]::traits::select::EvaluationResult, rustc_middle[298407787cc28eff]::traits::select::OverflowError>>>
+  26:        0x11ef5441d - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::evaluate_obligation, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  27:        0x11f0079a9 - <rustc_query_impl[f77634870212a75e]::Queries as rustc_middle[298407787cc28eff]::ty::query::QueryEngine>::evaluate_obligation
+  28:        0x11fb78209 - <rustc_infer[b40902abbc4e8850]::infer::InferCtxt as rustc_trait_selection[9c2b695c7caa8425]::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation
+  29:        0x11fb782ff - <rustc_infer[b40902abbc4e8850]::infer::InferCtxt as rustc_trait_selection[9c2b695c7caa8425]::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+  30:        0x11fbcffbd - <rustc_trait_selection[9c2b695c7caa8425]::traits::fulfill::FulfillProcessor>::process_trait_obligation
+  31:        0x11fbcf752 - <rustc_trait_selection[9c2b695c7caa8425]::traits::fulfill::FulfillProcessor as rustc_data_structures[445d045225b5bae3]::obligation_forest::ObligationProcessor>::process_obligation
+  32:        0x11fb0dcd7 - <rustc_data_structures[445d045225b5bae3]::obligation_forest::ObligationForest<rustc_trait_selection[9c2b695c7caa8425]::traits::fulfill::PendingPredicateObligation>>::process_obligations::<rustc_trait_selection[9c2b695c7caa8425]::traits::fulfill::FulfillProcessor>
+  33:        0x11fbcb85a - <rustc_trait_selection[9c2b695c7caa8425]::traits::fulfill::FulfillmentContext as rustc_infer[b40902abbc4e8850]::traits::engine::TraitEngine>::select_where_possible
+  34:        0x11de89523 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_argument_types
+  35:        0x11de6af98 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::confirm_builtin_call
+  36:        0x11de67f56 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_call
+  37:        0x11ded23c7 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_expr_kind
+  38:        0x11de7b556 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+  39:        0x11de90eb5 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_stmt
+  40:        0x11de915ff - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_block_with_expected
+  41:        0x11ded27a8 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_expr_kind
+  42:        0x11de7b556 - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+  43:        0x11de7c59a - <rustc_hir_typeck[82128e1af9fabaca]::fn_ctxt::FnCtxt>::check_return_expr
+  44:        0x11dfedd6e - rustc_hir_typeck[82128e1af9fabaca]::check::check_fn
+  45:        0x11dfb465c - rustc_hir_typeck[82128e1af9fabaca]::typeck
+  46:        0x11ee5dfb9 - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<rustc_span[73e074df7cba0abf]::def_id::LocalDefId, &rustc_middle[298407787cc28eff]::ty::context::TypeckResults>>
+  47:        0x11ef5f04c - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::typeck, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  48:        0x11dfddb6b - rustc_data_structures[445d045225b5bae3]::sync::par_for_each_in::<&[rustc_span[73e074df7cba0abf]::def_id::LocalDefId], <rustc_middle[298407787cc28eff]::hir::map::Map>::par_body_owners<rustc_hir_typeck[82128e1af9fabaca]::typeck_item_bodies::{closure#0}>::{closure#0}>
+  49:        0x11dfb1b8d - rustc_hir_typeck[82128e1af9fabaca]::typeck_item_bodies
+  50:        0x11eef34a9 - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<(), ()>>
+  51:        0x11ef53a39 - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::typeck_item_bodies, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  52:        0x11e0d6ed4 - <rustc_session[43d2d941ace548e5]::session::Session>::time::<(), rustc_hir_analysis[3f5a3f8b91adb05]::check_crate::{closure#7}>
+  53:        0x11e08746f - rustc_hir_analysis[3f5a3f8b91adb05]::check_crate
+  54:        0x11b74cfda - rustc_interface[a666f6d755ed9279]::passes::analysis
+  55:        0x11eee526c - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<(), core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>>
+  56:        0x11ef5f3f9 - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::analysis, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  57:        0x11b603296 - <rustc_interface[a666f6d755ed9279]::passes::QueryContext>::enter::<rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}::{closure#2}::{closure#3}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>
+  58:        0x11b647a4d - rustc_span[73e074df7cba0abf]::with_source_map::<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}::{closure#1}>
+  59:        0x11b63734c - <scoped_tls[c17fceff1b2b43d8]::ScopedKey<rustc_span[73e074df7cba0abf]::SessionGlobals>>::set::<rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>
+  60:        0x11b606e5a - std[8878bd7dd366d71b]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[a666f6d755ed9279]::util::run_in_thread_pool_with_globals<rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>
+  61:        0x11b5ecf7b - <<std[8878bd7dd366d71b]::thread::Builder>::spawn_unchecked_<rustc_interface[a666f6d755ed9279]::util::run_in_thread_pool_with_globals<rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>::{closure#1} as core[13371b8ce97f01bb]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  62:        0x1103c2387 - std::sys::unix::thread::Thread::new::thread_start::hfd54df40dd14130e
+  63:     0x7ff814d514e1 - __pthread_start
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.66.0-nightly (0da281b60 2022-10-27) running on x86_64-apple-darwin
+
+query stack during panic:
+#0 [evaluate_obligation] evaluating trait selection obligation `[u32; _]: core::mem::transmutability::BikeshedIntrinsicFrom<(), assert::Context, core::mem::transmutability::Assume { alignment: true, lifetimes: true, safety: true, validity: true }>`
+#1 [typeck] type-checking `test`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
+
+Bug Labels:
+C-bug, F-transmutability, I-ICE, T-compiler

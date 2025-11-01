@@ -1,0 +1,44 @@
+Issue Title:
+ICE on valid, templated friend injection cause ICE, invalid template parameters, true and false at the same time assert condition
+
+Source Code & Bug Trace:
+#include <type_traits>
+
+template<class...> struct type_t {};
+
+struct A {};
+
+template<class... Args>
+void fn(A, type_t<Args...>);
+
+template<int N>
+void nothing() {}
+
+struct fn_arg {};
+struct class_arg {};
+
+template<class T>
+struct B
+{
+    template<class... Args>
+    friend void fn(A, type_t<Args...>) {
+        static_assert(std::is_same<T, fn_arg>::value, "Should be class_arg!");
+
+        static_assert(sizeof...(Args) != 0, "ok");
+        static_assert(sizeof...(Args) == 0, "What?");
+        constexpr auto n = sizeof...(Args);
+        nothing<n>(); //ICE!
+    }
+};
+
+void func(B<class_arg> = {}) {}
+
+int main()
+{
+    fn(A{}, type_t<fn_arg>{});
+}
+
+
+
+Bug Labels:
+bugzilla, c++, clang:frontend, crash, miscompilation

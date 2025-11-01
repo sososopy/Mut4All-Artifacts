@@ -1,0 +1,441 @@
+Issue Title:
+ICE: "Span must not be empty and have no suggestion" -Wsingle-use-lifetimes · Issue #104440 · rust-lang/rust · GitHub
+
+Rust Code:
+// Ensure that generic parameters always have modern hygiene.
+
+// check-pass
+// ignore-pretty pretty-printing is unhygienic
+
+#![feature(decl_macro, rustc_attrs)]
+
+mod type_params {
+    macro m($T:ident) {
+        fn f<$T: Clone, T: PartialEq>(t1: $T, t2: T) -> ($T, bool) {
+            (t1.clone(), t2 == t2)
+        }
+    }
+
+    #[rustc_macro_transparency = "semitransparent"]
+    macro n($T:ident) {
+        fn g<$T: Clone>(t1: $T, t2: T) -> (T, $T) {
+            (t1.clone(), t2.clone())
+        }
+        fn h<T: Clone>(t1: $T, t2: T) -> (T, $T) {
+            (t1.clone(), t2.clone())
+        }
+    }
+
+    #[rustc_macro_transparency = "transparent"]
+    macro p($T:ident) {
+        fn j<$T: Clone>(t1: $T, t2: T) -> (T, $T) {
+            (t1.clone(), t2.clone())
+        }
+        fn k<T: Clone>(t1: $T, t2: T) -> (T, $T) {
+            (t1.clone(), t2.clone())
+        }
+    }
+
+    m!(T);
+    n!(T);
+    p!(T);
+}
+
+mod lifetime_params {
+    macro m($a:lifetime) {
+        fn f<'b, 'c, $a: 'b, 'a: 'c>(t1: &$a(), t2: &'a ()) -> (&'b (), &'c ()) {
+            (t1, t2)
+        }
+    }
+
+    #[rustc_macro_transparency = "semitransparent"]
+    macro n($a:lifetime) {
+        fn g<$a>(t1: &$a(), t2: &'a ()) -> (&'a (), &$a ()) {
+            (t1, t2)
+        }
+        fn h<'a>(t1: &$a(), t2: &'a ()) -> (&'a (), &$a ()) {
+            (t1, t2)
+        }
+    }
+
+    #[rustc_macro_transparency = "transparent"]
+    macro p($a:lifetime) {
+        fn j<$a>(t1: &$a(), t2: &'a ()) -> (&'a (), &$a ()) {
+            (t1, t2)
+        }
+        fn k<'a>(t1: &$a(), t2: &'a ()) -> (&'a (), &$a ()) {
+            (t1, t2)
+        }
+    }
+
+    m!('a);
+    n!('a);
+    p!('a);
+}
+
+mod const_params {
+    macro m($C:ident) {
+        fn f<const $C: usize, const C: usize>(t1: [(); $C], t2: [(); C]) -> ([(); $C], [(); C]) {
+            (t1, t2)
+        }
+    }
+
+    #[rustc_macro_transparency = "semitransparent"]
+    macro n($C:ident) {
+        fn g<const $C: usize>(t1: [(); $C], t2: [(); C]) -> ([(); C], [(); $C]) {
+            (t1, t2)
+        }
+        fn h<const C: usize>(t1: [(); $C], t2: [(); C]) -> ([(); C], [(); $C]) {
+            (t1, t2)
+        }
+    }
+
+    #[rustc_macro_transparency = "transparent"]
+    macro p($C:ident) {
+        fn j<const $C: usize>(t1: [(); $C], t2: [(); C]) -> ([(); C], [(); $C]) {
+            (t1, t2)
+        }
+        fn k<const C: usize>(t1: [(); $C], t2: [(); C]) -> ([(); C], [(); $C]) {
+            (t1, t2)
+        }
+    }
+
+    m!(C);
+    n!(C);
+    p!(C);
+}
+
+fn main() {}
+
+Bug Trace:
+thread 'rustc' panicked at 'Span must not be empty and have no suggestion', /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_errors/src/diagnostic.rs:623:9
+stack backtrace:
+   0:     0x7f25142ed23e - std::backtrace_rs::backtrace::libunwind::trace::h2ba7924f373abcbe
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7f25142ed23e - std::backtrace_rs::backtrace::trace_unsynchronized::h5a4fdc5ca15c5a11
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f25142ed23e - std::sys_common::backtrace::_print_fmt::h34d240f86b681b56
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:65:5
+   3:     0x7f25142ed23e - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hff0170f2c82d7337
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f251436bbe8 - core::fmt::write::h1efe05f8990e10dd
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/mod.rs:1209:17
+   5:     0x7f25142bd0af - std::io::Write::write_fmt::h09b98dcf13d06d7e
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/io/mod.rs:1682:15
+   6:     0x7f25142ed035 - std::sys_common::backtrace::_print::hd796cba033e68e9f
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:47:5
+   7:     0x7f25142ed035 - std::sys_common::backtrace::print::h372132b3c3624c25
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:34:9
+   8:     0x7f25142c9be7 - std::panicking::default_hook::{{closure}}::h25ec0b66e0c6b3e1
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:267:22
+   9:     0x7f25142c9980 - std::panicking::default_hook::h57d3b2570aeea246
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:286:9
+  10:     0x7f251510de82 - <alloc[19a8b8a34660badf]::boxed::Box<dyn for<'a, 'b> core[54e86a843f8c5207]::ops::function::Fn<(&'a core[54e86a843f8c5207]::panic::panic_info::PanicInfo<'b>,), Output = ()> + core[54e86a843f8c5207]::marker::Sync + core[54e86a843f8c5207]::marker::Send> as core[54e86a843f8c5207]::ops::function::Fn<(&core[54e86a843f8c5207]::panic::panic_info::PanicInfo,)>>::call
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:2024:9
+  11:     0x7f251510de82 - rustc_driver[102e08cae241c12c]::DEFAULT_HOOK::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:1207:13
+  12:     0x7f25142ca5cc - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::he864250e2a0af0c3
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:2024:9
+  13:     0x7f25142ca5cc - std::panicking::rust_panic_with_hook::h57f8ea81dc24fd24
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:692:13
+  14:     0x7f25142ed581 - std::panicking::begin_panic_handler::{{closure}}::h132f8ad5315769da
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:577:13
+  15:     0x7f25142ed38e - std::sys_common::backtrace::__rust_end_short_backtrace::h6f8d96ac57d7d842
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:137:18
+  16:     0x7f25142ca072 - rust_begin_unwind
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:575:5
+  17:     0x7f251427b283 - core::panicking::panic_fmt::h43c239f62329fe2a
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:65:14
+  18:     0x7f25153882e4 - <rustc_errors[6b61d4e931019684]::diagnostic::Diagnostic>::multipart_suggestion_with_style::<&str>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_errors/src/diagnostic.rs:623:9
+  19:     0x7f2515344cfe - <rustc_errors[6b61d4e931019684]::diagnostic::Diagnostic>::multipart_suggestion::<&str>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_errors/src/diagnostic.rs:591:9
+  20:     0x7f2515344cfe - <rustc_errors[6b61d4e931019684]::diagnostic_builder::DiagnosticBuilder<()>>::multipart_suggestion::<&str>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_errors/src/diagnostic_builder.rs:375:13
+  21:     0x7f2515344cfe - <rustc_lint[53e6ba2ec08944c2]::context::EarlyContext as rustc_lint[53e6ba2ec08944c2]::context::LintContext>::lookup_with_diagnostics::<rustc_error_messages[abd8fc367e712721]::MultiSpan, rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::check_id::{closure#0}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/context.rs:831:21
+  22:     0x7f2515344cfe - <<rustc_lint[53e6ba2ec08944c2]::context::EarlyContext as rustc_lint[53e6ba2ec08944c2]::context::LintContext>::lookup_with_diagnostics<rustc_error_messages[abd8fc367e712721]::MultiSpan, rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::check_id::{closure#0}>::{closure#0} as core[54e86a843f8c5207]::ops::function::FnOnce<(&mut rustc_errors[6b61d4e931019684]::diagnostic_builder::DiagnosticBuilder<()>,)>>::call_once::{shim:vtable#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:427:5
+  23:     0x7f251533d011 - <alloc[19a8b8a34660badf]::boxed::Box<dyn for<'a, 'b> core[54e86a843f8c5207]::ops::function::FnOnce<(&'a mut rustc_errors[6b61d4e931019684]::diagnostic_builder::DiagnosticBuilder<'b, ()>,), Output = &'a mut rustc_errors[6b61d4e931019684]::diagnostic_builder::DiagnosticBuilder<'b, ()>>> as core[54e86a843f8c5207]::ops::function::FnOnce<(&mut rustc_errors[6b61d4e931019684]::diagnostic_builder::DiagnosticBuilder<()>,)>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1990:9
+  24:     0x7f251533d011 - rustc_middle[137db65a67c432c]::lint::struct_lint_level::struct_lint_level_impl::<rustc_error_messages[abd8fc367e712721]::DiagnosticMessage>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/lint.rs:466:9
+  25:     0x7f2515330a94 - rustc_middle[137db65a67c432c]::lint::struct_lint_level::<rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::context::EarlyContext as rustc_lint[53e6ba2ec08944c2]::context::LintContext>::lookup_with_diagnostics<rustc_error_messages[abd8fc367e712721]::MultiSpan, rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::check_id::{closure#0}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/lint.rs:470:5
+  26:     0x7f251528d222 - <rustc_lint[53e6ba2ec08944c2]::levels::LintLevelsBuilder<rustc_lint[53e6ba2ec08944c2]::levels::TopDown>>::struct_lint::<rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::context::EarlyContext as rustc_lint[53e6ba2ec08944c2]::context::LintContext>::lookup_with_diagnostics<rustc_error_messages[abd8fc367e712721]::MultiSpan, rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::check_id::{closure#0}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/levels.rs:1087:9
+  27:     0x7f2515374803 - <rustc_lint[53e6ba2ec08944c2]::context::EarlyContext as rustc_lint[53e6ba2ec08944c2]::context::LintContext>::lookup::<rustc_error_messages[abd8fc367e712721]::MultiSpan, rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::context::EarlyContext as rustc_lint[53e6ba2ec08944c2]::context::LintContext>::lookup_with_diagnostics<rustc_error_messages[abd8fc367e712721]::MultiSpan, rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::check_id::{closure#0}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/context.rs:1050:9
+  28:     0x7f2515374803 - <rustc_lint[53e6ba2ec08944c2]::context::EarlyContext as rustc_lint[53e6ba2ec08944c2]::context::LintContext>::lookup_with_diagnostics::<rustc_error_messages[abd8fc367e712721]::MultiSpan, rustc_error_messages[abd8fc367e712721]::DiagnosticMessage, <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::check_id::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/context.rs:594:9
+  29:     0x7f2515374803 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::check_id
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:43:13
+  30:     0x7f251537f224 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_generic_param::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:64:9
+  31:     0x7f251537f224 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_generic_param
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:227:9
+  32:     0x7f251537cd8c - rustc_ast[50ad794c216986e]::visit::walk_generics::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:610:5
+  33:     0x7f251537cd8c - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_generics
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:235:9
+  34:     0x7f2515324823 - rustc_ast[50ad794c216986e]::visit::walk_fn::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:664:13
+  35:     0x7f2515328d7a - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_fn
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:150:9
+  36:     0x7f2515328d7a - rustc_ast[50ad794c216986e]::visit::walk_item::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:312:13
+  37:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:85:13
+  38:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:67:9
+  39:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:83:9
+  40:     0x7f2515328dec - rustc_ast[50ad794c216986e]::visit::walk_item::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:316:17
+  41:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:85:13
+  42:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:67:9
+  43:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:83:9
+  44:     0x7f251531efec - rustc_ast[50ad794c216986e]::visit::walk_crate::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:263:5
+  45:     0x7f251536f989 - <&rustc_ast[50ad794c216986e]::ast::Crate as rustc_lint[53e6ba2ec08944c2]::early::EarlyCheckNode>::check::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:347:9
+  46:     0x7f251536f989 - rustc_lint[53e6ba2ec08944c2]::early::early_lint_node::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:391:66
+  47:     0x7f251536f989 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<rustc_lint[53e6ba2ec08944c2]::early::early_lint_node<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:67:9
+  48:     0x7f251536f989 - rustc_lint[53e6ba2ec08944c2]::early::early_lint_node::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:391:5
+  49:     0x7f251536f989 - rustc_lint[53e6ba2ec08944c2]::early::check_ast_node::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:425:20
+  50:     0x7f251528ab54 - rustc_interface[504271c6e2da38b2]::passes::configure_and_expand::{closure#8}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:448:9
+  51:     0x7f251528ab54 - <rustc_data_structures[2dc78f4d764e2a91]::profiling::VerboseTimingGuard>::run::<(), rustc_interface[504271c6e2da38b2]::passes::configure_and_expand::{closure#8}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/profiling.rs:727:9
+  52:     0x7f251528ab54 - <rustc_session[ee121006aeecfdd7]::session::Session>::time::<(), rustc_interface[504271c6e2da38b2]::passes::configure_and_expand::{closure#8}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_session/src/utils.rs:10:9
+  53:     0x7f25152d2893 - rustc_interface[504271c6e2da38b2]::passes::configure_and_expand
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:446:5
+  54:     0x7f251534eb33 - <rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:182:17
+  55:     0x7f251534eb33 - <rustc_interface[504271c6e2da38b2]::passes::boxed_resolver::BoxedResolver>::access::<<rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<rustc_ast[50ad794c216986e]::ast::Crate, rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:134:13
+  56:     0x7f25152a0ade - <rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:181:25
+  57:     0x7f25152a0ade - <rustc_interface[504271c6e2da38b2]::queries::Query<(alloc[19a8b8a34660badf]::rc::Rc<rustc_ast[50ad794c216986e]::ast::Crate>, alloc[19a8b8a34660badf]::rc::Rc<core[54e86a843f8c5207]::cell::RefCell<rustc_interface[504271c6e2da38b2]::passes::boxed_resolver::BoxedResolver>>, alloc[19a8b8a34660badf]::rc::Rc<rustc_lint[53e6ba2ec08944c2]::context::LintStore>)>>::compute::<<rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:38:28
+  58:     0x7f25152a0ade - <rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:170:9
+  59:     0x7f25151a52e0 - rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}::{closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:357:13
+  60:     0x7f25151a52e0 - <rustc_interface[504271c6e2da38b2]::interface::Compiler>::enter::<rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}::{closure#2}, core[54e86a843f8c5207]::result::Result<core[54e86a843f8c5207]::option::Option<rustc_interface[504271c6e2da38b2]::queries::Linker>, rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:381:19
+  61:     0x7f251510f9e5 - rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:308:22
+  62:     0x7f251510f9e5 - rustc_interface[504271c6e2da38b2]::interface::run_compiler::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:327:21
+  63:     0x7f251510f9e5 - rustc_span[18dcca4f631a4712]::with_source_map::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}::{closure#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:1009:5
+  64:     0x7f251519394c - rustc_interface[504271c6e2da38b2]::interface::run_compiler::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:321:13
+  65:     0x7f251519394c - <scoped_tls[3f7a8f801319db86]::ScopedKey<rustc_span[18dcca4f631a4712]::SessionGlobals>>::set::<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+  66:     0x7f251518eee0 - rustc_span[18dcca4f631a4712]::create_session_globals_then::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:111:5
+  67:     0x7f251518eee0 - rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals::<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/util.rs:148:38
+  68:     0x7f251518eee0 - std[b60d3abfffc60fec]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:121:18
+  69:     0x7f2515123e19 - <std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_::<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:551:17
+  70:     0x7f2515123e19 - <core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}> as core[54e86a843f8c5207]::ops::function::FnOnce<()>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panic/unwind_safe.rs:271:9
+  71:     0x7f2515123e19 - std[b60d3abfffc60fec]::panicking::try::do_call::<core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}>, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:483:40
+  72:     0x7f2515123e19 - std[b60d3abfffc60fec]::panicking::try::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:447:19
+  73:     0x7f2515123e19 - std[b60d3abfffc60fec]::panic::catch_unwind::<core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}>, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panic.rs:137:14
+  74:     0x7f2515123e19 - <std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_::<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:550:30
+  75:     0x7f2515123e19 - <<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1} as core[54e86a843f8c5207]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:427:5
+  76:     0x7f25142a7058 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hf434786bd508e033
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1990:9
+  77:     0x7f25142a7058 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h79e82a56a42c42f5
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1990:9
+  78:     0x7f251428f895 - std::sys::unix::thread::Thread::new::thread_start::he8a1fd9beacdaef9
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys/unix/thread.rs:108:17
+  79:     0x7f251449f8fd - <unknown>
+  80:     0x7f2514521a60 - <unknown>
+  81:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.67.0-dev running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+end of query stack
+thread 'rustc' panicked at 'Found a `push` without a `pop`.', compiler/rustc_lint/src/levels.rs:504:9
+stack backtrace:
+   0:     0x7f25142ed23e - std::backtrace_rs::backtrace::libunwind::trace::h2ba7924f373abcbe
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7f25142ed23e - std::backtrace_rs::backtrace::trace_unsynchronized::h5a4fdc5ca15c5a11
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f25142ed23e - std::sys_common::backtrace::_print_fmt::h34d240f86b681b56
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:65:5
+   3:     0x7f25142ed23e - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hff0170f2c82d7337
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f251436bbe8 - core::fmt::write::h1efe05f8990e10dd
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/mod.rs:1209:17
+   5:     0x7f25142bd0af - std::io::Write::write_fmt::h09b98dcf13d06d7e
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/io/mod.rs:1682:15
+   6:     0x7f25142ed035 - std::sys_common::backtrace::_print::hd796cba033e68e9f
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:47:5
+   7:     0x7f25142ed035 - std::sys_common::backtrace::print::h372132b3c3624c25
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:34:9
+   8:     0x7f25142c9be7 - std::panicking::default_hook::{{closure}}::h25ec0b66e0c6b3e1
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:267:22
+   9:     0x7f25142c9980 - std::panicking::default_hook::h57d3b2570aeea246
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:286:9
+  10:     0x7f251510de82 - <alloc[19a8b8a34660badf]::boxed::Box<dyn for<'a, 'b> core[54e86a843f8c5207]::ops::function::Fn<(&'a core[54e86a843f8c5207]::panic::panic_info::PanicInfo<'b>,), Output = ()> + core[54e86a843f8c5207]::marker::Sync + core[54e86a843f8c5207]::marker::Send> as core[54e86a843f8c5207]::ops::function::Fn<(&core[54e86a843f8c5207]::panic::panic_info::PanicInfo,)>>::call
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:2024:9
+  11:     0x7f251510de82 - rustc_driver[102e08cae241c12c]::DEFAULT_HOOK::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:1207:13
+  12:     0x7f25142ca5cc - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::he864250e2a0af0c3
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:2024:9
+  13:     0x7f25142ca5cc - std::panicking::rust_panic_with_hook::h57f8ea81dc24fd24
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:692:13
+  14:     0x7f25142ed581 - std::panicking::begin_panic_handler::{{closure}}::h132f8ad5315769da
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:577:13
+  15:     0x7f25142ed38e - std::sys_common::backtrace::__rust_end_short_backtrace::h6f8d96ac57d7d842
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:137:18
+  16:     0x7f25142ca072 - rust_begin_unwind
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:575:5
+  17:     0x7f251427b283 - core::panicking::panic_fmt::h43c239f62329fe2a
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:65:14
+  18:     0x7f251a0772c9 - <rustc_lint[53e6ba2ec08944c2]::levels::BuilderPush as core[54e86a843f8c5207]::ops::drop::Drop>::drop
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/levels.rs:504:9
+  19:     0x7f251537f6c7 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_generic_param::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:71:5
+  20:     0x7f251537f6c7 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_generic_param
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:227:9
+  21:     0x7f251537cd8c - rustc_ast[50ad794c216986e]::visit::walk_generics::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:610:5
+  22:     0x7f251537cd8c - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_generics
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:235:9
+  23:     0x7f2515324823 - rustc_ast[50ad794c216986e]::visit::walk_fn::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:664:13
+  24:     0x7f2515328d7a - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_fn
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:150:9
+  25:     0x7f2515328d7a - rustc_ast[50ad794c216986e]::visit::walk_item::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:312:13
+  26:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:85:13
+  27:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:67:9
+  28:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:83:9
+  29:     0x7f2515328dec - rustc_ast[50ad794c216986e]::visit::walk_item::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:316:17
+  30:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:85:13
+  31:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:67:9
+  32:     0x7f251537aeb9 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass> as rustc_ast[50ad794c216986e]::visit::Visitor>::visit_item
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:83:9
+  33:     0x7f251531efec - rustc_ast[50ad794c216986e]::visit::walk_crate::<rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ast/src/visit.rs:263:5
+  34:     0x7f251536f989 - <&rustc_ast[50ad794c216986e]::ast::Crate as rustc_lint[53e6ba2ec08944c2]::early::EarlyCheckNode>::check::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:347:9
+  35:     0x7f251536f989 - rustc_lint[53e6ba2ec08944c2]::early::early_lint_node::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:391:66
+  36:     0x7f251536f989 - <rustc_lint[53e6ba2ec08944c2]::early::EarlyContextAndPass<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass>>::with_lint_attrs::<rustc_lint[53e6ba2ec08944c2]::early::early_lint_node<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:67:9
+  37:     0x7f251536f989 - rustc_lint[53e6ba2ec08944c2]::early::early_lint_node::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:391:5
+  38:     0x7f251536f989 - rustc_lint[53e6ba2ec08944c2]::early::check_ast_node::<rustc_lint[53e6ba2ec08944c2]::BuiltinCombinedEarlyLintPass, &rustc_ast[50ad794c216986e]::ast::Crate>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_lint/src/early.rs:425:20
+  39:     0x7f251528ab54 - rustc_interface[504271c6e2da38b2]::passes::configure_and_expand::{closure#8}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:448:9
+  40:     0x7f251528ab54 - <rustc_data_structures[2dc78f4d764e2a91]::profiling::VerboseTimingGuard>::run::<(), rustc_interface[504271c6e2da38b2]::passes::configure_and_expand::{closure#8}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/profiling.rs:727:9
+  41:     0x7f251528ab54 - <rustc_session[ee121006aeecfdd7]::session::Session>::time::<(), rustc_interface[504271c6e2da38b2]::passes::configure_and_expand::{closure#8}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_session/src/utils.rs:10:9
+  42:     0x7f25152d2893 - rustc_interface[504271c6e2da38b2]::passes::configure_and_expand
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:446:5
+  43:     0x7f251534eb33 - <rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:182:17
+  44:     0x7f251534eb33 - <rustc_interface[504271c6e2da38b2]::passes::boxed_resolver::BoxedResolver>::access::<<rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<rustc_ast[50ad794c216986e]::ast::Crate, rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:134:13
+  45:     0x7f25152a0ade - <rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:181:25
+  46:     0x7f25152a0ade - <rustc_interface[504271c6e2da38b2]::queries::Query<(alloc[19a8b8a34660badf]::rc::Rc<rustc_ast[50ad794c216986e]::ast::Crate>, alloc[19a8b8a34660badf]::rc::Rc<core[54e86a843f8c5207]::cell::RefCell<rustc_interface[504271c6e2da38b2]::passes::boxed_resolver::BoxedResolver>>, alloc[19a8b8a34660badf]::rc::Rc<rustc_lint[53e6ba2ec08944c2]::context::LintStore>)>>::compute::<<rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:38:28
+  47:     0x7f25152a0ade - <rustc_interface[504271c6e2da38b2]::queries::Queries>::expansion
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:170:9
+  48:     0x7f25151a52e0 - rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}::{closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:357:13
+  49:     0x7f25151a52e0 - <rustc_interface[504271c6e2da38b2]::interface::Compiler>::enter::<rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}::{closure#2}, core[54e86a843f8c5207]::result::Result<core[54e86a843f8c5207]::option::Option<rustc_interface[504271c6e2da38b2]::queries::Linker>, rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:381:19
+  50:     0x7f251510f9e5 - rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:308:22
+  51:     0x7f251510f9e5 - rustc_interface[504271c6e2da38b2]::interface::run_compiler::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:327:21
+  52:     0x7f251510f9e5 - rustc_span[18dcca4f631a4712]::with_source_map::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}::{closure#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:1009:5
+  53:     0x7f251519394c - rustc_interface[504271c6e2da38b2]::interface::run_compiler::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:321:13
+  54:     0x7f251519394c - <scoped_tls[3f7a8f801319db86]::ScopedKey<rustc_span[18dcca4f631a4712]::SessionGlobals>>::set::<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+  55:     0x7f251518eee0 - rustc_span[18dcca4f631a4712]::create_session_globals_then::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:111:5
+  56:     0x7f251518eee0 - rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals::<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/util.rs:148:38
+  57:     0x7f251518eee0 - std[b60d3abfffc60fec]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:121:18
+  58:     0x7f2515123e19 - <std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_::<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:551:17
+  59:     0x7f2515123e19 - <core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}> as core[54e86a843f8c5207]::ops::function::FnOnce<()>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panic/unwind_safe.rs:271:9
+  60:     0x7f2515123e19 - std[b60d3abfffc60fec]::panicking::try::do_call::<core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}>, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:483:40
+  61:     0x7f2515123e19 - std[b60d3abfffc60fec]::panicking::try::<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:447:19
+  62:     0x7f2515123e19 - std[b60d3abfffc60fec]::panic::catch_unwind::<core[54e86a843f8c5207]::panic::unwind_safe::AssertUnwindSafe<<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}::{closure#0}>, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panic.rs:137:14
+  63:     0x7f2515123e19 - <std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_::<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:550:30
+  64:     0x7f2515123e19 - <<std[b60d3abfffc60fec]::thread::Builder>::spawn_unchecked_<rustc_interface[504271c6e2da38b2]::util::run_in_thread_pool_with_globals<rustc_interface[504271c6e2da38b2]::interface::run_compiler<core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>, rustc_driver[102e08cae241c12c]::run_compiler::{closure#1}>::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[54e86a843f8c5207]::result::Result<(), rustc_errors[6b61d4e931019684]::ErrorGuaranteed>>::{closure#1} as core[54e86a843f8c5207]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:427:5
+  65:     0x7f25142a7058 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hf434786bd508e033
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1990:9
+  66:     0x7f25142a7058 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h79e82a56a42c42f5
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1990:9
+  67:     0x7f251428f895 - std::sys::unix::thread::Thread::new::thread_start::he8a1fd9beacdaef9
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys/unix/thread.rs:108:17
+  68:     0x7f251449f8fd - <unknown>
+  69:     0x7f2514521a60 - <unknown>
+  70:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.67.0-dev running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+end of query stack
+thread panicked while panicking. aborting.
+[1]    1434111 IOT instruction (core dumped)   ./generic_params.rs -Wsingle-use-lifetimes
+
+Bug Labels:
+A-diagnostics, C-bug, I-ICE, T-compiler, requires-debug-assertions

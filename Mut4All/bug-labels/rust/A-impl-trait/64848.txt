@@ -1,0 +1,99 @@
+Issue Title:
+ICE: Associated constant and impl trait · Issue #64848 · rust-lang/rust · GitHub
+
+Rust Code:
+trait AssociatedConstant {
+    const DATA: ();
+}
+
+impl<F, T> AssociatedConstant for F
+where
+    F: FnOnce() -> T,
+    T: AssociatedConstant,
+{
+    const DATA: () = T::DATA;
+}
+
+impl AssociatedConstant for () {
+    const DATA: () = ();
+}
+
+fn foo() -> impl AssociatedConstant {
+    ()
+}
+
+fn get_data<T: AssociatedConstant>(_: T) -> &'static () {
+    &T::DATA
+}
+
+fn main() {
+    get_data(foo);
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'assertion failed: key.value.promoted.is_none()', src/librustc_mir/const_eval.rs:607:17
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.34/src/backtrace/libunwind.rs:88
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.34/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:47
+   3: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:36
+   4: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:200
+   5: std::panicking::default_hook
+             at src/libstd/panicking.rs:214
+   6: rustc::util::common::panic_hook
+   7: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:481
+   8: std::panicking::begin_panic
+   9: rustc_mir::const_eval::const_eval_provider
+  10: rustc::ty::query::__query_compute::const_eval
+  11: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::const_eval>::compute
+  12: rustc::dep_graph::graph::DepGraph::with_task_impl
+  13: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  14: rustc_mir::monomorphize::collector::collect_items_rec
+  15: rustc_mir::monomorphize::collector::collect_items_rec
+  16: rustc_mir::monomorphize::collector::collect_crate_mono_items::{{closure}}
+  17: rustc::util::common::time
+  18: rustc_mir::monomorphize::collector::collect_crate_mono_items
+  19: rustc::util::common::time
+  20: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+  21: rustc::ty::query::__query_compute::collect_and_partition_mono_items
+  22: rustc::dep_graph::graph::DepGraph::with_task_impl
+  23: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  24: rustc_codegen_ssa::base::codegen_crate
+  25: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_utils::codegen_backend::CodegenBackend>::codegen_crate
+  26: rustc::util::common::time
+  27: rustc_interface::passes::start_codegen
+  28: rustc::ty::context::tls::enter_global
+  29: rustc_interface::passes::BoxedGlobalCtxt::access::{{closure}}
+  30: rustc_interface::passes::create_global_ctxt::{{closure}}
+  31: rustc_interface::passes::BoxedGlobalCtxt::enter
+  32: rustc_interface::queries::Query<T>::compute
+  33: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::ongoing_codegen
+  34: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  35: std::thread::local::LocalKey<T>::with
+  36: syntax::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+query stack during panic:
+#0 [const_eval] const-evaluating + checking `get_data`
+#1 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.38.0 (625451e37 2019-09-23) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+Bug Labels:
+A-associated-items, A-const-eval, A-impl-trait, C-bug, E-needs-test, I-ICE, P-medium, T-compiler, glacier

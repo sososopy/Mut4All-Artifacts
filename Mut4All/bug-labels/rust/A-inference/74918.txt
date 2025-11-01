@@ -1,0 +1,103 @@
+Issue Title:
+Small program causes internal compiler error on rustc 1.45.0 · Issue #74918 · rust-lang/rust · GitHub
+
+Rust Code:
+struct ChunkingIterator<T, S: 'static + Iterator<Item = T>> {
+    source: S,
+}
+
+impl<T, S: Iterator<Item = T>> Iterator for ChunkingIterator<T, S> {
+    type Item = IteratorChunk<T, S>;
+
+    fn next(&mut self) -> Option<IteratorChunk<T, S>> {
+        todo!()
+    }
+}
+
+struct IteratorChunk<'a, T, S: Iterator<Item = T>> {
+    source: &'a mut S,
+}
+
+impl<T, S: Iterator<Item = T>> Iterator for IteratorChunk<'_, T, S> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        todo!()
+    }
+}
+
+fn main() {}
+
+Bug Trace:
+thread 'rustc' panicked at 'index out of bounds: the len is 0 but the index is 0', /cargo/registry/src/github.com-1ecc6299db9ec823/ena-0.14.0/src/snapshot_vec.rs:199:10
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1076
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1537
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:490
+  12: rust_begin_unwind
+             at src/libstd/panicking.rs:388
+  13: core::panicking::panic_fmt
+             at src/libcore/panicking.rs:101
+  14: core::panicking::panic_bounds_check
+             at src/libcore/panicking.rs:73
+  15: rustc_infer::infer::InferCtxt::shallow_resolve_ty
+  16: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &mut F>::call_once
+  17: <smallvec::SmallVec<A> as core::iter::traits::collect::Extend<<A as smallvec::Array>::Item>>::extend
+  18: rustc_middle::ty::fold::TypeFoldable::fold_with
+  19: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+  20: rustc_middle::ty::fold::TypeFoldable::fold_with
+  21: rustc_middle::ty::fold::TypeFoldable::fold_with
+  22: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+  23: rustc_middle::ty::structural_impls::fold_list
+  24: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+  25: rustc_middle::ty::fold::TypeFoldable::fold_with
+  26: rustc_infer::infer::error_reporting::<impl rustc_infer::infer::InferCtxt>::expected_found_str_ty
+  27: rustc_middle::ty::context::GlobalCtxt::enter_local
+  28: rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError::try_report
+  29: rustc_infer::infer::error_reporting::<impl rustc_infer::infer::InferCtxt>::report_region_errors
+  30: rustc_infer::infer::InferCtxt::resolve_regions_and_report_errors
+  31: rustc_typeck::check::regionck::<impl rustc_typeck::check::FnCtxt>::regionck_item
+  32: rustc_middle::ty::context::tls::with_context::{{closure}}
+  33: rustc_infer::infer::InferCtxtBuilder::enter
+  34: rustc_typeck::check::compare_method::compare_impl_method
+  35: rustc_typeck::check::check_impl_items_against_trait
+  36: rustc_typeck::check::check_item_type
+  37: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  38: rustc_typeck::check::check_mod_item_types
+  39: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_mod_item_types>::compute
+  40: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  41: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  42: rustc_query_system::query::plumbing::get_query_impl
+  43: rustc_query_system::query::plumbing::ensure_query_impl
+  44: rustc_typeck::check_crate
+  45: rustc_interface::passes::analysis
+  46: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  47: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  48: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  49: rustc_query_system::query::plumbing::get_query_impl
+  50: rustc_middle::ty::context::tls::enter_global
+  51: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  52: rustc_ast::attr::with_globals
+
+Bug Labels:
+A-inference, C-bug, I-ICE, P-medium, T-compiler, glacier, regression-from-stable-to-stable

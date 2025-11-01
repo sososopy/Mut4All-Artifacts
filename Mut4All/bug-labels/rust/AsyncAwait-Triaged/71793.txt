@@ -1,0 +1,92 @@
+Issue Title:
+Broken MIR: generator contains type &str in MIR, but typeck only knows about {std::future::ResumeTy, impl std::future::Future, ()} · Issue #71793 · rust-lang/rust · GitHub
+
+Rust Code:
+pub async fn connect() {}
+pub fn block_on<F: std::future::Future>(_: F) {}
+fn main() {
+    block_on(async {
+        Vec::<String>::new().first().ok_or("").unwrap();
+        connect().await;
+    })
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', /home/tm/test/rust/src/libstd/macros.rs:13:23
+stack backtrace:
+   0: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+   1: core::fmt::write
+   2: std::io::Write::write_fmt
+   3: std::sys_common::backtrace::print
+   4: std::panicking::default_hook::{{closure}}
+   5: std::panicking::default_hook
+   6: rustc_driver::report_ice
+   7: std::panicking::rust_panic_with_hook
+   8: std::panicking::begin_panic
+   9: rustc_errors::HandlerInner::span_bug
+  10: rustc_errors::Handler::span_bug
+  11: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  12: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  13: rustc_middle::ty::context::tls::with_opt
+  14: rustc_middle::util::bug::opt_span_bug_fmt
+  15: rustc_middle::util::bug::span_bug_fmt
+  16: <rustc_mir::transform::generator::StateTransform as rustc_mir::transform::MirPass>::run_pass
+  17: rustc_mir::transform::run_passes
+  18: rustc_mir::transform::run_optimization_passes
+  19: rustc_mir::transform::optimized_mir
+  20: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::optimized_mir>::compute
+  21: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  22: rustc_query_system::query::plumbing::get_query_impl
+  23: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::generator_layout
+  24: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  25: rustc_middle::ty::layout::layout_raw
+  26: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  27: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  28: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  29: rustc_query_system::query::plumbing::get_query_impl
+  30: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  31: <rustc_mir::transform::inline::Inline as rustc_mir::transform::MirPass>::run_pass
+  32: rustc_mir::transform::run_passes
+  33: rustc_mir::transform::run_optimization_passes
+  34: rustc_mir::transform::optimized_mir
+  35: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::optimized_mir>::compute
+  36: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  37: rustc_query_system::query::plumbing::get_query_impl
+  38: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::instance_mir
+  39: rustc_mir::monomorphize::collector::collect_items_rec
+  40: rustc_session::utils::<impl rustc_session::session::Session>::time
+  41: rustc_mir::monomorphize::collector::collect_crate_mono_items
+  42: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+  43: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::collect_and_partition_mono_items>::compute
+  44: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  45: rustc_query_system::query::plumbing::get_query_impl
+  46: rustc_codegen_ssa::base::codegen_crate
+  47: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  48: rustc_session::utils::<impl rustc_session::session::Session>::time
+  49: rustc_interface::passes::start_codegen
+  50: rustc_middle::ty::context::tls::enter_global
+  51: rustc_interface::queries::Query<T>::compute
+  52: rustc_interface::queries::Queries::ongoing_codegen
+  53: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  54: scoped_tls::ScopedKey<T>::set
+  55: rustc_ast::attr::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z mir-opt-level=2
+
+query stack during panic:
+#0 [optimized_mir] processing `main::{{closure}}#0`
+#1 [layout_raw] computing layout of `[static generator@connect.rs:4:20: 7:6 {std::future::ResumeTy, std::future::from_generator::GenFuture<[static generator@connect.rs:1:24: 1:26 {}]>, ()}]`
+#2 [optimized_mir] processing `main`
+#3 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-coroutines, A-mir-opt, A-mir-opt-inlining, AsyncAwait-Triaged, C-bug, I-ICE, T-compiler, glacier, requires-nightly

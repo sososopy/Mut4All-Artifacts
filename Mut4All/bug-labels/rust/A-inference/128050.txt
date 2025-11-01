@@ -1,0 +1,157 @@
+Issue Title:
+Error when compiling `cdylib` using `JNI` · Issue #128050 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::os::raw::{c_void, c_int};
+
+use jni::{JNIEnv, JavaVM};
+
+#[no_mangle]
+pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> c_int {
+    let env = vm.attach_current_thread_as_daemon().expect("Failed to attach thread");
+
+    jni::sys::JNI_VERSION_1_8
+}
+
+
+fn get_jvm_arguments(mut env: JNIEnv) -> Vec<String> {
+    let management_factory_class = env
+        .find_class("java/lang/management/ManagementFactory")
+        .expect("Cannot find ManagementFactory class");
+
+    let runtime_mxbean = env
+        .call_static_method(
+            management_factory_class,
+            "getRuntimeMXBean",
+            "()Ljava/lang/management/RuntimeMXBean;",
+            &[],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+
+    let runtime_mxbean_class = env
+        .find_class("java/lang/management/RuntimeMXBean")
+        .expect("Cannot find RuntimeMXBean class");
+
+    let get_input_arguments_method = env
+        .get_method_id(
+            runtime_mxbean_class,
+            "getInputArguments",
+            "()Ljava/util/List;",
+        )
+        .expect("Cannot find getInputArguments method");
+
+    let input_arguments = env
+        .call_static_method(
+            runtime_mxbean,
+            get_input_arguments_method.into(),
+            "()Ljava/util/List;",
+            &[],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+
+    let mut jvm_args_vec = Vec::new();
+
+    jvm_args_vec
+}
+
+Bug Trace:
+error: internal compiler error: compiler\rustc_infer\src\infer\at.rs:400:21: relating different kinds: jni::objects::JObject<'?68> '?57
+
+thread 'rustc' panicked at compiler\rustc_infer\src\infer\at.rs:400:21:
+Box<dyn Any>
+stack backtrace:
+   0:     0x7ffde5b33c48 - std::backtrace_rs::backtrace::dbghelp64::trace
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\..\..\backtrace\src\backtrace\dbghelp64.rs:91
+   1:     0x7ffde5b33c48 - std::backtrace_rs::backtrace::trace_unsynchronized
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\..\..\backtrace\src\backtrace\mod.rs:66
+   2:     0x7ffde5b33c48 - std::sys_common::backtrace::_print_fmt
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\sys_common\backtrace.rs:68
+   3:     0x7ffde5b33c48 - std::sys_common::backtrace::_print::impl$0::fmt
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\sys_common\backtrace.rs:44
+   4:     0x7ffde5b64f09 - core::fmt::rt::Argument::fmt
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\core\src\fmt\rt.rs:165
+   5:     0x7ffde5b64f09 - core::fmt::write
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\core\src\fmt\mod.rs:1157
+   6:     0x7ffde5b2a3e1 - std::io::Write::write_fmt<std::sys::pal::windows::stdio::Stderr>
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\io\mod.rs:1832
+   7:     0x7ffde5b33a26 - std::sys_common::backtrace::print
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\sys_common\backtrace.rs:34
+   8:     0x7ffde5b36b88 - std::panicking::default_hook::closure$1
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\panicking.rs:271
+   9:     0x7ffde5b367f7 - std::panicking::default_hook
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\panicking.rs:298
+  10:     0x7ffd98aefdfe - __longjmp_internal
+  11:     0x7ffde5b371b7 - alloc::boxed::impl$50::call
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\alloc\src\boxed.rs:2036
+  12:     0x7ffde5b371b7 - std::panicking::rust_panic_with_hook
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\panicking.rs:799
+  13:     0x7ffd99dc4ab8 - <rustc_hir_pretty[f0c87f57eadc3869]::State>::print_variant
+  14:     0x7ffd99dc1229 - <rustc_hir_pretty[f0c87f57eadc3869]::State>::print_variant
+  15:     0x7ffd99dba929 - <rustc_hir_pretty[f0c87f57eadc3869]::State>::print_variant
+  16:     0x7ffd99dd05f5 - <rustc_errors[4fbdc32db0afc0d2]::diagnostic::BugAbort as rustc_errors[4fbdc32db0afc0d2]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  17:     0x7ffd99ce5c97 - rustc_middle[9a5583d0f984d223]::util::bug::bug_fmt
+  18:     0x7ffd99cc67bd - rustc_middle[9a5583d0f984d223]::ty::consts::const_param_default
+  19:     0x7ffd99cc65fd - rustc_middle[9a5583d0f984d223]::ty::consts::const_param_default
+  20:     0x7ffd99ce5ba2 - rustc_middle[9a5583d0f984d223]::util::bug::bug_fmt
+  21:     0x7ffd97524291 - <rustc_middle[9a5583d0f984d223]::ty::generic_args::GenericArg as rustc_infer[ff996a713213bfb1]::infer::at::ToTrace>::to_trace
+  22:     0x7ffd9960c749 - <rustc_const_eval[254959616a52d48e]::errors::WriteThroughImmutablePointer as rustc_errors[4fbdc32db0afc0d2]::diagnostic::LintDiagnostic<()>>::decorate_lint
+  23:     0x7ffd9972007e - <rustc_infer[ff996a713213bfb1]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[2ce98d8ddbcbab72]::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt>::report_similar_impl_candidates
+  24:     0x7ffd9972c153 - <rustc_infer[ff996a713213bfb1]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[2ce98d8ddbcbab72]::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt>::try_to_add_help_message
+  25:     0x7ffd9971a35d - <rustc_infer[ff996a713213bfb1]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[2ce98d8ddbcbab72]::traits::error_reporting::type_err_ctxt_ext::TypeErrCtxtExt>::report_selection_error
+  26:     0x7ffd9972f7ee - <rustc_infer[ff996a713213bfb1]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[2ce98d8ddbcbab72]::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt>::report_fulfillment_error
+  27:     0x7ffd9971533b - <rustc_infer[ff996a713213bfb1]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[2ce98d8ddbcbab72]::traits::error_reporting::type_err_ctxt_ext::TypeErrCtxtExt>::report_fulfillment_errors
+  28:     0x7ffd979f2e40 - rustc_hir_typeck[142fbbbf17edb3ed]::typeck
+  29:     0x7ffd9791f3ef - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  30:     0x7ffd9796efb4 - <rustc_hir_typeck[142fbbbf17edb3ed]::expr_use_visitor::ExprUseVisitor>::walk_expr
+  31:     0x7ffd9791f472 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  32:     0x7ffd9791b252 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  33:     0x7ffd9791dcf6 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  34:     0x7ffd9791b252 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  35:     0x7ffd9791dcf6 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  36:     0x7ffd9791b252 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  37:     0x7ffd9791dcf6 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  38:     0x7ffd9791b252 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  39:     0x7ffd97974082 - <rustc_hir_typeck[142fbbbf17edb3ed]::expr_use_visitor::ExprUseVisitor>::walk_expr
+  40:     0x7ffd97975806 - <rustc_hir_typeck[142fbbbf17edb3ed]::expr_use_visitor::ExprUseVisitor>::walk_expr
+  41:     0x7ffd9791b252 - <rustc_codegen_llvm[88e660c21e9a3007]::builder::Builder as rustc_codegen_ssa[772b7d9feb24d90c]::traits::builder::BuilderMethods>::load_operand
+  42:     0x7ffd979cb403 - rustc_hir_typeck[142fbbbf17edb3ed]::typeck
+  43:     0x7ffd979c22b9 - rustc_hir_typeck[142fbbbf17edb3ed]::typeck
+  44:     0x7ffd981e563a - rustc_query_impl[46f2cb59a7e58a2f]::plumbing::query_key_hash_verify_all
+  45:     0x7ffd98136556 - rustc_traits[df3a8b33046bddd2]::type_op::type_op_prove_predicate
+  46:     0x7ffd981ed8d3 - rustc_query_impl[46f2cb59a7e58a2f]::plumbing::query_key_hash_verify_all
+  47:     0x7ffd97a9aee4 - rustc_hir_analysis[d196ce244286923b]::check_crate
+  48:     0x7ffd978152c6 - <rustc_interface[5039fedd6fed528e]::passes::LintStoreExpandImpl as rustc_expand[8a362ccb6e11b5d0]::base::LintStoreExpand>::pre_expansion_lint
+  49:     0x7ffd97411f5a - <dyn std[97e236bc5ac76467]::io::Write as nu_ansi_term[46f323ea840c8206]::write::AnyWrite>::write_str
+  50:     0x7ffd97387af1 - rustc_traits[df3a8b33046bddd2]::type_op::type_op_normalize_clause
+  51:     0x7ffd9741aa07 - rustc_query_impl[46f2cb59a7e58a2f]::query_system
+  52:     0x7ffd948447c2 - llvm::function_ref<void __cdecl(llvm::Value const * __ptr64)>::callback_fn<`llvm::Value::stripInBoundsOffsets'::`1'::<lambda_1_1> >
+  53:     0x7ffd94841a96 - llvm::function_ref<void __cdecl(llvm::Value const * __ptr64)>::callback_fn<`llvm::Value::stripInBoundsOffsets'::`1'::<lambda_1_1> >
+  54:     0x7ffd948495f9 - llvm::function_ref<void __cdecl(llvm::Value const * __ptr64)>::callback_fn<`llvm::Value::stripInBoundsOffsets'::`1'::<lambda_1_1> >
+  55:     0x7ffde5b4822d - alloc::boxed::impl$48::call_once
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\alloc\src\boxed.rs:2022
+  56:     0x7ffde5b4822d - alloc::boxed::impl$48::call_once
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\alloc\src\boxed.rs:2022
+  57:     0x7ffde5b4822d - std::sys::pal::windows::thread::impl$0::new::thread_start
+                               at /rustc/129f3b9964af4d4a709d1383930ade12dfe7c081/library\std\src\sys\pal\windows\thread.rs:52
+  58:     0x7ffe72f6257d - BaseThreadInitThunk
+  59:     0x7ffe7494af28 - RtlUserThreadStart
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.79.0 (129f3b996 2024-06-10) running on x86_64-pc-windows-msvc
+
+note: compiler flags: --crate-type cdylib -C opt-level=z -C panic=abort -C lto -C codegen-units=1 -C strip=symbols
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck] type-checking `get_jvm_arguments`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-inference, C-bug, E-needs-mcve, I-ICE, T-compiler

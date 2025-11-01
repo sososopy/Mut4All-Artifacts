@@ -1,0 +1,157 @@
+Issue Title:
+Failed to compile a graph test · Issue #75361 · rust-lang/rust · GitHub
+
+Rust Code:
+
+pub trait Graph {
+  type EdgeType;
+
+  fn adjacent_edges(&self, node_id: u32) -> Box<dyn Iterator<Item = &Self::EdgeType>>;
+}
+
+#[derive(Default)]
+pub struct Edge<T> {
+  pub from: u32,
+  pub to: u32,
+  pub val: T,
+}
+
+
+pub struct AdjacentListGraph<T> {
+  adjacent_lists: Vec<Vec<Edge<T>>>
+}
+
+
+impl<T> Graph for AdjacentListGraph<T> {
+  type EdgeType = Edge<T>;
+
+  fn adjacent_edges(&self, node_id: u32) -> Box<dyn Iterator<Item = &Self::EdgeType> + '_> {
+    if self.not_valid_node_id(node_id) { panic!("Node does not exist in the graph"); }
+    unsafe { Box::new(self.adjacent_lists.get_unchecked(node_id as usize).iter()) }
+  }
+}
+
+
+impl<T> AdjacentListGraph<T> {
+  pub fn new(num_nodes: u32) -> AdjacentListGraph<T> {
+    AdjacentListGraph {
+      adjacent_lists: {
+        let mut temp = Vec::with_capacity(num_nodes as usize);
+        for i in 0..num_nodes {
+          temp.push(Vec::new());
+        }
+        temp
+      }
+    }
+  }
+
+  fn not_valid_node_id(&self, node_id: u32) -> bool {
+    return node_id >= self.num_nodes();
+  }
+}
+
+
+#[cfg(test)]
+mod tests {
+  use crate::graph::{AdjacentListGraph, Graph, Edge};
+
+  #[test]
+  fn test_adjacent_list_graph() {
+    const NUM_NODES: u32 = 128;
+    let mut graph = AdjacentListGraph::new(NUM_NODES);
+    assert_eq!(NUM_NODES, graph.num_nodes());
+    assert_eq!(0, graph.num_edges());
+    graph.add_edge(Edge { from: 0, to: 12, val: 45 });
+    assert_eq!(1, graph.num_edges());
+    let var = graph.adjacent_edges(0);
+    assert_eq!(1, var.count());
+    graph.add_edge(Edge { from: 2, to: 55, val: 546 });
+    assert_eq!(2, graph.num_edges());
+  }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'index out of bounds: the len is 0 but the index is 0', C:\Users\VssAdministrator\.cargo\registry\src\github.com-1ecc6299db9ec823\ena-0.
+14.0\src\snapshot_vec.rs:199:10
+stack backtrace:
+   0: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+   1: core::fmt::write
+   2: <std::io::IoSlice as core::fmt::Debug>::fmt
+   3: std::panicking::take_hook
+   4: std::panicking::take_hook
+   5: rustc_driver::report_ice
+   6: std::panicking::rust_panic_with_hook
+   7: rust_begin_unwind
+   8: core::panicking::panic_fmt
+   9: core::panicking::panic_bounds_check
+  10: rustc_infer::infer::InferCtxt::const_eval_resolve
+  11: <rustc_middle::ty::sty::Binder<rustc_middle::ty::sty::TraitRef> as rustc_infer::infer::at::ToTrace>::to_trace
+  12: ZN238_$LT$rustc_infer..infer..undo_log..UndoLog$u20$as$u20$core..convert..From$LT$rustc_data_structures..snapshot_map..UndoLog$LT$rustc_infer..traits..projec
+t..ProjectionCacheKey$C$rustc_infer..traits..project..ProjectionCacheEntry$GT$$GT$$GT$4from17h1d2c
+  13: <fmt_macros::Count as core::fmt::Debug>::fmt
+  14: <fmt_macros::Count as core::fmt::Debug>::fmt
+  15: <rustc_infer::infer::region_constraints::TaintDirections as core::fmt::Debug>::fmt
+  16: <fmt_macros::Count as core::fmt::Debug>::fmt
+  17: <rustc_middle::ty::sty::Binder<rustc_middle::ty::sty::TraitRef> as rustc_infer::infer::at::ToTrace>::to_trace
+  18: ZN238_$LT$rustc_infer..infer..undo_log..UndoLog$u20$as$u20$core..convert..From$LT$rustc_data_structures..snapshot_map..UndoLog$LT$rustc_infer..traits..projec
+t..ProjectionCacheKey$C$rustc_infer..traits..project..ProjectionCacheEntry$GT$$GT$$GT$4from17h1d2c
+  19: <fmt_macros::Count as core::fmt::Debug>::fmt
+  20: <rustc_infer::infer::region_constraints::TaintDirections as core::fmt::Debug>::fmt
+  21: <fmt_macros::Count as core::fmt::Debug>::fmt
+  22: <rustc_infer::infer::TyOrConstInferVar as core::fmt::Debug>::fmt
+  23: rustc_infer::infer::error_reporting::<impl rustc_infer::infer::InferCtxt>::report_and_explain_type_error
+  24: <fmt_macros::Count as core::fmt::Debug>::fmt
+  25: rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError::try_report
+  26: rustc_infer::infer::error_reporting::<impl rustc_infer::infer::InferCtxt>::report_region_errors
+  27: rustc_infer::infer::InferCtxt::resolve_regions_and_report_errors
+  28: rustc_typeck::check::regionck::<impl rustc_typeck::check::FnCtxt>::regionck_item
+  29: <rustc_builtin_macros::format_foreign::printf::Num as core::fmt::Debug>::fmt
+  30: <rustc_typeck::mem_categorization::Place as core::fmt::Debug>::fmt
+  31: <rustc_typeck::check::method::probe::ProbeScope as core::fmt::Debug>::fmt
+  32: <rustc_typeck::check::check_opaque_for_inheriting_lifetimes::ProhibitOpaqueVisitor as rustc_middle::ty::fold::TypeVisitor>::visit_const
+  33: <rustc_typeck::check::check_opaque_for_inheriting_lifetimes::ProhibitOpaqueVisitor as rustc_middle::ty::fold::TypeVisitor>::visit_const
+  34: <rustc_typeck::outlives::explicit::ExplicitPredicatesMap as core::fmt::Debug>::fmt
+  35: <rustc_typeck::check::CheckItemTypesVisitor as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_item
+  36: <rustc_builtin_macros::format_foreign::printf::Num as core::fmt::Debug>::fmt
+  37: <rustc_typeck::outlives::explicit::ExplicitPredicatesMap as core::fmt::Debug>::fmt
+  38: <rustc_typeck::mem_categorization::Place as core::fmt::Debug>::fmt
+  39: <rustc_typeck::mem_categorization::Place as core::fmt::Debug>::fmt
+  40: <rustc_typeck::mem_categorization::Place as core::fmt::Debug>::fmt
+  41: <rustc_typeck::mem_categorization::Place as core::fmt::Debug>::fmt
+  42: rustc_typeck::check_crate
+  43: rustc_interface::passes::QueryContext::print_stats
+  44: <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref
+  45: <rustc_typeck::coherence::unsafety::UnsafetyChecker as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_impl_item
+  46: rustc_driver::pretty::print_after_hir_lowering
+  47: rustc_driver::pretty::print_after_hir_lowering
+  48: <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref
+  49: <rustc_typeck::coherence::unsafety::UnsafetyChecker as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_impl_item
+  50: <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt
+  51: <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt
+  52: <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt
+  53: <rustc_mir::dataflow::framework::direction::Backward as rustc_mir::dataflow::framework::direction::Direction>::is_forward
+  54: std::sys::windows::thread::Thread::new
+  55: BaseThreadInitThunk
+  56: RtlUserThreadStart
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.2 (d3fb005a3 2020-07-31) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [check_mod_item_types] checking item types in module `temp`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `architectural_antipatterns_detector`.
+
+Bug Labels:
+A-inference, C-bug, I-ICE, T-compiler

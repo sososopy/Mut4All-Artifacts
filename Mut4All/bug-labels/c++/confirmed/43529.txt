@@ -1,0 +1,72 @@
+Issue Title:
+ICE in ActOnCapScopeReturnStmt when default argument contains statement-expression
+
+Source Code & Bug Trace:
+// https://godbolt.org/z/VE-Zk4
+int test1() {
+    [](int = ({return 42; 0;}) ) {};
+    return 17;
+}
+int test2() {
+    [](decltype( ({return 42; 0;})  )) {}(0);
+    return 17;
+}
+
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk-20191129/bin/clang-10 -cc1 -triple x86_64-unknown-linux-gnu -S -disable-free -disable-llvm-verifier -discard-value-names -main-file-name example.cpp -mrelocation-model static -mthread-model posix -mframe-pointer=all -fmath-errno -masm-verbose -mconstructor-aliases -munwind-tables -fuse-init-array -target-cpu x86-64 -dwarf-column-info -debug-info-kind=limited -dwarf-version=4 -debugger-tuning=gdb -resource-dir /opt/compiler-explorer/clang-trunk-20191129/lib/clang/10.0.0 -internal-isystem /opt/compiler-explorer/gcc-9.2.0/lib/gcc/x86_64-linux-gnu/9.2.0/../../../../include/c++/9.2.0 -internal-isystem /opt/compiler-explorer/gcc-9.2.0/lib/gcc/x86_64-linux-gnu/9.2.0/../../../../include/c++/9.2.0/x86_64-linux-gnu -internal-isystem /opt/compiler-explorer/gcc-9.2.0/lib/gcc/x86_64-linux-gnu/9.2.0/../../../../include/c++/9.2.0/backward -internal-isystem /usr/local/include -internal-isystem /opt/compiler-explorer/clang-trunk-20191129/lib/clang/10.0.0/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++2a -fdeprecated-macro -fdebug-compilation-dir /home/ubuntu -ferror-limit 19 -fmessage-length 0 -fgnuc-version=4.2.1 -fno-implicit-modules -fobjc-runtime=gcc -fcxx-exceptions -fexceptions -fdiagnostics-show-option -fcolor-diagnostics -faddrsig -o ./output.s -x c++ <source> 
+1.	<source>:3:22: current parser token ';'
+2.	<source>:2:13: parsing function body 'test'
+3.	<source>:2:13: in compound statement ('{}')
+4.	<source>:3:5: lambda expression parsing
+5.	<source>:3:15: in compound statement ('{}')
+ #0 0x0000555af942f0fa llvm::sys::PrintStackTrace(llvm::raw_ostream&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x29580fa)
+ #1 0x0000555af942ce14 llvm::sys::RunSignalHandlers() (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x2955e14)
+ #2 0x0000555af942cf52 SignalHandler(int) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x2955f52)
+ #3 0x00007faa0cd95890 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x12890)
+ #4 0x0000555afafd400f clang::Sema::ActOnCapScopeReturnStmt(clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x44fd00f)
+ #5 0x0000555afafd49b7 clang::Sema::BuildReturnStmt(clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x44fd9b7)
+ #6 0x0000555afafd535a clang::Sema::ActOnReturnStmt(clang::SourceLocation, clang::Expr*, clang::Scope*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x44fe35a)
+ #7 0x0000555afaae6c45 clang::Parser::ParseReturnStatement() (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x400fc45)
+ #8 0x0000555afaaebbef clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::Parser::ParsedAttributesWithRange&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x4014bef)
+ #9 0x0000555afaaed6e9 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x40166e9)
+#10 0x0000555afaae86d1 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x40116d1)
+#11 0x0000555afaae8f4e clang::Parser::ParseCompoundStatement(bool, unsigned int) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x4011f4e)
+#12 0x0000555afaaa4a3a clang::Parser::ParseParenExpression(clang::Parser::ParenParseOption&, bool, bool, clang::OpaquePtr<clang::QualType>&, clang::SourceLocation&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fcda3a)
+#13 0x0000555afaa9d457 clang::Parser::ParseCastExpression(bool, bool, bool&, clang::Parser::TypeCastState, bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fc6457)
+#14 0x0000555afaa9f7e4 clang::Parser::ParseCastExpression(bool, bool, clang::Parser::TypeCastState, bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fc87e4)
+#15 0x0000555afaaa0991 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fc9991)
+#16 0x0000555afaa82740 clang::Parser::ParseParameterDeclarationClause(clang::Declarator&, clang::ParsedAttributes&, llvm::SmallVectorImpl<clang::DeclaratorChunk::ParamInfo>&, clang::SourceLocation&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fab740)
+#17 0x0000555afaaaf3f2 clang::Parser::ParseLambdaExpressionAfterIntroducer(clang::LambdaIntroducer&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fd83f2)
+#18 0x0000555afaab0193 clang::Parser::ParseLambdaExpression() (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fd9193)
+#19 0x0000555afaa9e3b0 clang::Parser::ParseCastExpression(bool, bool, bool&, clang::Parser::TypeCastState, bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fc73b0)
+#20 0x0000555afaa9f7e4 clang::Parser::ParseCastExpression(bool, bool, clang::Parser::TypeCastState, bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fc87e4)
+#21 0x0000555afaaa0991 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fc9991)
+#22 0x0000555afaaa1639 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fca639)
+#23 0x0000555afaaee50d clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x401750d)
+#24 0x0000555afaaebeab clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::Parser::ParsedAttributesWithRange&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x4014eab)
+#25 0x0000555afaaed6e9 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x40166e9)
+#26 0x0000555afaae86d1 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x40116d1)
+#27 0x0000555afaaf36e3 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x401c6e3)
+#28 0x0000555afaa5c938 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3f85938)
+#29 0x0000555afaa7f110 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3fa8110)
+#30 0x0000555afaa58311 clang::Parser::ParseDeclOrFunctionDefInternal(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3f81311)
+#31 0x0000555afaa58a61 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.209) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3f81a61)
+#32 0x0000555afaa5ea56 clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3f87a56)
+#33 0x0000555afaa60099 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3f89099)
+#34 0x0000555afaa605c5 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3f895c5)
+#35 0x0000555afaa53e86 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x3f7ce86)
+#36 0x0000555afa225312 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x374e312)
+#37 0x0000555af9b667a9 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x308f7a9)
+#38 0x0000555af9b2684a clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x304f84a)
+#39 0x0000555af9c2e01b clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0x315701b)
+#40 0x0000555af78600f5 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0xd890f5)
+#41 0x0000555af77c9caa main (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0xcf2caa)
+#42 0x00007faa0bc53b97 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x21b97)
+#43 0x0000555af785d77a _start (/opt/compiler-explorer/clang-trunk-20191129/bin/clang-10+0xd8677a)
+clang-10: error: unable to execute command: Segmentation fault (core dumped)
+clang-10: error: clang frontend command failed due to signal (use -v to see invocation)
+Compiler returned: 254
+
+
+Bug Labels:
+bugzilla, clang:frontend, confirmed, crash

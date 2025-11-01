@@ -1,0 +1,106 @@
+Issue Title:
+Variadic friend  operator==  + modules causes "Assertion `Name.isIdentifier() && "Name is not a simple identifier"' failed"
+
+Source Code & Bug Trace:
+export module a;
+
+template<typename, typename>
+concept c = true;
+
+export template<typename... Ts>
+struct a {
+	template<typename... Us> requires(... and c<Ts, Us>)
+	friend bool operator==(a, a<Us...>) {
+		return true;
+	}
+};
+
+template struct a<>;
+
+import a;
+
+template struct a<int>;
+
+clang++ -std=c++20 -x c++-module -fmodule-output=a.pcm --precompile -c a.cpp
+clang++ -std=c++20 -fmodule-file=a=a.pcm -c b.cpp
+
+a.cpp:8:36: error: pack expansion contains parameter packs 'Ts' and 'Us' that have different lengths (0 vs. 1)
+    8 |         template<typename... Us> requires(... and c<Ts, Us>)
+      |                                           ^         ~~  ~~
+clang++: llvm/clang/include/clang/AST/Decl.h:276: StringRef clang::NamedDecl::getName() const: Assertion `Name.isIdentifier() && "Name is not a simple identifier"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: clang++ -std=c++20 -fmodule-file=a=a.pcm -c b.cpp
+1.      b.cpp:3:23: current parser token ';'
+2.      b.cpp:3:17: instantiating class definition 'a<int>'
+ #0 0x000055dfe453ffc2 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (clang+++0x4598fc2)
+ #1 0x000055dfe453d9ce llvm::sys::RunSignalHandlers() (clang+++0x45969ce)
+ #2 0x000055dfe44843a9 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fa344a5c710 (/usr/lib/libc.so.6+0x3e710)
+ #4 0x00007fa344aac83c (/usr/lib/libc.so.6+0x8e83c)
+ #5 0x00007fa344a5c668 gsignal (/usr/lib/libc.so.6+0x3e668)
+ #6 0x00007fa344a444b8 abort (/usr/lib/libc.so.6+0x264b8)
+ #7 0x00007fa344a443dc (/usr/lib/libc.so.6+0x263dc)
+ #8 0x00007fa344a54d26 (/usr/lib/libc.so.6+0x36d26)
+ #9 0x000055dfe74e2dba clang::Sema::PrintInstantiationStack() (clang+++0x753bdba)
+#10 0x000055dfe6b4978d clang::Sema::EmitCurrentDiagnostic(unsigned int) (clang+++0x6ba278d)
+#11 0x000055dfe6b4a677 clang::Sema::ImmediateDiagBuilder::~ImmediateDiagBuilder() Sema.cpp:0:0
+#12 0x000055dfe6b4a7e8 clang::Sema::SemaDiagnosticBuilder::~SemaDiagnosticBuilder() (clang+++0x6ba37e8)
+#13 0x000055dfe758b31a clang::Sema::CheckParameterPacksForExpansion(clang::SourceLocation, clang::SourceRange, llvm::ArrayRef<std::pair<llvm::PointerUnion<clang::TemplateTypeParmType const*, clang::NamedDecl*>, clang::SourceLocation>>, clang::MultiLevelTemplateArgumentList const&, bool&, bool&, std::optional<unsigned int>&) (clang+++0x75e431a)
+#14 0x000055dfe74fd6d9 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXFoldExpr(clang::CXXFoldExpr*) SemaTemplateInstantiate.cpp:0:0
+#15 0x000055dfe74ec36c clang::Sema::SubstConstraintExprWithoutSatisfaction(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) (clang+++0x754536c)
+#16 0x000055dfe6cc2882 SubstituteConstraintExpressionWithoutSatisfaction(clang::Sema&, clang::Sema::TemplateCompareNewDeclInfo const&, clang::Expr const*) SemaConcept.cpp:0:0
+#17 0x000055dfe6cc2606 clang::Sema::AreConstraintExpressionsEqual(clang::NamedDecl const*, clang::Expr const*, clang::Sema::TemplateCompareNewDeclInfo const&, clang::Expr const*) (clang+++0x6d1b606)
+#18 0x000055dfe7364961 clang::Sema::TemplateParameterListsAreEqual(clang::Sema::TemplateCompareNewDeclInfo const&, clang::TemplateParameterList*, clang::NamedDecl const*, clang::TemplateParameterList*, bool, clang::Sema::TemplateParameterListEqualKind, clang::SourceLocation) (clang+++0x73bd961)
+#19 0x000055dfe72b88df IsOverloadOrOverrideImpl(clang::Sema&, clang::FunctionDecl*, clang::FunctionDecl*, bool, bool, bool) SemaOverload.cpp:0:0
+#20 0x000055dfe72b8385 clang::Sema::CheckOverload(clang::Scope*, clang::FunctionDecl*, clang::LookupResult const&, clang::NamedDecl*&, bool) (clang+++0x7311385)
+#21 0x000055dfe6d4dd02 clang::Sema::CheckFunctionDeclaration(clang::Scope*, clang::FunctionDecl*, clang::LookupResult&, bool, bool) (clang+++0x6da6d02)
+#22 0x000055dfe753f31d clang::TemplateDeclInstantiator::VisitFunctionDecl(clang::FunctionDecl*, clang::TemplateParameterList*, clang::TemplateDeclInstantiator::RewriteKind) (clang+++0x759831d)
+#23 0x000055dfe753c79c clang::TemplateDeclInstantiator::VisitFunctionTemplateDecl(clang::FunctionTemplateDecl*) (clang+++0x759579c)
+#24 0x000055dfe75398b6 clang::TemplateDeclInstantiator::VisitFriendDecl(clang::FriendDecl*) (clang+++0x75928b6)
+#25 0x000055dfe74e7c05 clang::Sema::InstantiateClass(clang::SourceLocation, clang::CXXRecordDecl*, clang::CXXRecordDecl*, clang::MultiLevelTemplateArgumentList const&, clang::TemplateSpecializationKind, bool) (clang+++0x7540c05)
+#26 0x000055dfe74e9e7b clang::Sema::InstantiateClassTemplateSpecialization(clang::SourceLocation, clang::ClassTemplateSpecializationDecl*, clang::TemplateSpecializationKind, bool) (clang+++0x7542e7b)
+#27 0x000055dfe7385234 clang::Sema::ActOnExplicitInstantiation(clang::Scope*, clang::SourceLocation, clang::SourceLocation, unsigned int, clang::SourceLocation, clang::CXXScopeSpec const&, clang::OpaquePtr<clang::TemplateName>, clang::SourceLocation, clang::SourceLocation, llvm::MutableArrayRef<clang::ParsedTemplateArgument>, clang::SourceLocation, clang::ParsedAttributesView const&) (clang+++0x73de234)
+#28 0x000055dfe69cd590 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) (clang+++0x6a26590)
+#29 0x000055dfe69a8bf8 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (clang+++0x6a01bf8)
+#30 0x000055dfe6a673fe clang::Parser::ParseSingleDeclarationAfterTemplate(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::ParsingDeclRAIIObject&, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (clang+++0x6ac03fe)
+#31 0x000055dfe6a65bf4 clang::Parser::ParseExplicitInstantiation(clang::DeclaratorContext, clang::SourceLocation, clang::SourceLocation, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (clang+++0x6abebf4)
+#32 0x000055dfe6a65aa7 clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (clang+++0x6abeaa7)
+#33 0x000055dfe69a2147 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (clang+++0x69fb147)
+#34 0x000055dfe6a79fa4 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (clang+++0x6ad2fa4)
+#35 0x000055dfe6a78416 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (clang+++0x6ad1416)
+#36 0x000055dfe698a2ee clang::ParseAST(clang::Sema&, bool, bool) (clang+++0x69e32ee)
+#37 0x000055dfe528035d clang::FrontendAction::Execute() (clang+++0x52d935d)
+#38 0x000055dfe51e6add clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (clang+++0x523fadd)
+#39 0x000055dfe531e2ee clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (clang+++0x53772ee)
+#40 0x000055dfe2caab71 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (clang+++0x2d03b71)
+#41 0x000055dfe2ca6ede ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#42 0x000055dfe4fbd2f9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0>(long) Job.cpp:0:0
+#43 0x000055dfe44840a6 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (clang+++0x44dd0a6)
+#44 0x000055dfe4fbc993 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (clang+++0x5015993)
+#45 0x000055dfe4f76d1d clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (clang+++0x4fcfd1d)
+#46 0x000055dfe4f76ff7 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (clang+++0x4fcfff7)
+#47 0x000055dfe4f99ec9 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (clang+++0x4ff2ec9)
+#48 0x000055dfe2ca6351 clang_main(int, char**, llvm::ToolContext const&) (clang+++0x2cff351)
+#49 0x000055dfe2cb7ad2 main (clang+++0x2d10ad2)
+#50 0x00007fa344a45cd0 (/usr/lib/libc.so.6+0x27cd0)
+#51 0x00007fa344a45d8a __libc_start_main (/usr/lib/libc.so.6+0x27d8a)
+#52 0x000055dfe2ca32e5 _start (clang+++0x2cfc2e5)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 18.0.0git (https://github.com/llvm/llvm-project.git fc6faa1113e9069f41b5500db051210af0eea843)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: llvm/build/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/b-55bc08.cpp
+clang++: note: diagnostic msg: /tmp/b-55bc08.sh
+clang++: note: diagnostic msg: 
+
+********************
+
+Bug Labels:
+c++20, clang:frontend, clang:modules, crash

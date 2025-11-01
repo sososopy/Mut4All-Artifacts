@@ -1,0 +1,128 @@
+Issue Title:
+ICE const fn: static eval failure didn't emit an error 1.32.0 · Issue #56762 · rust-lang/rust · GitHub
+
+Rust Code:
+const HUGE_SIZE: usize = usize::max_value() / 8;
+
+pub struct TooBigArray {
+    arr: [u8; HUGE_SIZE],
+}
+
+impl TooBigArray {
+    pub const fn new() -> Self {
+        TooBigArray { arr: [0x00; HUGE_SIZE], }
+    }
+}
+
+static MY_TOO_BIG_ARRAY: TooBigArray = TooBigArray::new();
+
+fn main() {
+    println!("Hello, world!, {}", MY_TOO_BIG_ARRAY.arr[0]);
+}
+
+Bug Trace:
+thread 'main' panicked at 'Box<Any>', src/librustc_errors/lib.rs:538:9
+stack backtrace:
+   0: std::sys::unix::backtrace::tracing::imp::unwind_backtrace
+             at src/libstd/sys/unix/backtrace/tracing/gcc_s.rs:49
+   1: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:71
+   2: std::panicking::default_hook::{{closure}}
+             at src/libstd/sys_common/backtrace.rs:59
+             at src/libstd/panicking.rs:210
+   3: std::panicking::default_hook
+             at src/libstd/panicking.rs:224
+   4: rustc::util::common::panic_hook
+   5: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:491
+   6: std::panicking::begin_panic
+   7: rustc_errors::Handler::span_bug
+   8: rustc::util::bug::opt_span_bug_fmt::{{closure}}
+   9: rustc::ty::context::tls::with_opt::{{closure}}
+  10: rustc::ty::context::tls::with_context_opt
+  11: rustc::ty::context::tls::with_opt
+  12: rustc::util::bug::opt_span_bug_fmt
+  13: rustc::util::bug::span_bug_fmt
+  14: rustc_mir::const_eval::const_eval_raw_provider
+  15: rustc::ty::query::__query_compute::const_eval_raw
+  16: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors<'tcx> for rustc::ty::query::queries::const_eval_raw<'tcx>>::compute
+  17: rustc::ty::context::tls::with_context
+  18: rustc::dep_graph::graph::DepGraph::with_task_impl
+  19: <rustc::ty::query::plumbing::JobOwner<'a, 'tcx, Q>>::start
+  20: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::force_query_with_job
+  21: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::get_query
+  22: rustc::ty::query::<impl rustc::ty::context::TyCtxt<'a, 'tcx, 'lcx>>::const_eval_raw
+  23: rustc_mir::const_eval::const_eval_provider
+  24: rustc::ty::query::__query_compute::const_eval
+  25: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors<'tcx> for rustc::ty::query::queries::const_eval<'tcx>>::compute
+  26: rustc::ty::context::tls::with_context
+  27: rustc::dep_graph::graph::DepGraph::with_task_impl
+  28: <rustc::ty::query::plumbing::JobOwner<'a, 'tcx, Q>>::start
+  29: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::force_query_with_job
+  30: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::get_query
+  31: rustc::ty::query::<impl rustc::ty::context::TyCtxt<'a, 'tcx, 'lcx>>::const_eval
+  32: rustc_mir::const_eval::const_eval_provider
+  33: rustc::ty::query::__query_compute::const_eval
+  34: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors<'tcx> for rustc::ty::query::queries::const_eval<'tcx>>::compute
+  35: rustc::ty::context::tls::with_context
+  36: rustc::dep_graph::graph::DepGraph::with_task_impl
+  37: <rustc::ty::query::plumbing::JobOwner<'a, 'tcx, Q>>::start
+  38: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::force_query_with_job
+  39: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::get_query
+  40: rustc::ty::query::<impl rustc::ty::context::TyCtxt<'a, 'tcx, 'lcx>>::const_eval
+  41: rustc_lint::builtin::check_const
+  42: <rustc_lint::register_builtins::BuiltinCombinedLateLintPass as rustc::lint::LateLintPass<'a, 'tcx>>::check_item
+  43: <rustc::lint::context::LateContext<'a, 'tcx> as rustc::hir::intravisit::Visitor<'tcx>>::visit_item
+  44: <rustc::lint::context::LateContext<'a, 'tcx> as rustc::hir::intravisit::Visitor<'tcx>>::visit_mod
+  45: rustc::hir::intravisit::walk_crate
+  46: rustc::lint::context::check_crate
+  47: rustc::util::common::time
+  48: rustc::ty::context::tls::enter_context
+  49: <std::thread::local::LocalKey<T>>::with
+  50: rustc::ty::context::TyCtxt::create_and_enter
+  51: rustc_driver::driver::compile_input
+  52: rustc_driver::run_compiler_with_pool
+  53: <scoped_tls::ScopedKey<T>>::set
+  54: rustc_driver::run_compiler
+  55: rustc_driver::monitor::{{closure}}
+  56: __rust_maybe_catch_panic
+             at src/libpanic_unwind/lib.rs:102
+  57: rustc_driver::run
+  58: rustc_driver::main
+  59: std::rt::lang_start::{{closure}}
+  60: std::panicking::try::do_call
+             at src/libstd/rt.rs:59
+             at src/libstd/panicking.rs:306
+  61: __rust_maybe_catch_panic
+             at src/libpanic_unwind/lib.rs:102
+  62: std::rt::lang_start_internal
+             at src/libstd/panicking.rs:285
+             at src/libstd/panic.rs:398
+             at src/libstd/rt.rs:58
+  63: main
+  64: __libc_start_main
+  65: <unknown>
+query stack during panic:
+#0 [const_eval_raw] const-evaluating `MY_TOO_BIG_ARRAY`
+#1 [const_eval] const-evaluating + checking `MY_TOO_BIG_ARRAY`
+#2 [const_eval] const-evaluating + checking `MY_TOO_BIG_ARRAY`
+end of query stack
+error: aborting due to previous error
+
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.32.0-nightly (4a45578bc 2018-12-07) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+error: Could not compile `rustc-ice`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-const-eval, I-ICE, T-compiler, regression-from-stable-to-stable

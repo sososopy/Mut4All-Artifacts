@@ -1,0 +1,77 @@
+Issue Title:
+clang 20 crashes on invalid input
+
+Source Code & Bug Trace:
+template <typename T>
+concept Concept = requires requires(T a, T b) { a+b ;}
+struct S {};
+void f() { Concept<int>; }
+
+<source>:2:27: error: expected '{'
+    2 | concept Concept = requires requires(T a, T b) { a+b ;}
+      |                           ^
+      |                           {
+<source>:4:12: error: a concept definition cannot refer to itself
+    4 | void f() { Concept<int>; }
+      |            ^
+<source>:2:9: note: declared here
+    2 | concept Concept = requires requires(T a, T b) { a+b ;}
+      |         ^
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -fno-verbose-asm -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics --std=c++2a <source>
+1.	<source>:4:24: current parser token ';'
+2.	<source>:4:10: parsing function body 'f'
+3.	<source>:4:10: in compound statement ('{}')
+ #0 0x00000000038ffc18 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x38ffc18)
+ #1 0x00000000038fdd84 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x38fdd84)
+ #2 0x0000000003850268 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x0000708319842520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x000000000753a6b3 clang::Expr::IgnoreParenImpCasts() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x753a6b3)
+ #5 0x00000000064d8a96 clang::ActionResult<clang::Expr*, true> calculateConstraintSatisfaction<calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::ConstraintEvaluator>(clang::Sema&, clang::Expr const*, clang::ConstraintSatisfaction&, calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::ConstraintEvaluator const&) SemaConcept.cpp:0:0
+ #6 0x00000000064db79a CheckConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) SemaConcept.cpp:0:0
+ #7 0x00000000064dbce7 clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x64dbce7)
+ #8 0x0000000006d24521 clang::Sema::CheckConceptTemplateId(clang::CXXScopeSpec const&, clang::SourceLocation, clang::DeclarationNameInfo const&, clang::NamedDecl*, clang::ConceptDecl*, clang::TemplateArgumentListInfo const*) (.constprop.0) SemaTemplate.cpp:0:0
+ #9 0x0000000006d25cc6 clang::Sema::BuildTemplateIdExpr(clang::CXXScopeSpec const&, clang::SourceLocation, clang::LookupResult&, bool, clang::TemplateArgumentListInfo const*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6d25cc6)
+#10 0x00000000067d6ec5 clang::Sema::ActOnIdExpression(clang::Scope*, clang::CXXScopeSpec&, clang::SourceLocation, clang::UnqualifiedId&, bool, bool, clang::CorrectionCandidateCallback*, bool, clang::Token*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x67d6ec5)
+#11 0x0000000006272af5 clang::Parser::tryParseCXXIdExpression(clang::CXXScopeSpec&, bool, clang::Token&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6272af5)
+#12 0x0000000006272d80 clang::Parser::ParseCXXIdExpression(bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6272d80)
+#13 0x0000000006252d43 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6252d43)
+#14 0x000000000625433a clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x625433a)
+#15 0x0000000006254509 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6254509)
+#16 0x0000000006259769 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x6259769)
+#17 0x00000000062e5c57 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x62e5c57)
+#18 0x00000000062d9a91 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x62d9a91)
+#19 0x00000000062da50d clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x62da50d)
+#20 0x00000000062db821 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x62db821)
+#21 0x00000000062dda4a clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x62dda4a)
+#22 0x00000000061da066 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x61da066)
+#23 0x000000000622309f clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x622309f)
+#24 0x00000000061d2617 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x61d2617)
+#25 0x00000000061d3433 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x61d3433)
+#26 0x00000000061dcd22 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x61dcd22)
+#27 0x00000000061de5b8 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x61de5b8)
+#28 0x00000000061ccc8a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x61ccc8a)
+#29 0x0000000004215b65 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x4215b65)
+#30 0x00000000044dc061 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x44dc061)
+#31 0x000000000445bd4b clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x445bd4b)
+#32 0x00000000045c0a83 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x45c0a83)
+#33 0x0000000000cd55ac cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xcd55ac)
+#34 0x0000000000cce00d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#35 0x000000000425e3f9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#36 0x0000000003850693 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3850693)
+#37 0x000000000425e619 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#38 0x000000000422576d clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x422576d)
+#39 0x000000000422676d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x422676d)
+#40 0x000000000423029c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x423029c)
+#41 0x0000000000cd2301 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xcd2301)
+#42 0x0000000000ba5894 main (/opt/compiler-explorer/clang-trunk/bin/clang+++0xba5894)
+#43 0x0000708319829d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#44 0x0000708319829e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#45 0x0000000000ccdaae _start (/opt/compiler-explorer/clang-trunk/bin/clang+++0xccdaae)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+
+Bug Labels:
+clang:frontend, concepts, confirmed, crash-on-invalid, regression

@@ -1,0 +1,338 @@
+Issue Title:
+ICE: `unexpected type encountered in variance inference` in `rustc_hir_analysis/src/variance/constraints.rs` · Issue #125957 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
+#![feature(associated_const_equality)]
+
+pub struct Equal<const T: usize, const R: usize>();
+
+pub enum ParseMode {
+    Raw,
+}
+pub trait Parse {
+    const PARSE_MODE: ParseMode;
+}
+pub trait RenderRaw: Parse<PARSE_MODE = { ParseMode::Raw }> {}
+
+trait GenericVec<T> {
+    fn unwrap() -> dyn RenderRaw;
+}
+
+fn main() {}
+
+Command:
+rustc
+
+Bug Trace:
+//@ check-pass
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
+use std::marker::PhantomData;
+
+pub struct Equal<const T: usize, const R: usize>();
+pub trait True {}
+impl<const T: usize> True for Equal<T, T> {}
+
+// replacement for generativity
+pub struct Id<'id>(PhantomData<fn(&'id ()) -> &'id ()>);
+pub struct Guard<'id>(Id<'id>);
+fn make_guard<'id>(i: &'id Id<'id>) -> Guard<'id> {
+    Guard(Id(PhantomData))
+}
+
+impl<'id> Into<Id<'id>> for Guard<'id> {
+    fn into(self) -> Id<'id> {
+        self.0
+    }
+}
+
+pub struct Arena<'life> {
+    bytes: *mut [u8],
+    //bitmap: RefCell<RoaringBitmap>,
+    _token: PhantomData<Id<'life>>,
+}
+
+#[repr(transparent)]
+pub struct Item<'life, T> {
+    data: T,
+    _phantom: PhantomData<Id<'life>>,
+}
+
+#[repr(transparent)]
+pub struct Token<'life, 'borrow, 'compact, 'reborrow, T>
+where
+    'life: 'reborrow,
+    T: Tokenize<'life, 'borrow, 'compact, 'reborrow>,
+{
+    //ptr: *mut <T as Tokenize>::Tokenized,
+    ptr: core::ptr::NonNull<T::Tokenized>,
+    _phantom: PhantomData<Id<'life>>,
+    _compact: PhantomData<&'borrow Guard<'compact>>,
+    _result: PhantomData<&'reborrow T::Untokenized>,
+}
+
+impl<'life> Arena<'life> {
+    pub fn tokenize<'before, 'compact, 'borrow, 'reborrow, T, U>(
+        &self,
+        guard: &'borrow Guard<'compact>,
+        item: Item<'life, &'before mut T>,
+    ) -> Token<'life, 'borrow, 'compact, 'reborrow, U>
+    where
+        T: Tokenize<'life, 'borrow, 'compact, 'reborrow, Untokenized = U>,
+        T::Untokenized: Tokenize<'life, 'borrow, 'compact, 'reborrow>,
+        Equal<{ core::mem::size_of::<T>() }, { core::mem::size_of::<U>() }>: True,
+        'compact: 'borrow,
+        'life: 'reborrow,
+        'life: 'compact,
+        'life: 'borrow,
+        // 'borrow: 'before ??
+    {
+        let dst = item.data as *mut T as *mut T::Tokenized;
+        Token {
+            ptr: core::ptr::NonNull::new(dst as *mut _).unwrap(),
+            _phantom: PhantomData,
+            _compact: PhantomData,
+            _result: PhantomData,
+        }
+    }
+}
+
+pub trait Tokenize<'life, 'borrow, 'compact, 'reborrow>
+where
+    'compact: 'borrow,
+    'life: 'reborrow,
+    'life: 'borrow,
+    'life: 'compact,
+{
+    type Tokenized;
+    type Untokenized;
+    const TO: fn(&Arena<'life>, &'borrow Guard<'compact>, Self) -> Self::Tokenized;
+    const FROM: fn(&'reborrow Arena<'life>, Self::Tokenized) -> Self::Untokenized;
+}
+
+macro_rules! tokenize {
+    ($to:expr, $from:expr) => {
+        const TO: fn(&Arena<'life>, &'borrow Guard<'compact>, Self) -> Self::Tokenized = $to;
+        const FROM: fn(&'reborrow Arena<'life>, Self::Tokenized) -> Self::Untokenized = $from;
+    };
+}
+
+struct Foo<'life, 'borrow>(Option<Item<'life, &'borrow mut Bar>>);
+struct TokenFoo<'life, 'borrow, 'compact, 'reborrow>(
+    Option<Token<'life, 'borrow, 'compact, 'reborrow, Bar>>,
+);
+struct Bar(u8);
+
+impl<'life, 'before, 'borrow, 'compact, 'reborrow> Tokenize<'life, 'borrow, 'compact, 'reborrow>
+    for Foo<'life, 'before>
+where
+    'compact: 'borrow,
+    'life: 'reborrow,
+    'life: 'borrow,
+    'life: 'compact,
+{
+    type Tokenized = TokenFoo<'life, 'borrow, 'compact, 'reborrow>;
+    type Untokenized = Foo<'life, 'reborrow>;
+    tokenize!(foo_to, foo_from);
+}
+
+impl<'life, 'borrow, 'compact, 'reborrow> Tokenize<'life, 'borrow, 'compact, 'reborrow> for Bar
+where
+    'compact: 'borrow,
+    'life: 'reborrow,
+    'life: 'borrow,
+    'life: 'compact,
+{
+    type Tokenized = Bar;
+    type Untokenized = Bar;
+    tokenize!(bar_to, bar_from);
+}
+
+fn bar_to<'life, 'borrow, 'compact>(
+    arena: &Arena<'life>,
+    guard: &'borrow Guard<'compact>,
+    s: Bar,
+) -> Bar {
+    s
+}
+fn bar_from<'life, 'reborrow>(arena: &'reborrow Arena<'life>, s: Bar) -> Bar {
+    s
+}
+
+fn foo_to<'life, 'borrow, 'compact, 'reborrow, 'before>(
+    arena: &'before Arena<'life>,
+    guard: &'borrow Guard<'compact>,
+    s: Foo<'life, 'before>,
+) -> TokenFoo<'life, 'borrow, 'compact, 'reborrow> {
+    let Foo(bar) = s;
+    TokenFoo(bar.map(|bar| arena.tokenize(guard, bar)))
+}
+fn foo_from<'life, 'borrow, 'compact, 'reborrow>(
+    arena: &'reborrow Arena<'life>,
+    s: TokenFoo<'life, 'borrow, 'compact, 'reborrow>,
+) -> Foo<'life, 'reborrow> {
+    Foo(s.0.map(|bar| panic!()))
+}
+
+fn main() {}
+
+
+#![feature(generic_associated_types)]
+
+trait Fun {
+    type F<'a>: Fn() -> u32;
+    
+    fn callme<'a>(f: Self::F<'a>) -> u32 {
+        f()
+    }
+}
+
+impl <T> Fun for T {
+    type F<'a> = Self;
+}
+
+fn main() {
+    <u8>::callme(0);
+}
+
+
+#![allow(incomplete_features)]
+#![feature(adt_const_params, const_ptr_read, generic_const_exprs)]
+
+use std::mem::ManuallyDrop;
+
+const fn concat_strs<const A: &'static str, const B: &'static str>() -> &'static str
+where
+    [(); A.len()]:,
+    [(); B.len()]:,
+    [(); A.len() + B.len()]:,
+{
+    #[repr(C)]
+    struct ConcatJoin<const N: usize, const M: usize> {
+        left: [u8; N],
+        right: [u8; M],
+    }
+
+    #[repr(C)]
+    union ConcatJoinerItem
+    where
+        [(); N + M]:,
+    {
+        whole: ManuallyDrop<[u8; N + M]>,
+        split: ManuallyDrop<ConcatJoin<N, M>>,
+    }
+
+    const fn concat_arr<const M: usize, const N: usize>(a: [u8; M], b: [u8; N]) -> [u8; M + N]
+    where
+        [(); M + N]:,
+    {
+        unsafe {
+            let joiner = ConcatJoiner {
+                split: ManuallyDrop::new(ConcatJoin { left: a, right: b }),
+            };
+            let join = joiner.whole;
+            ManuallyDrop::into_inner(join)
+        }
+    }
+
+    struct Inner<const A: &'static str, const B: &'static str>;
+    impl<const A: &'static str, const B: &'static str> Inner<A, B>
+    where
+        [(); A.len()]:,
+        [(); B.len()]:,
+        [(); A.len() + B.len()]:,
+    {
+        const ABSTR: &'static str = unsafe {
+            std::str::from_utf8_unchecked(&concat_arr(
+                A.as_ptr().cast::<[u8; A.len()]>().read(),
+                B.as_ptr().cast::<[u8; B.len()]>().read(),
+            ))
+        };
+    }
+
+    Inner::<A, B>::ABSTR
+}
+
+const FOO: &str = "foo";
+const BAR: &str = "bar";
+const FOOBAR: &str = concat_strs::<FOO, BAR>();
+
+pub fn main() {}
+
+
+//@ aux-build:issue-20727.rs
+//@ ignore-cross-compile
+
+// https://github.com/rust-lang/rust/issues/20727
+#![crate_name="issue_20727_3"]
+
+extern crate issue_20727;
+
+pub trait Bar {}
+
+// @has issue_20727_3/trait.Deref2.html
+pub trait Deref2 {
+    // @has - '//pre[@class="rust item-decl"]' 'trait Deref2 {'
+    // @has - '//pre[@class="rust item-decl"]' 'type Target: Bar;'
+    type Target: Bar;
+
+    // @has - '//pre[@class="rust item-decl"]' 'fn deref(&self) -> Self::Target;'
+    fn deref(&self) -> Self::Target;
+}
+
+// @has issue_20727_3/reexport/trait.Deref2.html
+pub mod reexport {
+    // @has - '//pre[@class="rust item-decl"]' 'trait Deref2 {'
+    // @has - '//pre[@class="rust item-decl"]' 'type Target: Bar;'
+    // @has - '//pre[@class="rust item-decl"]' 'fn deref(&self) -> Self::Target;'
+    pub use issue_20727::Deref2;
+}
+
+
+#![feature(associated_const_equality)]
+pub enum ParseMode {
+    Raw,
+}
+pub trait Parse {
+    const PARSE_MODE: Self::F;
+}
+pub trait RenderRaw: Parse<PARSE_MODE = { ParseMode::Raw }> {}
+
+
+// Regression test for #53570. Here, we need to propagate that `T: 'a`
+// but in some versions of NLL we were propagating a stronger
+// requirement that `T: 'static`. This arose because we actually had
+// to propagate both that `T: 'a` but also `T: 'b` where `'b` is the
+// higher-ranked lifetime that appears in the type of the closure
+// parameter `x` -- since `'b` cannot be expressed in the caller's
+// space, that got promoted th `'static`.
+//
+//@ check-pass
+
+use std::cell::{RefCell, Ref};
+
+trait AnyVec {
+}
+
+trait GenericVec<T> {
+    fn unwrap<'a, 'b>(vec: &'b dyn AnyVec<'a>) -> &'b [RenderRaw] where T: 'a;
+}
+
+struct Scratchpad<'a> {
+    buffers: RefCell<Box<dyn AnyVec<'a>>>,
+}
+
+impl<'a> Scratchpad<'a> {
+    fn get<Deref2>(&self) -> Ref<[T]>
+    where T: 'a
+    {
+        Ref::map(self.buffers.borrow(), |x| T::unwrap(x.as_ref()))
+    }
+}
+
+fn main() { }
+
+Bug Labels:
+C-bug, F-associated_const_equality, F-generic_const_exprs, I-ICE, S-bug-has-test, S-has-mcve, T-compiler, requires-incomplete-features

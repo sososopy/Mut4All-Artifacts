@@ -1,0 +1,114 @@
+Issue Title:
+Crash while parsing lambda used as a default argument for the value of a forward class
+
+Source Code & Bug Trace:
+struct a;
+void b(a c = [] { return c; });
+
+$ clang -fsyntax-only -Wno-everything -xc++ preprocessed.cc
+preprocessed.cc:2:26: error: variable 'c' cannot be implicitly captured in a lambda with no capture-default specified
+    2 | void b(a c = [] { return c; });
+      |                          ^
+preprocessed.cc:2:10: note: 'c' declared here
+    2 | void b(a c = [] { return c; });
+      |          ^
+preprocessed.cc:2:14: note: lambda expression begins here
+    2 | void b(a c = [] { return c; });
+      |              ^
+preprocessed.cc:2:15: note: capture 'c' by reference
+    2 | void b(a c = [] { return c; });
+      |               ^
+      |               &c
+preprocessed.cc:2:15: note: default capture by reference
+    2 | void b(a c = [] { return c; });
+      |               ^
+      |               &
+
+clang: /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/RecordLayoutBuilder.cpp:3347: 
+const ASTRecordLayout &clang::ASTContext::getASTRecordLayout(const RecordDecl *) const: 
+Assertion `D && "Cannot get layout of forward declarations!"' failed.
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang -fsyntax-only -std=c++20 -Wno-everything -xc++ preprocessed.cc
+1.      preprocessed.cc:2:27: current parser token ';'
+2.      preprocessed.cc:2:14: lambda expression parsing
+3.      preprocessed.cc:2:17: in compound statement ('{}')
+ #0 0x000055bf226afd18 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:723:13
+ #1 0x000055bf226ad8de llvm::sys::RunSignalHandlers() /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Signals.cpp:106:18
+ #2 0x000055bf2261a6d6 HandleCrash /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:73:5
+ #3 0x000055bf2261a6d6 CrashRecoverySignalHandler(int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:390:51
+ #4 0x00007f2d83e5a510 (/lib/x86_64-linux-gnu/libc.so.6+0x3c510)
+ #5 0x00007f2d83ea816c __pthread_kill_implementation ./nptl/pthread_kill.c:44:76
+ #6 0x00007f2d83e5a472 raise ./signal/../sysdeps/posix/raise.c:27:6
+ #7 0x00007f2d83e444b2 abort ./stdlib/abort.c:81:7
+ #8 0x00007f2d83e443d5 _nl_load_domain ./intl/loadmsgcat.c:1177:9
+ #9 0x00007f2d83e533a2 (/lib/x86_64-linux-gnu/libc.so.6+0x353a2)
+#10 0x000055bf26048f8b clang::ASTContext::getASTRecordLayout(clang::RecordDecl const*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/RecordLayoutBuilder.cpp:3348:3
+#11 0x000055bf25acf105 clang::ASTContext::getTypeInfoImpl(clang::Type const*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/ASTContext.cpp:2288:37
+#12 0x000055bf25ad0a49 clang::ASTContext::getTypeInfo(clang::Type const*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/ASTContext.cpp:0:17
+#13 0x000055bf25acf02f clang::ASTContext::getTypeInfoImpl(clang::Type const*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/ASTContext.cpp:0:0
+#14 0x000055bf25ad0a49 clang::ASTContext::getTypeInfo(clang::Type const*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/ASTContext.cpp:0:17
+#15 0x000055bf25ad12c9 operator QualType /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/AST/CanonicalType.h:92:38
+#16 0x000055bf25ad12c9 getCharWidth /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/AST/ASTContext.h:2355:24
+#17 0x000055bf25ad12c9 toCharUnitsFromBits /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/ASTContext.cpp:2417:44
+#18 0x000055bf25ad12c9 clang::ASTContext::getTypeAlignInChars(clang::QualType) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/ASTContext.cpp:2437:10
+#19 0x000055bf255b8c06 operator> /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/AST/CharUnits.h:113:25
+#20 0x000055bf255b8c06 clang::Sema::getNamedReturnInfo(clang::VarDecl const*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaStmt.cpp:3359:32
+#21 0x000055bf255b88f3 clang::Sema::getNamedReturnInfo(clang::Expr*&, clang::Sema::SimplerImplicitMoveMode) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaStmt.cpp:3293:25
+#22 0x000055bf255bac05 clang::Sema::BuildReturnStmt(clang::SourceLocation, clang::Expr*, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaStmt.cpp:3860:28
+#23 0x000055bf255ba9d5 isInvalid /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Sema/Ownership.h:199:41
+#24 0x000055bf255ba9d5 clang::Sema::ActOnReturnStmt(clang::SourceLocation, clang::Expr*, clang::Scope*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaStmt.cpp:3822:9
+#25 0x000055bf24ce2f93 clang::Parser::ParseReturnStatement() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:2461:1
+#26 0x000055bf24cdc889 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:330:11
+#27 0x000055bf24cdb012 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:121:20
+#28 0x000055bf24ce54d1 clang::Parser::ParseCompoundStatementBody(bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:1240:11
+#29 0x000055bf24c61d4d clang::Parser::ParseLambdaExpressionAfterIntroducer(clang::LambdaIntroducer&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExprCXX.cpp:1617:19
+#30 0x000055bf24c5e799 clang::Parser::ParseLambdaExpression() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExprCXX.cpp:817:10
+#31 0x000055bf24c4e02e clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:0:13
+#32 0x000055bf24c46fdc ParseCastExpression /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:0:20
+#33 0x000055bf24c46fdc clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:182:20
+#34 0x000055bf24cb55d7 clang::Parser::ParseParameterDeclarationClause(clang::DeclaratorContext, clang::ParsedAttributes&, llvm::SmallVectorImpl<clang::DeclaratorChunk::ParamInfo>&, clang::SourceLocation&, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:7998:26
+#35 0x000055bf24cb1d8e clang::Parser::ParseFunctionDeclarator(clang::Declarator&, clang::ParsedAttributes&, clang::BalancedDelimiterTracker&, bool, bool) /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Parse/Parser.h:0:12
+#36 0x000055bf24caf190 clang::Parser::ParseDirectDeclarator(clang::Declarator&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:7156:9
+#37 0x000055bf24cad2a4 clang::Parser::ParseDeclaratorInternal(clang::Declarator&, void (clang::Parser::*)(clang::Declarator&)) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:0:7
+#38 0x000055bf24d778af clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/Sema.cpp:529:1
+#39 0x000055bf24c9a24e SuppressAccessChecks /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Parse/RAIIObjectsForParser.h:54:11
+#40 0x000055bf24c9a24e clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:2267:24
+#41 0x000055bf24c24d09 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:10
+#42 0x000055bf24c24562 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:1271:12
+#43 0x000055bf24c23389 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:14
+#44 0x000055bf24c213b6 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:763:10
+#45 0x000055bf24c1c9de clang::ParseAST(clang::Sema&, bool, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseAST.cpp:162:5
+#46 0x000055bf23326e9f clang::FrontendAction::Execute() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/FrontendAction.cpp:1082:10
+#47 0x000055bf23293dad getPtr /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:276:42
+#48 0x000055bf23293dad operator bool /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:239:16
+#49 0x000055bf23293dad clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/CompilerInstance.cpp:1061:23
+#50 0x000055bf2340cc5e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:280:25
+#51 0x000055bf1ff5f72f cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/cc1_main.cpp:232:15
+#52 0x000055bf1ff5c00d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:215:12
+#53 0x000055bf230d2ad9 operator() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:30
+#54 0x000055bf230d2ad9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0>(long) /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:12
+#55 0x000055bf2261a416 operator() /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:0:12
+#56 0x000055bf2261a416 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:426:3
+#57 0x000055bf230d21d2 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:7
+#58 0x000055bf2308a307 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:199:15
+#59 0x000055bf2308a847 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:253:13
+#60 0x000055bf230ab559 empty /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/SmallVector.h:94:46
+#61 0x000055bf230ab559 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Driver.cpp:1942:23
+#62 0x000055bf1ff5b50d clang_main(int, char**, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:391:21
+#63 0x000055bf1ff6c077 main /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/tools/driver/clang-driver.cpp:17:10
+#64 0x00007f2d83e456ca __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#65 0x00007f2d83e45785 call_init ./csu/../csu/libc-start.c:128:20
+#66 0x00007f2d83e45785 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#67 0x000055bf1ff59961 _start (/usr/local/google/home/kadircet/repos/llvm/build/bin/clang+0x5465961)
+clang: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 19.0.0git (git@github.com:kadircet/llvm-project.git 98ae27a0d303252a23891b204df18112a846f661)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/local/google/home/kadircet/repos/llvm/build/bin
+Build config: +assertions
+clang: note: diagnostic msg:
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid, lambda

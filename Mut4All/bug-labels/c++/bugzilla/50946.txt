@@ -1,0 +1,73 @@
+Issue Title:
+ICE in HandleDependentAccessCheck passing lambda-quoted constraint to meta-concept
+
+Source Code & Bug Trace:
+template<class> concept A = true;
+template<class T, auto L> concept M = requires {
+    L.template operator()<T()>();
+};
+template<class T> concept C = requires(T t) {
+    { t.x } -> M<[]<A>(){}>;
+};
+struct S { double x; };
+static_assert(C<S>);
+
+clang version 14.0.0 (https://github.com/llvm/llvm-project.git 96ef794fd04d8d2e7d15527e4ec18895de83a9cf)
+
+0.	Program arguments: /opt/compiler-explorer/clang-trunk/bin/clang++ -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -O3 -Wall -std=c++20 <source>
+1.	<source>:9:19: current parser token ')'
+ #0 0x0000556814f5b80f PrintStackTraceSignalHandler(void*) Signals.cpp:0:0
+ #1 0x0000556814f596d0 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x354a6d0)
+ #2 0x0000556814eaa868 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fd82b4b93c0 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x153c0)
+ #4 0x0000556816e5e3dd clang::Sema::HandleDependentAccessCheck(clang::DependentDiagnostic const&, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x544f3dd)
+ #5 0x0000556817523ef6 clang::Sema::PerformDependentDiagnostics(clang::DeclContext const*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b14ef6)
+ #6 0x00005568174f0698 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformLambdaExpr(clang::LambdaExpr*) SemaTemplateInstantiate.cpp:0:0
+ #7 0x00005568174f2091 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+ #8 0x0000556817501839 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArgument(clang::TemplateArgumentLoc const&, clang::TemplateArgumentLoc&, bool) SemaTemplateInstantiate.cpp:0:0
+ #9 0x0000556817503018 bool clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArguments<clang::TemplateArgumentLoc const*>(clang::TemplateArgumentLoc const*, clang::TemplateArgumentLoc const*, clang::TemplateArgumentListInfo&, bool) (.constprop.2874) SemaTemplateInstantiate.cpp:0:0
+#10 0x0000556817503717 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformConceptSpecializationExpr(clang::ConceptSpecializationExpr*) SemaTemplateInstantiate.cpp:0:0
+#11 0x00005568174f1e17 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#12 0x0000556817519336 clang::Sema::SubstExpr(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b0a336)
+#13 0x000055681718b029 clang::Sema::BuildExprRequirement(clang::Expr*, bool, clang::SourceLocation, clang::concepts::ExprRequirement::ReturnTypeRequirement) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x577c029)
+#14 0x000055681750ee73 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformRequiresExpr(clang::RequiresExpr*) SemaTemplateInstantiate.cpp:0:0
+#15 0x00005568174f22c1 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#16 0x0000556817519336 clang::Sema::SubstExpr(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5b0a336)
+#17 0x0000556816f37be7 calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, llvm::ArrayRef<clang::TemplateArgument>, clang::SourceLocation, clang::MultiLevelTemplateArgumentList&, clang::Expr const*, clang::ConstraintSatisfaction&)::'lambda'(clang::Expr const*)::operator()(clang::Expr const*) const SemaConcept.cpp:0:0
+#18 0x0000556816f3988e bool calculateConstraintSatisfaction<calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, llvm::ArrayRef<clang::TemplateArgument>, clang::SourceLocation, clang::MultiLevelTemplateArgumentList&, clang::Expr const*, clang::ConstraintSatisfaction&)::'lambda'(clang::Expr const*)>(clang::Sema&, clang::Expr const*, clang::ConstraintSatisfaction&, calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, llvm::ArrayRef<clang::TemplateArgument>, clang::SourceLocation, clang::MultiLevelTemplateArgumentList&, clang::Expr const*, clang::ConstraintSatisfaction&)::'lambda'(clang::Expr const*)&&) SemaConcept.cpp:0:0
+#19 0x0000556816f3a2e0 clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::ArrayRef<clang::TemplateArgument>, clang::SourceRange, clang::ConstraintSatisfaction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x552b2e0)
+#20 0x0000556817416bbe clang::Sema::CheckConceptTemplateId(clang::CXXScopeSpec const&, clang::SourceLocation, clang::DeclarationNameInfo const&, clang::NamedDecl*, clang::ConceptDecl*, clang::TemplateArgumentListInfo const*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a07bbe)
+#21 0x0000556817418a66 clang::Sema::BuildTemplateIdExpr(clang::CXXScopeSpec const&, clang::SourceLocation, clang::LookupResult&, bool, clang::TemplateArgumentListInfo const*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a09a66)
+#22 0x00005568170fd37c clang::Sema::ActOnIdExpression(clang::Scope*, clang::CXXScopeSpec&, clang::SourceLocation, clang::UnqualifiedId&, bool, bool, clang::CorrectionCandidateCallback*, bool, clang::Token*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x56ee37c)
+#23 0x0000556816d907b7 clang::Parser::tryParseCXXIdExpression(clang::CXXScopeSpec&, bool, clang::Token&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x53817b7)
+#24 0x0000556816d909e2 clang::Parser::ParseCXXIdExpression(bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x53819e2)
+#25 0x0000556816d7973f clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x536a73f)
+#26 0x0000556816d7a713 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x536b713)
+#27 0x0000556816d845f3 clang::Parser::ParseConstantExpressionInExprEvalContext(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x53755f3)
+#28 0x0000556816d64e37 clang::Parser::ParseStaticAssertDeclaration(clang::SourceLocation&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5355e37)
+#29 0x0000556816d59738 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributesWithRange&, clang::SourceLocation*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x534a738)
+#30 0x0000556816d3114b clang::Parser::ParseExternalDeclaration(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x532214b)
+#31 0x0000556816d32549 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5323549)
+#32 0x0000556816d25da9 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5316da9)
+#33 0x0000556815eba012 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x44ab012)
+#34 0x0000556815863261 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3e54261)
+#35 0x0000556815801162 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3df2162)
+#36 0x000055681592f8b3 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3f208b3)
+#37 0x0000556812cbf9dc cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x12b09dc)
+#38 0x0000556812cbbbad ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#39 0x00005568156aa9d5 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#40 0x0000556814eaae53 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x349be53)
+#41 0x00005568156aca8e clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3c9da8e)
+#42 0x00005568156824ca clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3c734ca)
+#43 0x000055681568301f clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3c7401f)
+#44 0x000055681568c405 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3c7d405)
+#45 0x0000556812bd0e8e main (/opt/compiler-explorer/clang-trunk/bin/clang+++0x11c1e8e)
+#46 0x00007fd82af690b3 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x270b3)
+#47 0x0000556812cbb72a _start (/opt/compiler-explorer/clang-trunk/bin/clang+++0x12ac72a)
+
+gcc also ICEs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=102047
+MSVC accepts (correctly).
+
+
+Bug Labels:
+bugzilla, c++20, clang:frontend, concepts, crash

@@ -1,0 +1,114 @@
+Issue Title:
+ICE: Lifetime issue not detected for GAT · Issue #117489 · rust-lang/rust · GitHub
+
+Rust Code:
+trait LendingIterator {
+    type Item<'a>
+    where
+        Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+
+    fn for_each(mut self, mut f: Box<dyn FnMut(Self::Item<'_>) + 'static>)
+    where
+        Self: Sized,
+    {
+        while let Some(next) = self.next() {
+            f(next);
+        }
+    }
+}
+
+struct Query<'q> {
+    inner: &'q [u32],
+    index: usize,
+}
+
+impl<'q> Query<'q> {
+    pub fn new(inner: &'q Vec<u32>) -> Self {
+        Self { index: 0, inner }
+    }
+}
+
+impl<'q> LendingIterator for Query<'q> {
+    type Item<'a> = &'a u32 where Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>> {
+        if let Some(value) = self.inner.get(self.index) {
+            self.index += 1;
+            return Some(value);
+        }
+
+        None
+    }
+}
+
+fn main() {
+    let mut data = vec![1, 2, 3];
+
+    LendingIterator::for_each(
+        Query::new(&data),
+        Box::new(|val| {
+            eprintln!("{}", val);
+        }),
+    );
+
+    // Picks up the 'static issue, doesn't compile/crash.
+    // Query::new(&data).for_each(Box::new(|val| {
+    //     eprintln!("{}", val);
+    // }));
+}
+
+Bug Trace:
+thread 'rustc' panicked at /rustc/cc66ad468955717ab92600c770da8c1601a4ff33/compiler/rustc_errors/src/lib.rs:1635:9:
+Box<dyn Any>
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: <rustc_errors::HandlerInner>::bug::<alloc::string::String>
+   2: <rustc_errors::Handler>::bug::<alloc::string::String>
+   3: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}
+   5: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_borrowck::universal_regions::UniversalRegionIndices>::to_region_vid
+   8: <rustc_borrowck::type_check::free_region_relations::UniversalRegionRelationsBuilder>::add_implied_bounds
+   9: rustc_borrowck::type_check::free_region_relations::create
+  10: rustc_borrowck::type_check::type_check
+  11: rustc_borrowck::nll::compute_regions
+  12: rustc_borrowck::do_mir_borrowck
+  13: rustc_borrowck::mir_borrowck
+      [... omitted 2 frames ...]
+  14: <rustc_borrowck::type_check::TypeChecker>::prove_closure_bounds
+  15: <rustc_borrowck::type_check::TypeChecker>::check_rvalue
+  16: <rustc_borrowck::type_check::TypeChecker>::typeck_mir
+  17: rustc_borrowck::type_check::type_check
+  18: rustc_borrowck::nll::compute_regions
+  19: rustc_borrowck::do_mir_borrowck
+  20: rustc_borrowck::mir_borrowck
+      [... omitted 2 frames ...]
+  21: <core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::par_for_each_in<&[rustc_span::def_id::LocalDefId], <rustc_middle::hir::map::Map>::par_body_owners<rustc_interface::passes::analysis::{closure#1}::{closure#0}>::{closure#0}>::{closure#0}::{closure#0}> as core::ops::function::FnOnce<()>>::call_once
+  22: rustc_data_structures::sync::par_for_each_in::<&[rustc_span::def_id::LocalDefId], <rustc_middle::hir::map::Map>::par_body_owners<rustc_interface::passes::analysis::{closure#1}::{closure#0}>::{closure#0}>
+  23: <rustc_session::session::Session>::time::<(), rustc_interface::passes::analysis::{closure#1}>
+  24: rustc_interface::passes::analysis
+      [... omitted 2 frames ...]
+  25: <rustc_middle::ty::context::GlobalCtxt>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure#6}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+  26: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.73.0 (cc66ad468 2023-10-03) running on aarch64-apple-darwin
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `main::{closure#0}`
+#1 [mir_borrowck] borrow-checking `main`
+#2 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `rust-playground` (bin "rust-playground")
+
+Bug Labels:
+A-GATs, A-implied-bounds, C-bug, F-generic_associated_types, I-ICE, T-compiler

@@ -1,0 +1,102 @@
+Issue Title:
+[fuzz] ICE on invalid:  __make_integer_seq  with inappropriate first argument assert-fails
+
+Source Code & Bug Trace:
+cat >test.cpp <<EOF
+
+template <class> struct A;
+struct S { __make_integer_seq<A, int, 42> m; };
+S s;
+
+EOF
+clang++ -std=c++11 -c test.cpp
+
+test.cpp:2:12: error: too many template arguments for class template 'A'
+struct S { __make_integer_seq<A, int, 42> m; };
+           ^
+test.cpp:1:25: note: template is declared here
+template <class> struct A;
+~~~~~~~~~~~~~~~~        ^
+Assertion failed: (!T->isDependentType() && "should not see dependent types here"), function getTypeInfoImpl, file tools/clang/include/clang/AST/TypeNodes.inc, line 70.
+PLEASE submit a bug report to https://bugs.llvm.org/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /Users/aodwyer/llvm-project/build-debug/bin/clang++ -std=c++11 -c test.cpp
+1.	test.cpp:3:4: current parser token ';'
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  clang++                  0x000000010839663d llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 61
+1  clang++                  0x0000000108396bbb PrintStackTraceSignalHandler(void*) + 27
+2  clang++                  0x0000000108394b13 llvm::sys::RunSignalHandlers() + 115
+3  clang++                  0x0000000108395ede llvm::sys::CleanupOnSignal(unsigned long) + 110
+4  clang++                  0x0000000108234b20 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) + 192
+5  clang++                  0x0000000108234e73 CrashRecoverySignalHandler(int) + 195
+6  libsystem_platform.dylib 0x00007fff697a5b5d _sigtramp + 29
+7  libsystem_platform.dylib 000000000000000000 _sigtramp + 18446603338746537152
+8  libsystem_c.dylib        0x00007fff6965f6a6 abort + 127
+9  libsystem_c.dylib        0x00007fff6962820d basename_r + 0
+10 clang++                  0x000000010d2e7893 clang::ASTContext::getTypeInfoImpl(clang::Type const*) const + 355
+11 clang++                  0x000000010d2ead78 clang::ASTContext::getTypeInfo(clang::Type const*) const + 136
+12 clang++                  0x000000010d2eaa9b clang::ASTContext::getTypeInfoInChars(clang::Type const*) const + 91
+13 clang++                  0x000000010d2ea9c9 clang::ASTContext::getTypeInfoInChars(clang::QualType) const + 57
+14 clang++                  0x000000010d9f84d7 (anonymous namespace)::ItaniumRecordLayoutBuilder::LayoutField(clang::FieldDecl const*, bool)::$_2::operator()(bool) const + 71
+15 clang++                  0x000000010d9f6dc6 (anonymous namespace)::ItaniumRecordLayoutBuilder::LayoutField(clang::FieldDecl const*, bool) + 1094
+16 clang++                  0x000000010d9ef27b (anonymous namespace)::ItaniumRecordLayoutBuilder::LayoutFields(clang::RecordDecl const*) + 219
+17 clang++                  0x000000010d9e34b7 (anonymous namespace)::ItaniumRecordLayoutBuilder::Layout(clang::CXXRecordDecl const*) + 71
+18 clang++                  0x000000010d9e2b5a clang::ASTContext::getASTRecordLayout(clang::RecordDecl const*) const + 1690
+19 clang++                  0x000000010d2e95ee clang::ASTContext::getTypeInfoImpl(clang::Type const*) const + 7870
+20 clang++                  0x000000010d2ead78 clang::ASTContext::getTypeInfo(clang::Type const*) const + 136
+21 clang++                  0x000000010d2eb43d clang::ASTContext::getTypeInfo(clang::QualType) const + 45
+22 clang++                  0x000000010d2eb0b5 clang::ASTContext::getTypeAlign(clang::QualType) const + 37
+23 clang++                  0x000000010d2ecbb9 clang::ASTContext::getTypeAlignInChars(clang::QualType) const + 41
+24 clang++                  0x000000010c018026 clang::Sema::CheckArgAlignment(clang::SourceLocation, clang::NamedDecl*, llvm::StringRef, clang::QualType, clang::QualType) + 342
+25 clang++                  0x000000010c019f40 clang::Sema::CheckConstructorCall(clang::FunctionDecl*, clang::QualType, llvm::ArrayRef<clang::Expr const*>, clang::FunctionProtoType const*, clang::SourceLocation) + 256
+26 clang++                  0x000000010c2d9ac6 clang::Sema::CompleteConstructorCall(clang::CXXConstructorDecl*, clang::QualType, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, llvm::SmallVectorImpl<clang::Expr*>&, bool, bool) + 822
+27 clang++                  0x000000010c839f58 PerformConstructorInitialization(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::InitializationSequence::Step const&, bool&, bool, bool, clang::SourceLocation, clang::SourceLocation) + 1016
+28 clang++                  0x000000010c832de1 clang::InitializationSequence::Perform(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::QualType*) + 12529
+29 clang++                  0x000000010c172046 clang::Sema::ActOnUninitializedDecl(clang::Decl*) + 4054
+30 clang++                  0x000000010bbfeb0a clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) + 4634
+31 clang++                  0x000000010bbfc296 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 2278
+32 clang++                  0x000000010bcdbf7a clang::Parser::ParseDeclOrFunctionDefInternal(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) + 1578
+33 clang++                  0x000000010bcdb522 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 194
+34 clang++                  0x000000010bcda61f clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) + 3551
+35 clang++                  0x000000010bcd86bb clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) + 1739
+36 clang++                  0x000000010bbe55e4 clang::ParseAST(clang::Sema&, bool, bool) + 580
+37 clang++                  0x000000010942be8c clang::ASTFrontendAction::ExecuteAction() + 300
+38 clang++                  0x0000000108d6455a clang::CodeGenAction::ExecuteAction() + 90
+39 clang++                  0x000000010942b4bc clang::FrontendAction::Execute() + 124
+40 clang++                  0x00000001093452e8 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 920
+41 clang++                  0x000000010953472e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 1614
+42 clang++                  0x00000001048ee63d cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 1501
+43 clang++                  0x00000001048e0e3b ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) + 427
+44 clang++                  0x00000001090fc4c5 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >*, bool*) const::$_1::operator()() const + 37
+45 clang++                  0x00000001090fc495 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >*, bool*) const::$_1>(long) + 21
+46 clang++                  0x00000001082349b9 llvm::function_ref<void ()>::operator()() const + 25
+47 clang++                  0x000000010823495c llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) + 236
+48 clang++                  0x00000001090faf5c clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >*, bool*) const + 524
+49 clang++                  0x00000001090a5406 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const + 758
+50 clang++                  0x00000001090a56c8 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*> >&) const + 152
+51 clang++                  0x00000001090c04f5 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*> >&) + 325
+52 clang++                  0x00000001048e038b main + 3371
+53 libdyld.dylib            0x00007fff695ba3d5 start + 1
+54 libdyld.dylib            0x0000000000000004 start + 18446603338748550192
+clang-13: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 13.0.0 (git@github.com:Quuxplusone/llvm-project 4adea96d9486bb19440243420ba234c1916907c9)
+Target: x86_64-apple-darwin18.7.0
+Thread model: posix
+InstalledDir: /Users/aodwyer/llvm-project/build-debug/bin
+clang-13: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang-13: note: diagnostic msg: /var/folders/0l/9t0yv2890_g4wgmy53n_mg7w0000gy/T/test-aa7a21.cpp
+clang-13: note: diagnostic msg: /var/folders/0l/9t0yv2890_g4wgmy53n_mg7w0000gy/T/test-aa7a21.sh
+clang-13: note: diagnostic msg: Crash backtrace is located in
+clang-13: note: diagnostic msg: /Users/aodwyer/Library/Logs/DiagnosticReports/clang-13_<YYYY-MM-DD-HHMMSS>_<hostname>.crash
+clang-13: note: diagnostic msg: (choose the .crash file that corresponds to your crash)
+clang-13: note: diagnostic msg: 
+
+********************
+
+
+Bug Labels:
+bugzilla, c++, clang:frontend, confirmed, crash-on-invalid

@@ -1,0 +1,95 @@
+Issue Title:
+Internal Compiler Error On Invalid Code and MS Compatibility
+
+Source Code & Bug Trace:
+namespace {
+
+template<class T>
+struct Foo
+{
+        ~Foo();
+};
+
+template<class T> using Bar = Foo<T>;
+
+int main()
+{
+        goto EXIT;
+
+        Bar<int> bar;
+
+        EXIT:
+        return 0;
+}
+
+//Note missing close-brace for `namespace` here
+
+clang -fms-compatibility crash.cpp
+
+crash.cpp:13:2: warning: jump from this goto statement to its label is a Microsoft extension [-Wmicrosoft-goto]
+        goto EXIT;
+        ^
+crash.cpp:15:11: note: jump bypasses variable with a non-trivial destructor
+        Bar<int> bar;
+                 ^
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/lib/llvm-16/bin/clang -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name crash.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -fcoverage-compilation-dir=/home/[username] -resource-dir /usr/lib/llvm-16/lib/clang/16 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/x86_64-linux-gnu/c++/13 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/backward -internal-isystem /usr/lib/llvm-16/lib/clang/16/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -fdeprecated-macro -fdebug-compilation-dir=/home/[username] -ferror-limit 19 -fms-compatibility -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/crash-812a0f.o -x c++ crash.cpp
+1.      <eof> parser at end of file
+2.      crash.cpp:1:1: parsing namespace '(anonymous)'
+3.      crash.cpp:12:1: parsing function body '(anonymous namespace)::main'
+ #0 0x00007f1272dbb75a llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) build-llvm/tools/clang/stage2-bins/llvm/lib/Support/Unix/Signals.inc:567:13
+ #1 0x00007f1272db9994 llvm::sys::RunSignalHandlers() build-llvm/tools/clang/stage2-bins/llvm/lib/Support/Signals.cpp:105:18
+ #2 0x00007f1272dbbf2b SignalHandler build-llvm/tools/clang/stage2-bins/llvm/lib/Support/Unix/Signals.inc:412:1
+ #3 0x00007f127189b910 (/lib/x86_64-linux-gnu/libc.so.6+0x42910)
+ #4 0x00007f127b441fa2 distance build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/CFG.cpp:0:0
+ #5 0x00007f127b441fa2 addAutomaticObjDtors build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/CFG.cpp:1905:19
+ #6 0x00007f127b441fa2 addAutomaticObjHandling build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/CFG.cpp:1830:5
+ #7 0x00007f127b43dc43 VisitGotoStmt build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/CFG.cpp:3464:18
+ #8 0x00007f127b43b709 VisitCompoundStmt build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/CFG.cpp:2823:9
+ #9 0x00007f127b433b03 buildCFG build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/CFG.cpp:1569:7
+#10 0x00007f127b433b03 clang::CFG::buildCFG(clang::Decl const*, clang::Stmt*, clang::ASTContext*, clang::CFG::BuildOptions const&) build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/CFG.cpp:5234:18
+#11 0x00007f127b409aec clang::AnalysisDeclContext::getCFG() build-llvm/tools/clang/stage2-bins/clang/lib/Analysis/AnalysisDeclContext.cpp:218:5
+#12 0x00007f127a76d9b9 CheckFallThrough build-llvm/tools/clang/stage2-bins/clang/lib/Sema/AnalysisBasedWarnings.cpp:405:8
+#13 0x00007f127a76d9b9 CheckFallThroughForBody build-llvm/tools/clang/stage2-bins/clang/lib/Sema/AnalysisBasedWarnings.cpp:690:11
+#14 0x00007f127a76d9b9 clang::sema::AnalysisBasedWarnings::IssueWarnings(clang::sema::AnalysisBasedWarnings::Policy, clang::sema::FunctionScopeInfo*, clang::Decl const*, clang::QualType) build-llvm/tools/clang/stage2-bins/clang/lib/Sema/AnalysisBasedWarnings.cpp:2400:5
+#15 0x00007f127a7e35d0 clang::Sema::PopFunctionScopeInfo(clang::sema::AnalysisBasedWarnings::Policy const*, clang::Decl const*, clang::QualType) build-llvm/tools/clang/stage2-bins/clang/lib/Sema/Sema.cpp:0:22
+#16 0x00007f127a985563 ~unique_ptr /usr/lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/unique_ptr.h:403:6
+#17 0x00007f127a985563 clang::Sema::ActOnFinishFunctionBody(clang::Decl*, clang::Stmt*, bool) build-llvm/tools/clang/stage2-bins/clang/lib/Sema/SemaDecl.cpp:15818:3
+#18 0x00007f127a1185c1 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/ParseStmt.cpp:2460:18
+#19 0x00007f127a1328f4 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/Parser.cpp:0:0
+#20 0x00007f127a081152 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/ParseDecl.cpp:2136:18
+#21 0x00007f127a131a0c clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/Parser.cpp:0:10
+#22 0x00007f127a13141d clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/Parser.cpp:1226:12
+#23 0x00007f127a1306bc clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/Parser.cpp:0:14
+#24 0x00007f127a09acbd ~AttributePool build-llvm/tools/clang/stage2-bins/clang/include/clang/Sema/ParsedAttr.h:821:22
+#25 0x00007f127a09acbd ~ParsedAttributes build-llvm/tools/clang/stage2-bins/clang/include/clang/Sema/ParsedAttr.h:1023:7
+#26 0x00007f127a09acbd clang::Parser::ParseInnerNamespace(llvm::SmallVector<clang::Parser::InnerNamespaceInfo, 4u> const&, unsigned int, clang::SourceLocation&, clang::ParsedAttributes&, clang::BalancedDelimiterTracker&) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/ParseDeclCXX.cpp:262:5
+#27 0x00007f127a09a65e Exit build-llvm/tools/clang/stage2-bins/clang/include/clang/Parse/Parser.h:1141:15
+#28 0x00007f127a09a65e clang::Parser::ParseNamespace(clang::DeclaratorContext, clang::SourceLocation&, clang::SourceLocation) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/ParseDeclCXX.cpp:241:18
+#29 0x00007f127a07f406 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/ParseDecl.cpp:0:0
+#30 0x00007f127a12ffda clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/Parser.cpp:0:3
+#31 0x00007f127a12ea7e clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/Parser.cpp:743:10
+#32 0x00007f127a12e4e2 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/Parser.cpp:591:26
+#33 0x00007f127a06cdd5 clang::ParseAST(clang::Sema&, bool, bool) build-llvm/tools/clang/stage2-bins/clang/lib/Parse/ParseAST.cpp:161:5
+#34 0x00007f127bcac2a9 clang::FrontendAction::Execute() build-llvm/tools/clang/stage2-bins/clang/lib/Frontend/FrontendAction.cpp:1062:10
+#35 0x00007f127bc27184 getPtr build-llvm/tools/clang/stage2-bins/llvm/include/llvm/Support/Error.h:275:12
+#36 0x00007f127bc27184 operator bool build-llvm/tools/clang/stage2-bins/llvm/include/llvm/Support/Error.h:235:16
+#37 0x00007f127bc27184 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) build-llvm/tools/clang/stage2-bins/clang/lib/Frontend/CompilerInstance.cpp:1046:23
+#38 0x00007f127bd25a64 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) build-llvm/tools/clang/stage2-bins/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:264:25
+#39 0x000055789d037d86 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) build-llvm/tools/clang/stage2-bins/clang/tools/driver/cc1_main.cpp:251:15
+#40 0x000055789d034e00 ExecuteCC1Tool build-llvm/tools/clang/stage2-bins/clang/tools/driver/driver.cpp:360:12
+#41 0x000055789d034b03 clang_main(int, char**) build-llvm/tools/clang/stage2-bins/clang/tools/driver/driver.cpp:435:12
+#42 0x00007f12718810d0 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#43 0x00007f1271881189 call_init ./csu/../csu/libc-start.c:128:20
+#44 0x00007f1271881189 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#45 0x000055789d0313a5 _start (/usr/lib/llvm-16/bin/clang+0x103a5)
+clang: error: unable to execute command: Segmentation fault
+
+Ubuntu clang version 16.0.6 (15)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+
+Bug Labels:
+clang:frontend, crash-on-invalid

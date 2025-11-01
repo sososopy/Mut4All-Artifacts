@@ -1,0 +1,75 @@
+Issue Title:
+LLVM assertion with `-C lto -g -O` on static lib · Issue #23566 · rust-lang/rust · GitHub
+
+Rust Code:
+#![crate_type = "staticlib"]
+#![feature(core)]
+#![feature(lang_items)]
+#![feature(no_std)]
+#![no_std]
+
+extern crate core;
+
+mod lang_items {
+    use core::fmt::Arguments;
+
+    #[lang = "stack_exhausted"]
+    extern "C" fn stack_exhausted() { }
+
+    #[lang = "eh_personality"]
+    extern "C" fn eh_personality() { }
+
+    #[lang = "panic_fmt"]
+    fn panic_fmt(_: &Arguments, _: &(&'static str, usize)) -> !  {
+        loop  {}
+    }
+}
+
+pub enum Input {
+    Floating,
+}
+
+pub mod low {
+    use super::Mode;
+
+    pub enum Pin {
+        _0,
+    }
+
+    pub struct Cr(u32);
+
+    impl Cr {
+        pub fn set(&mut self, pin: Pin, mode: Mode) {
+            self.0 |= mode.value() << (4 * pin as u8)
+        }
+    }
+}
+
+pub mod high {
+    use super::Mode;
+
+    pub enum Pin {
+        _8,
+    }
+
+    pub struct Cr(u32);
+
+    impl Cr {
+        pub fn set(&mut self, pin: Pin, mode: Mode) {
+            self.0 |= mode.value() << (4 * pin as u8)
+        }
+    }
+}
+
+pub enum Mode { Input(Input) }
+
+impl Mode {
+    fn value(&self) -> u32 {
+        match *self {
+            Mode::Input(Input::Floating) => 4,
+        }
+    }
+}
+
+Bug Labels:
+A-debuginfo, I-ICE

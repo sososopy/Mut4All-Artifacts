@@ -1,0 +1,150 @@
+Issue Title:
+clang++ frontend crash in  tryCaptureVariable  with Assertion  idx < size()
+
+Source Code & Bug Trace:
+#include <string>
+#include <variant>
+#include <vector>
+struct Element {};
+struct Fragment {
+  template <class T> Fragment(T);
+};
+using GenElement = std::variant<Fragment>;
+template <class T> GenElement item(T value)
+{
+  [&]<class K>(K value) -> GenElement { for (auto v : value); }(value);
+}
+template <class... T> Fragment frag(T... elements)
+{
+  return {item(elements)...};
+}
+struct Section {
+  std::string title;
+  Fragment content;
+};
+template <class... T> void section(std::string title, T... content)
+{
+  Section{title, frag(content...)};
+}
+void make_education()
+{
+  std::vector<Element> elements;
+  section("", elements);
+}
+
+
+/usr/bin/clang++-18 -std=c++23 -iquote /root/mellow -iquote /root/mellow/resume -c ./main.cpp -o ./main.o
+./main.cpp:11:61: warning: range-based for loop has empty body [-Wempty-body]
+   11 |   [&]<class K>(K value) -> GenElement { for (auto v : value); }(value);
+      |                                                             ^
+./main.cpp:11:61: note: put the semicolon on a separate line to silence this warning
+./main.cpp:23:3: warning: expression result unused [-Wunused-value]
+   23 |   Section{title, frag(content...)};
+      |   ^      ~~~~~~~~~~~~~~~~~~~~~~~~~
+./main.cpp:28:3: note: in instantiation of function template specialization 'section<std::vector<Element>>' requested here
+   28 |   section("", elements);
+      |   ^
+./main.cpp:12:1: warning: non-void function does not return a value [-Wreturn-type]
+   12 | }
+      | ^
+./main.cpp:15:11: note: in instantiation of function template specialization 'item<std::vector<Element>>' requested here
+   15 |   return {item(elements)...};
+      |           ^
+./main.cpp:23:18: note: in instantiation of function template specialization 'frag<std::vector<Element>>' requested here
+   23 |   Section{title, frag(content...)};
+      |                  ^
+./main.cpp:28:3: note: in instantiation of function template specialization 'section<std::vector<Element>>' requested here
+   28 |   section("", elements);
+      |   ^
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /usr/bin/clang++-18 -std=c++23 -iquote /root/mellow -iquote /root/mellow/resume -c ./main.cpp -o ./main.o
+1.	<eof> parser at end of file
+2.	./main.cpp:21:28: instantiating function definition 'section<std::vector<Element>>'
+3.	./main.cpp:13:32: instantiating function definition 'frag<std::vector<Element>>'
+4.	./main.cpp:9:31: instantiating function definition 'item<std::vector<Element>>'
+5.	./main.cpp:11:3: instantiating function definition 'item(std::vector<Element>)::(anonymous class)::operator()<std::vector<Element>>'
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM.so.18.1      0x00007f9d5b2d33ff llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 63
+1  libLLVM.so.18.1      0x00007f9d5b2d1539 llvm::sys::RunSignalHandlers() + 89
+2  libLLVM.so.18.1      0x00007f9d5b21d267
+3  libc.so.6            0x00007f9d5a0dc320
+4  libclang-cpp.so.18.1 0x00007f9d6325104a clang::Sema::tryCaptureVariable(clang::ValueDecl*, clang::SourceLocation, clang::Sema::TryCaptureKind, clang::SourceLocation, bool, clang::QualType&, clang::QualType&, unsigned int const*) + 698
+5  libclang-cpp.so.18.1 0x00007f9d63219186 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) + 134
+6  libclang-cpp.so.18.1 0x00007f9d632190e5 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::CXXScopeSpec const*, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) + 149
+7  libclang-cpp.so.18.1 0x00007f9d6321d41c clang::Sema::BuildDeclarationNameExpr(clang::CXXScopeSpec const&, clang::DeclarationNameInfo const&, clang::NamedDecl*, clang::NamedDecl*, clang::TemplateArgumentListInfo const*, bool) + 1372
+8  libclang-cpp.so.18.1 0x00007f9d636af941
+9  libclang-cpp.so.18.1 0x00007f9d636a615d
+10 libclang-cpp.so.18.1 0x00007f9d636a3584
+11 libclang-cpp.so.18.1 0x00007f9d636a74fd
+12 libclang-cpp.so.18.1 0x00007f9d636aa740
+13 libclang-cpp.so.18.1 0x00007f9d6369dd47
+14 libclang-cpp.so.18.1 0x00007f9d63698c21 clang::Sema::SubstConstraintExpr(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) + 81
+15 libclang-cpp.so.18.1 0x00007f9d63062908
+16 libclang-cpp.so.18.1 0x00007f9d63061691
+17 libclang-cpp.so.18.1 0x00007f9d6305c1e9
+18 libclang-cpp.so.18.1 0x00007f9d6305be65 clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) + 805
+19 libclang-cpp.so.18.1 0x00007f9d6305e979 clang::Sema::CheckInstantiatedFunctionTemplateConstraints(clang::SourceLocation, clang::FunctionDecl*, llvm::ArrayRef<clang::TemplateArgument>, clang::ConstraintSatisfaction&) + 857
+20 libclang-cpp.so.18.1 0x00007f9d63635512 clang::Sema::FinishTemplateArgumentDeduction(clang::FunctionTemplateDecl*, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg> const*, bool, llvm::function_ref<bool ()>) + 3138
+21 libclang-cpp.so.18.1 0x00007f9d6368b697
+22 libclang-cpp.so.18.1 0x00007f9d62f24ec0 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 64
+23 libclang-cpp.so.18.1 0x00007f9d63636e1b clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) + 2379
+24 libclang-cpp.so.18.1 0x00007f9d635042cb clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind, clang::OverloadCandidateParamOrder, bool) + 683
+25 libclang-cpp.so.18.1 0x00007f9d6350b0f2 clang::Sema::AddArgumentDependentLookupCandidates(clang::DeclarationName, clang::SourceLocation, llvm::ArrayRef<clang::Expr*>, clang::TemplateArgumentListInfo*, clang::OverloadCandidateSet&, bool) + 1058
+26 libclang-cpp.so.18.1 0x00007f9d635176dc clang::Sema::LookupOverloadedBinOp(clang::OverloadCandidateSet&, clang::OverloadedOperatorKind, clang::UnresolvedSetImpl const&, llvm::ArrayRef<clang::Expr*>, bool) + 492
+27 libclang-cpp.so.18.1 0x00007f9d63517a19 clang::Sema::CreateOverloadedBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, clang::Expr*, bool, bool, clang::FunctionDecl*) + 745
+28 libclang-cpp.so.18.1 0x00007f9d63248166
+29 libclang-cpp.so.18.1 0x00007f9d63247d0f clang::Sema::BuildBinOp(clang::Scope*, clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) + 1263
+30 libclang-cpp.so.18.1 0x00007f9d632152ca clang::Sema::ActOnBinOp(clang::Scope*, clang::SourceLocation, clang::tok::TokenKind, clang::Expr*, clang::Expr*) + 2986
+31 libclang-cpp.so.18.1 0x00007f9d6353f7a8 clang::Sema::BuildCXXForRangeStmt(clang::SourceLocation, clang::SourceLocation, clang::Stmt*, clang::SourceLocation, clang::Stmt*, clang::Stmt*, clang::Stmt*, clang::Expr*, clang::Expr*, clang::Stmt*, clang::SourceLocation, clang::Sema::BuildForRangeKind) + 2856
+32 libclang-cpp.so.18.1 0x00007f9d636c3e33
+33 libclang-cpp.so.18.1 0x00007f9d636bd98a
+34 libclang-cpp.so.18.1 0x00007f9d636a8739
+35 libclang-cpp.so.18.1 0x00007f9d63697ad3 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 83
+36 libclang-cpp.so.18.1 0x00007f9d636d9ff6 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 2662
+37 libclang-cpp.so.18.1 0x00007f9d636dc814 clang::Sema::PerformPendingInstantiations(bool) + 628
+38 libclang-cpp.so.18.1 0x00007f9d636da0f9 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 2921
+39 libclang-cpp.so.18.1 0x00007f9d636dc814 clang::Sema::PerformPendingInstantiations(bool) + 628
+40 libclang-cpp.so.18.1 0x00007f9d636da111 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 2945
+41 libclang-cpp.so.18.1 0x00007f9d636dc814 clang::Sema::PerformPendingInstantiations(bool) + 628
+42 libclang-cpp.so.18.1 0x00007f9d636da111 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 2945
+43 libclang-cpp.so.18.1 0x00007f9d636dc814 clang::Sema::PerformPendingInstantiations(bool) + 628
+44 libclang-cpp.so.18.1 0x00007f9d62f269eb clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) + 427
+45 libclang-cpp.so.18.1 0x00007f9d62f2705b clang::Sema::ActOnEndOfTranslationUnit() + 363
+46 libclang-cpp.so.18.1 0x00007f9d62797f0e clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 1166
+47 libclang-cpp.so.18.1 0x00007f9d626cf55e clang::ParseAST(clang::Sema&, bool, bool) + 766
+48 libclang-cpp.so.18.1 0x00007f9d6453e9ac clang::FrontendAction::Execute() + 92
+49 libclang-cpp.so.18.1 0x00007f9d644bb434 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 708
+50 libclang-cpp.so.18.1 0x00007f9d645ba9bd clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 765
+51 clang++-18           0x00005588c668a42e cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 3694
+52 clang++-18           0x00005588c6687894
+53 libclang-cpp.so.18.1 0x00007f9d6416bc52
+54 libLLVM.so.18.1      0x00007f9d5b21cfb7 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) + 151
+55 libclang-cpp.so.18.1 0x00007f9d6416b517 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const + 407
+56 libclang-cpp.so.18.1 0x00007f9d641337c8 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const + 888
+57 libclang-cpp.so.18.1 0x00007f9d64133a2f clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const + 159
+58 libclang-cpp.so.18.1 0x00007f9d6414ff00 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) + 352
+59 clang++-18           0x00005588c66871ec clang_main(int, char**, llvm::ToolContext const&) + 11180
+60 clang++-18           0x00005588c6694383 main + 131
+61 libc.so.6            0x00007f9d5a0c11ca
+62 libc.so.6            0x00007f9d5a0c128b __libc_start_main + 139
+63 clang++-18           0x00005588c6684255 _start + 37
+clang++-18: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Ubuntu clang version 18.1.8 (1)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang++-18: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++-18: note: diagnostic msg: /tmp/main-6e2d3c.cpp
+clang++-18: note: diagnostic msg: /tmp/main-6e2d3c.sh
+clang++-18: note: diagnostic msg: 
+
+********************
+
+
+Bug Labels:
+clang:frontend, crash

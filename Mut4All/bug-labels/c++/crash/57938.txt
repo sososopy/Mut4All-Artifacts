@@ -1,0 +1,142 @@
+Issue Title:
+Frontend clang-15 segfault on x86-64 with libc++ (Assertion `getKind() == Pack' failed)
+
+Source Code & Bug Trace:
+#include <array>
+#include <string_view>
+#include <vector>
+
+template<std::size_t N>
+struct FakeString
+{
+    constexpr FakeString([[maybe_unused]] const char (&str)[N]) {}
+};
+
+template<FakeString S>
+struct FakeKey
+{};
+
+template<typename... Fields>
+class FakeObject
+{
+public:
+    constexpr explicit FakeObject([[maybe_unused]] Fields... fields) noexcept {}
+};
+
+template<FakeString S>
+constexpr auto operator""_FakeKey()
+{
+    return FakeKey<S>{};
+};
+
+using MyFakeObject = FakeObject<FakeKey<"test">>;
+static inline std::vector<MyFakeObject> crash{ MyFakeObject{ "test"_FakeKey } };
+
+$ /usr/bin/clang++ -c -emit-llvm -Xclang -disable-llvm-passes -stdlib=libc++ -std=c++2a -O0 Popo.h -o Popo.o
+clang: warning: treating 'c-header' input as 'c++-header' when in C++ mode, this behavior is deprecated [-Wdeprecated]
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /usr/bin/clang++ -c -emit-llvm -Xclang -disable-llvm-passes -stdlib=libc++ -std=c++2a -O0 Popo.h -o Popo.o
+1.	Popo.h:29:80: current parser token ';'
+ #0 0x00007fec0f18eda1 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xf01da1)
+ #1 0x00007fec0f18cade llvm::sys::RunSignalHandlers() (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xeffade)
+ #2 0x00007fec0f18e156 llvm::sys::CleanupOnSignal(unsigned long) (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xf01156)
+ #3 0x00007fec0f0b2abf (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xe25abf)
+ #4 0x00007fec18ca7420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #5 0x00007fec0ded88f5 /build/glibc-SzIz7B/glibc-2.31/string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:436:0
+ #6 0x00007fec0f07ea12 llvm::APInt::APInt(unsigned int, llvm::ArrayRef<unsigned long>) (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xdf1a12)
+ #7 0x00007fec16117cda (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xefacda)
+ #8 0x00007fec161155cb (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xef85cb)
+ #9 0x00007fec1611a6f2 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xefd6f2)
+#10 0x00007fec1610ba33 clang::Stmt::printPretty(llvm::raw_ostream&, clang::PrinterHelper*, clang::PrintingPolicy const&, unsigned int, llvm::StringRef, clang::ASTContext const*) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xeeea33)
+#11 0x00007fec15d75b8f clang::APValue::printPretty(llvm::raw_ostream&, clang::PrintingPolicy const&, clang::QualType, clang::ASTContext const*) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb58b8f)
+#12 0x00007fec15d758aa clang::APValue::printPretty(llvm::raw_ostream&, clang::PrintingPolicy const&, clang::QualType, clang::ASTContext const*) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb588aa)
+#13 0x00007fec15ff806f (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xddb06f)
+#14 0x00007fec16063b63 clang::interp::State::addCallStack(unsigned int) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xe46b63)
+#15 0x00007fec16062fcb clang::interp::State::diag(clang::SourceLocation, unsigned int, unsigned int, bool) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xe45fcb)
+#16 0x00007fec15fb3ce8 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd96ce8)
+#17 0x00007fec15feb15a (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdce15a)
+#18 0x00007fec15fab6f2 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd8e6f2)
+#19 0x00007fec15fa9141 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd8c141)
+#20 0x00007fec15feb93d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdce93d)
+#21 0x00007fec15fa9137 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd8c137)
+#22 0x00007fec15f99987 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd7c987)
+#23 0x00007fec15fb8035 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9b035)
+#24 0x00007fec15fb6c5d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd99c5d)
+#25 0x00007fec15fb7d1a (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9ad1a)
+#26 0x00007fec15fb6c5d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd99c5d)
+#27 0x00007fec15f9a906 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd7d906)
+#28 0x00007fec15feb1cf (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdce1cf)
+#29 0x00007fec15fab6f2 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd8e6f2)
+#30 0x00007fec15fa9141 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd8c141)
+#31 0x00007fec15f99987 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd7c987)
+#32 0x00007fec15f95874 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd78874)
+#33 0x00007fec15fe65fb (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdc95fb)
+#34 0x00007fec15f958f5 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd788f5)
+#35 0x00007fec15fb7768 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9a768)
+#36 0x00007fec15fb6c5d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd99c5d)
+#37 0x00007fec15f9a906 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd7d906)
+#38 0x00007fec15fe9eea (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdcceea)
+#39 0x00007fec15f958f5 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd788f5)
+#40 0x00007fec15fb95aa (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9c5aa)
+#41 0x00007fec15fb96b1 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9c6b1)
+#42 0x00007fec15fb78af (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9a8af)
+#43 0x00007fec15fb6c5d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd99c5d)
+#44 0x00007fec15f9a906 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd7d906)
+#45 0x00007fec15fffb9d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xde2b9d)
+#46 0x00007fec15f99cd1 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd7ccd1)
+#47 0x00007fec15faef5f (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd91f5f)
+#48 0x00007fec15fb77b2 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9a7b2)
+#49 0x00007fec15fb6c5d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd99c5d)
+#50 0x00007fec15fb7d1a (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd9ad1a)
+#51 0x00007fec15fb6c5d (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd99c5d)
+#52 0x00007fec15fe8f7a (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdcbf7a)
+#53 0x00007fec15fe1cce (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdc4cce)
+#54 0x00007fec15fe58cf (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xdc88cf)
+#55 0x00007fec15f958f5 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd788f5)
+#56 0x00007fec15f96209 clang::Expr::EvaluateAsInitializer(clang::APValue&, clang::ASTContext const&, clang::VarDecl const*, llvm::SmallVectorImpl<std::pair<clang::SourceLocation, clang::PartialDiagnostic>>&, bool) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd79209)
+#57 0x00007fec15f085dc clang::VarDecl::evaluateValueImpl(llvm::SmallVectorImpl<std::pair<clang::SourceLocation, clang::PartialDiagnostic>>&, bool) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xceb5dc)
+#58 0x00007fec15f08457 clang::VarDecl::evaluateValue() const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xceb457)
+#59 0x00007fec165fd4da clang::Sema::FinalizeVarWithDestructor(clang::VarDecl*, clang::RecordType const*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x13e04da)
+#60 0x00007fec16556801 clang::Sema::CheckCompleteVariableDeclaration(clang::VarDecl*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x1339801)
+#61 0x00007fec165552b2 clang::Sema::AddInitializerToDecl(clang::Decl*, clang::Expr*, bool) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x13382b2)
+#62 0x00007fec15cc51e1 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xaa81e1)
+#63 0x00007fec15cc278d clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xaa578d)
+#64 0x00007fec15d6dd5a clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb50d5a)
+#65 0x00007fec15d6d7b7 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb507b7)
+#66 0x00007fec15d6cada clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb4fada)
+#67 0x00007fec15d6ada3 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb4dda3)
+#68 0x00007fec15ca97ae clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xa8c7ae)
+#69 0x00007fec178cc7b7 clang::FrontendAction::Execute() (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x26af7b7)
+#70 0x00007fec178407a6 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x26237a6)
+#71 0x00007fec1794a1aa clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x272d1aa)
+#72 0x000055b3050b291f cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/bin/clang+++0x1391f)
+#73 0x000055b3050b0b1b (/usr/bin/clang+++0x11b1b)
+#74 0x00007fec174a4782 (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x2287782)
+#75 0x00007fec0f0b281e llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xe2581e)
+#76 0x00007fec174a4248 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x2287248)
+#77 0x00007fec1746940a clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x224c40a)
+#78 0x00007fec1746965e clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x224c65e)
+#79 0x00007fec174869df clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x22699df)
+#80 0x000055b3050b0281 clang_main(int, char**) (/usr/bin/clang+++0x11281)
+#81 0x00007fec0dd71083 __libc_start_main /build/glibc-SzIz7B/glibc-2.31/csu/../csu/libc-start.c:342:3
+#82 0x000055b3050ad32e _start (/usr/bin/clang+++0xe32e)
+clang: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Ubuntu clang version 15.0.1-++20220922033027+5d9fa4d16e0e-1~exp1~20220922153112.64
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang: warning: treating 'c-header' input as 'c++-header' when in C++ mode, this behavior is deprecated [-Wdeprecated]
+clang: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang: note: diagnostic msg: /tmp/Popo-1cf480.hh
+clang: note: diagnostic msg: /tmp/Popo-1cf480.sh
+clang: note: diagnostic msg: 
+
+********************
+
+Bug Labels:
+clang:frontend, crash, release:backport, release:merged

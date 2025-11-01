@@ -1,0 +1,37 @@
+Mutation Operator 1: Target Closure with Mutable References
+
+- Target: Closure inside a function.
+
+- Mutation Rule:
+  1. Identify a closure within a function that captures a mutable reference to `self` or any other mutable variable.
+  2. Modify the closure to attempt to borrow a mutable reference at a point where another immutable borrow is active.
+  3. Specifically, introduce a new immutable borrow within the closure before the mutable borrow, ensuring that it spans across or conflicts with the mutable borrow.
+
+- Example in pseudo-code form:
+
+Original code:
+```
+fn example_function(&mut self) {
+    let closure = |arg: ArgType| -> ResultType {
+        self.some_mutable_method(arg);
+        Ok(self.some_other_method())
+    };
+    // Further code
+}
+```
+
+Mutated code:
+```
+fn example_function(&mut self) {
+    let closure = |arg: ArgType| -> ResultType {
+        let immutable_ref = &self.some_field; // New immutable borrow
+        self.some_mutable_method(arg);        // Conflicting mutable borrow
+        // Use immutable_ref in a way that its borrow interferes with mutable borrow
+        Ok(self.some_other_method())
+    };
+    // Further code
+}
+```
+
+- Explanation:
+  By introducing an immutable borrow of a structure field before a mutable borrow within a closure, this mutation tests how the borrow checker handles conflicting borrows within the same closure scope, potentially exposing issues in borrow checking and lifetime analysis.

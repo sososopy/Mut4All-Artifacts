@@ -1,0 +1,194 @@
+Issue Title:
+Helper trait hack const generics ICE · Issue #61383 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)] 
+
+trait Foo {
+    fn foo() -> Self;
+}
+impl<T, const N: usize> Foo for [T; N] 
+where 
+    Self:FooImpl<{N==0}>
+{
+    fn foo()->Self{
+        Self::default_impl()
+    }
+}
+
+trait FooImpl<const IS_ZERO:bool>{
+    fn default_impl()->Self;
+}
+
+impl<T> FooImpl<{0u8==0u8}> for [T;0] {
+    fn default_impl()->Self{
+        []
+    }
+}
+
+impl<T,const N:usize> FooImpl<{0u8!=0u8}> for [T;N] 
+where
+    T:Default,
+{
+    fn default_impl()->Self{
+        [T::default(); N]
+    }
+}
+
+Bug Trace:
+error: internal compiler error: unexpected const parent in type_of_def_id(): TraitRef(TraitRef { path: path(FooImpl<>), hir_ref_id: HirId { owner: DefIndex(23), local_id: 10 } })
+
+error: internal compiler error: cat_expr Errd
+  --> src/main.rs:19:17
+   |
+19 | impl<T> FooImpl<{0u8==0u8}> for [T;0] {
+   |                 ^^^^^^^^^^
+
+error: internal compiler error: unexpected const parent in type_of_def_id(): TraitRef(TraitRef { path: path(FooImpl<>), hir_ref_id: HirId { owner: DefIndex(28), local_id: 17 } })
+
+error: internal compiler error: cat_expr Errd
+  --> src/main.rs:25:31
+   |
+25 | impl<T,const N:usize> FooImpl<{0u8!=0u8}> for [T;N] 
+   |                               ^^^^^^^^^^
+
+error: internal compiler error: unexpected const parent in type_of_def_id(): TraitRef(TraitRef { path: path(FooImpl<>), hir_ref_id: HirId { owner: DefIndex(14), local_id: 16 } })
+
+error: internal compiler error: cat_expr Errd
+ --> src/main.rs:8:18
+  |
+8 |     Self:FooImpl<{N==0}>
+  |                  ^^^^^^
+
+error: internal compiler error: cat_expr Errd
+  --> src/main.rs:29:28
+   |
+29 |       fn default_impl()->Self{
+   |  ____________________________^
+30 | |         [T::default(); N]
+31 | |     }
+   | |_____^
+
+error: internal compiler error: cat_expr Errd
+  --> src/main.rs:30:9
+   |
+30 |         [T::default(); N]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: mir_const_qualif: MIR had errors
+ --> src/main.rs:8:18
+  |
+8 |     Self:FooImpl<{N==0}>
+  |                  ^^^^^^
+
+error: internal compiler error: QualifyAndPromoteConstants: MIR had errors
+ --> src/main.rs:8:18
+  |
+8 |     Self:FooImpl<{N==0}>
+  |                  ^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:17 ~ playground[e253]::{{impl}}[0]::{{constant}}[0]) ("return type"): bad type [type error]
+ --> src/main.rs:8:18
+  |
+8 |     Self:FooImpl<{N==0}>
+  |                  ^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:17 ~ playground[e253]::{{impl}}[0]::{{constant}}[0]) (LocalDecl { mutability: Mut, is_user_variable: None, internal: false, is_block_tail: None, ty: [type error], user_ty: UserTypeProjections { contents: [] }, name: None, source_info: SourceInfo { span: src/main.rs:8:18: 8:24, scope: scope[0] }, visibility_scope: scope[0] }): bad type [type error]
+ --> src/main.rs:8:18
+  |
+8 |     Self:FooImpl<{N==0}>
+  |                  ^^^^^^
+
+error: internal compiler error: mir_const_qualif: MIR had errors
+  --> src/main.rs:19:17
+   |
+19 | impl<T> FooImpl<{0u8==0u8}> for [T;0] {
+   |                 ^^^^^^^^^^
+
+error: internal compiler error: QualifyAndPromoteConstants: MIR had errors
+  --> src/main.rs:19:17
+   |
+19 | impl<T> FooImpl<{0u8==0u8}> for [T;0] {
+   |                 ^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:25 ~ playground[e253]::{{impl}}[1]::{{constant}}[0]) ("return type"): bad type [type error]
+  --> src/main.rs:19:17
+   |
+19 | impl<T> FooImpl<{0u8==0u8}> for [T;0] {
+   |                 ^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:25 ~ playground[e253]::{{impl}}[1]::{{constant}}[0]) (LocalDecl { mutability: Mut, is_user_variable: None, internal: false, is_block_tail: None, ty: [type error], user_ty: UserTypeProjections { contents: [] }, name: None, source_info: SourceInfo { span: src/main.rs:19:17: 19:27, scope: scope[0] }, visibility_scope: scope[0] }): bad type [type error]
+  --> src/main.rs:19:17
+   |
+19 | impl<T> FooImpl<{0u8==0u8}> for [T;0] {
+   |                 ^^^^^^^^^^
+
+error: internal compiler error: mir_const_qualif: MIR had errors
+  --> src/main.rs:25:31
+   |
+25 | impl<T,const N:usize> FooImpl<{0u8!=0u8}> for [T;N] 
+   |                               ^^^^^^^^^^
+
+error: internal compiler error: QualifyAndPromoteConstants: MIR had errors
+  --> src/main.rs:25:31
+   |
+25 | impl<T,const N:usize> FooImpl<{0u8!=0u8}> for [T;N] 
+   |                               ^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:31 ~ playground[e253]::{{impl}}[2]::{{constant}}[0]) ("return type"): bad type [type error]
+  --> src/main.rs:25:31
+   |
+25 | impl<T,const N:usize> FooImpl<{0u8!=0u8}> for [T;N] 
+   |                               ^^^^^^^^^^
+
+error: internal compiler error: broken MIR in DefId(0:31 ~ playground[e253]::{{impl}}[2]::{{constant}}[0]) (LocalDecl { mutability: Mut, is_user_variable: None, internal: false, is_block_tail: None, ty: [type error], user_ty: UserTypeProjections { contents: [] }, name: None, source_info: SourceInfo { span: src/main.rs:25:31: 25:41, scope: scope[0] }, visibility_scope: scope[0] }): bad type [type error]
+  --> src/main.rs:25:31
+   |
+25 | impl<T,const N:usize> FooImpl<{0u8!=0u8}> for [T;N] 
+   |                               ^^^^^^^^^^
+
+error: internal compiler error: QualifyAndPromoteConstants: MIR had errors
+  --> src/main.rs:29:5
+   |
+29 | /     fn default_impl()->Self{
+30 | |         [T::default(); N]
+31 | |     }
+   | |_____^
+
+error: internal compiler error: broken MIR in DefId(0:33 ~ playground[e253]::{{impl}}[2]::default_impl[0]) ("return type"): bad type [type error]
+  --> src/main.rs:29:5
+   |
+29 | /     fn default_impl()->Self{
+30 | |         [T::default(); N]
+31 | |     }
+   | |_____^
+
+error: internal compiler error: broken MIR in DefId(0:33 ~ playground[e253]::{{impl}}[2]::default_impl[0]) (LocalDecl { mutability: Mut, is_user_variable: None, internal: false, is_block_tail: None, ty: [type error], user_ty: UserTypeProjections { contents: [] }, name: None, source_info: SourceInfo { span: src/main.rs:29:5: 31:6, scope: scope[0] }, visibility_scope: scope[0] }): bad type [type error]
+  --> src/main.rs:29:5
+   |
+29 | /     fn default_impl()->Self{
+30 | |         [T::default(); N]
+31 | |     }
+   | |_____^
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', src/librustc_errors/lib.rs:356:17
+note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.37.0-nightly (37d001e4d 2019-05-29) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+error: Could not compile `playground`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-const-generics, I-ICE, T-compiler

@@ -1,0 +1,92 @@
+Issue Title:
+Clang crashes during host-only CUDA compilation w/ precompiled headers.
+
+Source Code & Bug Trace:
+$ cat clang/test/Frontend/a.cpp
+// RUN: %clang -xcuda -nocudainc --cuda-host-only -fsyntax-only -Xclang -emit-pch -std=gnu++20 %s > %t.pch
+// RUN: %clang -xcuda -nocudainc --cuda-host-only -fsyntax-only -include-pch %t.pch -std=gnu++20 %s
+#ifndef PREAMBLE
+#define PREAMBLE
+void *operator new(decltype(sizeof(int)));
+#else
+void foo() { delete (int *)0; };
+#endif
+
+
+./build/bin/llvm-lit -s -v -a clang/test/Frontend/a.cpp
+llvm-lit: /usr/local/google/home/kadircet/repos/llvm/llvm/utils/lit/lit/llvm/config.py:509: note: using clang: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang
+FAIL: Clang :: Frontend/a.cpp (1 of 1)
+******************** TEST 'Clang :: Frontend/a.cpp' FAILED ********************
+Exit Code: 1
+
+Command Output (stderr):
+--
+RUN: at line 1: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang -xcuda -nocudainc --cuda-host-only -fsyntax-only -Xclang -emit-pch -std=gnu++20 /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp > /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/test/Frontend/Output/a.cpp.tmp.pch
++ /usr/local/google/home/kadircet/repos/llvm/build/bin/clang -xcuda -nocudainc --cuda-host-only -fsyntax-only -Xclang -emit-pch -std=gnu++20 /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp
+RUN: at line 2: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang -xcuda -nocudainc --cuda-host-only -fsyntax-only -include-pch /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/test/Frontend/Output/a.cpp.tmp.pch -std=gnu++20 /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp
++ /usr/local/google/home/kadircet/repos/llvm/build/bin/clang -xcuda -nocudainc --cuda-host-only -fsyntax-only -include-pch /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/test/Frontend/Output/a.cpp.tmp.pch -std=gnu++20 /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp
+clang: /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExprCXX.cpp:3281: FunctionDecl *clang::Sema::FindUsualDeallocationFunction(SourceLocation, bool, bool, DeclarationName): Assertion `Result.FD && "operator delete missing from global scope?"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang -xcuda -nocudainc --cuda-host-only -fsyntax-only -include-pch /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/test/Frontend/Output/a.cpp.tmp.pch -std=gnu++20 /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp
+1.      /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp:7:29: current parser token ';'
+2.      /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp:7:12: parsing function body 'foo'
+3.      /usr/local/google/home/kadircet/repos/llvm/clang/test/Frontend/a.cpp:7:12: in compound statement ('{}')
+ #0 0x0000561342261908 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:723:13
+ #1 0x000056134225f4de llvm::sys::RunSignalHandlers() /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Signals.cpp:106:18
+ #2 0x00005613421c8db6 HandleCrash /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:73:5
+ #3 0x00005613421c8db6 CrashRecoverySignalHandler(int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:390:51
+ #4 0x00007fc6fc2591a0 (/lib/x86_64-linux-gnu/libc.so.6+0x3d1a0)
+ #5 0x00007fc6fc2a70ec __pthread_kill_implementation ./nptl/pthread_kill.c:44:76
+ #6 0x00007fc6fc259102 gsignal ./signal/../sysdeps/posix/raise.c:27:6
+ #7 0x00007fc6fc2424f2 abort ./stdlib/abort.c:81:7
+ #8 0x00007fc6fc242415 _nl_load_domain ./intl/loadmsgcat.c:1177:9
+ #9 0x00007fc6fc251d32 (/lib/x86_64-linux-gnu/libc.so.6+0x35d32)
+#10 0x0000561344f71789 (/usr/local/google/home/kadircet/repos/llvm/build/bin/clang+0xac71789)
+#11 0x0000561344f731a2 clang::Sema::ActOnCXXDelete(clang::SourceLocation, bool, bool, clang::Expr*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaExprCXX.cpp:3817:24
+#12 0x00005613448bf732 clang::Parser::ParseCXXDeleteExpression(bool, clang::SourceLocation) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExprCXX.cpp:0:18
+#13 0x00005613448a45ab clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:1787:9
+#14 0x000056134489e38c ParseCastExpression /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:0:20
+#15 0x000056134489e38c clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:184:20
+#16 0x000056134489e289 clang::Parser::ParseExpression(clang::Parser::TypeCastState) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseExpr.cpp:136:10
+#17 0x0000561344937e91 isInvalid /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Sema/Ownership.h:199:41
+#18 0x0000561344937e91 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:564:12
+#19 0x0000561344935bbc clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:0:14
+#20 0x00005613449354b4 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:124:20
+#21 0x000056134493fb41 clang::Parser::ParseCompoundStatementBody(bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:1257:11
+#22 0x0000561344940bf2 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseStmt.cpp:2535:21
+#23 0x000056134487d0e9 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:0
+#24 0x00005613448f4dcf clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:2438:18
+#25 0x000056134487bd09 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:10
+#26 0x000056134487b522 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:1266:12
+#27 0x000056134487a309 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:14
+#28 0x0000561344878336 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:758:10
+#29 0x0000561344877a5d clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:615:23
+#30 0x000056134487376a clang::ParseAST(clang::Sema&, bool, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseAST.cpp:170:5
+#31 0x0000561342f1b21f clang::FrontendAction::Execute() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/FrontendAction.cpp:1082:10
+#32 0x0000561342e857ed getPtr /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:279:42
+#33 0x0000561342e857ed operator bool /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:242:16
+#34 0x0000561342e857ed clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/CompilerInstance.cpp:1061:23
+#35 0x00005613430035de clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:280:25
+#36 0x000056133fadbc6b cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/cc1_main.cpp:285:15
+#37 0x000056133fad834d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:215:12
+#38 0x0000561342cbb6f9 operator() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:30
+#39 0x0000561342cbb6f9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0>(long) /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:12
+#40 0x00005613421c8af6 operator() /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:0:12
+#41 0x00005613421c8af6 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:426:3
+#42 0x0000561342cbade2 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:7
+#43 0x0000561342c74ab7 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:199:15
+#44 0x0000561342c74ff7 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:253:13
+#45 0x0000561342c96869 empty /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/SmallVector.h:94:46
+#46 0x0000561342c96869 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Driver.cpp:1946:23
+#47 0x000056133fad784d clang_main(int, char**, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:391:21
+#48 0x000056133fae8977 main /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/tools/driver/clang-driver.cpp:17:10
+#49 0x00007fc6fc243b8a __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#50 0x00007fc6fc243c45 call_init ./csu/../csu/libc-start.c:128:20
+#51 0x00007fc6fc243c45 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#52 0x000056133fad5ca1 _start (/usr/local/google/home/kadircet/repos/llvm/build/bin/clang+0x57d5ca1)
+clang: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+
+
+Bug Labels:
+clang:frontend, crash-on-valid

@@ -1,0 +1,105 @@
+Issue Title:
+ICE when using const parameters typed at a type parameter in a generic const expression · Issue #88997 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+struct ConstAssert<const COND: bool>;
+trait True {}
+impl True for ConstAssert<true> {}
+
+struct Range<T: PartialOrd, const MIN: T, const MAX: T>(T)
+where
+    ConstAssert<{ MIN <= MAX }>: True;
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+error[E0770]: the type of const parameters must not depend on other generic parameters
+ --> src/main.rs:8:40
+  |
+8 | struct Range<T: PartialOrd, const MIN: T, const MAX: T>(T)
+  |                                        ^ the type must not depend on the parameter `T`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+ --> src/main.rs:8:54
+  |
+8 | struct Range<T: PartialOrd, const MIN: T, const MAX: T>(T)
+  |                                                      ^ the type must not depend on the parameter `T`
+
+error[E0601]: `main` function not found in crate `playground`
+  --> src/main.rs:1:1
+   |
+1  | / #![allow(incomplete_features)]
+2  | | #![feature(generic_const_exprs)]
+3  | |
+4  | | struct ConstAssert<const COND: bool>;
+...  |
+9  | | where
+10 | |     ConstAssert<{ MIN <= MAX }>: True;
+   | |______________________________________^ consider adding a `main` function to `src/main.rs`
+
+thread 'rustc' panicked at 'assertion failed: !arg.has_type_flags(!allowed_flags)', compiler/rustc_typeck/src/collect/type_of.rs:297:9
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/c3c0f80d6081092faff801542dd82f0e2420152b/library/std/src/panicking.rs:517:5
+   1: core::panicking::panic_fmt
+             at /rustc/c3c0f80d6081092faff801542dd82f0e2420152b/library/core/src/panicking.rs:96:14
+   2: core::panicking::panic
+             at /rustc/c3c0f80d6081092faff801542dd82f0e2420152b/library/core/src/panicking.rs:50:5
+   3: rustc_typeck::collect::type_of::default_anon_const_substs
+   4: rustc_query_system::query::plumbing::try_execute_query
+   5: rustc_query_system::query::plumbing::get_query
+   6: rustc_middle::ty::consts::kind::Unevaluated<P>::substs
+   7: rustc_middle::ty::fold::TypeFoldable::fold_with
+   8: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_binder
+   9: rustc_trait_selection::traits::project::AssocTypeNormalizer::fold
+  10: rustc_trait_selection::traits::project::normalize
+  11: rustc_trait_selection::traits::fully_normalize
+  12: rustc_infer::infer::InferCtxtBuilder::enter
+  13: rustc_trait_selection::traits::normalize_param_env_or_error
+  14: rustc_ty_utils::ty::param_env
+  15: rustc_query_system::query::plumbing::try_execute_query
+  16: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::param_env
+  17: rustc_typeck::check::wfcheck::for_id
+  18: rustc_typeck::check::wfcheck::check_item_well_formed
+  19: rustc_query_system::query::plumbing::try_execute_query
+  20: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  21: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  22: std::panic::catch_unwind
+  23: rustc_data_structures::sync::par_for_each_in
+  24: rustc_session::session::Session::track_errors
+  25: rustc_typeck::check_crate
+  26: rustc_interface::passes::analysis
+  27: rustc_query_system::query::plumbing::try_execute_query
+  28: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  29: rustc_interface::passes::QueryContext::enter
+  30: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  31: rustc_span::with_source_map
+  32: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.57.0-nightly (c3c0f80d6 2021-09-14) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [default_anon_const_substs] computing the default generic arguments for `Range::{constant#0}`
+#1 [param_env] computing normalized predicates of `Range`
+#2 [check_item_well_formed] checking that `Range` is well-formed
+#3 [analysis] running analysis passes on this crate
+end of query stack
+Some errors have detailed explanations: E0601, E0770.
+For more information about an error, try `rustc --explain E0601`.
+error: could not compile `playground` due to 3 previous errors
+
+Bug Labels:
+A-const-generics, C-bug, F-generic_const_exprs, I-ICE, T-compiler, glacier, requires-nightly

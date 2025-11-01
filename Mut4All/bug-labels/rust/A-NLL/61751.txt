@@ -1,0 +1,108 @@
+Issue Title:
+ICE: 'no entry found for key', src/libcore/option.rs:1034:5 · Issue #61751 · rust-lang/rust · GitHub
+
+Rust Code:
+fn main() {
+    let mut results = Vec::new();
+    let immut_view = &results;
+    std::thread::spawn(move || {
+        std::thread::spawn(|| {
+            immut_view.len();
+        });
+        for i in 0..5 {
+            immut_view.push(i);
+        }
+    });
+}
+
+Bug Trace:
+Fresh lazy_static v1.3.0
+       Fresh cfg-if v0.1.9
+       Fresh smallvec v0.6.10
+       Fresh glob v0.3.0
+       Fresh crossbeam-utils v0.6.5
+       Fresh crossbeam-channel v0.3.8
+   Compiling scratch v0.1.0 (/home/alex/rust_projects/scratch)
+     Running `sccache rustc --edition=2018 --crate-name scratch src/main.rs --color always --crate-type bin --emit=dep-info,link -C debuginfo=2 -C metadata=9f348a68eb7db5d8 -C extra-filename=-9f348a68eb7db5d8 --out-dir /home/alex/rust_projects/scratch/target/debug/deps -C incremental=/home/alex/rust_projects/scratch/target/debug/incremental -L dependency=/home/alex/rust_projects/scratch/target/debug/deps --extern crossbeam_channel=/home/alex/rust_projects/scratch/target/debug/deps/libcrossbeam_channel-c52d170e41357300.rlib --extern crossbeam_utils=/home/alex/rust_projects/scratch/target/debug/deps/libcrossbeam_utils-2ff7eb169679423f.rlib --extern glob=/home/alex/rust_projects/scratch/target/debug/deps/libglob-df35dc77c4d33d55.rlib`
+thread 'rustc' panicked at 'no entry found for key', src/libcore/option.rs:1034:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+stack backtrace:
+   0: std::sys::unix::backtrace::tracing::imp::unwind_backtrace
+             at src/libstd/sys/unix/backtrace/tracing/gcc_s.rs:39
+   1: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:71
+   2: std::panicking::default_hook::{{closure}}
+             at src/libstd/sys_common/backtrace.rs:59
+             at src/libstd/panicking.rs:197
+   3: std::panicking::default_hook
+             at src/libstd/panicking.rs:211
+   4: rustc::util::common::panic_hook
+   5: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:478
+   6: std::panicking::continue_panic_fmt
+             at src/libstd/panicking.rs:381
+   7: rust_begin_unwind
+             at src/libstd/panicking.rs:308
+   8: core::panicking::panic_fmt
+             at src/libcore/panicking.rs:85
+   9: core::option::expect_failed
+             at src/libcore/option.rs:1034
+  10: rustc_mir::borrow_check::path_utils::each_borrow_involving_path
+  11: rustc_mir::borrow_check::MirBorrowckCtxt::access_place
+  12: <rustc_mir::borrow_check::MirBorrowckCtxt as rustc_mir::dataflow::DataflowResultsConsumer>::visit_statement_entry
+  13: rustc_mir::borrow_check::do_mir_borrowck
+  14: rustc::ty::context::GlobalCtxt::enter_local
+  15: rustc_mir::borrow_check::mir_borrowck
+  16: rustc::ty::query::__query_compute::mir_borrowck
+  17: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::mir_borrowck>::compute
+  18: rustc::dep_graph::graph::DepGraph::with_task_impl
+  19: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  20: rustc_mir::borrow_check::nll::type_check::TypeChecker::check_rvalue
+  21: rustc_mir::borrow_check::nll::type_check::TypeChecker::typeck_mir
+  22: rustc_mir::borrow_check::nll::type_check::type_check
+  23: rustc_mir::borrow_check::nll::compute_regions
+  24: rustc_mir::borrow_check::do_mir_borrowck
+  25: rustc::ty::context::GlobalCtxt::enter_local
+  26: rustc_mir::borrow_check::mir_borrowck
+  27: rustc::ty::query::__query_compute::mir_borrowck
+  28: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::mir_borrowck>::compute
+  29: rustc::dep_graph::graph::DepGraph::with_task_impl
+  30: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  31: rustc::ty::<impl rustc::ty::context::TyCtxt>::par_body_owners
+  32: rustc::util::common::time
+  33: rustc_interface::passes::analysis
+  34: rustc::ty::query::__query_compute::analysis
+  35: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::analysis>::compute
+  36: rustc::dep_graph::graph::DepGraph::with_task_impl
+  37: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  38: rustc_interface::passes::BoxedGlobalCtxt::access::{{closure}}
+  39: rustc_interface::passes::create_global_ctxt::{{closure}}
+  40: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  41: std::thread::local::LocalKey<T>::with
+  42: scoped_tls::ScopedKey<T>::set
+  43: syntax::with_globals
+query stack during panic:
+#0 [mir_borrowck] processing `main::{{closure}}#0`
+#1 [mir_borrowck] processing `main`
+#2 [analysis] running analysis passes on this crate
+end of query stack
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.35.0 (3c235d560 2019-05-20) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+error: Could not compile `scratch`.
+
+Caused by:
+  process didn't exit successfully: `sccache rustc --edition=2018 --crate-name scratch src/main.rs --color always --crate-type bin --emit=dep-info,link -C debuginfo=2 -C metadata=9f348a68eb7db5d8 -C extra-filename=-9f348a68eb7db5d8 --out-dir /home/alex/rust_projects/scratch/target/debug/deps -C incremental=/home/alex/rust_projects/scratch/target/debug/incremental -L dependency=/home/alex/rust_projects/scratch/target/debug/deps --extern crossbeam_channel=/home/alex/rust_projects/scratch/target/debug/deps/libcrossbeam_channel-c52d170e41357300.rlib --extern crossbeam_utils=/home/alex/rust_projects/scratch/target/debug/deps/libcrossbeam_utils-2ff7eb169679423f.rlib --extern glob=/home/alex/rust_projects/scratch/target/debug/deps/libglob-df35dc77c4d33d55.rlib` (exit code: 101)
+
+Bug Labels:
+A-NLL, I-ICE, T-compiler

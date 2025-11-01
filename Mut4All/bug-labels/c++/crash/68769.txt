@@ -1,0 +1,29 @@
+Issue Title:
+[clang][ASTImporter]:Assertion `hasBodyOrInit(ToDecl) && "Imported Decl should have body or init."
+
+Source Code & Bug Trace:
+template <class H> class Test
+{
+public:
+	static const unsigned int length;
+};
+
+template<> const unsigned int Test<int>::length;
+
+#include "class-template-static-member.h"
+template<> const unsigned int Test<int>::length = 0;
+
+#include "class-template-static-member.h"
+
+void foo(){
+    int i = 1 / Test<int>::length;
+}
+
+19:c:@S@Test>#I@length class-template-static-member.cpp.ast
+
+clang -cc1 -std=c++14 -emit-pch -o class-template-static-member.cpp.ast class-template-static-member.cpp 
+
+clang-tidy test.cpp -header-filter=.* --checks=-*,clang-analyzer-core.DivideZero -- -Qunused-arguments -Xclang -analyzer-opt-analyze-headers -Xclang -analyzer-config -Xclang expand-macros=true -Xclang -analyzer-config -Xclang crosscheck-with-z3=true -Xclang -analyzer-config -Xclang experimental-enable-naive-ctu-analysis=true -Xclang -analyzer-config -Xclang ctu-dir=. -Xclang -analyzer-config -Xclang display-ctu-progress=true
+
+Bug Labels:
+clang:frontend, crash

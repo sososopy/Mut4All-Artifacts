@@ -1,0 +1,92 @@
+Issue Title:
+ICE when building SVE+OpenMP codes
+
+Source Code & Bug Trace:
+#include <arm_sve.h>
+#include <omp.h>
+void crash() {
+#pragma omp parallel
+  {
+// svfloat64_t db_vec0 = svld1(pg, b + i + fn);
+    svbool_t pg = svwhilelt_b64(0, 1);
+  }
+}
+
+clang-17 crash.c -fopenmp -o crash
+crash still happens with:
+clang-17 -emit-llvm -Xclang -disable-llvm-passes crash.c -fopenmp -c
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: clang-17 -emit-llvm -Xclang -disable-llvm-passes crash.c -fopenmp -c
+1.      crash.c:7:17: current parser token '='
+2.      crash.c:3:14: parsing function body 'crash'
+3.      crash.c:3:14: in compound statement ('{}')
+4.      crash.c:5:3: in compound statement ('{}')
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM-17.so.1    0x0000ffff9615cc24 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 80
+1  libLLVM-17.so.1    0x0000ffff9615aeec llvm::sys::RunSignalHandlers() + 112
+2  libLLVM-17.so.1    0x0000ffff960b920c
+3  linux-vdso.so.1    0x0000ffff9fc635d0 __kernel_rt_sigreturn + 0
+4  libclang-cpp.so.17 0x0000ffff9cdf0bd8 clang::ASTContext::getFunctionFeatureMap(llvm::StringMap<bool, llvm::MallocAllocator>&, clang::GlobalDecl) const + 84
+5  libclang-cpp.so.17 0x0000ffff9d5f5c20 clang::Sema::CheckVariableDeclarationType(clang::VarDecl*) + 2312
+6  libclang-cpp.so.17 0x0000ffff9d5f3b34 clang::Sema::CheckVariableDeclaration(clang::VarDecl*, clang::LookupResult&) + 36
+7  libclang-cpp.so.17 0x0000ffff9d5f138c clang::Sema::ActOnVariableDeclarator(clang::Scope*, clang::Declarator&, clang::DeclContext*, clang::TypeSourceInfo*, clang::LookupResult&, llvm::MutableArrayRef<clang::TemplateParameterList*>, bool&, llvm::ArrayRef<clang::BindingDecl*>) + 7340
+8  libclang-cpp.so.17 0x0000ffff9d5e9b10 clang::Sema::HandleDeclarator(clang::Scope*, clang::Declarator&, llvm::MutableArrayRef<clang::TemplateParameterList*>) + 2344
+9  libclang-cpp.so.17 0x0000ffff9d5e9134 clang::Sema::ActOnDeclarator(clang::Scope*, clang::Declarator&) + 320
+10 libclang-cpp.so.17 0x0000ffff9cd101a4 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) + 276
+11 libclang-cpp.so.17 0x0000ffff9cd0e800 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 916
+12 libclang-cpp.so.17 0x0000ffff9cd0de64 clang::Parser::ParseSimpleDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, bool, clang::Parser::ForRangeInit*, clang::SourceLocation*) + 692
+13 libclang-cpp.so.17 0x0000ffff9cd0dab8 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) + 1048
+14 libclang-cpp.so.17 0x0000ffff9cd8b858 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 5716
+15 libclang-cpp.so.17 0x0000ffff9cd8a008 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 288
+16 libclang-cpp.so.17 0x0000ffff9cd916e0 clang::Parser::ParseCompoundStatementBody(bool) + 1608
+17 libclang-cpp.so.17 0x0000ffff9cd8a964 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 1888
+18 libclang-cpp.so.17 0x0000ffff9cd8a008 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 288
+19 libclang-cpp.so.17 0x0000ffff9cd89e98 clang::Parser::ParseStatement(clang::SourceLocation*, clang::Parser::ParsedStmtContext) + 96
+20 libclang-cpp.so.17 0x0000ffff9cd7106c clang::Parser::ParseOpenMPDeclarativeOrExecutableDirective(clang::Parser::ParsedStmtContext, bool) + 2880
+21 libclang-cpp.so.17 0x0000ffff9cd8b54c clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 4936
+22 libclang-cpp.so.17 0x0000ffff9cd8a008 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 288
+23 libclang-cpp.so.17 0x0000ffff9cd916e0 clang::Parser::ParseCompoundStatementBody(bool) + 1608
+24 libclang-cpp.so.17 0x0000ffff9cd925f0 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) + 188
+25 libclang-cpp.so.17 0x0000ffff9cda9b44 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) + 3068
+26 libclang-cpp.so.17 0x0000ffff9cd0f2cc clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 3680
+27 libclang-cpp.so.17 0x0000ffff9cda8dac clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) + 936
+28 libclang-cpp.so.17 0x0000ffff9cda87e8 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 368
+29 libclang-cpp.so.17 0x0000ffff9cda7d70 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) + 2164
+30 libclang-cpp.so.17 0x0000ffff9cda6474 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 1228
+31 libclang-cpp.so.17 0x0000ffff9ccfba1c clang::ParseAST(clang::Sema&, bool, bool) + 636
+32 libclang-cpp.so.17 0x0000ffff9e7b46f4 clang::FrontendAction::Execute() + 112
+33 libclang-cpp.so.17 0x0000ffff9e745f34 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 776
+34 libclang-cpp.so.17 0x0000ffff9e8294cc clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 520
+35 clang-17           0x0000aaaab759c240 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 1904
+36 clang-17           0x0000aaaab75998c4
+37 libclang-cpp.so.17 0x0000ffff9e470ec8
+38 libLLVM-17.so.1    0x0000ffff960b8f80 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) + 160
+39 libclang-cpp.so.17 0x0000ffff9e470500 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const + 332
+40 libclang-cpp.so.17 0x0000ffff9e441488 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const + 744
+41 libclang-cpp.so.17 0x0000ffff9e441690 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const + 136
+42 libclang-cpp.so.17 0x0000ffff9e45868c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) + 332
+43 clang-17           0x0000aaaab7598fc4 clang_main(int, char**, llvm::ToolContext const&) + 9964
+44 clang-17           0x0000aaaab75a48b0 main + 48
+45 libc.so.6          0x0000ffff95066dc0
+46 libc.so.6          0x0000ffff95066e98 __libc_start_main + 152
+47 clang-17           0x0000aaaab7596570 _start + 48
+clang-17: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Ubuntu clang version 17.0.0 (++20230328090103+fa3cb517e4a5-1~exp1~20230328090118.37)
+Target: aarch64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang-17: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang-17: note: diagnostic msg: /tmp/crash-4c89d6.c
+clang-17: note: diagnostic msg: /tmp/crash-4c89d6.sh
+clang-17: note: diagnostic msg:
+
+********************
+
+Bug Labels:
+clang:frontend, crash

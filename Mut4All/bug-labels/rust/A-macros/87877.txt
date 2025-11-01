@@ -1,0 +1,77 @@
+Issue Title:
+Panic in `region_scope_tree`: `assertion failed: prev.is_none()` · Issue #87877 · rust-lang/rust · GitHub
+
+Rust Code:
+macro_rules! two_items {() => (
+    extern {}
+    extern {}
+)}
+
+macro_rules! single_item_funneler {( $item:item ) => ( $item )}
+
+fn inside_some_function() {
+    single_item_funneler! { two_items! {} }
+}
+
+Bug Trace:
+stack backtrace:
+   0: _rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic
+   3: rustc_middle::middle::region::ScopeTree::record_scope_parent
+   4: <rustc_passes::region::RegionResolutionVisitor as rustc_hir::intravisit::Visitor>::visit_stmt
+   5: <rustc_passes::region::RegionResolutionVisitor as rustc_hir::intravisit::Visitor>::visit_block
+   6: rustc_passes::region::resolve_expr
+   7: <rustc_passes::region::RegionResolutionVisitor as rustc_hir::intravisit::Visitor>::visit_body
+   8: rustc_passes::region::region_scope_tree
+   9: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  10: rustc_data_structures::stack::ensure_sufficient_stack
+  11: rustc_query_system::query::plumbing::force_query_with_job
+  12: rustc_query_system::query::plumbing::get_query_impl
+  13: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::region_scope_tree
+  14: rustc_typeck::check::regionck::RegionCtxt::new
+  15: rustc_typeck::check::regionck::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::regionck_item
+  16: rustc_infer::infer::InferCtxtBuilder::enter
+  17: rustc_typeck::check::wfcheck::check_item_well_formed
+  18: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  19: rustc_data_structures::stack::ensure_sufficient_stack
+  20: rustc_query_system::query::plumbing::force_query_with_job
+  21: rustc_query_system::query::plumbing::get_query_impl
+  22: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  23: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  24: <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+  25: rustc_data_structures::sync::par_for_each_in
+  26: rustc_session::session::Session::track_errors
+  27: rustc_typeck::check_crate
+  28: rustc_interface::passes::analysis
+  29: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  30: rustc_data_structures::stack::ensure_sufficient_stack
+  31: rustc_query_system::query::plumbing::force_query_with_job
+  32: rustc_query_system::query::plumbing::get_query_impl
+  33: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  34: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  35: rustc_span::with_source_map
+  36: rustc_interface::interface::create_compiler_and_run
+  37: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.56.0-nightly (ad981d58e 2021-08-08) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C split-debuginfo=unpacked -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [region_scope_tree] computing drop scopes for `main`
+#1 [check_item_well_formed] checking that `main` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-macros, C-bug, I-ICE, P-high, T-compiler, glacier, regression-from-stable-to-nightly

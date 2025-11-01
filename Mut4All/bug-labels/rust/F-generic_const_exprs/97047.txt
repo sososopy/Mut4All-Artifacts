@@ -1,0 +1,178 @@
+Issue Title:
+ICE with `generic_const_exprs` and `adt_const_params` · Issue #97047 · rust-lang/rust · GitHub
+
+Rust Code:
+pub struct Changes<const CHANGES: &'static [&'static str]>
+where
+    [(); CHANGES.len()]:,
+{
+    changes: [usize; CHANGES.len()],
+    has_changed: bool,
+}
+
+impl<const CHANGES: &'static [&'static str]> Changes<CHANGES>
+where
+    [(); CHANGES.len()]:,
+{
+    pub const fn new() -> Self {
+        Self {
+            changes: [0; CHANGES.len()],
+            has_changed: false,
+        }
+    }
+
+    pub const fn did_change(&self) -> bool {
+        self.has_changed
+    }
+
+    pub fn reset(&mut self) {
+        self.has_changed = false;
+    }
+
+    pub fn combine(&mut self, other: &Self) {
+        self.has_changed |= other.has_changed;
+
+        // Sum up all changes
+        self.changes
+            .iter_mut()
+            .zip(&other.changes)
+            .for_each(|(total, &additional)| *total += additional);
+    }
+
+    pub fn inc<const NAME: &'static str>(&mut self)
+    where
+        Assert<{ contains(CHANGES, NAME) }>: True,
+    {
+        self.has_changed = true;
+
+        let index = index_of(CHANGES, NAME);
+        self.changes[index] += 1;
+    }
+}
+
+pub struct Assert<const COND: bool> {}
+
+pub trait True {}
+
+impl True for Assert<true> {}
+
+pub const fn contains(changes: &[&str], name: &str) -> bool {
+    let mut idx = 0;
+    while idx < changes.len() {
+        if str_eq(changes[idx], name) {
+            return true;
+        }
+
+        idx += 1;
+    }
+
+    false
+}
+
+const fn index_of(changes: &[&str], name: &str) -> usize {
+    let mut idx = 0;
+    while idx < changes.len() {
+        if str_eq(changes[idx], name) {
+            return idx;
+        }
+
+        idx += 1;
+    }
+
+    panic!()
+}
+
+const fn str_eq(lhs: &str, rhs: &str) -> bool {
+    let (lhs, rhs) = (lhs.as_bytes(), rhs.as_bytes());
+
+    if lhs.len() != rhs.len() {
+        return false;
+    }
+
+    let mut idx = 0;
+    while idx < lhs.len() {
+        if lhs[idx] != rhs[idx] {
+            return false;
+        }
+
+        idx += 1;
+    }
+
+    true
+}
+
+Bug Trace:
+warning: Error finalizing incremental compilation session directory `\\?\G:\Users\Chase\Code\Rust\cranial-coitus\target\debug\incremental\cranial_coitus-2hk2617a5lyqj\s-g9s4782zug-1fg2gpo-working`: The system cannot find the file specified. (os error 2)
+
+error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+
+error: internal compiler error: broken MIR in DefId(0:7410 ~ cranial_coitus[a396]::passes::utils::changes::const_checked::{impl#0}::new) (NoSolution): could not prove Binder(ConstEvaluatable(WithOptConstParam { did: DefId(0:7403 ~ cranial_coitus[a396]::passes::utils::changes::const_checked::Changes2::{constant#0}), const_param_did: None }, [Const { ty: &[&str], val: Param(CHANGES/#0) }]), [])
+  --> src\passes\utils\changes.rs:84:13
+   |
+84 | /             Self {
+85 | |                 changes: [0; CHANGES.len()],
+86 | |                 has_changed: false,
+87 | |             }
+   | |_____________^
+   |
+   = note: delayed at compiler\rustc_borrowck\src\type_check\canonical.rs:149:13
+
+error: internal compiler error: broken MIR in DefId(0:7414 ~ cranial_coitus[a396]::passes::utils::changes::const_checked::{impl#0}::combine) (NoSolution): could not prove Binder(WellFormed(&[usize; _]), [])
+   --> src\passes\utils\changes.rs:104:22
+    |
+104 |                 .zip(&other.changes)
+    |                      ^^^^^^^^^^^^^^
+    |
+    = note: delayed at compiler\rustc_borrowck\src\type_check\canonical.rs:149:13
+
+error: internal compiler error: broken MIR in DefId(0:7414 ~ cranial_coitus[a396]::passes::utils::changes::const_checked::{impl#0}::combine) (NoSolution): could not prove Binder(ConstEvaluatable(WithOptConstParam { did: DefId(0:7409 ~ cranial_coitus[a396]::passes::utils::changes::const_checked::{impl#0}::{constant#0}), const_param_did: None }, [Const { ty: &[&str], val: Param(CHANGES/#0) }]), [])
+   --> src\passes\utils\changes.rs:105:27
+    |
+105 |                 .for_each(|(total, &additional)| *total += additional);
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: delayed at compiler\rustc_borrowck\src\type_check\canonical.rs:149:13
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler\rustc_errors\src\lib.rs:1369:13
+stack backtrace:
+   0:     0x7ff8fe65988f - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h19d347d7cfe5cdb5
+   1:     0x7ff8fe69496a - core::fmt::write::ha4c3b8e240caf9f6
+   2:     0x7ff8fe64bea9 - <std::io::IoSlice as core::fmt::Debug>::fmt::hc3dee57d919433ff
+   3:     0x7ff8fe65d07b - std::panicking::default_hook::h4544884403d9be85
+   4:     0x7ff8fe65cc6e - std::panicking::default_hook::h4544884403d9be85
+   5:     0x7ff8cb47e8c9 - <rustc_middle[dba4d5507afbab0d]::ty::SymbolName as core[eee2e1d8d36d089]::fmt::Debug>::fmt
+   6:     0x7ff8fe65d95a - std::panicking::rust_panic_with_hook::hc1cc4992a4b6ec1b
+   7:     0x7ff8cfbe3055 - <rustc_errors[a795d8b482c20b3d]::diagnostic_builder::DiagnosticBuilderInner as core[eee2e1d8d36d089]::ops::drop::Drop>::drop
+   8:     0x7ff8cfbe3009 - <rustc_errors[a795d8b482c20b3d]::diagnostic_builder::DiagnosticBuilderInner as core[eee2e1d8d36d089]::ops::drop::Drop>::drop
+   9:     0x7ff8cff29399 - rustc_query_system[a0b9f5f0299a8a38]::query::plumbing::incremental_verify_ich_cold
+  10:     0x7ff8cfbd5629 - <rustc_feature[ea871e0fc9abb418]::builtin_attrs::AttributeType as core[eee2e1d8d36d089]::fmt::Debug>::fmt
+  11:     0x7ff8cfbd9288 - <rustc_errors[a795d8b482c20b3d]::HandlerInner as core[eee2e1d8d36d089]::ops::drop::Drop>::drop
+  12:     0x7ff8cb4a5794 - rustc_driver[dba66f49bbdf914a]::pretty::print_after_hir_lowering
+  13:     0x7ff8cb4a8bca - rustc_driver[dba66f49bbdf914a]::pretty::print_after_hir_lowering
+  14:     0x7ff8cb493ecd - rustc_driver[dba66f49bbdf914a]::pretty::print_after_hir_lowering
+  15:     0x7ff8cb491bf9 - rustc_driver[dba66f49bbdf914a]::pretty::print_after_hir_lowering
+  16:     0x7ff8cb42f540 - <rustc_codegen_ssa[a427f0aa3144ff71]::back::linker::PtxLinker as rustc_codegen_ssa[a427f0aa3144ff71]::back::linker::Linker>::no_default_libraries
+  17:     0x7ff8cb432c27 - <rustc_codegen_ssa[a427f0aa3144ff71]::back::linker::PtxLinker as rustc_codegen_ssa[a427f0aa3144ff71]::back::linker::Linker>::no_default_libraries
+  18:     0x7ff8cb43c876 - <rustc_driver[dba66f49bbdf914a]::args::Error as core[eee2e1d8d36d089]::fmt::Debug>::fmt
+  19:     0x7ff8cb43d998 - <rustc_driver[dba66f49bbdf914a]::args::Error as core[eee2e1d8d36d089]::fmt::Debug>::fmt
+  20:     0x7ff8fe66edec - std::sys::windows::thread::Thread::new::h1883b00da4b4f517
+  21:     0x7ff95ba97034 - BaseThreadInitThunk
+  22:     0x7ff95d2a2651 - RtlUserThreadStart
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.62.0-nightly (6dd68402c 2022-05-11) running on x86_64-pc-windows-msvc
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+warning: `cranial-coitus` (bin "cranial-coitus") generated 56 warnings
+error: could not compile `cranial-coitus`; 56 warnings emitted
+
+Bug Labels:
+C-bug, E-needs-test, F-adt_const_params, F-generic_const_exprs, I-ICE, T-compiler, glacier

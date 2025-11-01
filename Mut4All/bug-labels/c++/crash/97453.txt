@@ -1,0 +1,110 @@
+Issue Title:
+[Clang]: clang crashed with  Assertion 'idx < size()' failed  in  clang::Sema::tryCaptureVariable  when try to capture variable with function parameter scope in a trailing noexcept expression
+
+Source Code & Bug Trace:
+// clang++ -std=c++26 -fsyntax-only main.cpp
+struct X {
+    constexpr auto ICE(int&& that)
+    noexcept(noexcept(
+        [that]() {}
+    ));
+};
+
+clang++: /root/llvm-project/llvm/include/llvm/ADT/SmallVector.h:304: 
+T& llvm::SmallVectorTemplateCommon<T, <template-parameter-1-2> >::operator[]
+(llvm::SmallVectorTemplateCommon<T, <template-parameter-1-2> >::size_type) 
+[with T = clang::sema::FunctionScopeInfo*; <template-parameter-1-2> = void; 
+llvm::SmallVectorTemplateCommon<T, <template-parameter-1-2> >::reference = 
+clang::sema::FunctionScopeInfo*&; llvm::SmallVectorTemplateCommon<T, <template-
+parameter-1-2> >::size_type = long unsigned int]: Assertion `idx < size()' failed.
+
+
+
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++26 -fsyntax-only <source>
+1.	<source>:4:15: current parser token '('
+2.	<source>:1:1: parsing struct/union/class body 'X'
+3.	<source>:4:9: lambda expression parsing
+ #0 0x0000000003a34ff8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3a34ff8)
+ #1 0x0000000003a32cdc llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3a32cdc)
+ #2 0x0000000003978a78 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x000075b989a42520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x000075b989a969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x000075b989a42476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x000075b989a287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x000075b989a2871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x000075b989a39e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x0000000006953f82 clang::Sema::tryCaptureVariable(clang::ValueDecl*, clang::SourceLocation, clang::Sema::TryCaptureKind, clang::SourceLocation, bool, clang::QualType&, clang::QualType&, unsigned int const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6953f82)
+#10 0x00000000069544af clang::Sema::tryCaptureVariable(clang::ValueDecl*, clang::SourceLocation, clang::Sema::TryCaptureKind, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69544af)
+#11 0x0000000006bd3817 clang::Sema::ActOnLambdaExpressionAfterIntroducer(clang::LambdaIntroducer&, clang::Scope*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6bd3817)
+#12 0x0000000006455b30 clang::Parser::ParseLambdaExpressionAfterIntroducer(clang::LambdaIntroducer&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6455b30)
+#13 0x00000000064578eb clang::Parser::ParseLambdaExpression() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x64578eb)
+#14 0x0000000006436195 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6436195)
+#15 0x0000000006437cba clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6437cba)
+#16 0x0000000006437e59 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6437e59)
+#17 0x000000000643c829 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x643c829)
+#18 0x0000000006436070 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6436070)
+#19 0x0000000006443c96 clang::Parser::ParseConstantExpressionInExprEvalContext(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6443c96)
+#20 0x000000000641cfe9 clang::Parser::tryParseExceptionSpecification(bool, clang::SourceRange&, llvm::SmallVectorImpl<clang::OpaquePtr<clang::QualType>>&, llvm::SmallVectorImpl<clang::SourceRange>&, clang::ActionResult<clang::Expr*, true>&, llvm::SmallVector<clang::Token, 4u>*&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x641cfe9)
+#21 0x00000000063e653d clang::Parser::ParseLexedMethodDeclaration(clang::Parser::LateParsedMethodDeclaration&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63e653d)
+#22 0x00000000063dbd8d clang::Parser::ParseLexedMethodDeclarations(clang::Parser::ParsingClass&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63dbd8d)
+#23 0x000000000642beff clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributes&, unsigned int, clang::Decl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x642beff)
+#24 0x000000000642e640 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x642e640)
+#25 0x0000000006403ff5 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6403ff5)
+#26 0x00000000063bf787 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63bf787)
+#27 0x00000000063c01ee clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63c01ee)
+#28 0x00000000063c6917 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63c6917)
+#29 0x00000000063c782f clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63c782f)
+#30 0x00000000063c7cf0 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63c7cf0)
+#31 0x00000000063bafcc clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63bafcc)
+#32 0x00000000045a8239 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x45a8239)
+#33 0x000000000452e14e clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x452e14e)
+#34 0x000000000469073e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x469073e)
+#35 0x0000000000c70665 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc70665)
+#36 0x0000000000c6988a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#37 0x0000000004364859 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#38 0x0000000003978f24 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3978f24)
+#39 0x0000000004364e4f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#40 0x000000000432a895 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x432a895)
+#41 0x000000000432b2fd clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x432b2fd)
+#42 0x0000000004332d15 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4332d15)
+#43 0x0000000000c6da35 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc6da35)
+#44 0x0000000000b45d34 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xb45d34)
+#45 0x000075b989a29d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#46 0x000075b989a29e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#47 0x0000000000c6933e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc6933e)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Compiler returned: 134
+
+
+struct X {
+    constexpr auto ICE(int&& that)
+    noexcept(noexcept(
+        [that=that]() {}
+    ));
+};
+
+<source>:4:15: error: reference to local variable 'that' declared in enclosing function 'X::ICE'
+    4 |         [that=that]() {}
+      |               ^
+<source>:2:30: note: 'that' declared here
+    2 |     constexpr auto ICE(int&& that)
+      |            
+
+
+// clang++ -std=c++26 -fsyntax-only main.cpp
+struct X1 {
+    constexpr auto ICE(int&& that)
+    noexcept(requires {
+        [that]() {};
+    });
+};
+
+struct X2 {
+    constexpr auto ICE(auto&& that)
+    noexcept([that](){return false;}());
+};
+
+
+Bug Labels:
+clang:frontend, confirmed, crash

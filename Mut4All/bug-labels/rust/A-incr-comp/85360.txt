@@ -1,0 +1,109 @@
+Issue Title:
+Incremental compilation error with evaluate_obligation: Ok(EvaluatedToOkModuloRegions) · Issue #85360 · rust-lang/rust · GitHub
+
+Rust Code:
+// lib.rs
+
+use specs::{
+    shred::ResourceId, Component, ParJoin, ReadStorage, System, SystemData, World,
+};
+
+pub struct Pos;
+
+impl Component for Pos {
+    type Storage = specs::VecStorage<Self>;
+}
+
+pub struct InterpBuffer<T> {
+    _t: T,
+}
+
+impl<T: 'static + Send + Sync> Component for InterpBuffer<T> {
+    type Storage = specs::VecStorage<Self>;
+}
+
+#[derive(SystemData)]
+pub struct ReadData<'a> {
+    pos_interpdata: ReadStorage<'a, InterpBuffer<Pos>>,
+}
+
+#[derive(Default)]
+pub struct Sys;
+
+impl<'a> System<'a> for Sys {
+    type SystemData = (ReadData<'a>, ReadStorage<'a, Pos>);
+
+    fn run(&mut self, (data, pos): Self::SystemData) {
+        (&pos, &data.pos_interpdata).par_join();
+    }
+}
+
+Bug Trace:
+0: rust_begin_unwind
+             at /rustc/8cf990c9b5c59f25c806fad9f4466f9d6509bbea/library/std/src/panicking.rs:493:5
+   1: std::panicking::begin_panic_fmt
+             at /rustc/8cf990c9b5c59f25c806fad9f4466f9d6509bbea/library/std/src/panicking.rs:435:5
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::evaluate_obligation
+   7: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation
+   8: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+   9: rustc_trait_selection::traits::fulfill::FulfillProcessor::process_trait_obligation
+  10: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  11: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  12: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  13: <rustc_infer::infer::InferCtxtBuilder as rustc_trait_selection::infer::InferCtxtBuilderExt>::enter_canonical_trait_query
+  14: rustc_traits::normalize_projection_ty::normalize_projection_ty
+  15: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::normalize_projection_ty>::compute
+  16: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  17: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+  18: rustc_data_structures::stack::ensure_sufficient_stack
+  19: rustc_query_system::query::plumbing::get_query_impl
+  20: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::normalize_projection_ty
+  21: <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  22: <smallvec::SmallVec<A> as core::iter::traits::collect::Extend<<A as smallvec::Array>::Item>>::extend
+  23: rustc_middle::ty::fold::TypeFoldable::fold_with
+  24: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+  25: <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  26: <rustc_infer::infer::at::At as rustc_trait_selection::traits::query::normalize::AtExt>::normalize
+  27: rustc_infer::infer::InferCtxtBuilder::enter
+  28: core::ops::function::FnOnce::call_once
+  29: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  30: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+  31: rustc_data_structures::stack::ensure_sufficient_stack
+  32: rustc_query_system::query::plumbing::get_query_impl
+  33: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::normalize_generic_arg_after_erasing_regions
+  34: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  35: <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_terminator
+  36: rustc_mir::monomorphize::collector::collect_neighbours
+  37: rustc_mir::monomorphize::collector::collect_items_rec
+  38: rustc_mir::monomorphize::collector::collect_items_rec
+  39: rustc_mir::monomorphize::collector::collect_items_rec
+  40: rustc_mir::monomorphize::collector::collect_items_rec
+  41: rustc_mir::monomorphize::collector::collect_items_rec
+  42: rustc_mir::monomorphize::collector::collect_items_rec
+  43: rustc_mir::monomorphize::collector::collect_items_rec
+  44: rustc_mir::monomorphize::collector::collect_items_rec
+  45: rustc_mir::monomorphize::collector::collect_items_rec
+  46: rustc_session::utils::<impl rustc_session::session::Session>::time
+  47: rustc_mir::monomorphize::collector::collect_crate_mono_items
+  48: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+  49: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::collect_and_partition_mono_items>::compute
+  50: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  51: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  52: rustc_data_structures::stack::ensure_sufficient_stack
+  53: rustc_query_system::query::plumbing::force_query_with_job
+  54: rustc_query_system::query::plumbing::get_query_impl
+  55: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::collect_and_partition_mono_items
+  56: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  57: rustc_interface::passes::QueryContext::enter
+  58: rustc_interface::queries::Queries::ongoing_codegen
+  59: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  60: rustc_span::with_source_map
+  61: rustc_interface::interface::create_compiler_and_run
+  62: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-incr-comp, C-bug, I-ICE, T-compiler

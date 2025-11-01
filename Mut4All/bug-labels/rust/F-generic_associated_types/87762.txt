@@ -1,0 +1,65 @@
+Issue Title:
+Broken MIR in DefId(...): equate_normalized_input_or_output: `...` failed with `NoSolution` · Issue #87762 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+pub trait BorrowedHandle {
+    type Handle<'s, T>
+    where
+        T: 'static;
+}
+
+pub struct Owned<O, T, H>
+where
+    O: 'static,
+    T: 'static,
+    H: BorrowedHandle,
+{
+    _owner: &'static O,
+    _borrow: H::Handle<'static, T>,
+}
+
+impl<O, T, H> Owned<O, T, H>
+where
+    H: BorrowedHandle,
+{
+    pub fn new(_: O, _: fn(&O) -> H::Handle<'_, T>) -> Self {
+        todo!()
+    }
+}
+
+struct PrimRef;
+
+impl BorrowedHandle for PrimRef {
+    type Handle<'s, T>
+    where
+        T: 'static,
+    = &'s T;
+}
+
+type OwnedRef<T> = Owned<(T,), T, PrimRef>;
+
+pub fn test() {
+    let _: OwnedRef<u8> = Owned::new((42,), |v| &v.0); // < ERROR
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', compiler/rustc_errors/src/lib.rs:1050:13
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/e3b1c12becebd21d88ca9f4364d7db8d1d380c18/library/std/src/panicking.rs:516:5
+   1: std::panicking::begin_panic_fmt
+             at /rustc/e3b1c12becebd21d88ca9f4364d7db8d1d380c18/library/std/src/panicking.rs:458:5
+   2: rustc_errors::HandlerInner::flush_delayed
+   3: <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop
+   4: core::ptr::drop_in_place<rustc_session::parse::ParseSess>
+   5: <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop
+   6: core::ptr::drop_in_place<rustc_interface::interface::Compiler>
+   7: rustc_span::with_source_map
+   8: rustc_interface::interface::create_compiler_and_run
+   9: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+A-GATs, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier

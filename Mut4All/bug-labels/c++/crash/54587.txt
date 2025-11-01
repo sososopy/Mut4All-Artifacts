@@ -1,0 +1,83 @@
+Issue Title:
+[clang] (Presumably) CTAD and consteval constructors in more than one class cause segfault
+
+Source Code & Bug Trace:
+$ clang --version
+Ubuntu clang version 15.0.0-++20220320052914+3b2e605e33bd-1~exp1~20220320173006.195
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+
+
+$ lsb_release -a
+No LSB modules are available.
+Distributor ID:	Ubuntu
+Description:	Ubuntu 20.04.4 LTS
+Release:	20.04
+Codename:	focal
+
+
+template<class F>
+struct hello {
+	consteval hello(F)
+	{
+	}
+};
+constexpr hello hello_consteval = []() noexcept -> void {};
+
+template<class F>
+struct world {
+	consteval world(F)
+	{
+	}
+};
+constexpr world world_consteval = []() noexcept -> void {};
+
+$ /usr/bin/clang++ -std=c++2b fail.cpp 
+
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /usr/lib/llvm-15/bin/clang -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all --mrelax-relocations -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name fail.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -fcoverage-compilation-dir=/tmp -resource-dir /usr/lib/llvm-15/lib/clang/15.0.0 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/x86_64-linux-gnu/c++/11 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/backward -internal-isystem /usr/lib/llvm-15/lib/clang/15.0.0/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++2b -fdeprecated-macro -fdebug-compilation-dir=/tmp -ferror-limit 19 -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/fail-65fc30.o -x c++ fail.cpp
+1.	<eof> parser at end of file
+ #0 0x00007ff8d8dde561 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/lib/x86_64-linux-gnu/libLLVM-15.so.1+0xe1d561)
+ #1 0x00007ff8d8ddc2be llvm::sys::RunSignalHandlers() (/lib/x86_64-linux-gnu/libLLVM-15.so.1+0xe1b2be)
+ #2 0x00007ff8d8ddea8b (/lib/x86_64-linux-gnu/libLLVM-15.so.1+0xe1da8b)
+ #3 0x00007ff8e22733c0 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x143c0)
+ #4 0x00007ff8df69ee4f (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0xd69e4f)
+ #5 0x00007ff8df6a241b (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0xd6d41b)
+ #6 0x00007ff8df6525b1 (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0xd1d5b1)
+ #7 0x00007ff8df6521e4 clang::Expr::EvaluateAsConstantExpr(clang::Expr::EvalResult&, clang::ASTContext const&, clang::Expr::ConstantExprKind) const (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0xd1d1e4)
+ #8 0x00007ff8dfd5d57f clang::Sema::PopExpressionEvaluationContext() (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0x142857f)
+ #9 0x00007ff8df36aa65 clang::ParseAST(clang::Sema&, bool, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0xa35a65)
+#10 0x00007ff8e052b0f5 clang::CodeGenAction::ExecuteAction() (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0x1bf60f5)
+#11 0x00007ff8e0ecd3e7 clang::FrontendAction::Execute() (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0x25983e7)
+#12 0x00007ff8e0e44136 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0x250f136)
+#13 0x00007ff8e0f486ca clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/lib/x86_64-linux-gnu/libclang-cpp.so.15+0x26136ca)
+#14 0x0000000000413644 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/lib/llvm-15/bin/clang+0x413644)
+#15 0x00000000004119bb (/usr/lib/llvm-15/bin/clang+0x4119bb)
+#16 0x0000000000411807 main (/usr/lib/llvm-15/bin/clang+0x411807)
+#17 0x00007ff8d7a6d0b3 __libc_start_main /build/glibc-sMfBJT/glibc-2.31/csu/../csu/libc-start.c:342:3
+#18 0x000000000040e41e _start (/usr/lib/llvm-15/bin/clang+0x40e41e)
+clang: error: unable to execute command: Segmentation fault (core dumped)
+clang: error: clang frontend command failed due to signal (use -v to see invocation)
+Ubuntu clang version 15.0.0-++20220320052914+3b2e605e33bd-1~exp1~20220320173006.195
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang: note: diagnostic msg: 
+[fail-4786e0.sh.txt](https://github.com/llvm/llvm-project/files/8358292/fail-4786e0.sh.txt)
+[fail-4786e0.cpp.txt](https://github.com/llvm/llvm-project/files/8358291/fail-4786e0.cpp.txt)
+clang: note: diagnostic msg: /tmp/fail-4786e0.sh
+clang: note: diagnostic msg: 
+
+********************
+
+
+Bug Labels:
+c++20, clang:frontend, consteval, crash

@@ -1,0 +1,99 @@
+Issue Title:
+Clang crashes with libc++ vector::reverse_iterator in calculateConstraintSatisfaction
+
+Source Code & Bug Trace:
+#include <vector>
+struct Foo {
+  Foo() {}
+};
+void CrashFunc(std::vector<int>& vec) {
+  auto lambda = [&](auto from, auto to) -> Foo {
+    for (auto it = from; it != to; ++it) {}
+    return Foo();
+  };
+  lambda(vec.rbegin(), vec.rend());
+}
+
+$ clang++ -stdlib=libc++ -std=c++20 -c bug.cpp
+PLEASE submit a bug report to https://github.com/android-ndk/ndk/issues and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /x/android/llvm-toolchain/out/stage2/bin/clang++ -stdlib=libc++ -std=c++20 -c bug.cpp
+1.	<eof> parser at end of file
+2.	bug.cpp:8:17: instantiating function definition 'CrashFunc(std::vector<int> &)::(anonymous class)::operator()<std::reverse_iterator<std::__wrap_iter<int *>>, std::reverse_iterator<std::__wrap_iter<int *>>>'
+ #0 0x000055d541b3a698 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x31c6698)
+ #1 0x000055d541b384ae llvm::sys::RunSignalHandlers() (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x31c44ae)
+ #2 0x000055d541b39b7e llvm::sys::CleanupOnSignal(unsigned long) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x31c5b7e)
+ #3 0x000055d541ac4f59 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #4 0x00007fcc1992a510 (/lib/x86_64-linux-gnu/libc.so.6+0x3c510)
+ #5 0x000055d543aaf3ba clang::Sema::tryCaptureVariable(clang::ValueDecl*, clang::SourceLocation, clang::Sema::TryCaptureKind, clang::SourceLocation, bool, clang::QualType&, clang::QualType&, unsigned int const*) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x513b3ba)
+ #6 0x000055d543a75f27 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x5101f27)
+ #7 0x000055d543a75e9c clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::CXXScopeSpec const*, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x5101e9c)
+ #8 0x000055d543a7a527 clang::Sema::BuildDeclarationNameExpr(clang::CXXScopeSpec const&, clang::DeclarationNameInfo const&, clang::NamedDecl*, clang::NamedDecl*, clang::TemplateArgumentListInfo const*, bool) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x5106527)
+ #9 0x000055d543e4c12e clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformDeclRefExpr(clang::DeclRefExpr*) SemaTemplateInstantiate.cpp:0:0
+#10 0x000055d543e3ec6d clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXDependentScopeMemberExpr(clang::CXXDependentScopeMemberExpr*) SemaTemplateInstantiate.cpp:0:0
+#11 0x000055d543e41371 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) SemaTemplateInstantiate.cpp:0:0
+#12 0x000055d543e4182f clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXOperatorCallExpr(clang::CXXOperatorCallExpr*) SemaTemplateInstantiate.cpp:0:0
+#13 0x000055d543e4f4c7 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformRequiresExpr(clang::RequiresExpr*) SemaTemplateInstantiate.cpp:0:0
+#14 0x000055d543e4720b (anonymous namespace)::TemplateInstantiator::TransformRequiresExpr(clang::RequiresExpr*) SemaTemplateInstantiate.cpp:0:0
+#15 0x000055d543e3ada1 clang::Sema::SubstExpr(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x54c6da1)
+#16 0x000055d5438ddeb2 calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::$_0::operator()(clang::Expr const*) const SemaConcept.cpp:0:0
+#17 0x000055d5438dcbb4 clang::ActionResult<clang::Expr*, true> calculateConstraintSatisfaction<calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::$_0>(clang::Sema&, clang::Expr const*, clang::ConstraintSatisfaction&, calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::$_0&&) SemaConcept.cpp:0:0
+#18 0x000055d5438d729b CheckConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) SemaConcept.cpp:0:0
+#19 0x000055d5438d701f clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x4f6301f)
+#20 0x000055d5438d9d05 clang::Sema::CheckInstantiatedFunctionTemplateConstraints(clang::SourceLocation, clang::FunctionDecl*, llvm::ArrayRef<clang::TemplateArgument>, clang::ConstraintSatisfaction&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x4f65d05)
+#21 0x000055d543dedbff clang::Sema::FinishTemplateArgumentDeduction(clang::FunctionTemplateDecl*, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg> const*, bool, llvm::function_ref<bool ()>) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x5479bff)
+#22 0x000055d543e2da99 void llvm::function_ref<void ()>::callback_fn<clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>)::$_2>(long) SemaTemplateDeduction.cpp:0:0
+#23 0x000055d5437de52f clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x4e6a52f)
+#24 0x000055d543def4cb clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x547b4cb)
+#25 0x000055d543cf25ec clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind, clang::OverloadCandidateParamOrder, bool) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x537e5ec)
+#26 0x000055d543cfa853 clang::Sema::AddArgumentDependentLookupCandidates(clang::DeclarationName, clang::SourceLocation, llvm::ArrayRef<clang::Expr*>, clang::TemplateArgumentListInfo*, clang::OverloadCandidateSet&, bool) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x5386853)
+#27 0x000055d543d071b5 clang::Sema::LookupOverloadedBinOp(clang::OverloadCandidateSet&, clang::OverloadedOperatorKind, clang::UnresolvedSetImpl const&, llvm::ArrayRef<clang::Expr*>, bool) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x53931b5)
+#28 0x000055d543d074ee clang::Sema::CreateOverloadedBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, clang::Expr*, bool, bool, clang::FunctionDecl*) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x53934ee)
+#29 0x000055d543aa6018 BuildOverloadedBinOp(clang::Sema&, clang::Scope*, clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) SemaExpr.cpp:0:0
+#30 0x000055d543aa5c1a clang::Sema::BuildBinOp(clang::Scope*, clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x5131c1a)
+#31 0x000055d543e3de45 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformBinaryOperator(clang::BinaryOperator*) SemaTemplateInstantiate.cpp:0:0
+#32 0x000055d543e5e2c2 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCondition(clang::SourceLocation, clang::VarDecl*, clang::Expr*, clang::Sema::ConditionKind) SemaTemplateInstantiate.cpp:0:0
+#33 0x000055d543e5adbd clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformForStmt(clang::ForStmt*) SemaTemplateInstantiate.cpp:0:0
+#34 0x000055d543e52861 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#35 0x000055d543e39dc3 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x54c5dc3)
+#36 0x000055d543e78cfc clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x5504cfc)
+#37 0x000055d543e7b17d clang::Sema::PerformPendingInstantiations(bool) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x550717d)
+#38 0x000055d5437e039d clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x4e6c39d)
+#39 0x000055d5437e09e4 clang::Sema::ActOnEndOfTranslationUnit() (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x4e6c9e4)
+#40 0x000055d5436d2528 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x4d5e528)
+#41 0x000055d5436cddfe clang::ParseAST(clang::Sema&, bool, bool) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x4d59dfe)
+#42 0x000055d54248ed26 clang::FrontendAction::Execute() (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x3b1ad26)
+#43 0x000055d542409e34 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x3a95e34)
+#44 0x000055d542520df5 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x3bacdf5)
+#45 0x000055d54086766d cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x1ef366d)
+#46 0x000055d5408650d0 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#47 0x000055d542273b19 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::__1::optional<llvm::StringRef>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool*) const::$_0>(long) Job.cpp:0:0
+#48 0x000055d541ac4d7c llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x3150d7c)
+#49 0x000055d542273526 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::__1::optional<llvm::StringRef>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool*) const (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x38ff526)
+#50 0x000055d542238690 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x38c4690)
+#51 0x000055d542238b9e clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*>>&, bool) const (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x38c4b9e)
+#52 0x000055d5422565af clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*>>&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x38e25af)
+#53 0x000055d5408644ab clang_main(int, char**, llvm::ToolContext const&) (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x1ef04ab)
+#54 0x000055d5408726c1 main (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x1efe6c1)
+#55 0x00007fcc199156ca __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#56 0x00007fcc19915785 call_init ./csu/../csu/libc-start.c:128:20
+#57 0x00007fcc19915785 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#58 0x000055d540861229 _start (/x/android/llvm-toolchain/out/stage2/bin/clang+++0x1eed229)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Android (dev, -pgo, -bolt, -lto, -mlgo, based on r522817) clang version 18.0.1 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /x/android/llvm-toolchain/out/stage2/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/bug-1b0835.cpp
+clang++: note: diagnostic msg: /tmp/bug-1b0835.sh
+clang++: note: diagnostic msg: 
+
+********************
+
+Bug Labels:
+c++20, clang:frontend, concepts, confirmed, crash

@@ -1,0 +1,132 @@
+Issue Title:
+Compilation bug for simple `print' function  · Issue #122242 · rust-lang/rust · GitHub
+
+Rust Code:
+use rand::Rng;
+
+struct NeuralNetwork {
+    parameters: Vec<f64>,
+    arch: Vec<usize>,
+    offsets_w: Vec<usize>,
+    offsets_b: Vec<usize>,
+}
+
+impl NeuralNetwork {
+    fn new(n_par: usize, arch: Vec<usize>) -> Self {
+        let mut rng = rand::thread_rng();
+        let parameters: Vec<f64> = (0..n_par).map(|_| rng.gen_range(-1.0..=1.0)).collect();
+
+        let n_layer = arch.len();
+
+        let mut offsets_w: Vec<usize> = vec![0; n_layer];
+        let mut offsets_b: Vec<usize> = vec![0; n_layer];
+
+        offsets_b[0] = arch[1] * arch[0];
+        for i in 1..n_layer - 1 {
+            offsets_w[i] = arch[i] * offsets_b[i - 1];
+            offsets_b[i] = arch[i] * arch[i + 1] + offsets_w[i];
+        }
+
+        //    net.offsetW[0] = 0;
+        //    net.offsetB[0] = arch[1] * arch[0];
+        //    for (size_t i = 1; i < nL - 1; i++) {
+        //       net.offsetW[i] = net.offsetB[i - 1] + arch[i];
+        //       net.offsetB[i] = net.offsetW[i] + arch[i] * arch[i + 1];
+        //    }
+
+        NeuralNetwork {
+            parameters,
+            arch,
+            offsets_w,
+            offsets_b,
+        }
+    }
+
+    fn print_offsets(&self) {
+        let mut it = self.offsets_b.iter().peekable();
+        print!("Bias offsets: [");
+        while let Some(elem) = it.next() {
+            if it.peek().is_none() {
+                print!("{}", elem);
+            } else {
+                print!("{},", elem);
+            }
+        }
+        print!("]\n");
+
+        it = self.offsets_w.iter().peekable();
+        print!("Bias offsets: [");
+        while let Some(elem) = it.next() {
+            if it.peek().is_none() {
+                print!("{}", elem);
+            } else {
+                print!("{},", elem);
+            }
+        }
+        print!("]\n");
+    }
+}
+
+pub fn i_am_alive() {
+    let network = NeuralNetwork::new(10usize, vec![2usize, 25usize, 25usize, 1usize]);
+    // network.print_arch();
+    network.print_offsets();
+}
+
+Bug Trace:
+stack backtrace:
+   0:     0x7fec7e4af6f6 - std::backtrace_rs::backtrace::libunwind::trace::hbee8a7973eeb6c93
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/../../backtrace/src/backtrace/libunwind.rs:104:5
+   1:     0x7fec7e4af6f6 - std::backtrace_rs::backtrace::trace_unsynchronized::hc8ac75eea3aa6899
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fec7e4af6f6 - std::sys_common::backtrace::_print_fmt::hc7f3e3b5298b1083
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x7fec7e4af6f6 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hbb235daedd7c6190
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7fec7e501f40 - core::fmt::rt::Argument::fmt::h76c38a80d925a410
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/core/src/fmt/rt.rs:142:9
+   5:     0x7fec7e501f40 - core::fmt::write::h3ed6aeaa977c8e45
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/core/src/fmt/mod.rs:1120:17
+   6:     0x7fec7e4a353f - std::io::Write::write_fmt::h78b18af5775fedb5
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/io/mod.rs:1810:15
+   7:     0x7fec7e4af4d4 - std::sys_common::backtrace::_print::h5d645a07e0fcfdbb
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7fec7e4af4d4 - std::sys_common::backtrace::print::h85035a511aafe7a8
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7fec7e4b2267 - std::panicking::default_hook::{{closure}}::hcce8cea212785a25
+  10:     0x7fec7e4b1fc9 - std::panicking::default_hook::hf5fcb0f213fe709a
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/panicking.rs:292:9
+  11:     0x7fec7b41461c - std[79729d9c385e1623]::panicking::update_hook::<alloc[6df67106ebca92c0]::boxed::Box<rustc_driver_impl[66ed8fdbde15dc6c]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x7fec7e4b29b6 - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::hbc5ccf4eb663e1e5
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/alloc/src/boxed.rs:2029:9
+  13:     0x7fec7e4b29b6 - std::panicking::rust_panic_with_hook::h095fccf1dc9379ee
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/panicking.rs:783:13
+  14:     0x7fec7e4b2702 - std::panicking::begin_panic_handler::{{closure}}::h032ba12139b353db
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/panicking.rs:657:13
+  15:     0x7fec7e4afbf6 - std::sys_common::backtrace::__rust_end_short_backtrace::h9259bc2ff8fd0f76
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/sys_common/backtrace.rs:171:18
+  16:     0x7fec7e4b2460 - rust_begin_unwind
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/panicking.rs:645:5
+  17:     0x7fec7e4fe645 - core::panicking::panic_fmt::h784f20a50eaab275
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/core/src/panicking.rs:72:14
+  18:     0x7fec7b29df60 - rustc_codegen_ssa[8f0ba34f7d763469]::back::write::submit_pre_lto_module_to_llvm::<rustc_codegen_llvm[3c1678ba3e8e7d64]::LlvmCodegenBackend>::{closure#0}
+  19:     0x7fec7cf9716e - <rustc_codegen_llvm[3c1678ba3e8e7d64]::LlvmCodegenBackend as rustc_codegen_ssa[8f0ba34f7d763469]::traits::backend::CodegenBackend>::codegen_crate
+  20:     0x7fec7cf9331f - rustc_interface[bf5cafa581ab7832]::passes::start_codegen
+  21:     0x7fec7cf92b22 - <rustc_interface[bf5cafa581ab7832]::queries::Queries>::codegen_and_build_linker
+  22:     0x7fec7d2fe7a0 - rustc_interface[bf5cafa581ab7832]::interface::run_compiler::<core[f975038e3cc9791c]::result::Result<(), rustc_span[7a149c27976a99e7]::ErrorGuaranteed>, rustc_driver_impl[66ed8fdbde15dc6c]::run_compiler::{closure#0}>::{closure#0}
+  23:     0x7fec7d42c7db - std[79729d9c385e1623]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[bf5cafa581ab7832]::util::run_in_thread_with_globals<rustc_interface[bf5cafa581ab7832]::interface::run_compiler<core[f975038e3cc9791c]::result::Result<(), rustc_span[7a149c27976a99e7]::ErrorGuaranteed>, rustc_driver_impl[66ed8fdbde15dc6c]::run_compiler::{closure#0}>::{closure#0}, core[f975038e3cc9791c]::result::Result<(), rustc_span[7a149c27976a99e7]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[f975038e3cc9791c]::result::Result<(), rustc_span[7a149c27976a99e7]::ErrorGuaranteed>>
+  24:     0x7fec7d42c639 - <<std[79729d9c385e1623]::thread::Builder>::spawn_unchecked_<rustc_interface[bf5cafa581ab7832]::util::run_in_thread_with_globals<rustc_interface[bf5cafa581ab7832]::interface::run_compiler<core[f975038e3cc9791c]::result::Result<(), rustc_span[7a149c27976a99e7]::ErrorGuaranteed>, rustc_driver_impl[66ed8fdbde15dc6c]::run_compiler::{closure#0}>::{closure#0}, core[f975038e3cc9791c]::result::Result<(), rustc_span[7a149c27976a99e7]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[f975038e3cc9791c]::result::Result<(), rustc_span[7a149c27976a99e7]::ErrorGuaranteed>>::{closure#1} as core[f975038e3cc9791c]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  25:     0x7fec7e4bc8e5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h12de4fc57affb195
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/alloc/src/boxed.rs:2015:9
+  26:     0x7fec7e4bc8e5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h3c619f45059d5cf1
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/alloc/src/boxed.rs:2015:9
+  27:     0x7fec7e4bc8e5 - std::sys::unix::thread::Thread::new::thread_start::hbac657605e4b7389
+                               at /rustc/07dca489ac2d933c78d3c5158e3f43beefeb02ce/library/std/src/sys/unix/thread.rs:108:17
+  28:     0x7fec7866bac3 - start_thread
+                               at ./nptl/pthread_create.c:442:8
+  29:     0x7fec786fd850 - __GI___clone3
+                               at ./misc/../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+  30:                0x0 - <unknown>
+
+Bug Labels:
+A-codegen, C-bug, I-ICE, S-needs-repro, T-compiler

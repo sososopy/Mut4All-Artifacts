@@ -1,0 +1,116 @@
+Issue Title:
+ice: Encountered error .. selecting .. during codegen: glacier / fixed/72793.rs · Issue #89312 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(type_alias_impl_trait)]
+
+trait T { type Item; }
+
+type Alias<'a> = impl T<Item = &'a ()>;
+
+struct S;
+impl<'a> T for &'a S {
+    type Item = &'a ();
+}
+
+fn filter_positive<'a>() -> Alias<'a> {
+    &S
+}
+
+fn with_positive(fun: impl Fn(Alias<'_>)) {
+    fun(filter_positive());
+}
+
+fn main() {
+    with_positive(|_| ());
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_trait_selection/src/traits/codegen.rs:78:17: Encountered error `OutputTypeParameterMismatch(Binder(<[closure@./72793.rs:21:19: 21:25] as std::ops::Fn<(impl for<'r> T,)>>, [Region(BrAnon(0))]), Binder(<[closure@./72793.rs:21:19: 21:25] as std::ops::Fn<(&S,)>>, []), Sorts(ExpectedFound { expected: &S, found: impl T }))` selecting `Binder(<[closure@./72793.rs:21:19: 21:25] as std::ops::Fn<(&S,)>>, [])` during codegen
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1146:9
+stack backtrace:
+   0:     0x7fbedb43c05c - std::backtrace_rs::backtrace::libunwind::trace::h2ab374bc2a3b7023
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/../../backtrace/src/backtrace/libunwind.rs:90:5
+   1:     0x7fbedb43c05c - std::backtrace_rs::backtrace::trace_unsynchronized::h128cb5178b04dc46
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fbedb43c05c - std::sys_common::backtrace::_print_fmt::h5344f9eefca2041f
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/sys_common/backtrace.rs:67:5
+   3:     0x7fbedb43c05c - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h213003bc5c7acf04
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/sys_common/backtrace.rs:46:22
+   4:     0x7fbedb49a02c - core::fmt::write::h78bf85fc3e93663f
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/core/src/fmt/mod.rs:1161:17
+   5:     0x7fbedb42d7b5 - std::io::Write::write_fmt::he619515c888f21a5
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/io/mod.rs:1668:15
+   6:     0x7fbedb43f380 - std::sys_common::backtrace::_print::hf706674f77848203
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/sys_common/backtrace.rs:49:5
+   7:     0x7fbedb43f380 - std::sys_common::backtrace::print::hf0b6c7a88804ec56
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/sys_common/backtrace.rs:36:9
+   8:     0x7fbedb43f380 - std::panicking::default_hook::{{closure}}::h2dde766cd83a333a
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/panicking.rs:210:50
+   9:     0x7fbedb43ef2b - std::panicking::default_hook::h501e3b2e134eb149
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/panicking.rs:227:9
+  10:     0x7fbedbc19121 - rustc_driver::DEFAULT_HOOK::{{closure}}::{{closure}}::h8ff5de92123cb8fd
+  11:     0x7fbedb43fb99 - std::panicking::rust_panic_with_hook::hc09e869c4cf00885
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/panicking.rs:628:17
+  12:     0x7fbedccf1d0b - std::panicking::begin_panic::{{closure}}::h5c7a29a9f3c50d8d
+  13:     0x7fbedccf1c46 - std::sys_common::backtrace::__rust_end_short_backtrace::h11b7892876009c1e
+  14:     0x7fbedccf1cdf - std::panicking::begin_panic::hd63e7fe0ba9182da
+  15:     0x7fbedcd025dd - std::panic::panic_any::h3c06e175d31a9167
+  16:     0x7fbedcd0467a - rustc_errors::HandlerInner::bug::he6d06053695a98ed
+  17:     0x7fbedcd04120 - rustc_errors::Handler::bug::h61abf9991ffffcbc
+  18:     0x7fbedcb7c416 - rustc_middle::ty::context::tls::with_opt::hd0b25ef1fa372784
+  19:     0x7fbedcb7c920 - rustc_middle::util::bug::opt_span_bug_fmt::he982db01d383152c
+  20:     0x7fbedcb7c896 - rustc_middle::util::bug::bug_fmt::h3252ae0338f3fde6
+  21:     0x7fbedd7e813c - rustc_infer::infer::InferCtxtBuilder::enter::hec2ad036de26d1b3
+  22:     0x7fbedd87a300 - rustc_trait_selection::traits::codegen::codegen_fulfill_obligation::hed4e9cb9d1de2510
+  23:     0x7fbedd4d4457 - rustc_query_system::query::plumbing::get_query::h30eb0324a9879b87
+  24:     0x7fbedd55fc4c - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::codegen_fulfill_obligation::h8abee1d4fec56f99
+  25:     0x7fbedd0d12f3 - rustc_ty_utils::instance::inner_resolve_instance::h7eac2e598ef3ba40
+  26:     0x7fbedd0d0080 - rustc_ty_utils::instance::resolve_instance::h87a188fe9327f0cd
+  27:     0x7fbedd4f5aba - rustc_query_system::query::plumbing::get_query::hd722c6562df9f8d3
+  28:     0x7fbedd564a9e - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::resolve_instance::h09952e8be47c097a
+  29:     0x7fbedd9d2983 - rustc_middle::ty::instance::Instance::resolve::hc277be0f855cd859
+  30:     0x7fbedceeaca6 - rustc_monomorphize::collector::collect_neighbours::h6e82023d33cda04c
+  31:     0x7fbedcee5c8e - rustc_monomorphize::collector::collect_items_rec::hbe8a265e99aa8ce1
+  32:     0x7fbedcee5df9 - rustc_monomorphize::collector::collect_items_rec::hbe8a265e99aa8ce1
+  33:     0x7fbeddc68375 - rustc_session::utils::<impl rustc_session::session::Session>::time::h9332f921d1e660c4
+  34:     0x7fbeddc6db8f - rustc_monomorphize::collector::collect_crate_mono_items::h1bd00d8a2e16193c
+  35:     0x7fbeddc6d025 - rustc_monomorphize::partitioning::collect_and_partition_mono_items::ha6015931ad704302
+  36:     0x7fbeddf53c60 - rustc_query_system::query::plumbing::try_execute_query::h5735bfbdb6792926
+  37:     0x7fbeddfbdcb4 - rustc_query_system::query::plumbing::get_query::h051480b1940d0148
+  38:     0x7fbede04fc2e - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::collect_and_partition_mono_items::h097303a84872e8bf
+  39:     0x7fbeddb3be38 - rustc_codegen_ssa::base::codegen_crate::h1fe4c5f4ca7611b8
+  40:     0x7fbeddb522aa - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::h31f11bd612d21420
+  41:     0x7fbeddb0b207 - rustc_session::utils::<impl rustc_session::session::Session>::time::hecabaee18c46b59e
+  42:     0x7fbeddae621b - rustc_interface::queries::Queries::ongoing_codegen::h0da52d2aa5626063
+  43:     0x7fbeddac4d8f - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::hded9061889acb733
+  44:     0x7fbeddab58e2 - rustc_span::with_source_map::hce3a664e96079636
+  45:     0x7fbeddac6044 - rustc_interface::interface::create_compiler_and_run::ha4222a436c1ad978
+  46:     0x7fbeddab68b2 - std::sys_common::backtrace::__rust_begin_short_backtrace::h4110caeb43804b52
+  47:     0x7fbeddad8222 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h78b1590830fa3a44
+  48:     0x7fbedb44cac3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h59eef3b9c8a82350
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/alloc/src/boxed.rs:1638:9
+  49:     0x7fbedb44cac3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hb5bbe017c347469c
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/alloc/src/boxed.rs:1638:9
+  50:     0x7fbedb44cac3 - std::sys::unix::thread::Thread::new::thread_start::h62931528f61e35f5
+                               at /rustc/2b6ed3b675475abc01ce7e68bb75b457f0c85684/library/std/src/sys/unix/thread.rs:106:17
+  51:     0x7fbedb35a259 - start_thread
+  52:     0x7fbedb26f5e3 - __GI___clone
+  53:                0x0 - <unknown>
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.57.0-nightly (2b6ed3b67 2021-09-27) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [codegen_fulfill_obligation] checking if `core::ops::function::Fn` fulfills its obligations
+#1 [resolve_instance] resolving instance `<[closure@./72793.rs:21:19: 21:25] as core::ops::function::Fn<(&S,)>>::call`
+#2 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+C-bug, F-type_alias_impl_trait, I-ICE, T-compiler, glacier

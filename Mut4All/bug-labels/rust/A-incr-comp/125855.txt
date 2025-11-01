@@ -1,0 +1,330 @@
+Issue Title:
+GitHub · Where software is built
+
+Rust Code:
+#![allow(warnings)]
+mod must;
+
+use std::{
+    collections::VecDeque,
+    error::Error,
+    fs,
+    io::{self, Write},
+    net::{IpAddr, SocketAddr, UdpSocket},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::{Receiver, Sender},
+        Arc, Barrier, Mutex,
+    },
+    thread,
+    time::Duration,
+};
+
+use actix_cors::Cors;
+use actix_web::{
+    http::header,
+    middleware::Logger,
+    web, App, HttpResponse, HttpServer,
+};
+use aes_gcm_siv::aead::{Aead, Nonce};
+use chrono::{Local, Utc};
+use crate::must::{
+    ciphers_lib::{
+        aes_cipher_trait::AesCipher,
+        aes_modes::{aes_cbc_cipher::AesCbc, aes_ctr_cipher::AesCtr},
+        key_generator::{KeyGenerator, KeySize},
+        rsa_crypto::{RsaCryptoKeys, RsaKeySize},
+    },
+    json_handler::JsonHandler,
+    log_assistant::LogAssistant,
+    log_handler::LOG_HANDLER,
+    mongo_db_handler::get_mongo_handler,
+    network,
+    network::{network_icd::NetworkICD, remote_networks::NetworkConfig},
+    processing_unit::{
+        actions_chain::{filter::Protocol::UDP, fragment::Fragment},
+        processor::ProcessorUnit,
+    },
+    protocols::{protocol::Protocol, tcp_protocol::TcpProtocol, udp_protocol::UdpProtocol},
+    receive_unit::receive::ReceiveUnit,
+    send_unit::send::SendUnit,
+    web_api::{
+        handlers,
+        handlers::config_handler::find_config_by_name,
+        models::{
+            config_record::ConfigRecord, rsa_record::PublicKeyData, user_record::UserRecord,
+        },
+    },
+};
+use mongodb::{bson::{doc, DateTime}, Client};
+use pcap::Device;
+use pem::parse;
+use rand::{rngs::OsRng, RngCore};
+use rsa::{
+    pkcs1::{DecodeRsaPublicKey, EncodeRsaPublicKey},
+    traits::PublicKeyParts,
+    RsaPublicKey,
+};
+use tokio;
+use crate::must::web_api::middlewares::{protected_route, Route};
+use std::net::Ipv4Addr;
+
+
+const LOCAL_MUST_IP: &str = "0.0.0.0";
+const LOCAL_MUST_PORT: u16 = 0;
+
+const AIR_MUST_IP: &str = "192.168.69.3";
+const AIR_MUST_PORT: u16 = 12345;
+
+fn must() {
+    let configuration_name = "Save18";
+    let config = find_config_by_name("configurations.json", configuration_name)
+        .unwrap()
+        .unwrap();
+
+    let networks = load_remote_network().unwrap();
+    let running = Arc::new(AtomicBool::new(true));
+
+    let mut secure_net = String::from(config.secure_net.clone());
+    let mut unsecure_net = String::from(config.unsecure_net.clone());
+    let secure_net_port: u16 = config.secure_net_port;
+    let unsecure_net_port: u16 = config.unsecure_net_port;
+    println!(
+        "Secure-{}:{}, Unsecure-{}:{}\n",
+        secure_net, secure_net_port, unsecure_net, unsecure_net_port
+    );
+
+    let (pre_process_sender, pre_process_receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+    let (post_process_sender, post_process_receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+    let (secure_sender, secure_receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+    let (unsecure_sender, unsecure_receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+
+    let pre_process_sender_clone = pre_process_sender.clone();
+    let udp_listener_thread = thread::spawn(move || udp_listener(pre_process_sender_clone));
+
+    let process_thread = thread::spawn(move || {
+        ProcessorUnit::process(
+            pre_process_receiver,
+            post_process_sender,
+            config.clone(),
+            &networks,
+        )
+    });
+
+    let send_unit = SendUnit::new_udp(LOCAL_MUST_IP.parse().unwrap(), LOCAL_MUST_PORT);
+    let send_unit_clone = send_unit.clone();
+    let secure_send = thread::spawn(move || {
+        send_unit_clone.send(
+            secure_receiver,
+            secure_net.parse().unwrap(),
+            secure_net_port,
+        )
+    });
+
+    let send_unit_clone = send_unit.clone();
+    let unsecure_send = thread::spawn(move || {
+        send_unit_clone.send(
+            unsecure_receiver,
+            unsecure_net.parse().unwrap(),
+            unsecure_net_port,
+        )
+    });
+
+    let send_unit_clone = send_unit.clone();
+    let must_send = thread::spawn(move || {
+        send_unit_clone.send(
+            post_process_receiver,
+            AIR_MUST_IP.parse().unwrap(),
+            AIR_MUST_PORT,
+        )
+    });
+
+    let run_clone = running.clone();
+    ctrlc::set_handler(move || {
+        run_clone.store(false, Ordering::SeqCst);
+    })
+    .expect("Error setting SIGINT handler");
+
+    let run_clone = running.clone();
+    signal_hook::flag::register(signal_hook::consts::SIGTERM, run_clone)
+        .expect("Error setting SIGTERM handler");
+
+    while running.load(Ordering::SeqCst) {
+        thread::sleep(Duration::from_secs(1));
+    }
+
+    running.store(false, Ordering::SeqCst);
+
+    secure_send.join().unwrap();
+    must_send.join().unwrap();
+    unsecure_send.join().unwrap();
+    process_thread.join().unwrap();
+}
+
+fn load_remote_network() -> Result<NetworkConfig, Box<dyn std::error::Error>> {
+    let remote_networks_json_file_path = "remote_networks.json";
+    let network_config: NetworkConfig = JsonHandler::load(remote_networks_json_file_path)?;
+    Ok(network_config)
+}
+
+fn show_devices() {
+    let mut device_no = 1;
+    match Device::list() {
+        Ok(devices) => {
+            for device in devices {
+                print!("Device No.{} - ", device_no);
+                println!("name: {:?}", device.name);
+                device_no += 1;
+            }
+        }
+        Err(e) => {
+            eprintln!("Error listing devices: {}", e);
+        }
+    }
+}
+
+fn device_picker() -> Device {
+    let devices = Device::list().unwrap();
+    let mut choice: usize = 0;
+    while choice < 1 || choice > devices.len() {
+        println!("Select a device");
+        show_devices();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).expect("Failed to read line");
+        choice = input.trim().parse::<usize>().unwrap();
+    }
+    devices.get(choice - 1).unwrap().clone()
+}
+
+fn udp_listener(tx: Sender<Vec<u8>>) {
+    let socket = UdpSocket::bind("192.168.69.4:48231").expect("Failed to bind socket");
+    thread::spawn(move || {
+        let mut buf = [0u8; 1024];
+        loop {
+            let (amt, src) = socket.recv_from(&mut buf).expect("Failed to receive data");
+            let ethernet_packet = construct_ethernet_packet(&buf[..amt], &src);
+            if let Err(e) = tx.send(ethernet_packet) {
+                eprintln!("Failed to send message: {}", e);
+            }
+        }
+    });
+}
+
+fn construct_ethernet_packet(data: &[u8], src_addr: &SocketAddr) -> Vec<u8> {
+    let mut packet = Vec::new();
+
+    // Ethernet Header
+    let dst_mac: [u8; 6] = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]; // Destination MAC (broadcast)
+    let src_mac: [u8; 6] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00]; // Source MAC (placeholder)
+    let ether_type: [u8; 2] = [0x08, 0x00]; // EtherType (IPv4)
+
+    packet.extend_from_slice(&dst_mac);
+    packet.extend_from_slice(&src_mac);
+    packet.extend_from_slice(&ether_type);
+
+    // Determine source and destination IPs
+    let source_ip = match src_addr.ip() {
+        std::net::IpAddr::V4(ip) => ip,
+        _ => panic!("IPv6 addresses are not supported in this example"),
+    };
+    let destination_ip = Ipv4Addr::new(192, 168, 69, 2); // Preset destination IP
+
+    // IP Header
+    packet.extend_from_slice(&[0x45, 0x00]); // Version and Header Length, TOS
+    let total_length = (20 + 8 + data.len() as u16).to_be_bytes();
+    packet.extend_from_slice(&total_length[0..2]); // Total Length
+    packet.extend_from_slice(&[0x00, 0x01]); // Identification
+    packet.extend_from_slice(&[0x00, 0x00]); // Flags and Fragment Offset
+    packet.extend_from_slice(&[0x40]); // TTL
+    packet.extend_from_slice(&[0x11]); // Protocol (UDP)
+    packet.extend_from_slice(&[0x00, 0x00]); // Header Checksum (placeholder)
+    packet.extend_from_slice(&source_ip.octets()); // Source IP
+    packet.extend_from_slice(&destination_ip.octets()); // Destination IP
+
+    // UDP Header
+    packet.extend_from_slice(&[0x19, 0x8D]); // Source Port
+    packet.extend_from_slice(&[0x1F, 0x91]); // Destination Port
+    let length = (8 + data.len() as u16).to_be_bytes();
+    packet.extend_from_slice(&length[0..2]); // Length
+    packet.extend_from_slice(&[0x00, 0x00]); // Checksum (placeholder)
+
+    // Data
+    packet.extend_from_slice(data);
+
+    packet
+}
+
+// #[actix_web::main]
+// async fn main() -> std::io::Result<()> {
+//     println!("Hello");
+//     std::env::set_var("RUST_LOG", "actix_web=debug");
+//     env_logger::init();
+//     thread::spawn(must);
+//     HttpServer::new(move || {
+//         let cors = Cors::default()
+//             .allowed_origin_fn(|origin, _req_head| {
+//                 true
+//             })
+//             .allowed_methods(vec!["GET", "POST", "DELETE", "OPTIONS"])
+//             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE])
+//             .max_age(3600);
+//         App::new()
+//             .wrap(Logger::default())
+//             .wrap(cors)
+//             .route("/config", web::get().to(|req| protected_route(req, Route::Config)))
+//             .route("/HR", web::get().to(|req| protected_route(req, Route::HR)))
+//             .route("/other", web::get().to(|req| protected_route(req, Route::Other)))
+//             .configure(handlers::config)
+//             .configure(handlers::dashboard)
+//             .configure(handlers::user_routes)
+//             .service(handlers::login)
+//             .service(handlers::rsa)
+//     })
+//         .bind("127.0.0.1:8080")?
+//         .run()
+//         .await
+// }
+
+fn main(){
+    println!("hello");
+}
+
+Bug Trace:
+UST_BACKTRACE=1 cargo build
+   Compiling must_in_rust v0.1.0 (/home/pi/Desktop/must_in_rust/g_must)
+thread 'rustc' panicked at compiler/rustc_middle/src/query/on_disk_cache.rs:519:5:
+assertion `left == right` failed
+  left: 82
+ right: 1002111927320821928687967599834759150
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library/std/src/panicking.rs:645:5
+   1: core::panicking::panic_fmt
+             at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library/core/src/panicking.rs:72:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/9b00956e56009bab2aa15d7bff10916599e3d6d6/library/core/src/panicking.rs:343:17
+   3: core::panicking::assert_failed::<u128, u128>
+   4: <rustc_middle::query::on_disk_cache::OnDiskCache>::new
+   5: rustc_incremental::persist::load::load_query_result_cache
+   6: rustc_interface::passes::create_global_ctxt
+   7: <rustc_interface::queries::Queries>::global_ctxt
+   8: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+   9: rustc_span::create_session_globals_then::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.78.0 (9b00956e5 2024-04-29) running on armv7-unknown-linux-gnueabihf
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+error: could not compile `must_in_rust` (bin "must_in_rust")
+
+Bug Labels:
+A-incr-comp, C-bug, I-ICE, T-compiler

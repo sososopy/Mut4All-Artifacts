@@ -1,0 +1,120 @@
+Issue Title:
+Panic in nightly rustc when compiling code that tries to borrow *v as mutable behind & reference · Issue #82032 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::collections::HashMap;
+use async_std::{fs, io, prelude::*};
+
+type Handle = io::BufWriter<fs::File>;
+struct Thing(HashMap<String, Handle>);
+
+impl Thing {
+    pub async fn die_horribly(&mut self) {
+        for v in self.0.values() {
+            v.flush().await;
+        }
+    }
+}
+
+fn main() {
+    println!("Hello, world!");
+}
+
+Bug Trace:
+% RUST_BACKTRACE=1 cargo build
+   Compiling rusterr v0.1.0 (/home/user/devel/rusterr)
+error: internal compiler error: compiler/rustc_middle/src/hir/map/mod.rs:306:18: impossible case reached
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/e9920ef7749d11fc71cc32ca4ba055bcfeaab945/library/std/src/panic.rs:59:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_middle::hir::map::Map::item
+   8: rustc_mir::borrow_check::diagnostics::mutability_errors::<impl rustc_mir::borrow_check::MirBorrowckCtxt>::report_mutability_error
+   9: rustc_mir::borrow_check::MirBorrowckCtxt::access_place
+  10: <rustc_mir::borrow_check::MirBorrowckCtxt as rustc_mir::dataflow::framework::visitor::ResultsVisitor>::visit_statement_before_primary_effect
+  11: <rustc_mir::dataflow::framework::direction::Forward as rustc_mir::dataflow::framework::direction::Direction>::visit_results_in_block
+  12: rustc_mir::dataflow::framework::visitor::visit_results
+  13: rustc_mir::borrow_check::do_mir_borrowck
+  14: rustc_infer::infer::InferCtxtBuilder::enter
+  15: rustc_mir::borrow_check::mir_borrowck
+  16: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck>::compute
+  17: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  18: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  19: rustc_data_structures::stack::ensure_sufficient_stack
+  20: rustc_query_system::query::plumbing::force_query_with_job
+  21: rustc_query_system::query::plumbing::get_query_impl
+  22: rustc_mir::borrow_check::type_check::TypeChecker::check_rvalue
+  23: rustc_mir::borrow_check::type_check::TypeChecker::typeck_mir
+  24: rustc_mir::borrow_check::type_check::type_check
+  25: rustc_mir::borrow_check::nll::compute_regions
+  26: rustc_mir::borrow_check::do_mir_borrowck
+  27: rustc_infer::infer::InferCtxtBuilder::enter
+  28: rustc_mir::borrow_check::mir_borrowck
+  29: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck>::compute
+  30: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::force_query_with_job
+  34: rustc_query_system::query::plumbing::get_query_impl
+  35: rustc_typeck::collect::type_of::type_of
+  36: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::type_of>::compute
+  37: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  38: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  39: rustc_data_structures::stack::ensure_sufficient_stack
+  40: rustc_query_system::query::plumbing::force_query_with_job
+  41: rustc_query_system::query::plumbing::get_query_impl
+  42: rustc_typeck::check::check::check_item_type
+  43: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  44: rustc_typeck::check::check::check_mod_item_types
+  45: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_mod_item_types>::compute
+  46: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  47: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  48: rustc_data_structures::stack::ensure_sufficient_stack
+  49: rustc_query_system::query::plumbing::force_query_with_job
+  50: rustc_query_system::query::plumbing::get_query_impl
+  51: rustc_query_system::query::plumbing::ensure_query_impl
+  52: rustc_session::utils::<impl rustc_session::session::Session>::time
+  53: rustc_typeck::check_crate
+  54: rustc_interface::passes::analysis
+  55: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  56: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  57: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  58: rustc_data_structures::stack::ensure_sufficient_stack
+  59: rustc_query_system::query::plumbing::force_query_with_job
+  60: rustc_query_system::query::plumbing::get_query_impl
+  61: rustc_interface::passes::QueryContext::enter
+  62: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  63: rustc_span::with_source_map
+  64: rustc_interface::interface::create_compiler_and_run
+  65: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-nightly (e9920ef77 2021-02-11) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `Thing::die_horribly::{closure#0}`
+#1 [mir_borrowck] borrow-checking `Thing::die_horribly`
+#2 [type_of] computing type of `Thing::die_horribly::{opaque#0}`
+#3 [check_mod_item_types] checking item types in top-level module
+#4 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `rusterr`
+
+Bug Labels:
+A-borrow-checker, A-diagnostics, C-bug, I-ICE, T-compiler, regression-from-stable-to-nightly

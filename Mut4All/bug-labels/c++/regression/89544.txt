@@ -1,0 +1,73 @@
+Issue Title:
+Clang segfaults when using certain type traits on a class with malformed destructor
+
+Source Code & Bug Trace:
+#include <type_traits>
+
+class Foo {
+    ~Foo() = {}
+};
+
+// All of these crash clang
+std::is_trivially_constructible<Foo>::value;
+std::is_trivially_default_constructible<Foo>::value;
+std::is_trivially_copy_constructible<Foo>::value;
+std::is_trivially_move_constructible<Foo>::value;
+
+clang++ bug.cpp
+bug.cpp:4:5: error: initializer on function does not look like a pure-specifier
+    4 |     ~Foo() = {}
+      |     ^        ~~
+bug.cpp:4:16: error: expected ';' at end of declaration list
+    4 |     ~Foo() = {}
+      |                ^
+      |                ;
+1.      bug.cpp:8:1: at annotation token
+2.      /usr/bin/../lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/type_traits:1217:12: instantiating class definition 'std::is_trivially_constructible<Foo>'
+ #0 0x00007f8beef9f876 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1+0xd9f876)
+ #1 0x00007f8beef9d8a0 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1+0xd9d8a0)
+ #2 0x00007f8beef9ff3b (/usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1+0xd9ff3b)
+ #3 0x00007f8bee05b050 (/lib/x86_64-linux-gnu/libc.so.6+0x3c050)
+ #4 0x00007f8bf687a7bd (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xe7a7bd)
+ #5 0x00007f8bf687a609 clang::Expr::hasNonTrivialCall(clang::ASTContext const&) const (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xe7a609)
+ #6 0x00007f8bf71c4bbb clang::Sema::BuildTypeTrait(clang::TypeTrait, clang::SourceLocation, llvm::ArrayRef<clang::TypeSourceInfo*>, clang::SourceLocation) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x17c4bbb)
+ #7 0x00007f8bf751438a (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b1438a)
+ #8 0x00007f8bf751fd7c (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b1fd7c)
+ #9 0x00007f8bf75277e5 (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b277e5)
+#10 0x00007f8bf752d9f7 (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b2d9f7)
+#11 0x00007f8bf752b954 (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b2b954)
+#12 0x00007f8bf75095a0 (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b095a0)
+#13 0x00007f8bf750c227 clang::Sema::SubstBaseSpecifiers(clang::CXXRecordDecl*, clang::CXXRecordDecl*, clang::MultiLevelTemplateArgumentList const&) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b0c227)
+#14 0x00007f8bf750ca44 clang::Sema::InstantiateClass(clang::SourceLocation, clang::CXXRecordDecl*, clang::CXXRecordDecl*, clang::MultiLevelTemplateArgumentList const&, clang::TemplateSpecializationKind, bool) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b0ca44)
+#15 0x00007f8bf750e9a0 clang::Sema::InstantiateClassTemplateSpecialization(clang::SourceLocation, clang::ClassTemplateSpecializationDecl*, clang::TemplateSpecializationKind, bool) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1b0e9a0)
+#16 0x00007f8bf75bd05e (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1bbd05e)
+#17 0x00007f8bf6db47dd clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x13b47dd)
+#18 0x00007f8bf75ae5e1 clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1bae5e1)
+#19 0x00007f8bf75add9f clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser&) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x1badd9f)
+#20 0x00007f8bf6e2b9c8 clang::Sema::RequireCompleteDeclContext(clang::CXXScopeSpec&, clang::DeclContext*) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x142b9c8)
+#21 0x00007f8bf6f272e4 clang::Sema::getTypeName(clang::IdentifierInfo const&, clang::SourceLocation, clang::Scope*, clang::CXXScopeSpec*, bool, bool, clang::OpaquePtr<clang::QualType>, bool, bool, bool, clang::ImplicitTypenameContext, clang::IdentifierInfo**) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x15272e4)
+#22 0x00007f8bf659cf89 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xb9cf89)
+#23 0x00007f8bf664d570 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xc4d570)
+#24 0x00007f8bf664d2b3 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xc4d2b3)
+#25 0x00007f8bf664c516 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xc4c516)
+#26 0x00007f8bf664a94a clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xc4a94a)
+#27 0x00007f8bf65835fe clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0xb835fe)
+#28 0x00007f8bf83b4025 clang::FrontendAction::Execute() (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x29b4025)
+#29 0x00007f8bf832ad74 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x292ad74)
+#30 0x00007f8bf842f1ce clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/llvm-18/bin/../lib/libclang-cpp.so.18.1+0x2a2f1ce)
+#31 0x000055b69d298dfa cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/lib/llvm-18/bin/clang+0x12dfa)
+#32 0x000055b69d296185 (/usr/lib/llvm-18/bin/clang+0x10185)
+#33 0x000055b69d295344 clang_main(int, char**, llvm::ToolContext const&) (/usr/lib/llvm-18/bin/clang+0xf344)
+#34 0x000055b69d2a2f16 main (/usr/lib/llvm-18/bin/clang+0x1cf16)
+#35 0x00007f8bee04624a (/lib/x86_64-linux-gnu/libc.so.6+0x2724a)
+#36 0x00007f8bee046305 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x27305)
+#37 0x000055b69d292bb1 _start (/usr/lib/llvm-18/bin/clang+0xcbb1)
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+Debian clang version 18.1.4 (++20240417123804+e6c3289804a6-1~exp1~20240417003947.102)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+
+Bug Labels:
+c++11, clang:frontend, confirmed, crash-on-invalid, regression

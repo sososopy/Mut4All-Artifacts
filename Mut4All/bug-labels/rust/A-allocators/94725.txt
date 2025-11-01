@@ -1,0 +1,213 @@
+Issue Title:
+debug assertion failure: debuginfo + feature(allocator_api):  · Issue #94725 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(allocator_api)]
+use core::alloc::{AllocError, Allocator, Layout};
+use core::ptr::NonNull;
+
+struct ZST;
+unsafe impl Allocator for &ZST {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        todo!()
+    }
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        todo!()
+    }
+}
+fn main() {
+    let _ = Box::<i32, &ZST>::new_in(43, &ZST);
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'assertion failed: `(left == right)`
+  left: `(Size { raw: 8 }, Align { pow2: 3 })`,
+ right: `(Size { raw: 16 }, Align { pow2: 3 })`: ptr_type=Box<MaybeUninit<&[i32; 2]>, &std::alloc::Global>, pointee_type=MaybeUninit<&[i32; 2]>', compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs:382:13
+stack backtrace:
+   0:     0x7f35b9f260df - std::backtrace_rs::backtrace::libunwind::trace::h196a61ebae6a9af1
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7f35b9f260df - std::backtrace_rs::backtrace::trace_unsynchronized::h643ca0e917e45c3a
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f35b9f260df - std::sys_common::backtrace::_print_fmt::h808ddd5655edd1c5
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:66:5
+   3:     0x7f35b9f260df - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h994406c0a8c65886
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:45:22
+   4:     0x7f35b9fd1f6e - core::fmt::write::h4bccaa7ccb78deb2
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/mod.rs:1190:17
+   5:     0x7f35b9f07aff - std::io::Write::write_fmt::hf4574f9913edbbbc
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/io/mod.rs:1655:15
+   6:     0x7f35b9f25f0b - std::sys_common::backtrace::_print::h9f1c53caf2582253
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:48:5
+   7:     0x7f35b9f25f0b - std::sys_common::backtrace::print::he746a848f2bfdf39
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:35:9
+   8:     0x7f35b9f0dfc4 - std::panicking::default_hook::{{closure}}::hf3b511570d2897eb
+   9:     0x7f35b9f0db92 - std::panicking::default_hook::h24c41b52e4da72f9
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:314:9
+  10:     0x7f35bacd74ba - <alloc[9be322b14e75533]::boxed::Box<dyn for<'a, 'b> core[c64186cd12dfb367]::ops::function::Fn<(&'a core[c64186cd12dfb367]::panic::panic_info::PanicInfo<'b>,), Output = ()> + core[c64186cd12dfb367]::marker::Sync + core[c64186cd12dfb367]::marker::Send> as core[c64186cd12dfb367]::ops::function::Fn<(&core[c64186cd12dfb367]::panic::panic_info::PanicInfo,)>>::call
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1868:9
+  11:     0x7f35bacd74ba - rustc_driver[bd0fb1aaed430383]::DEFAULT_HOOK::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:1153:13
+  12:     0x7f35b9f0e561 - std::panicking::rust_panic_with_hook::h567dec3eaaba8d1c
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:702:17
+  13:     0x7f35b9f270a7 - std::panicking::begin_panic_handler::{{closure}}::h32f8549c113a0f12
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:588:13
+  14:     0x7f35b9f26204 - std::sys_common::backtrace::__rust_end_short_backtrace::h4767bddd13779f99
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:138:18
+  15:     0x7f35b9f0e142 - rust_begin_unwind
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:584:5
+  16:     0x7f35b9ef3ec3 - core::panicking::panic_fmt::h9dd44fd5a2de9f6c
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:143:14
+  17:     0x7f35b9fc6978 - core::panicking::assert_failed_inner::h1ccb83d4f14b97f0
+  18:     0x7f35ba8c3ccb - core[c64186cd12dfb367]::panicking::assert_failed::<(rustc_target[be7b8d03d6b8079b]::abi::Size, rustc_target[be7b8d03d6b8079b]::abi::Align), (rustc_target[be7b8d03d6b8079b]::abi::Size, rustc_target[be7b8d03d6b8079b]::abi::Align)>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:182:5
+  19:     0x7f35bb0ba162 - rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::pointer_or_reference_metadata
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs:382:13
+  20:     0x7f35bb0baa58 - rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::type_metadata
+  21:     0x7f35bb0ebc29 - <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs:1189:36
+  22:     0x7f35bb0ebc29 - core[c64186cd12dfb367]::iter::adapters::map::map_fold::<(usize, &rustc_middle[ce782c62b27c5135]::ty::FieldDef), rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, (), <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}, core[c64186cd12dfb367]::iter::traits::iterator::Iterator::for_each::call<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_extend::SpecExtend<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::spec_extend::{closure#0}>::{closure#0}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/iter/adapters/map.rs:84:28
+  23:     0x7f35bb0ebc29 - <core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<_> as core[c64186cd12dfb367]::iter::traits::iterator::Iterator>::fold::enumerate::<&rustc_middle[ce782c62b27c5135]::ty::FieldDef, (), core[c64186cd12dfb367]::iter::adapters::map::map_fold<(usize, &rustc_middle[ce782c62b27c5135]::ty::FieldDef), rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, (), <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}, core[c64186cd12dfb367]::iter::traits::iterator::Iterator::for_each::call<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_extend::SpecExtend<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::spec_extend::{closure#0}>::{closure#0}>::{closure#0}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/iter/adapters/enumerate.rs:106:27
+  24:     0x7f35bb0ebc29 - <core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef> as core[c64186cd12dfb367]::iter::traits::iterator::Iterator>::fold::<(), <core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<_> as core[c64186cd12dfb367]::iter::traits::iterator::Iterator>::fold::enumerate<&rustc_middle[ce782c62b27c5135]::ty::FieldDef, (), core[c64186cd12dfb367]::iter::adapters::map::map_fold<(usize, &rustc_middle[ce782c62b27c5135]::ty::FieldDef), rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, (), <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}, core[c64186cd12dfb367]::iter::traits::iterator::Iterator::for_each::call<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_extend::SpecExtend<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::spec_extend::{closure#0}>::{closure#0}>::{closure#0}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/iter/traits/iterator.rs:2285:21
+  25:     0x7f35bb0ebc29 - <core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>> as core[c64186cd12dfb367]::iter::traits::iterator::Iterator>::fold::<(), core[c64186cd12dfb367]::iter::adapters::map::map_fold<(usize, &rustc_middle[ce782c62b27c5135]::ty::FieldDef), rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, (), <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}, core[c64186cd12dfb367]::iter::traits::iterator::Iterator::for_each::call<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_extend::SpecExtend<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::spec_extend::{closure#0}>::{closure#0}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/iter/adapters/enumerate.rs:112:9
+  26:     0x7f35bb0ebc29 - <core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}> as core[c64186cd12dfb367]::iter::traits::iterator::Iterator>::fold::<(), core[c64186cd12dfb367]::iter::traits::iterator::Iterator::for_each::call<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_extend::SpecExtend<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::spec_extend::{closure#0}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/iter/adapters/map.rs:124:9
+  27:     0x7f35bb00375e - <core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}> as core[c64186cd12dfb367]::iter::traits::iterator::Iterator>::for_each::<<alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_extend::SpecExtend<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::spec_extend::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/iter/traits/iterator.rs:773:9
+  28:     0x7f35bb00375e - <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_extend::SpecExtend<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::spec_extend
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/vec/spec_extend.rs:40:17
+  29:     0x7f35bb00375e - <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_from_iter_nested::SpecFromIterNested<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::from_iter
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/vec/spec_from_iter_nested.rs:62:9
+  30:     0x7f35bb00375e - <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as alloc[9be322b14e75533]::vec::spec_from_iter::SpecFromIter<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription, core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>>::from_iter
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/vec/spec_from_iter.rs:33:9
+  31:     0x7f35bb0b9616 - <alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription> as core[c64186cd12dfb367]::iter::traits::collect::FromIterator<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription>>::from_iter::<core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/vec/mod.rs:2552:9
+  32:     0x7f35bb0b9616 - <core[c64186cd12dfb367]::iter::adapters::map::Map<core[c64186cd12dfb367]::iter::adapters::enumerate::Enumerate<core[c64186cd12dfb367]::slice::iter::Iter<rustc_middle[ce782c62b27c5135]::ty::FieldDef>>, <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions::{closure#0}> as core[c64186cd12dfb367]::iter::traits::iterator::Iterator>::collect::<alloc[9be322b14e75533]::vec::Vec<rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescription>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/iter/traits/iterator.rs:1778:9
+  33:     0x7f35bb0b9616 - <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::StructMemberDescriptionFactory>::create_member_descriptions
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs:1176:9
+  34:     0x7f35bb0b9616 - <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::MemberDescriptionFactory>::create_member_descriptions
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs:1151:36
+  35:     0x7f35bb0b9616 - <rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::RecursiveTypeDescription>::finalize
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs:292:43
+  36:     0x7f35bb0bb0e7 - rustc_codegen_llvm[57a593143144e8fc]::debuginfo::metadata::type_metadata
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs:639:32
+  37:     0x7f35baf78c6c - <rustc_codegen_llvm[57a593143144e8fc]::context::CodegenCx as rustc_codegen_ssa[e44bb99a935d3984]::traits::debuginfo::DebugInfoMethods>::dbg_scope_fn::get_containing_scope::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/mod.rs:525:38
+  38:     0x7f35baf78c6c - <core[c64186cd12dfb367]::option::Option<rustc_span[6ed525375b4453c2]::def_id::DefId>>::and_then::<&rustc_codegen_llvm[57a593143144e8fc]::llvm_::ffi::Metadata, <rustc_codegen_llvm[57a593143144e8fc]::context::CodegenCx as rustc_codegen_ssa[e44bb99a935d3984]::traits::debuginfo::DebugInfoMethods>::dbg_scope_fn::get_containing_scope::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/option.rs:1239:24
+  39:     0x7f35baf78c6c - <rustc_codegen_llvm[57a593143144e8fc]::context::CodegenCx as rustc_codegen_ssa[e44bb99a935d3984]::traits::debuginfo::DebugInfoMethods>::dbg_scope_fn::get_containing_scope
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/mod.rs:508:29
+  40:     0x7f35bb0c5ca4 - <rustc_codegen_llvm[57a593143144e8fc]::context::CodegenCx as rustc_codegen_ssa[e44bb99a935d3984]::traits::debuginfo::DebugInfoMethods>::dbg_scope_fn
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/mod.rs:328:32
+  41:     0x7f35baff09d9 - <rustc_codegen_llvm[57a593143144e8fc]::context::CodegenCx as rustc_codegen_ssa[e44bb99a935d3984]::traits::debuginfo::DebugInfoMethods>::create_function_debug_context
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/debuginfo/mod.rs:312:13
+  42:     0x7f35baff09d9 - rustc_codegen_ssa[e44bb99a935d3984]::mir::codegen_mir::<rustc_codegen_llvm[57a593143144e8fc]::builder::Builder>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_ssa/src/mir/mod.rs:150:25
+  43:     0x7f35bb0a8f9a - rustc_codegen_ssa[e44bb99a935d3984]::base::codegen_instance::<rustc_codegen_llvm[57a593143144e8fc]::builder::Builder>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_ssa/src/base.rs:361:5
+  44:     0x7f35bafe0c76 - <rustc_middle[ce782c62b27c5135]::mir::mono::MonoItem as rustc_codegen_ssa[e44bb99a935d3984]::mono_item::MonoItemExt>::define::<rustc_codegen_llvm[57a593143144e8fc]::builder::Builder>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_ssa/src/mono_item.rs:69:17
+  45:     0x7f35bb03c715 - rustc_codegen_llvm[57a593143144e8fc]::base::compile_codegen_unit::module_codegen
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/base.rs:92:17
+  46:     0x7f35bb03a834 - <rustc_query_system[8b88ab29944af723]::dep_graph::graph::DepGraph<rustc_middle[ce782c62b27c5135]::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle[ce782c62b27c5135]::ty::context::TyCtxt, rustc_span[6ed525375b4453c2]::symbol::Symbol, rustc_codegen_ssa[e44bb99a935d3984]::ModuleCodegen<rustc_codegen_llvm[57a593143144e8fc]::ModuleLlvm>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/dep_graph/graph.rs:280:14
+  47:     0x7f35bb03a834 - rustc_codegen_llvm[57a593143144e8fc]::base::compile_codegen_unit
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/base.rs:62:23
+  48:     0x7f35bb0abf68 - <rustc_codegen_llvm[57a593143144e8fc]::LlvmCodegenBackend as rustc_codegen_ssa[e44bb99a935d3984]::traits::backend::ExtraBackendMethods>::compile_codegen_unit
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/lib.rs:125:9
+  49:     0x7f35bb0abf68 - rustc_codegen_ssa[e44bb99a935d3984]::base::codegen_crate::<rustc_codegen_llvm[57a593143144e8fc]::LlvmCodegenBackend>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_ssa/src/base.rs:684:38
+  50:     0x7f35bb0e6468 - <rustc_codegen_llvm[57a593143144e8fc]::LlvmCodegenBackend as rustc_codegen_ssa[e44bb99a935d3984]::traits::backend::CodegenBackend>::codegen_crate
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_codegen_llvm/src/lib.rs:341:18
+  51:     0x7f35bae5ccec - rustc_interface[279705ddd8fffbfb]::passes::start_codegen::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:1104:9
+  52:     0x7f35bae5ccec - <rustc_data_structures[2f8acefa4c8c93b9]::profiling::VerboseTimingGuard>::run::<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_interface[279705ddd8fffbfb]::passes::start_codegen::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/profiling.rs:644:9
+  53:     0x7f35bae5ccec - <rustc_session[323b364fabbfec7a]::session::Session>::time::<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_interface[279705ddd8fffbfb]::passes::start_codegen::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_session/src/utils.rs:16:9
+  54:     0x7f35baf0b094 - rustc_interface[279705ddd8fffbfb]::passes::start_codegen
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:1103:19
+  55:     0x7f35baf0b094 - <rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:253:20
+  56:     0x7f35baf09230 - <rustc_interface[279705ddd8fffbfb]::passes::QueryContext>::enter::<<rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:830:42
+  57:     0x7f35baf09230 - rustc_middle[ce782c62b27c5135]::ty::context::tls::enter_context::<<rustc_interface[279705ddd8fffbfb]::passes::QueryContext>::enter<<rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context.rs:1830:50
+  58:     0x7f35baf09230 - rustc_middle[ce782c62b27c5135]::ty::context::tls::set_tlv::<rustc_middle[ce782c62b27c5135]::ty::context::tls::enter_context<<rustc_interface[279705ddd8fffbfb]::passes::QueryContext>::enter<<rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context.rs:1814:9
+  59:     0x7f35baf09230 - rustc_middle[ce782c62b27c5135]::ty::context::tls::enter_context::<<rustc_interface[279705ddd8fffbfb]::passes::QueryContext>::enter<<rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context.rs:1830:9
+  60:     0x7f35baf09230 - <rustc_interface[279705ddd8fffbfb]::passes::QueryContext>::enter::<<rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core[c64186cd12dfb367]::result::Result<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:830:9
+  61:     0x7f35baf09230 - <rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:244:13
+  62:     0x7f35baf09230 - <rustc_interface[279705ddd8fffbfb]::queries::Query<alloc[9be322b14e75533]::boxed::Box<dyn core[c64186cd12dfb367]::any::Any>>>::compute::<<rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:37:28
+  63:     0x7f35baf09230 - <rustc_interface[279705ddd8fffbfb]::queries::Queries>::ongoing_codegen
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:242:9
+  64:     0x7f35bad4632c - rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}::{closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:406:13
+  65:     0x7f35bad4632c - <rustc_interface[279705ddd8fffbfb]::interface::Compiler>::enter::<rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}::{closure#2}, core[c64186cd12dfb367]::result::Result<core[c64186cd12dfb367]::option::Option<rustc_interface[279705ddd8fffbfb]::queries::Linker>, rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:387:19
+  66:     0x7f35bad4632c - rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver/src/lib.rs:311:22
+  67:     0x7f35bad4632c - rustc_interface[279705ddd8fffbfb]::interface::create_compiler_and_run::<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:323:13
+  68:     0x7f35bad4632c - rustc_span[6ed525375b4453c2]::with_source_map::<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_interface[279705ddd8fffbfb]::interface::create_compiler_and_run<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:1013:5
+  69:     0x7f35bad4632c - rustc_interface[279705ddd8fffbfb]::interface::create_compiler_and_run::<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:317:5
+  70:     0x7f35bad4632c - rustc_interface[279705ddd8fffbfb]::interface::run_compiler::<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:337:12
+  71:     0x7f35bad4632c - <scoped_tls[ea9519d490f5978e]::ScopedKey<rustc_span[6ed525375b4453c2]::SessionGlobals>>::set::<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+  72:     0x7f35bad4632c - rustc_span[6ed525375b4453c2]::create_session_globals_then::<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:113:5
+  73:     0x7f35bad4632c - rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals::<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/util.rs:143:32
+  74:     0x7f35bad4632c - std[46faecd226bf750a]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:122:18
+  75:     0x7f35bad280f3 - <std[46faecd226bf750a]::thread::Builder>::spawn_unchecked_::<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#1}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:498:17
+  76:     0x7f35bad280f3 - <core[c64186cd12dfb367]::panic::unwind_safe::AssertUnwindSafe<<std[46faecd226bf750a]::thread::Builder>::spawn_unchecked_<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#1}::{closure#0}> as core[c64186cd12dfb367]::ops::function::FnOnce<()>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panic/unwind_safe.rs:271:9
+  77:     0x7f35bad280f3 - std[46faecd226bf750a]::panicking::try::do_call::<core[c64186cd12dfb367]::panic::unwind_safe::AssertUnwindSafe<<std[46faecd226bf750a]::thread::Builder>::spawn_unchecked_<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#1}::{closure#0}>, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:492:40
+  78:     0x7f35bad280f3 - std[46faecd226bf750a]::panicking::try::<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, core[c64186cd12dfb367]::panic::unwind_safe::AssertUnwindSafe<<std[46faecd226bf750a]::thread::Builder>::spawn_unchecked_<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#1}::{closure#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:456:19
+  79:     0x7f35bad280f3 - std[46faecd226bf750a]::panic::catch_unwind::<core[c64186cd12dfb367]::panic::unwind_safe::AssertUnwindSafe<<std[46faecd226bf750a]::thread::Builder>::spawn_unchecked_<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#1}::{closure#0}>, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panic.rs:137:14
+  80:     0x7f35bad280f3 - <std[46faecd226bf750a]::thread::Builder>::spawn_unchecked_::<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:497:30
+  81:     0x7f35bad280f3 - <<std[46faecd226bf750a]::thread::Builder>::spawn_unchecked_<rustc_interface[279705ddd8fffbfb]::util::run_in_thread_pool_with_globals<rustc_interface[279705ddd8fffbfb]::interface::run_compiler<core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>, rustc_driver[bd0fb1aaed430383]::run_compiler::{closure#1}>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#0}, core[c64186cd12dfb367]::result::Result<(), rustc_errors[8d0ee3d25ecd78b3]::ErrorGuaranteed>>::{closure#1} as core[c64186cd12dfb367]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:227:5
+  82:     0x7f35b9f135a3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h3104fb2027162cb5
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1854:9
+  83:     0x7f35b9f135a3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h4674d23a914863cf
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1854:9
+  84:     0x7f35b9f135a3 - std::sys::unix::thread::Thread::new::thread_start::h996b910679684f4b
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys/unix/thread.rs:108:17
+  85:     0x7f35b9cd75c2 - start_thread
+  86:     0x7f35b9d5c584 - __clone
+  87:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.61.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2
+
+query stack during panic:
+end of query stack
+warning: 1 warning emitted
+
+Bug Labels:
+A-allocators, A-debuginfo, C-bug, I-ICE, T-compiler

@@ -1,0 +1,137 @@
+Issue Title:
+Pack index as a return type crashes Clang
+
+Source Code & Bug Trace:
+using size_t = __SIZE_TYPE__;
+
+template<class... Ts> struct tuple {};
+
+template<size_t I, class... Ts>
+Ts...[I]& get(tuple<Ts...>& t) {
+  return t.__x0;
+}
+
+void f()
+{
+  tuple<int> x;
+  get<0>(x);
+}
+
+$ clang++ -std=gnu++26 -c file.cpp
+clang++: /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/TypeLocBuilder.cpp:89: TypeLoc clang::TypeLocBuilder::pushImpl(QualType, size_t, unsigned int): Assertion `TLast == LastTy && "mismatch between last type and new type's inner type"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/home/cjdb/opt/bin/clang++ -std=gnu++26 -c file.cpp -w
+1.      file.cpp:42:11: current parser token ')'
+2.      file.cpp:40:1: parsing function body 'f'
+3.      file.cpp:40:1: in compound statement ('{}')
+ #0 0x0000562616f707a8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/home/cjdb/projects/llvm-project/llvm/lib/Support/Unix/Signals.inc:723:13
+ #1 0x0000562616f6e2e0 llvm::sys::RunSignalHandlers() /usr/home/cjdb/projects/llvm-project/llvm/lib/Support/Signals.cpp:106:18
+ #2 0x0000562616ed6ee6 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) /usr/home/cjdb/projects/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:73:5
+ #3 0x0000562616ed6ee6 CrashRecoverySignalHandler(int) (.llvm.11004019502416805476) /usr/home/cjdb/projects/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:390:51
+ #4 0x00007fd79b029510 (/lib/x86_64-linux-gnu/libc.so.6+0x3c510)
+ #5 0x00007fd79b0770fc __pthread_kill_implementation ./nptl/pthread_kill.c:44:76
+ #6 0x00007fd79b029472 raise ./signal/../sysdeps/posix/raise.c:27:6
+ #7 0x00007fd79b0134b2 abort ./stdlib/abort.c:81:7
+ #8 0x00007fd79b0133d5 _nl_load_domain ./intl/loadmsgcat.c:1177:9
+ #9 0x00007fd79b0223a2 (/lib/x86_64-linux-gnu/libc.so.6+0x353a2)
+#10 0x000056261a768748 clang::TypeLocBuilder::pushImpl(clang::QualType, unsigned long, unsigned int) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/TypeLocBuilder.cpp:93:3
+#11 0x0000562619cb234c clang::QualType::hasLocalQualifiers() const /usr/home/cjdb/projects/llvm-project/clang/include/clang/AST/Type.h:865:37
+#12 0x0000562619cb234c clang::ConcreteTypeLoc<clang::UnqualTypeLoc, clang::PackIndexingTypeLoc, clang::PackIndexingType, clang::PackIndexingTypeLocInfo>::isKind(clang::TypeLoc const&) /usr/home/cjdb/projects/llvm-project/clang/include/clang/AST/TypeLoc.h:381:26
+#13 0x0000562619cb234c clang::PackIndexingTypeLoc clang::TypeLoc::castAs<clang::PackIndexingTypeLoc>() const /usr/home/cjdb/projects/llvm-project/clang/include/clang/AST/TypeLoc.h:79:5
+#14 0x0000562619cb234c clang::PackIndexingTypeLoc clang::TypeLocBuilder::push<clang::PackIndexingTypeLoc>(clang::QualType) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/TypeLocBuilder.h:106:47
+#15 0x000056261a699cc8 clang::PackIndexingTypeLoc::getEllipsisLoc() const /usr/home/cjdb/projects/llvm-project/clang/include/clang/AST/TypeLoc.h:2080:50
+#16 0x000056261a699cc8 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformPackIndexingType(clang::TypeLocBuilder&, clang::PackIndexingTypeLoc) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/TreeTransform.h:6567:31
+#17 0x000056261a666063 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) /usr/home/cjdb/projects/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:0:1
+#18 0x000056261a69cd96 llvm::PointerUnion<clang::Type const*, clang::ExtQuals const*>::isNull() const /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/PointerUnion.h:142:33
+#19 0x000056261a69cd96 clang::QualType::isNull() const /usr/home/cjdb/projects/llvm-project/clang/include/clang/AST/Type.h:805:31
+#20 0x000056261a69cd96 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReferenceType(clang::TypeLocBuilder&, clang::ReferenceTypeLoc) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/TreeTransform.h:5301:19
+#21 0x000056261a665d58 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) /usr/home/cjdb/projects/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:0:0
+#22 0x000056261a665571 llvm::PointerUnion<clang::Type const*, clang::ExtQuals const*>::isNull() const /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/PointerUnion.h:142:33
+#23 0x000056261a665571 clang::QualType::isNull() const /usr/home/cjdb/projects/llvm-project/clang/include/clang/AST/Type.h:805:31
+#24 0x000056261a665571 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) (.llvm.986267977208663368) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/TreeTransform.h:4925:14
+#25 0x000056261a6662bf clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::QualType) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/TreeTransform.h:4905:8
+#26 0x000056261a6662bf clang::Sema::SubstType(clang::QualType, clang::MultiLevelTemplateArgumentList const&, clang::SourceLocation, clang::DeclarationName) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:2692:23
+#27 0x000056261a5de685 llvm::PointerUnion<clang::Type const*, clang::ExtQuals const*>::isNull() const /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/PointerUnion.h:142:33
+#28 0x000056261a5de685 clang::QualType::isNull() const /usr/home/cjdb/projects/llvm-project/clang/include/clang/AST/Type.h:805:31
+#29 0x000056261a5de685 clang::Sema::SubstituteExplicitTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, llvm::SmallVectorImpl<clang::QualType>&, clang::QualType*, clang::sema::TemplateDeductionInfo&) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaTemplateDeduction.cpp:3417:20
+#30 0x000056261a5e19f9 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>)::$_0::operator()() const /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaTemplateDeduction.cpp:4308:7
+#31 0x000056261a5e19f9 void llvm::function_ref<void ()>::callback_fn<clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>)::$_0>(long) /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:12
+#32 0x000056261a5e19f9 llvm::function_ref<void ()>::operator()() const /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:68:12
+#33 0x000056261a5e19f9 clang::runWithSufficientStackSpace(llvm::function_ref<void ()>, llvm::function_ref<void ()>) /usr/home/cjdb/projects/llvm-project/clang/include/clang/Basic/Stack.h:46:7
+#34 0x000056261a5e19f9 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/Sema.cpp:513:3
+#35 0x000056261a5e19f9 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaTemplateDeduction.cpp:4307:5
+#36 0x000056261a445389 clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind, clang::OverloadCandidateParamOrder, bool) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaOverload.cpp:7645:14
+#37 0x000056261a45809a AddOverloadedCallCandidate(clang::Sema&, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool) (.llvm.4359372620168499973) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaOverload.cpp:13469:7
+#38 0x000056261a457f22 clang::Sema::AddOverloadedCallCandidates(clang::UnresolvedLookupExpr*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaOverload.cpp:0:5
+#39 0x000056261a45840e clang::Sema::getLangOpts() const /usr/home/cjdb/projects/llvm-project/clang/include/clang/Sema/Sema.h:1790:51
+#40 0x000056261a45840e clang::Sema::buildOverloadedCallSet(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::OverloadCandidateSet*, clang::ActionResult<clang::Expr*, true>*) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaOverload.cpp:13838:7
+#41 0x000056261a45893f clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaOverload.cpp:14035:7
+#42 0x000056261a05df79 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaExpr.cpp:7275:16
+#43 0x000056261a07e8fc clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) /usr/home/cjdb/projects/llvm-project/clang/lib/Sema/SemaExpr.cpp:7166:7
+#44 0x0000562619af7f2f clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseExpr.cpp:2181:23
+#45 0x0000562619af9057 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseExpr.cpp:1890:7
+#46 0x0000562619af4628 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseExpr.cpp:693:20
+#47 0x0000562619af4628 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseExpr.cpp:176:20
+#48 0x0000562619b8c055 clang::Parser::ParseExpression(clang::Parser::TypeCastState) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseExpr.cpp:128:10
+#49 0x0000562619b8c055 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseStmt.cpp:539:19
+#50 0x0000562619b89799 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseStmt.cpp:277:14
+#51 0x0000562619b88e3a clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseStmt.cpp:118:20
+#52 0x0000562619b94400 clang::Parser::ParseCompoundStatementBody(bool) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseStmt.cpp:1236:11
+#53 0x0000562619b95b0f clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseStmt.cpp:2514:21
+#54 0x0000562619ad4384 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/Parser.cpp:0:10
+#55 0x0000562619b2a576 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseDecl.cpp:0:0
+#56 0x0000562619ad27cb clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/Parser.cpp:0:0
+#57 0x0000562619ad2013 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/Parser.cpp:1267:12
+#58 0x0000562619ad0c0f clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/Parser.cpp:0:14
+#59 0x0000562619aceb29 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/Parser.cpp:760:10
+#60 0x0000562619ac9dce clang::ParseAST(clang::Sema&, bool, bool) /usr/home/cjdb/projects/llvm-project/clang/lib/Parse/ParseAST.cpp:162:5
+#61 0x0000562617bad45a clang::CompilerInstance::shouldBuildGlobalModuleIndex() const /usr/home/cjdb/projects/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:84:11
+#62 0x0000562617bad45a clang::FrontendAction::Execute() /usr/home/cjdb/projects/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1073:10
+#63 0x0000562617b1fc8d llvm::Error::getPtr() const /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/Support/Error.h:276:42
+#64 0x0000562617b1fc8d llvm::Error::operator bool() /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/Support/Error.h:239:16
+#65 0x0000562617b1fc8d clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/home/cjdb/projects/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:1057:23
+#66 0x0000562617c9d32c clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/home/cjdb/projects/llvm-project/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:272:25
+#67 0x0000562615c73792 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/home/cjdb/projects/llvm-project/clang/tools/driver/cc1_main.cpp:232:15
+#68 0x0000562615c6fda7 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /usr/home/cjdb/projects/llvm-project/clang/tools/driver/driver.cpp:0:12
+#69 0x000056261798b639 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::__1::optional<llvm::StringRef>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool*) const::$_0::operator()() const /usr/home/cjdb/projects/llvm-project/clang/lib/Driver/Job.cpp:440:30
+#70 0x000056261798b639 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::__1::optional<llvm::StringRef>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool*) const::$_0>(long) /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:12
+#71 0x0000562616ed6bd6 llvm::function_ref<void ()>::operator()() const /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:0:12
+#72 0x0000562616ed6bd6 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /usr/home/cjdb/projects/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:426:3
+#73 0x000056261798af4c clang::driver::CC1Command::Execute(llvm::ArrayRef<std::__1::optional<llvm::StringRef>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool*) const /usr/home/cjdb/projects/llvm-project/clang/lib/Driver/Job.cpp:440:7
+#74 0x000056261794a1ba clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /usr/home/cjdb/projects/llvm-project/clang/lib/Driver/Compilation.cpp:199:15
+#75 0x000056261794a4fe clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*>>&, bool) const /usr/home/cjdb/projects/llvm-project/clang/lib/Driver/Compilation.cpp:253:13
+#76 0x000056261796968f llvm::SmallVectorBase<unsigned int>::empty() const /usr/home/cjdb/projects/llvm-project/llvm/include/llvm/ADT/SmallVector.h:94:46
+#77 0x000056261796968f clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*>>&) /usr/home/cjdb/projects/llvm-project/clang/lib/Driver/Driver.cpp:1924:23
+#78 0x0000562615c6f051 clang_main(int, char**, llvm::ToolContext const&) /usr/home/cjdb/projects/llvm-project/clang/tools/driver/driver.cpp:540:21
+#79 0x0000562615c7f59a main /usr/home/cjdb/projects/llvm-project/build/tools/clang/tools/driver/clang-driver.cpp:17:10
+#80 0x00007fd79b0146ca __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#81 0x00007fd79b014785 call_init ./csu/../csu/libc-start.c:128:20
+#82 0x00007fd79b014785 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#83 0x0000562615c604a1 _start (/usr/home/cjdb/opt/bin/clang+++0x2a974a1)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 19.0.0git (git@github.com:llvm/llvm-project.git 0de2b26942f890a6ec84cd75ac7abe3f6f2b2e37)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/home/cjdb/opt/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/file-f3c8d4.cpp
+clang++: note: diagnostic msg: /tmp/file-f3c8d4.sh
+clang++: note: diagnostic msg: 
+
+********************
+
+
+$ ~/opt/bin/clang++ --version
+clang version 19.0.0git (git@github.com:llvm/llvm-project.git 0de2b26942f890a6ec84cd75ac7abe3f6f2b2e37)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/home/cjdb/opt/bin
+
+
+Bug Labels:
+c++26, clang:frontend, confirmed, crash-on-valid

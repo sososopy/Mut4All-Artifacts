@@ -1,0 +1,111 @@
+Issue Title:
+ICE: rustdoc crash computing layouts in const generics · Issue #88468 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(const_generics)]
+#![feature(const_evaluatable_checked)]
+
+pub struct Assert<const COND: bool>();
+pub trait IsTrue {}
+impl IsTrue for Assert<true> {}
+
+pub trait IsNotZST {}
+impl<T> IsNotZST for T where Assert<{ std::mem::size_of::<T>() > 0 }>: IsTrue {}
+
+/* Not necessary to cause error
+pub struct AnyVec<T, const BITS: u32>
+where
+    T: IsNotZST,
+{
+    _marker: std::marker::PhantomData<T>,
+}
+*/
+
+/* Does not cause error
+pub struct AnyVec<T, const BITS: u32>
+where
+    Assert<{ std::mem::size_of::<T>() > 0 }>: IsTrue
+{
+    _marker: std::marker::PhantomData<T>,
+}
+*/
+
+Bug Trace:
+{"message":"compiler/rustc_middle/src/ty/sty.rs:2174:17: `is_trivially_sized` applied to unexpected type: ^0","code":null,"level":"error: internal compiler error","spans":[],"children":[],"rendered":"\u001b[0m\u001b[1m\u001b[38;5;9merror: internal compiler error\u001b[0m\u001b[0m\u001b[1m: compiler/rustc_middle/src/ty/sty.rs:2174:17: `is_trivially_sized` applied to unexpected type: ^0\u001b[0m\n\n"}
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1115:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_middle::ty::sty::<impl rustc_middle::ty::TyS>::is_trivially_sized
+   8: rustc_middle::ty::util::<impl rustc_middle::ty::TyS>::is_sized
+   9: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  10: rustc_middle::ty::layout::layout_raw
+  11: rustc_query_system::query::plumbing::get_query_impl
+  12: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::layout_raw
+  13: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::query::TyCtxtAt> as rustc_target::abi::LayoutOf>::layout_of
+  14: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+  15: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+  16: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+  17: rustc_query_system::query::plumbing::get_query_impl
+  18: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_allocation_raw
+  19: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  20: rustc_query_system::query::plumbing::get_query_impl
+  21: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_const_value_raw
+  22: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  23: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  24: rustc_infer::infer::InferCtxt::const_eval_resolve
+  25: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively::{{closure}}::{{closure}}
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively
+  28: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicates_recursively
+  29: rustc_infer::infer::InferCtxt::probe
+  30: rustc_trait_selection::traits::select::SelectionContext::evaluate_candidate
+  31: rustc_trait_selection::traits::select::SelectionContext::evaluate_stack
+  32: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  33: rustc_trait_selection::traits::select::SelectionContext::evaluate_trait_predicate_recursively
+  34: rustc_data_structures::stack::ensure_sufficient_stack
+  35: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively
+  36: rustc_infer::infer::InferCtxt::probe
+  37: rustc_trait_selection::traits::select::SelectionContext::evaluate_root_obligation
+  38: rustc_infer::infer::InferCtxtBuilder::enter_with_canonical
+  39: rustc_traits::evaluate_obligation::evaluate_obligation
+  40: rustc_query_system::query::plumbing::get_query_impl
+  41: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::evaluate_obligation
+  42: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation
+  43: rustc_infer::infer::InferCtxtBuilder::enter
+  44: rustdoc::clean::blanket_impl::BlanketImplFinder::get_blanket_impls
+  45: rustdoc::clean::utils::get_auto_trait_and_blanket_impls
+  46: rustdoc::passes::collect_trait_impls::collect_trait_impls
+  47: rustdoc::core::run_global_ctxt
+  48: rustc_interface::passes::QueryContext::enter
+  49: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  50: rustc_span::with_source_map
+  51: rustc_interface::interface::create_compiler_and_run
+  52: rustdoc::main_options
+  53: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.56.0-nightly (0035d9dce 2021-08-16) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type lib
+
+query stack during panic:
+#0 [layout_raw] computing layout of `*const ^0`
+#1 [eval_to_allocation_raw] const-evaluating + checking `<impl at src/lib.rs:10:1: 10:81>::{constant#0}`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `<impl at src/lib.rs:10:1: 10:81>::{constant#0}`
+#3 [evaluate_obligation] evaluating trait selection obligation `Assert<{ std::mem::size_of::<T>() > 0 }>: IsTrue`
+end of query stack
+{"message":"aborting due to previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"\u001b[0m\u001b[1m\u001b[38;5;9merror\u001b[0m\u001b[0m\u001b[1m: aborting due to previous error\u001b[0m\n\n"}
+
+Bug Labels:
+C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, T-rustdoc, glacier, requires-nightly

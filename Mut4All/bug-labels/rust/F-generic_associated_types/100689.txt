@@ -1,0 +1,87 @@
+Issue Title:
+Compiler error when repeating GAT in FnMut signature instead of using Self::AssociatedType syntax · Issue #100689 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+struct Foo<'a> {
+    foo: &'a mut usize,
+}
+
+trait Bar<'a> {
+    type FooRef<'b>
+    where
+        'a : 'b,
+    ;
+    fn uwu (
+        foo: Foo<'a>,
+        f: impl for<'b> FnMut(Self::FooRef<'b>),
+    )
+    ;
+}
+impl<'a> Bar<'a> for () {
+    type FooRef<'b>
+    =
+        &'b Foo<'a>
+    where
+        'a : 'b,
+    ;
+    
+    fn uwu (
+        foo: Foo<'a>,
+        mut f: impl for<'b> FnMut(&'b Foo<'a>), //relevant part
+    )
+    {
+        f(&foo);
+    }
+}
+
+Bug Trace:
+0:     0x7f036805e6d0 - std::backtrace_rs::backtrace::libunwind::trace::h328903891f1ac962
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   1:     0x7f036805e6d0 - std::backtrace_rs::backtrace::trace_unsynchronized::h9cae1c2b6b95e283
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f036805e6d0 - std::sys_common::backtrace::_print_fmt::h66058888c3f62113
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/sys_common/backtrace.rs:66:5
+   3:     0x7f036805e6d0 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hbd5c004e9efb9ba2
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/sys_common/backtrace.rs:45:22
+   4:     0x7f03680b976e - core::fmt::write::h8f3478ef5df05a9d
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/core/src/fmt/mod.rs:1202:17
+   5:     0x7f036804f5d5 - std::io::Write::write_fmt::habe0caeb57ead591
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/io/mod.rs:1672:15
+   6:     0x7f0368061393 - std::sys_common::backtrace::_print::h287226fc48c2ff2f
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/sys_common/backtrace.rs:48:5
+   7:     0x7f0368061393 - std::sys_common::backtrace::print::h780c6aa9646c0456
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/sys_common/backtrace.rs:35:9
+   8:     0x7f0368061393 - std::panicking::default_hook::{{closure}}::hac00efbd46ee1160
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/panicking.rs:295:22
+   9:     0x7f036806107f - std::panicking::default_hook::hd5470e8f0b27a6bd
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/panicking.rs:314:9
+  10:     0x7f036a896a44 - rustc_driver[18fce8fcccec4a33]::DEFAULT_HOOK::{closure#0}::{closure#0}
+  11:     0x7f0368061bcd - std::panicking::rust_panic_with_hook::h5ec17662a20c0edd
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/panicking.rs:702:17
+  12:     0x7f036b95a241 - std[5fd532954ff53d47]::panicking::begin_panic::<rustc_errors[5aa25185040b39a]::ExplicitBug>::{closure#0}
+  13:     0x7f036b95a1f6 - std[5fd532954ff53d47]::sys_common::backtrace::__rust_end_short_backtrace::<std[5fd532954ff53d47]::panicking::begin_panic<rustc_errors[5aa25185040b39a]::ExplicitBug>::{closure#0}, !>
+  14:     0x7f036b954ca6 - std[5fd532954ff53d47]::panicking::begin_panic::<rustc_errors[5aa25185040b39a]::ExplicitBug>
+  15:     0x7f036b957286 - std[5fd532954ff53d47]::panic::panic_any::<rustc_errors[5aa25185040b39a]::ExplicitBug>
+  16:     0x7f036a3be970 - <rustc_errors[5aa25185040b39a]::HandlerInner as core[d628f3806372268a]::ops::drop::Drop>::drop
+  17:     0x7f036a0d0408 - core[d628f3806372268a]::ptr::drop_in_place::<rustc_session[c8f4ed044bfefb6c]::parse::ParseSess>
+  18:     0x7f036a0b8233 - <alloc[2c946ccec12a76bb]::rc::Rc<rustc_session[c8f4ed044bfefb6c]::session::Session> as core[d628f3806372268a]::ops::drop::Drop>::drop
+  19:     0x7f036a0b778d - core[d628f3806372268a]::ptr::drop_in_place::<rustc_interface[4a84693f72592b98]::interface::Compiler>
+  20:     0x7f036a0b6c39 - rustc_span[593a361d701c283c]::with_source_map::<core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>, rustc_interface[4a84693f72592b98]::interface::create_compiler_and_run<core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>, rustc_driver[18fce8fcccec4a33]::run_compiler::{closure#1}>::{closure#1}>
+  21:     0x7f036a0b6462 - rustc_interface[4a84693f72592b98]::interface::create_compiler_and_run::<core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>, rustc_driver[18fce8fcccec4a33]::run_compiler::{closure#1}>
+  22:     0x7f036a0b5001 - <scoped_tls[ec94400a14ecf1fb]::ScopedKey<rustc_span[593a361d701c283c]::SessionGlobals>>::set::<rustc_interface[4a84693f72592b98]::interface::run_compiler<core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>, rustc_driver[18fce8fcccec4a33]::run_compiler::{closure#1}>::{closure#0}, core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>>
+  23:     0x7f036a0b4cef - std[5fd532954ff53d47]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[4a84693f72592b98]::util::run_in_thread_pool_with_globals<rustc_interface[4a84693f72592b98]::interface::run_compiler<core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>, rustc_driver[18fce8fcccec4a33]::run_compiler::{closure#1}>::{closure#0}, core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>>::{closure#0}, core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>>
+  24:     0x7f036a6c2719 - <<std[5fd532954ff53d47]::thread::Builder>::spawn_unchecked_<rustc_interface[4a84693f72592b98]::util::run_in_thread_pool_with_globals<rustc_interface[4a84693f72592b98]::interface::run_compiler<core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>, rustc_driver[18fce8fcccec4a33]::run_compiler::{closure#1}>::{closure#0}, core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>>::{closure#0}, core[d628f3806372268a]::result::Result<(), rustc_errors[5aa25185040b39a]::ErrorGuaranteed>>::{closure#1} as core[d628f3806372268a]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  25:     0x7f036806b9c3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h4fe4faa13dc6a27b
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/alloc/src/boxed.rs:1935:9
+  26:     0x7f036806b9c3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h17b55ecd9f8a7fb6
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/alloc/src/boxed.rs:1935:9
+  27:     0x7f036806b9c3 - std::sys::unix::thread::Thread::new::thread_start::ha9824217d895d25c
+                               at /rustc/86c6ebee8fa0a5ad1e18e375113b06bd2849b634/library/std/src/sys/unix/thread.rs:108:17
+  28:     0x7f0367f3f609 - start_thread
+  29:     0x7f0367e62133 - clone
+  30:                0x0 - <unknown>
+
+Bug Labels:
+A-GATs, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier

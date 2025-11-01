@@ -1,0 +1,323 @@
+Issue Title:
+ICE: `Ok([Binder {  ... }` is not fully resolved  · Issue #116525 · rust-lang/rust · GitHub
+
+Rust Code:
+#![macro_use]
+#![feature(type_alias_impl_trait)]
+#![feature(async_fn_in_trait)]
+#![allow(incomplete_features)]
+#![feature(associated_type_bounds)]
+use embassy_sync::channel::DynamicSender;
+
+use {
+    ector::*,
+    embassy_time::{Duration, Timer},
+    futures::future::join,
+    heapless::Vec,
+};
+
+#[derive(Debug)]
+pub enum CommandOperator {
+    RfTx(u32),
+    RfRx(u32),
+    RfSleep(bool),
+}
+
+#[derive(Debug)]
+pub enum ResultOperator {
+    RfSuccessBinary(bool),
+    RfSuccess(u32),
+    RfErrorBinary(bool),
+    RfError(u32),
+}
+
+async fn test(addr: DynamicAddress<Request<CommandOperator, ResultOperator>>) {
+    let led_address = LED.dyn_address();
+    let operator_address = OPERATOR.dyn_address();
+    let server_address = SERVER.dyn_address();
+
+    operator_address.notify(DeviceState { target_addr: operator_address, report_addr: operator_address, message: PeriperalMessages::Command(PeriperalState::LED(SwitchState::On)) }).await;
+    let r = addr.request(CommandOperator::RfRx(42u32)).await;
+    println!("Server returned {:#?}", r);
+    Timer::after(Duration::from_secs(1)).await;
+    let r = addr.request(CommandOperator::RfTx(21u32)).await;
+    println!("Server returned {:#?}", r);
+    Timer::after(Duration::from_secs(1)).await;
+    let r = addr.request(CommandOperator::RfSleep(false)).await;
+    println!("Server returned {:#?}", r);
+    Timer::after(Duration::from_secs(1)).await;
+}
+
+#[embassy_executor::task]
+async fn led_task() {
+    let led_device = LED.mount(Periperal);
+    led_device.await;
+}
+
+#[embassy_executor::task]
+async fn  operator_task() {
+    let operator = OPERATOR.mount(Operator);
+    operator.await;
+}
+
+static SERVER: ActorContext<Server> = ActorContext::new();
+static LED: ActorContext<Periperal> = ActorContext::new();
+static OPERATOR: ActorContext<Operator> = ActorContext::new();
+
+#[embassy_executor::main]
+async fn main(spawner: embassy_executor::Spawner) {
+
+    let send_spawner = spawner.make_send();
+    send_spawner.spawn(led_task()).unwrap();
+    send_spawner.spawn(operator_task()).unwrap();
+
+    // Example of request response
+    let server_address = SERVER.dyn_address();
+    let server = SERVER.mount(Server);
+
+    let test = test(server_address);
+    join(server, test).await;
+    
+}
+
+pub struct Server;
+
+impl Actor for Server {
+    type Message = Request<CommandOperator, ResultOperator>;
+
+    async fn on_mount<M>(
+        &mut self,
+        _: DynamicAddress<Request<CommandOperator, ResultOperator>>,
+        mut inbox: M,
+    ) -> !
+    where
+        M: Inbox<Self::Message>,
+    {
+        println!("Server started!");
+
+        loop {
+            let motd = inbox.next().await;
+            let result = match motd.as_ref() {
+                CommandOperator::RfTx(num) => ResultOperator::RfSuccess(*num),
+                CommandOperator::RfRx(num) => ResultOperator::RfErrorBinary(*num > 2),
+                CommandOperator::RfSleep(binary) => ResultOperator::RfErrorBinary(*binary),
+            };
+            motd.reply(result).await;
+        }
+    }
+}
+
+#[derive(Clone, Copy, Ord, Eq, PartialEq, PartialOrd)]
+pub enum PeriperalType {
+    Led,
+    Lora,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SwitchState {
+    On,
+    Transiting,
+    Off,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum CommunicatorState {
+    Idle,
+    Sending,
+    Sent,
+    Receiving,
+    Received,
+    Transiting,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PeriperalState {
+    LED(SwitchState),
+    Lora(CommunicatorState),
+}
+
+pub struct TargetDeviceState<'a> {
+    pub device_type: PeriperalType,
+    pub device_state_message: DeviceState<'a>,
+}
+
+pub struct Operator;
+
+impl<'a> Actor for Operator {
+    type Message = DeviceState<'a>;
+
+    async fn on_mount<M>(&mut self, _: DynamicAddress<Self::Message>, mut inbox: M) -> !
+    where
+        M: Inbox<Self::Message>,
+    {
+        // init queue vector
+        let mut in_progress: Vec<TargetDeviceState, 10> = Vec::new();
+        println!("Operator started!");
+
+        loop {
+            // check inbox
+            let request_pending = inbox.next().await;
+
+            // process the message
+            let device_type = match request_pending.message {
+                PeriperalMessages::Command(msg) | PeriperalMessages::Result(msg) => match msg {
+                    PeriperalState::LED(_) => PeriperalType::Led,
+                    PeriperalState::Lora(_) => PeriperalType::Lora,
+                },
+            };
+
+            // command to periperal
+            match request_pending.message {
+                PeriperalMessages::Command(command) => {
+                    // send it to the periperal if not existing in the in_progress
+                    // check if the type of the device_type already used in the in_progress vector
+
+                    if let Ok(index) =
+                        in_progress.binary_search_by_key(&device_type, |a| a.device_type)
+                    {
+                        // if the report device was found in the in_progress with the device_type, then skip it with transiting
+                        let registered_target_device =
+                            in_progress.get(index).expect("failed to get it unwarpped");
+
+                        let report_progress_message =
+                            if let PeriperalState::Lora(_communicator_state) = command {
+                                PeriperalState::Lora(CommunicatorState::Transiting)
+                            } else {
+                                PeriperalState::LED(SwitchState::Transiting)
+                            };
+
+                        let report_address =
+                            registered_target_device.device_state_message.report_addr;
+                        report_address
+                            .notify(PeriperalMessages::Command(report_progress_message))
+                            .await;
+                        continue;
+                    } else {
+                        // not registered send the command message to the target address
+                        let target_address = request_pending.target_addr;
+
+                        // find the periperal from the context address vector pair or target
+                        target_address
+                            .notify(PeriperalMessages::Command(command))
+                            .await;
+
+                        let target_device_state = TargetDeviceState {
+                            device_type,
+                            device_state_message: DeviceState {
+                                target_addr: request_pending.target_addr,
+                                report_addr: request_pending.report_addr,
+                                message: PeriperalMessages::Result(command),
+                            },
+                        };
+                        // register to the report structure
+                        let _ = in_progress.push(target_device_state);
+                    }
+                }
+                PeriperalMessages::Result(result) => {
+                    // send it to the periperal if not existing in the in_progress
+                    // check if the type of the device_type already used in the in_progress vector
+
+                    if let Ok(index) =
+                        in_progress.binary_search_by_key(&device_type, |a| a.device_type)
+                    {
+                        // if it is a result, report back and pop it from the vector
+                        let registered_target_device =
+                            in_progress.get(index).expect("failed to get it unwarpped");
+
+                        // check if report device type equals to the mesge result type.
+                        registered_target_device
+                            .device_state_message
+                            .report_addr
+                            .notify(PeriperalMessages::Result(result))
+                            .await;
+
+                        in_progress.remove(index);
+                        continue;
+                        // if it is a command then send it back to the caller that it is still in progress
+                    } else {
+                        // not registered result came from the potentially from the peripherals and what should we do?
+                        // log error?
+                        continue;
+                    }
+                }
+            };
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct DeviceState<'a> {
+    pub target_addr: DynamicSender<'a, PeriperalMessages>,
+    pub report_addr: DynamicSender<'a, PeriperalMessages>,
+    pub message: PeriperalMessages,
+}
+
+#[derive(Clone, Copy)]
+pub enum PeriperalMessages {
+    Command(PeriperalState),
+    Result(PeriperalState),
+}
+
+pub struct Periperal;
+impl <'a>Actor for Periperal {
+    type Message = DeviceState<'a>;
+
+    async fn on_mount<M>(&mut self, _: DynamicAddress<Self::Message>, mut inbox: M) -> !
+    where
+        M: Inbox<Self::Message>,
+    {
+        // init queue vector
+        println!("Periperal started!");
+
+        loop {
+            // check inbox
+            let device_sate_message = inbox.next().await;
+
+            // process the message
+            println!("led transitiing");
+            device_sate_message
+                .report_addr
+                .notify(PeriperalMessages::Result(PeriperalState::LED(
+                    SwitchState::Transiting,
+                )))
+                .await;
+
+            // register to the report structure
+            match device_sate_message.message {
+                PeriperalMessages::Command(target_state) => match target_state {
+                    PeriperalState::LED(target_led_state) => match target_led_state {
+                        SwitchState::On => {
+                            println!("led on");
+                            // led on here
+                            device_sate_message
+                                .report_addr
+                                .notify(PeriperalMessages::Result(PeriperalState::LED(
+                                    SwitchState::On,
+                                )))
+                                .await;
+                        }
+                        SwitchState::Off => {
+                            println!("led off");
+                            // led off
+                            device_sate_message
+                                .report_addr
+                                .notify(PeriperalMessages::Result(PeriperalState::LED(
+                                    SwitchState::Off,
+                                )))
+                                .await;
+                        }
+                        _ => continue,
+                    },
+                    _ => continue,
+                },
+                _ => continue,
+            }
+        }
+    }
+}
+
+Bug Trace:
+<backtrace>
+
+Bug Labels:
+C-bug, F-async_fn_in_trait, I-ICE, S-has-mcve, T-compiler

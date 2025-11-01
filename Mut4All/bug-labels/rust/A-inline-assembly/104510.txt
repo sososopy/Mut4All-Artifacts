@@ -1,0 +1,87 @@
+Issue Title:
+ICE in check_asms: assertion failed: self.is_tainted_by_errors() · Issue #104510 · rust-lang/rust · GitHub
+
+Rust Code:
+// needs-asm-support
+// only-x86_64
+
+struct W<T: ?Sized>(Oops);
+//~^ ERROR cannot find type `Oops` in this scope
+
+unsafe fn test() {
+    let j = W(());
+    let pointer = &j as *const _;
+    core::arch::asm!(
+        "nop",
+        in("eax") pointer,
+    );
+}
+
+fn main() {}
+
+Bug Trace:
+error[E0412]: cannot find type `Oops` in this scope
+ --> src/main.rs:4:21
+  |
+4 | struct W<T: ?Sized>(Oops);
+  |                     ^^^^ not found in this scope
+
+thread 'rustc' panicked at 'assertion failed: self.is_tainted_by_errors()', compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:76:21
+stack backtrace:
+   0:        0x1067cff22 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hc8a49f87ce17062a
+   1:        0x10682e85a - core::fmt::write::h8a1a7abc727fe6d0
+   2:        0x1067c22ec - std::io::Write::write_fmt::h784a2d3ee2ee8639
+   3:        0x1067cfcea - std::sys_common::backtrace::print::hb4003780820818b1
+   4:        0x1067d3016 - std::panicking::default_hook::{{closure}}::ha4bb64ed2ba8f281
+   5:        0x1067d2d67 - std::panicking::default_hook::haa41a49d8ba42d3b
+   6:        0x10ed6b9bd - rustc_driver[3dbfeae94bbb450c]::DEFAULT_HOOK::{closure#0}::{closure#0}
+   7:        0x1067d37fd - std::panicking::rust_panic_with_hook::h0ec6182f72894cd1
+   8:        0x1067d3562 - std::panicking::begin_panic_handler::{{closure}}::h957cd87b25305989
+   9:        0x1067d03b8 - std::sys_common::backtrace::__rust_end_short_backtrace::hc313cf5730833514
+  10:        0x1067d326d - _rust_begin_unwind
+  11:        0x10685b4a3 - core::panicking::panic_fmt::hd4c8c196bb019bad
+  12:        0x10685b577 - core::panicking::panic::h6906548231555151
+  13:        0x111698eae - <rustc_hir_typeck[bfe26f40d5efb549]::fn_ctxt::FnCtxt>::check_asms::{closure#0}
+  14:        0x11188bf34 - <rustc_hir_analysis[34bd11cda90a81cf]::check::intrinsicck::InlineAsmCtxt>::check_asm_operand_type
+  15:        0x11188ddad - <rustc_hir_analysis[34bd11cda90a81cf]::check::intrinsicck::InlineAsmCtxt>::check_asm
+  16:        0x11152fab8 - <rustc_hir_typeck[bfe26f40d5efb549]::fn_ctxt::FnCtxt>::check_asms
+  17:        0x1116668eb - <rustc_hir_typeck[bfe26f40d5efb549]::inherited::InheritedBuilder>::enter::<rustc_hir_typeck[bfe26f40d5efb549]::typeck_with_fallback<rustc_hir_typeck[bfe26f40d5efb549]::typeck::{closure#0}>::{closure#0}::{closure#1}, &rustc_middle[e2305deeabdd0cca]::ty::context::TypeckResults>
+  18:        0x1115fde8a - rustc_hir_typeck[bfe26f40d5efb549]::typeck
+  19:        0x11254e9f9 - rustc_query_system[3b5dd79aa171f2d6]::query::plumbing::try_execute_query::<rustc_query_impl[b50f402e55213e8a]::plumbing::QueryCtxt, rustc_query_system[3b5dd79aa171f2d6]::query::caches::DefaultCache<rustc_span[663101514bc5927d]::def_id::LocalDefId, &rustc_middle[e2305deeabdd0cca]::ty::context::TypeckResults>>
+  20:        0x11264aeec - rustc_query_system[3b5dd79aa171f2d6]::query::plumbing::get_query::<rustc_query_impl[b50f402e55213e8a]::queries::typeck, rustc_query_impl[b50f402e55213e8a]::plumbing::QueryCtxt>
+  21:        0x1115adcbb - rustc_data_structures[2727043258b5d620]::sync::par_for_each_in::<&[rustc_span[663101514bc5927d]::def_id::LocalDefId], <rustc_middle[e2305deeabdd0cca]::hir::map::Map>::par_body_owners<rustc_hir_typeck[bfe26f40d5efb549]::typeck_item_bodies::{closure#0}>::{closure#0}>
+  22:        0x1115fd60d - rustc_hir_typeck[bfe26f40d5efb549]::typeck_item_bodies
+  23:        0x1125df239 - rustc_query_system[3b5dd79aa171f2d6]::query::plumbing::try_execute_query::<rustc_query_impl[b50f402e55213e8a]::plumbing::QueryCtxt, rustc_query_system[3b5dd79aa171f2d6]::query::caches::DefaultCache<(), ()>>
+  24:        0x11263f7b9 - rustc_query_system[3b5dd79aa171f2d6]::query::plumbing::get_query::<rustc_query_impl[b50f402e55213e8a]::queries::typeck_item_bodies, rustc_query_impl[b50f402e55213e8a]::plumbing::QueryCtxt>
+  25:        0x111774384 - <rustc_session[e61d3bba1e132503]::session::Session>::time::<(), rustc_hir_analysis[34bd11cda90a81cf]::check_crate::{closure#7}>
+  26:        0x111846eef - rustc_hir_analysis[34bd11cda90a81cf]::check_crate
+  27:        0x10ee2e81a - rustc_interface[57c9fce0e0c2ba2]::passes::analysis
+  28:        0x1125d0ffc - rustc_query_system[3b5dd79aa171f2d6]::query::plumbing::try_execute_query::<rustc_query_impl[b50f402e55213e8a]::plumbing::QueryCtxt, rustc_query_system[3b5dd79aa171f2d6]::query::caches::DefaultCache<(), core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>>>
+  29:        0x11264b299 - rustc_query_system[3b5dd79aa171f2d6]::query::plumbing::get_query::<rustc_query_impl[b50f402e55213e8a]::queries::analysis, rustc_query_impl[b50f402e55213e8a]::plumbing::QueryCtxt>
+  30:        0x10ecfadd6 - <rustc_interface[57c9fce0e0c2ba2]::passes::QueryContext>::enter::<rustc_driver[3dbfeae94bbb450c]::run_compiler::{closure#1}::{closure#2}::{closure#3}, core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>>
+  31:        0x10ed3eecd - rustc_span[663101514bc5927d]::with_source_map::<core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>, rustc_interface[57c9fce0e0c2ba2]::interface::run_compiler<core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>, rustc_driver[3dbfeae94bbb450c]::run_compiler::{closure#1}>::{closure#0}::{closure#1}>
+  32:        0x10ed2ef2c - <scoped_tls[6bbd84b04dbf1568]::ScopedKey<rustc_span[663101514bc5927d]::SessionGlobals>>::set::<rustc_interface[57c9fce0e0c2ba2]::interface::run_compiler<core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>, rustc_driver[3dbfeae94bbb450c]::run_compiler::{closure#1}>::{closure#0}, core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>>
+  33:        0x10ecfe31a - std[b7fc25f664aa2c42]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[57c9fce0e0c2ba2]::util::run_in_thread_pool_with_globals<rustc_interface[57c9fce0e0c2ba2]::interface::run_compiler<core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>, rustc_driver[3dbfeae94bbb450c]::run_compiler::{closure#1}>::{closure#0}, core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>>
+  34:        0x10ece43ab - <<std[b7fc25f664aa2c42]::thread::Builder>::spawn_unchecked_<rustc_interface[57c9fce0e0c2ba2]::util::run_in_thread_pool_with_globals<rustc_interface[57c9fce0e0c2ba2]::interface::run_compiler<core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>, rustc_driver[3dbfeae94bbb450c]::run_compiler::{closure#1}>::{closure#0}, core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[67cd3202410ff936]::result::Result<(), rustc_errors[3e76822466e0ccc2]::ErrorGuaranteed>>::{closure#1} as core[67cd3202410ff936]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  35:        0x1067dcbb7 - std::sys::unix::thread::Thread::new::thread_start::h0a480c6421a176eb
+  36:     0x7ff80d84d4e1 - __pthread_start
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.67.0-nightly (a00f8ba7f 2022-11-15) running on x86_64-apple-darwin
+
+query stack during panic:
+#0 [typeck] type-checking `test`
+#1 [typeck_item_bodies] type-checking all item bodies
+#2 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.
+
+Bug Labels:
+A-inline-assembly, C-bug, E-easy, I-ICE, T-compiler

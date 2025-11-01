@@ -1,0 +1,180 @@
+Issue Title:
+ICE: cannot convert `ReEarlyBound(0, 'a)` to a region vid · Issue #68532 · rust-lang/rust · GitHub
+
+Rust Code:
+impl<'a> Handshake<'a> {
+    const LEN: usize = 68;
+
+    pub fn new(info_hash: &'a InfoHash, peer_id: &'a str) -> Self {
+        Self {
+            peer_id,
+            info_hash,
+            extensions: Default::default(),
+        }
+    }
+
+    pub async fn send(&self, peer: &Peer) -> crate::Result<()> {
+        let mut tcp = TcpStream::connect(peer.addr()).await?;
+        self.write_bytes(&mut tcp).await?;
+
+        let mut v = [0; Self::LEN];
+        tcp.read_exact(&mut v).await?;
+
+        println!("{:?}", v);
+        Ok(())
+    }
+  ...
+
+Bug Trace:
+~/btrs$ RUST_BACKTRACE=1 cargo check
+    Checking btrs v0.1.0 (/home/95th/btrs)
+error: internal compiler error: src/librustc_mir/borrow_check/nll/universal_regions.rs:764: cannot convert `ReEarlyBound(0, 'a)` to a region vid
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:931:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.40/src/backtrace/libunwind.rs:88
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.40/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:77
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:61
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1028
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1412
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:65
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:50
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:188
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:205
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:468
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc::ty::context::tls::with_opt::{{closure}}
+  17: rustc::ty::context::tls::with_context_opt
+  18: rustc::ty::context::tls::with_opt
+  19: rustc::util::bug::opt_span_bug_fmt
+  20: rustc::util::bug::bug_fmt
+  21: rustc_mir::borrow_check::nll::universal_regions::UniversalRegionIndices::to_region_vid::{{closure}}
+  22: rustc_mir::borrow_check::nll::universal_regions::UniversalRegionIndices::to_region_vid
+  23: rustc_mir::borrow_check::nll::type_check::constraint_conversion::ConstraintConversion::convert_all
+  24: rustc_mir::borrow_check::nll::type_check::TypeChecker::fully_perform_op
+  25: rustc_mir::borrow_check::nll::type_check::type_check
+  26: rustc_mir::borrow_check::nll::compute_regions
+  27: rustc_mir::borrow_check::do_mir_borrowck
+  28: rustc::ty::context::GlobalCtxt::enter_local
+  29: rustc_mir::borrow_check::mir_borrowck
+  30: rustc::ty::query::__query_compute::mir_borrowck
+  31: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::mir_borrowck>::compute
+  32: rustc::dep_graph::graph::DepGraph::with_task_impl
+  33: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  34: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::ensure_query
+  35: rustc_mir::transform::optimized_mir
+  36: rustc::ty::query::__query_compute::optimized_mir
+  37: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::optimized_mir>::compute
+  38: rustc::dep_graph::graph::DepGraph::with_task_impl
+  39: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  40: rustc_mir::interpret::eval_context::InterpCx<M>::load_mir
+  41: rustc_mir::const_eval::const_eval_raw_provider
+  42: rustc::ty::query::__query_compute::const_eval_raw
+  43: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::const_eval_raw>::compute
+  44: rustc::dep_graph::graph::DepGraph::with_task_impl
+  45: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  46: rustc_mir::const_eval::const_eval_provider
+  47: rustc::ty::query::__query_compute::const_eval
+  48: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::const_eval>::compute
+  49: rustc::dep_graph::graph::DepGraph::with_task_impl
+  50: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  51: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  52: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  53: rustc_typeck::check::FnCtxt::check_decl_initializer
+  54: rustc_typeck::check::FnCtxt::check_decl_local
+  55: rustc_typeck::check::FnCtxt::check_stmt
+  56: rustc_typeck::check::FnCtxt::check_block_with_expected
+  57: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  58: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  59: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  60: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  61: rustc_typeck::check::FnCtxt::check_block_with_expected
+  62: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  63: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  64: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_return_expr
+  65: rustc_typeck::check::check_fn
+  66: rustc_typeck::check::closure::<impl rustc_typeck::check::FnCtxt>::check_expr_closure
+  67: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  68: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  69: rustc_typeck::check::FnCtxt::check_argument_types
+  70: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::confirm_builtin_call
+  71: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::check_call
+  72: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  73: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  74: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_return_expr
+  75: rustc_typeck::check::check_fn
+  76: rustc::ty::context::tls::with_context::{{closure}}
+  77: rustc_typeck::check::typeck_tables_of
+  78: rustc::ty::query::__query_compute::typeck_tables_of
+  79: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_tables_of>::compute
+  80: rustc::dep_graph::graph::DepGraph::with_task_impl
+  81: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  82: rustc::ty::query::__query_compute::typeck_tables_of
+  83: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_tables_of>::compute
+  84: rustc::dep_graph::graph::DepGraph::with_task_impl
+  85: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  86: rustc_typeck::collect::checked_type_of
+  87: rustc_typeck::collect::type_of
+  88: rustc::ty::query::__query_compute::type_of
+  89: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::type_of>::compute
+  90: rustc::dep_graph::graph::DepGraph::with_task_impl
+  91: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  92: rustc::hir::intravisit::walk_expr
+  93: rustc::hir::intravisit::Visitor::visit_fn
+  94: rustc::hir::intravisit::walk_impl_item
+  95: rustc::hir::map::Map::visit_item_likes_in_module
+  96: rustc_typeck::collect::collect_mod_item_types
+  97: rustc::ty::query::__query_compute::collect_mod_item_types
+  98: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::collect_mod_item_types>::compute
+  99: rustc::dep_graph::graph::DepGraph::with_task_impl
+ 100: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+ 101: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::ensure_query
+ 102: rustc_typeck::check_crate::{{closure}}::{{closure}}
+ 103: rustc::util::common::time
+ 104: rustc_typeck::check_crate
+ 105: rustc_interface::passes::analysis
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.40.0 (73528e339 2019-12-16) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] processing `conn::Handshake::<'a>::send::{{closure}}#0::{{constant}}#0`
+#1 [optimized_mir] processing `conn::Handshake::<'a>::send::{{closure}}#0::{{constant}}#0`
+#2 [const_eval_raw] const-evaluating `conn::Handshake::<'a>::send::{{closure}}#0::{{constant}}#0`
+#3 [const_eval] const-evaluating + checking `conn::Handshake::<'a>::send::{{closure}}#0::{{constant}}#0`
+#4 [typeck_tables_of] processing `conn::Handshake::<'a>::send`
+#5 [typeck_tables_of] processing `conn::Handshake::<'a>::send::{{closure}}#0`
+#6 [type_of] processing `conn::Handshake::<'a>::send::{{closure}}#0`
+#7 [collect_mod_item_types] collecting item types in module `conn`
+#8 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `btrs`.
+
+Bug Labels:
+A-MIR, C-bug, E-needs-test, I-ICE, P-high, T-compiler, glacier

@@ -1,0 +1,26 @@
+Mutation Operator: Template Argument Structure
+
+Target Code Construct: Function Template
+
+Mutation Rule: 
+1. Identify a function template with a template parameter that uses nested templates. This typically involves a template parameter of the form `template<class...> class S`.
+2. Introduce an additional level of template instantiation within the function by creating a local alias or type that utilizes the template argument in a way that creates a complex type deduction scenario.
+3. Declare a new local type alias within the function that uses the template parameter `S` in combination with a standard library template, such as `std::conditional` or `std::tuple`, further complicating the type deduction process.
+4. Ensure this new alias is used in a context where its complete type needs to be resolved, such as a return statement or a call to a standard library function that requires type deduction.
+
+Example:
+```cpp
+template<class Base, template<class...> class S>
+inline auto create_unique(auto&&... args) -> std::unique_ptr<Base>
+requires(std::derived_from<std::remove_cvref_t<decltype(S{std::forward<decltype(args)>(args)...})>, Base>)
+{
+    using Type = std::remove_cvref_t<decltype(S{std::forward<decltype(args)>(args)...})>;
+
+    // Introduce a type alias that adds an additional level of complexity
+    using ComplexType = std::conditional_t<true, Type, std::tuple<Type>>;
+
+    // Use ComplexType in a context where its full type needs to be resolved
+    return std::make_unique<ComplexType>(std::forward<decltype(args)>(args)...);
+}
+```
+This mutation operator targets the use of nested templates within function templates and manipulates type deduction paths, potentially exposing weaknesses in the compiler's template type resolution mechanism.

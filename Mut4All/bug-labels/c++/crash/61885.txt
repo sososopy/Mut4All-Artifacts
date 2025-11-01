@@ -1,0 +1,92 @@
+Issue Title:
+clang 15 segfault on malformed cpp file
+
+Source Code & Bug Trace:
+$ cat test.cpp
+a() { if constexpr (__adl_swap<>
+$ /usr/lib/llvm-15/bin/clang --version
+Ubuntu clang version 15.0.7
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-15/bin
+$ /usr/lib/llvm-15/bin/clang ./test.cpp
+./test.cpp:1:1: error: a type specifier is required for all declarations
+a() { if constexpr (__adl_swap<>
+^
+./test.cpp:1:10: warning: constexpr if is a C++17 extension [-Wc++17-extensions]
+a() { if constexpr (__adl_swap<>
+         ^
+./test.cpp:1:21: error: use of undeclared identifier '__adl_swap'; did you mean '__sync_swap'?
+a() { if constexpr (__adl_swap<>
+                    ^~~~~~~~~~                                                                                                                                                                                                                                                                                          __sync_swap
+./test.cpp:1:21: note: '__sync_swap' declared here
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/lib/llvm-15/bin/clang -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all --mrelax-relocations -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name test.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mfra
+me-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -fcoverage-compilation-dir=/tmp/repro/gg/creduce -resource-dir /usr/lib/llvm-15/lib/
+clang/15.0.7 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/11/../../../../include/x86_64-linux-gnu/c++/11 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/backward -internal-isystem /
+usr/lib/llvm-15/lib/clang/15.0.7/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/11/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/incl
+ude -fdeprecated-macro -fdebug-compilation-dir=/tmp/repro/gg/creduce -ferror-limit 19 -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/test-a77114.o -x c++ ./test.cpp
+1.      <eof> parser at end of file
+2.      ./test.cpp:1:5: parsing function body 'a'
+3.      ./test.cpp:1:5: in compound statement ('{}')
+ #0 0x00007f13fa891e91 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xf01e91)
+ #1 0x00007f13fa88fbde llvm::sys::RunSignalHandlers() (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xeffbde)
+ #2 0x00007f13fa8923bb (/usr/lib/llvm-15/bin/../lib/libLLVM-15.so.1+0xf023bb)
+ #3 0x00007f14043af940 __restore_rt (/lib/libc6-prof/x86_64-linux-gnu/libpthread.so.0+0x14940)
+ #4 0x00007f13f95a7265 /build/glibc-SzIz7B/glibc-2.31/string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:436:0
+ #5 0x00007f140169bf67 clang::Expr::EvaluateKnownConstInt(clang::ASTContext const&, llvm::SmallVectorImpl<std::pair<clang::SourceLocation, clang::PartialDiagnostic>>*) const (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xd79f67)
+ #6 0x00007f1401dbc5b7 clang::Sema::ActOnCondition(clang::Scope*, clang::SourceLocation, clang::Expr*, clang::Sema::ConditionKind, bool) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x149a5b7)
+ #7 0x00007f140140bf05 clang::Parser::ParseCXXCondition(clang::ActionResult<clang::Stmt*, true>*, clang::SourceLocation, clang::Sema::ConditionKind, bool, clang::Parser::ForRangeInfo*, bool) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xae9f05)
+ #8 0x00007f1401459314 clang::Parser::ParseParenExprOrCondition(clang::ActionResult<clang::Stmt*, true>*, clang::Sema::ConditionResult&, clang::SourceLocation, clang::Sema::ConditionKind, bool, clang::SourceLocation*, clang::SourceLocation*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x
+b37314)
+ #9 0x00007f14014537e3 clang::Parser::ParseIfStatement(clang::SourceLocation*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb317e3)
+#10 0x00007f1401451069 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb2f069)
+#11 0x00007f140144fe3f clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb2de3f)
+#12 0x00007f1401458b10 clang::Parser::ParseCompoundStatementBody(bool) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb36b10)
+#13 0x00007f1401459b45 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb37b45)
+#14 0x00007f1401473e12 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb51e12)
+#15 0x00007f14013c87b8 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xaa67b8)
+#16 0x00007f1401472e3a clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb50e3a)
+#17 0x00007f1401472897 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb50897)
+#18 0x00007f1401471bba clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb4fbba)
+#19 0x00007f140146fe83 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb4de83)
+#20 0x00007f140146f94f clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xb4d94f)
+#21 0x00007f14013ae7a6 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0xa8c7a6)
+#22 0x00007f140259f9f5 clang::CodeGenAction::ExecuteAction() (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x1c7d9f5)
+#23 0x00007f1402fd3bd7 clang::FrontendAction::Execute() (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x26b1bd7)
+#24 0x00007f1402f47bc6 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x2625bc6)
+#25 0x00007f14030515da clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/llvm-15/bin/../lib/libclang-cpp.so.15+0x272f5da)
+#26 0x000055e2be54291f cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/lib/llvm-15/bin/clang+0x1391f)
+#27 0x000055e2be540b1b (/usr/lib/llvm-15/bin/clang+0x11b1b)
+#28 0x000055e2be54096c clang_main(int, char**) (/usr/lib/llvm-15/bin/clang+0x1196c)
+#29 0x00007f13f94380db __libc_start_main /build/glibc-SzIz7B/glibc-2.31/csu/../csu/libc-start.c:342:3
+#30 0x000055e2be53d32e _start (/usr/lib/llvm-15/bin/clang+0xe32e)
+clang: error: unable to execute command: Segmentation fault (core dumped)
+clang: error: clang frontend command failed due to signal (use -v to see invocation)
+Ubuntu clang version 15.0.7
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-15/bin
+clang: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang: note: diagnostic msg: /tmp/test-bf5a61.cpp
+clang: note: diagnostic msg: /tmp/test-bf5a61.sh
+clang: note: diagnostic msg:
+
+********************
+
+# 1 "<built-in>"
+# 1 "./test.cpp"
+a() { if constexpr (__adl_swap<>
+
+# Crash reproducer for Ubuntu clang version 15.0.7
+# Driver args: "./test.cpp"
+# Original command:  "/usr/lib/llvm-15/bin/clang" "-cc1" "-triple" "x86_64-pc-linux-gnu" "-emit-obj" "-mrelax-all" "--mrelax-relocations" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "test.cpp" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-mllvm" "-treat-scalable-fixed-error-as-warning" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/tmp/repro/gg/creduce" "-resource-dir" "/usr/lib/llvm-15/lib/clang/15.0.7" "-internal-isystem" "/usr/lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11" "-internal-isystem" "/usr/lib/gcc/x86_64-linux-gnu/11/../../../../include/x86_64-linux-gnu/c++/11" "-internal-isystem" "/usr/lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/backward" "-internal-isystem" "/usr/lib/llvm-15/lib/clang/15.0.7/include" "-internal-isystem" "/usr/local/include" "-internal-isystem" "/usr/lib/gcc/x86_64-linux-gnu/11/../../../../x86_64-linux-gnu/include" "-internal-externc-isystem" "/usr/include/x86_64-linux-gnu" "-internal-externc-isystem" "/include" "-internal-externc-isystem" "/usr/include" "-fdeprecated-macro" "-fdebug-compilation-dir=/tmp/repro/gg/creduce" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-o" "/tmp/test-a77114.o" "-x" "c++" "./test.cpp"
+ "/usr/lib/llvm-15/bin/clang" "-cc1" "-triple" "x86_64-pc-linux-gnu" "-emit-obj" "-mrelax-all" "--mrelax-relocations" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "test.cpp" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-mllvm" "-treat-scalable-fixed-error-as-warning" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/tmp/repro/gg/creduce" "-fdeprecated-macro" "-fdebug-compilation-dir=/tmp/repro/gg/creduce" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-x" "c++" "test-bf5a61.cpp"
+
+Bug Labels:
+clang:frontend, confirmed, crash

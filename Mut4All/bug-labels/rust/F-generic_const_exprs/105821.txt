@@ -1,0 +1,79 @@
+Issue Title:
+error: internal compiler error: broken MIR in DefId · Issue #105821 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(adt_const_params, const_ptr_read, generic_const_exprs)]
+
+use std::mem::ManuallyDrop;
+
+const fn concat_strs<const A: &'static str, const B: &'static str>() -> &'static str
+where
+    [(); A.len()]:,
+    [(); B.len()]:,
+    [(); A.len() + B.len()]:,
+{
+    #[repr(C)]
+    struct ConcatJoin<const N: usize, const M: usize> {
+        left: [u8; N],
+        right: [u8; M],
+    }
+
+    #[repr(C)]
+    union ConcatJoiner<const N: usize, const M: usize>
+    where
+        [(); N + M]:,
+    {
+        whole: ManuallyDrop<[u8; N + M]>,
+        split: ManuallyDrop<ConcatJoin<N, M>>,
+    }
+
+    const fn concat_arr<const M: usize, const N: usize>(a: [u8; M], b: [u8; N]) -> [u8; M + N]
+    where
+        [(); M + N]:,
+    {
+        unsafe {
+            let joiner = ConcatJoiner {
+                split: ManuallyDrop::new(ConcatJoin { left: a, right: b }),
+            };
+            let join = joiner.whole;
+            ManuallyDrop::into_inner(join)
+        }
+    }
+
+    struct Inner<const A: &'static str, const B: &'static str>;
+    impl<const A: &'static str, const B: &'static str> Inner<A, B>
+    where
+        [(); A.len()]:,
+        [(); B.len()]:,
+        [(); A.len() + B.len()]:,
+    {
+        const ABSTR: &'static str = unsafe {
+            std::str::from_utf8_unchecked(&concat_arr(
+                A.as_ptr().cast::<[u8; A.len()]>().read(),
+                B.as_ptr().cast::<[u8; B.len()]>().read(),
+            ))
+        };
+    }
+
+    Inner::<A, B>::ABSTR
+}
+
+const FOO: &str = "foo";
+const BAR: &str = "bar";
+const FOOBAR: &str = concat_strs::<FOO, BAR>();
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1610:13
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::flush_delayed::<alloc::vec::Vec<rustc_errors::diagnostic::Diagnostic>, &str>
+   3: <rustc_interface::passes::QueryContext>::enter::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>
+   4: <rustc_interface::queries::Queries>::ongoing_codegen
+   5: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorGuaranteed>>
+   6: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}::{closure#0}>
+   7: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+
+Bug Labels:
+A-const-generics, C-bug, E-needs-test, F-adt_const_params, F-generic_const_exprs, I-ICE, T-compiler, glacier

@@ -1,0 +1,93 @@
+Issue Title:
+GAT crash · Issue #98702 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+struct Node<T, const N : usize, const P : usize> {
+    data : [[T; N]; P]
+}
+
+trait NodeT<const N : usize> {
+    type Node<T>;
+}
+
+struct NodeLookup;
+
+macro_rules! impl_lookup {
+    ($($n:literal)*) => { $(
+        impl NodeT<$n> for NodeLookup {
+            type Node<T> = Node<T, $n, {$n*$n}>;
+        }
+    )* }
+}
+
+impl_lookup!(1 2 3 4);
+
+fn main() {
+}
+
+Bug Trace:
+$ RUST_BACKTRACE=1 rustc crash.rs 
+error: internal compiler error: /rustc/ddcbba036aee08f0709f98a92a342a278eae5c05/compiler/rustc_middle/src/ty/fold.rs:756:29: unexpected bound ty in binder: BoundTy { var: 0, kind: Param("T") }
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/ddcbba036aee08f0709f98a92a342a278eae5c05/compiler/rustc_errors/src/lib.rs:1391:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::bug::<&alloc::string::String>
+   3: <rustc_errors::Handler>::bug::<&alloc::string::String>
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>
+   5: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_middle::ty::context::TyCtxt>::replace_late_bound_regions_uncached::<rustc_middle::ty::PredicateKind, <rustc_middle::ty::context::TyCtxt>::replace_late_bound_regions<rustc_middle::ty::PredicateKind, <rustc_middle::ty::context::TyCtxt>::anonymize_late_bound_regions<rustc_middle::ty::PredicateKind>::{closure#0}>::{closure#0}>::{closure#0}
+   8: <rustc_middle::ty::fold::BoundVarReplacer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+   9: <&rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_middle::ty::fold::BoundVarReplacer>
+  10: <rustc_middle::ty::PredicateKind as rustc_middle::ty::fold::TypeFoldable>::fold_with::<rustc_middle::ty::fold::BoundVarReplacer>
+  11: <rustc_middle::ty::context::TyCtxt>::anonymize_late_bound_regions::<rustc_middle::ty::PredicateKind>
+  12: <rustc_middle::ty::erase_regions::RegionEraserVisitor as rustc_middle::ty::fold::FallibleTypeFolder>::try_fold_binder::<rustc_middle::ty::PredicateKind>
+  13: <&rustc_middle::ty::list::List<rustc_middle::ty::Predicate> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_middle::ty::erase_regions::RegionEraserVisitor>
+  14: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const
+  15: <&rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_trait_selection::traits::project::AssocTypeNormalizer>
+  16: <rustc_middle::ty::Ty as rustc_middle::ty::fold::TypeSuperFoldable>::super_fold_with::<rustc_trait_selection::traits::project::AssocTypeNormalizer>
+  17: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  18: rustc_trait_selection::traits::project::opt_normalize_projection_type
+  19: rustc_trait_selection::traits::project::normalize_projection_type
+  20: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  21: <&rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_trait_selection::traits::project::AssocTypeNormalizer>
+  22: <rustc_middle::ty::PredicateKind as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_trait_selection::traits::project::AssocTypeNormalizer>
+  23: <rustc_middle::ty::Predicate as rustc_middle::ty::fold::TypeSuperFoldable>::super_fold_with::<rustc_trait_selection::traits::project::AssocTypeNormalizer>
+  24: <rustc_trait_selection::traits::project::AssocTypeNormalizer>::fold::<rustc_middle::ty::Predicate>
+  25: rustc_trait_selection::traits::project::normalize::<rustc_middle::ty::Predicate>
+  26: <rustc_infer::infer::InferCtxtBuilder>::enter::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_typeck::check::compare_method::check_type_bounds::{closure#2}>
+  27: rustc_typeck::check::compare_method::check_type_bounds
+  28: rustc_typeck::check::compare_method::compare_ty_impl
+  29: rustc_typeck::check::check::check_item_type
+  30: rustc_typeck::check::check::check_mod_item_types
+  31: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, ()>>
+  32: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::check_mod_item_types, rustc_query_impl::plumbing::QueryCtxt>
+  33: <rustc_session::session::Session>::time::<(), rustc_typeck::check_crate::{closure#6}>
+  34: rustc_typeck::check_crate
+  35: rustc_interface::passes::analysis
+  36: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), core::result::Result<(), rustc_errors::ErrorGuaranteed>>>
+  37: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  38: <rustc_interface::passes::QueryContext>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}::{closure#3}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+  39: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorGuaranteed>>
+  40: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  41: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.64.0-nightly (ddcbba036 2022-06-29) running on aarch64-apple-darwin
+
+query stack during panic:
+#0 [check_mod_item_types] checking item types in top-level module
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-GATs, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier, requires-nightly

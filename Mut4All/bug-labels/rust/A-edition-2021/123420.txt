@@ -1,0 +1,66 @@
+Issue Title:
+ICE: compiler/rustc_mir_transform/src/coroutine/by_move_body.rs:  assertion failed: `i32 !=  &'{erased} mut i32` · Issue #123420 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::future::Future;
+
+pub fn async_closure_explicit_return_type(x: &mut i32) -> impl Future {
+    (async move || -> &i32 {
+        let y = &*x;
+        *x += 1;
+        y
+    })()
+}
+
+Version Information:
+Command:
+~/.rustup/toolchains/master/bin/rustc --edition=2021
+
+Command:
+~/.rustup/toolchains/master/bin/rustc --edition=2021
+
+Bug Trace:
+//@ edition:2018
+#![feature(async_closure)]
+use std::future::Future;
+
+// test the quality of annotations giving lifetimes names (`'1`) when async constructs are involved
+
+pub async fn async_fn(x: &mut i32) -> &i32 {
+    let y = &*x;
+    *x += 1; //~ ERROR cannot assign to `*x` because it is borrowed
+    y
+}
+
+pub fn async_closure(x: &mut i32) -> impl Future<Output=&i32> {
+    (async move || {
+        //~^ ERROR lifetime may not live long enough
+        //~| ERROR temporary value dropped while borrowed
+        let y = &*x;
+        *x += 1; //~ ERROR cannot assign to `*x` because it is borrowed
+        y
+    })()
+}
+
+pub fn async_closure_explicit_return_type(x: &mut i32) -> impl Future<Output=&i32> {
+    (async move || -> &i32 {
+        //~^ ERROR lifetime may not live long enough
+        //~| ERROR temporary value dropped while borrowed
+        let y = &*x;
+        *x += 1; //~ ERROR cannot assign to `*x` because it is borrowed
+        y
+    })()
+}
+
+pub fn async_block(x: &mut i32) -> impl Future<Output=&i32> {
+    async move {
+        let y = &*x;
+        *x += 1; //~ ERROR cannot assign to `*x` because it is borrowed
+        y
+    }
+}
+
+fn main() {}
+
+Bug Labels:
+A-edition-2021, C-bug, E-needs-test, I-ICE, S-has-mcve, T-compiler

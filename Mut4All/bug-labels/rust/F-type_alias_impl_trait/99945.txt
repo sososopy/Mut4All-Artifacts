@@ -1,0 +1,87 @@
+Issue Title:
+Failed to normalize · Issue #99945 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(type_alias_impl_trait)]
+
+trait Widget<E> {
+    type State;
+
+    fn make_state(&self) -> Self::State;
+}
+
+impl<E> Widget<E> for () {
+    type State = ();
+
+    fn make_state(&self) -> Self::State {}
+}
+
+struct StatefulWidget<F>(F);
+
+type StateWidget<'a> = impl Widget<&'a ()>;
+
+impl<F: for<'a> Fn(&'a ()) -> StateWidget<'a>> Widget<()> for StatefulWidget<F> {
+    type State = ();
+
+    fn make_state(&self) -> Self::State {}
+}
+
+fn new_stateful_widget<F: for<'a> Fn(&'a ()) -> StateWidget<'a>>(build: F) -> impl Widget<()> {
+    StatefulWidget(build)
+}
+
+fn main() {
+    new_stateful_widget(|_| ()).make_state();
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:199:90: Failed to normalize <impl Widget<()> as Widget<()>>::State, maybe try to call `try_normalize_erasing_regions` instead
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/3924dac7bb29bc8eb348059c901e8f912399c857/compiler/rustc_errors/src/lib.rs:1392:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::bug::<&alloc::string::String>
+   3: <rustc_errors::Handler>::bug::<&alloc::string::String>
+   4: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>::{closure#0}, ()>
+   5: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_ty
+   8: rustc_monomorphize::collector::collect_neighbours
+   9: rustc_monomorphize::collector::collect_items_rec
+  10: rustc_data_structures::sync::par_for_each_in::<alloc::vec::Vec<rustc_middle::mir::mono::MonoItem>, rustc_monomorphize::collector::collect_crate_mono_items::{closure#1}::{closure#0}>
+  11: <rustc_session::session::Session>::time::<(), rustc_monomorphize::collector::collect_crate_mono_items::{closure#1}>
+  12: rustc_monomorphize::collector::collect_crate_mono_items
+  13: rustc_monomorphize::partitioning::collect_and_partition_mono_items
+  14: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, (), (&std::collections::hash::set::HashSet<rustc_span::def_id::DefId, core::hash::BuildHasherDefault<rustc_hash::FxHasher>>, &[rustc_middle::mir::mono::CodegenUnit])>
+  15: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), (&std::collections::hash::set::HashSet<rustc_span::def_id::DefId, core::hash::BuildHasherDefault<rustc_hash::FxHasher>>, &[rustc_middle::mir::mono::CodegenUnit])>>
+  16: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::collect_and_partition_mono_items, rustc_query_impl::plumbing::QueryCtxt>
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::collect_and_partition_mono_items
+  18: rustc_codegen_ssa::base::codegen_crate::<rustc_codegen_llvm::LlvmCodegenBackend>
+  19: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  20: <rustc_session::session::Session>::time::<alloc::boxed::Box<dyn core::any::Any>, rustc_interface::passes::start_codegen::{closure#0}>
+  21: <rustc_interface::passes::QueryContext>::enter::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>
+  22: <rustc_interface::queries::Queries>::ongoing_codegen
+  23: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorGuaranteed>>
+  24: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  25: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>
+  26: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.64.0-nightly (3924dac7b 2022-07-29) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+error: could not compile `rust-playground`
+
+Bug Labels:
+C-bug, E-needs-test, F-type_alias_impl_trait, I-ICE, T-compiler, glacier

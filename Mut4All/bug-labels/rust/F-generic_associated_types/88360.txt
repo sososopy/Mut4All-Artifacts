@@ -1,0 +1,67 @@
+Issue Title:
+Panic with GATs during lexical region resolve  · Issue #88360 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+trait GatTrait {
+    type Gat<'a>;
+    
+    fn test(&self) -> Self::Gat<'_>;
+}
+
+trait SuperTrait<T>
+where
+    for<'a> Self: GatTrait<Gat<'a> = &'a T>,
+{
+    fn copy(&self) -> Self::Gat<'_> where T: Copy {
+        *self.test()
+    }
+}
+
+Bug Trace:
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_infer::infer::lexical_region_resolve::LexicalResolver::lub_concrete_regions
+   8: rustc_infer::infer::lexical_region_resolve::LexicalResolver::expand_node
+   9: rustc_infer::infer::lexical_region_resolve::LexicalResolver::infer_variable_values
+  10: rustc_infer::infer::lexical_region_resolve::resolve
+  11: rustc_infer::infer::InferCtxt::resolve_regions_and_report_errors
+  12: rustc_typeck::check::regionck::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::regionck_fn
+  13: rustc_infer::infer::InferCtxtBuilder::enter
+  14: rustc_typeck::check::typeck
+  15: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  16: rustc_data_structures::stack::ensure_sufficient_stack
+  17: rustc_query_system::query::plumbing::force_query_with_job
+  18: rustc_query_system::query::plumbing::get_query_impl
+  19: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  20: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  21: rustc_typeck::check::typeck_item_bodies
+  22: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  23: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  24: rustc_query_system::query::plumbing::force_query_with_job
+  25: rustc_query_system::query::plumbing::get_query_impl
+  26: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck_item_bodies
+  27: rustc_session::utils::<impl rustc_session::session::Session>::time
+  28: rustc_typeck::check_crate
+  29: rustc_interface::passes::analysis
+  30: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  32: rustc_query_system::dep_graph::graph::DepGraph<K>::with_eval_always_task
+  33: rustc_data_structures::stack::ensure_sufficient_stack
+  34: rustc_query_system::query::plumbing::force_query_with_job
+  35: rustc_query_system::query::plumbing::get_query_impl
+  36: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  37: rustc_interface::passes::QueryContext::enter
+  38: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  39: rustc_span::with_source_map
+  40: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-GATs, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier, requires-nightly

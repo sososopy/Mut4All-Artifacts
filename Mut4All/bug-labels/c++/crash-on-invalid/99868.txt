@@ -1,0 +1,103 @@
+Issue Title:
+crash on invalid
+
+Source Code & Bug Trace:
+$ cat preproc.cc
+template <int> class b;
+
+class c : b<1> {};
+
+template <int> class d : c {
+  struct {
+    b<1> e;
+  } f;
+};
+
+$ ~/repos/llvm/build/bin/clang -xc++ -fsyntax-only preproc.cc
+preproc.cc:3:11: error: implicit instantiation of undefined template 'b<1>'
+    3 | class c : b<1> {};
+      |           ^
+preproc.cc:1:22: note: template is declared here
+    1 | template <int> class b;
+      |                      ^
+preproc.cc:7:10: error: implicit instantiation of undefined template 'b<1>'
+    7 |     b<1> e;
+      |          ^
+preproc.cc:1:22: note: template is declared here
+    1 | template <int> class b;
+      |                      ^
+clang: /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/AST/DeclCXX.h:464: struct DefinitionData &clang::CXXRecordDecl::data() const: Assertion `DD && "queried property of class with no definition"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang -xc++ -fsyntax-only preproc.cc
+1.      preproc.cc:8:6: current parser token ';'
+2.      preproc.cc:5:16: parsing struct/union/class body 'd'
+ #0 0x00005579289eae28 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:723:13
+ #1 0x00005579289e89fe llvm::sys::RunSignalHandlers() /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Signals.cpp:106:18
+ #2 0x0000557928952e86 HandleCrash /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:73:5
+ #3 0x0000557928952e86 CrashRecoverySignalHandler(int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:390:51
+ #4 0x00007f44ff25a510 (/lib/x86_64-linux-gnu/libc.so.6+0x3c510)
+ #5 0x00007f44ff2a816c __pthread_kill_implementation ./nptl/pthread_kill.c:44:76
+ #6 0x00007f44ff25a472 raise ./signal/../sysdeps/posix/raise.c:27:6
+ #7 0x00007f44ff2444b2 abort ./stdlib/abort.c:81:7
+ #8 0x00007f44ff2443d5 _nl_load_domain ./intl/loadmsgcat.c:1177:9
+ #9 0x00007f44ff2533a2 (/lib/x86_64-linux-gnu/libc.so.6+0x353a2)
+#10 0x0000557928bfbba6 (/usr/local/google/home/kadircet/repos/llvm/build/bin/clang+0x7fbdba6)
+#11 0x000055792c132e4b clang::CXXRecordDecl::hasSubobjectAtOffsetZeroOfEmptyBaseType(clang::ASTContext&, clang::CXXRecordDecl const*)::$_0::operator()(clang::CXXRecordDecl const*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclCXX.cpp:631:10
+#12 0x000055792c132d1d clang::CXXRecordDecl::hasSubobjectAtOffsetZeroOfEmptyBaseType(clang::ASTContext&, clang::CXXRecordDecl const*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclCXX.cpp:681:13
+#13 0x000055792c1343dd clang::CXXRecordDecl::addedMember(clang::Decl*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclCXX.cpp:1260:13
+#14 0x000055792c12c722 clang::DeclContext::addHiddenDecl(clang::Decl*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclBase.cpp:0:13
+#15 0x000055792c12c829 isPresent /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Casting.h:622:55
+#16 0x000055792c12c829 isPresent<clang::Decl *> /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Casting.h:630:10
+#17 0x000055792c12c829 dyn_cast<clang::NamedDecl, clang::Decl> /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Casting.h:662:3
+#18 0x000055792c12c829 clang::DeclContext::addDecl(clang::Decl*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclBase.cpp:1745:18
+#19 0x000055792b2f7d03 getLangOpts /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Sema/Sema.h:593:51
+#20 0x000055792b2f7d03 clang::Sema::PushOnScopeChains(clang::NamedDecl*, clang::Scope*, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDecl.cpp:1510:7
+#21 0x000055792b33dac2 clang::Sema::HandleField(clang::Scope*, clang::RecordDecl*, clang::SourceLocation, clang::Declarator&, clang::Expr*, clang::InClassInitStyle, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDecl.cpp:0:5
+#22 0x000055792b44bff0 clang::Sema::ActOnCXXMemberDeclarator(clang::Scope*, clang::AccessSpecifier, clang::Declarator&, llvm::MutableArrayRef<clang::TemplateParameterList*>, clang::Expr*, clang::VirtSpecifiers const&, clang::InClassInitStyle) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:0:0
+#23 0x000055792b0335dc clang::Parser::ParseCXXClassMemberDeclaration(clang::AccessSpecifier, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::ParsingDeclRAIIObject*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDeclCXX.cpp:3248:26
+#24 0x000055792b035ced clang::Parser::ParseCXXClassMemberDeclarationWithPragmas(clang::AccessSpecifier&, clang::ParsedAttributes&, clang::TypeSpecifierType, clang::Decl*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDeclCXX.cpp:0:0
+#25 0x000055792b02e8a0 MaybeDestroyTemplateIds /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Parse/Parser.h:328:9
+#26 0x000055792b02e8a0 clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributes&, unsigned int, clang::Decl*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDeclCXX.cpp:3838:7
+#27 0x000055792b02c338 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDeclCXX.cpp:0:7
+#28 0x000055792b053ff1 empty /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/SmallVector.h:94:46
+#29 0x000055792b053ff1 empty /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Sema/ParsedAttr.h:843:40
+#30 0x000055792b053ff1 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:4668:23
+#31 0x000055792b0737b2 is /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Lex/Token.h:99:49
+#32 0x000055792b0737b2 clang::Parser::ParseDeclarationAfterTemplate(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo&, clang::ParsingDeclRAIIObject&, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseTemplate.cpp:238:11
+#33 0x000055792b0725b4 clang::Parser::ParseTemplateDeclarationOrSpecialization(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseTemplate.cpp:0:0
+#34 0x000055792b071e78 ObjCDeclContextSwitch /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Parse/Parser.h:1093:11
+#35 0x000055792b071e78 clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseTemplate.cpp:43:25
+#36 0x000055792b04d604 ObjCDeclContextSwitch /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/Parse/Parser.h:1093:11
+#37 0x000055792b04d604 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseDecl.cpp:2017:25
+#38 0x000055792afd63cd clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:0:0
+#39 0x000055792afd4886 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/Parser.cpp:763:10
+#40 0x000055792afcfe2e clang::ParseAST(clang::Sema&, bool, bool) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Parse/ParseAST.cpp:162:5
+#41 0x000055792969af1f clang::FrontendAction::Execute() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/FrontendAction.cpp:1082:10
+#42 0x00005579296067ad getPtr /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:279:42
+#43 0x00005579296067ad operator bool /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/Support/Error.h:242:16
+#44 0x00005579296067ad clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Frontend/CompilerInstance.cpp:1061:23
+#45 0x00005579297828ce clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/local/google/home/kadircet/repos/llvm/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:280:25
+#46 0x000055792629182b cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/cc1_main.cpp:284:15
+#47 0x000055792628df0d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:215:12
+#48 0x0000557929440429 operator() /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:30
+#49 0x0000557929440429 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0>(long) /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:12
+#50 0x0000557928952bc6 operator() /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/STLFunctionalExtras.h:0:12
+#51 0x0000557928952bc6 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/CrashRecoveryContext.cpp:426:3
+#52 0x000055792943fb12 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Job.cpp:440:7
+#53 0x00005579293f9cc7 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:199:15
+#54 0x00005579293fa207 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Compilation.cpp:253:13
+#55 0x000055792941b959 empty /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/SmallVector.h:94:46
+#56 0x000055792941b959 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) /usr/local/google/home/kadircet/repos/llvm/clang/lib/Driver/Driver.cpp:1943:23
+#57 0x000055792628d40d clang_main(int, char**, llvm::ToolContext const&) /usr/local/google/home/kadircet/repos/llvm/clang/tools/driver/driver.cpp:391:21
+#58 0x000055792629e677 main /usr/local/google/home/kadircet/repos/llvm/build/tools/clang/tools/driver/clang-driver.cpp:17:10
+#59 0x00007f44ff2456ca __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#60 0x00007f44ff245785 call_init ./csu/../csu/libc-start.c:128:20
+#61 0x00007f44ff245785 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#62 0x000055792628b861 _start (/usr/local/google/home/kadircet/repos/llvm/build/bin/clang+0x564d861)
+clang: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 19.0.0git (git@github.com:kadircet/llvm-project.git e60ab4acfbb1b177e30618b0d4ce6a795a067cbc)
+
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid

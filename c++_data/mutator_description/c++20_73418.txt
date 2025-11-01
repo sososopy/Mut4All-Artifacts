@@ -1,0 +1,33 @@
+Mutation Operator: Nested Lambda with Pack Expansion in Requires Clause
+
+Target: This mutation operator targets lambda expressions, specifically focusing on nested lambdas that utilize pack expansions within requires clauses.
+
+Mutation Rule:
+1. Identify a lambda expression (`lambda1`) within the code that captures or is passed parameters. Ensure that `lambda1` uses nested lambdas (`lambda2`).
+2. Within `lambda2`, introduce a pack expansion in the requires clause that operates on captured or passed parameters.
+3. Ensure that the requires clause contains a condition that references a member function or property of the parameter, which uses the parameter pack.
+4. Introduce a deliberate incorrect usage of the parameter pack in the requires clause, causing ambiguity or misuse that can lead to a compiler crash.
+
+Example:
+Original Code:
+auto lambda1 = [&vec](auto x) {
+  return std::ranges::any_of(vec, [](auto y) {
+    return [](auto obj) requires { obj.size(); }
+    { return true; }(y);
+  });
+};
+
+Mutated Code:
+auto lambda1 = [&vec](auto x) {
+  return std::ranges::any_of(vec, [](auto y) {
+    return [](auto obj, auto... params)
+      requires requires { obj.size(params...); }
+    { return false; }(y);
+  });
+};
+
+Explanation:
+- The mutation introduces a nested lambda within an existing lambda. 
+- A parameter pack `params...` is added to the nested lambda's parameter list.
+- The requires clause attempts to use the `size()` method with the parameter pack, which is not intended in the original logic and is likely to cause a crash due to misuse or ambiguity in the parameter pack expansion.
+- The focus is on exploiting complex lambda constructs with parameter packs, which are prone to causing compiler issues.

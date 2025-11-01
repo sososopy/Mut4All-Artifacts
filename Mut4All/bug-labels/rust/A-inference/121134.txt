@@ -1,0 +1,241 @@
+Issue Title:
+ICE: relating different kinds · Issue #121134 · rust-lang/rust · GitHub
+
+Rust Code:
+trait Output<'a> {
+    type Type;
+}
+
+struct Wrapper;
+
+impl Wrapper {
+    fn do_something_wrapper<O, F>(&mut self, do_something_wrapper: F)
+    where
+        FnOnce:,
+        F: for<'a> FnOnce(<F as Output<i32, _>>::Type),
+    {
+    }
+}
+
+fn main() {
+    let mut wrapper = Wrapper;
+    wrapper.do_something_wrapper::<i32, _>(|value| ());
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+warning: trait objects without an explicit `dyn` are deprecated
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:10:9
+   |
+10 |         FnOnce:,
+   |         ^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+help: if this is an object-safe trait, use `dyn`
+   |
+10 |         dyn FnOnce:,
+   |         +++
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:10:9
+   |
+10 |         FnOnce:,
+   |         ^^^^^^ help: use parenthetical notation instead: `FnOnce() -> ()`
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on 2024-02-14; consider upgrading it if it is out of date
+
+error[E0107]: missing generics for trait `FnOnce`
+   --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:10:9
+    |
+10  |         FnOnce:,
+    |         ^^^^^^ expected 1 generic argument
+    |
+note: trait defined here, with 1 generic parameter: `Args`
+   --> /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/core/src/ops/function.rs:242:11
+    |
+242 | pub trait FnOnce<Args: Tuple> {
+    |           ^^^^^^ ----
+help: add missing generic argument
+    |
+10  |         FnOnce<Args>:,
+    |               ++++++
+
+error[E0191]: the value of the associated type `Output` in `FnOnce` must be specified
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:10:9
+   |
+10 |         FnOnce:,
+   |         ^^^^^^ help: specify the associated type: `FnOnce<Output = Type>`
+
+error[E0107]: trait takes 0 generic arguments but 2 generic arguments were supplied
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:11:33
+   |
+11 |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type),
+   |                                 ^^^^^^ ------ help: remove these generic arguments
+   |                                 |
+   |                                 expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:1:7
+   |
+1  | trait Output<'a> {
+   |       ^^^^^^
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:11:45
+   |
+11 |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type),
+   |                                             ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+8  ~     fn do_something_wrapper<O, F, T>(&mut self, do_something_wrapper: F)
+9  |     where
+10 |         FnOnce:,
+11 ~         F: for<'a> FnOnce(<F as Output<i32, T>>::Type),
+   |
+
+error[E0277]: the trait bound `for<'a> F: Output<'a>` is not satisfied
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:8:5
+   |
+8  | /     fn do_something_wrapper<O, F>(&mut self, do_something_wrapper: F)
+9  | |     where
+10 | |         FnOnce:,
+11 | |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type),
+   | |_______________________________________________________^ the trait `for<'a> Output<'a>` is not implemented for `F`
+   |
+help: consider further restricting this bound
+   |
+11 |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type) + for<'a> Output<'a>,
+   |                                                        ++++++++++++++++++++
+
+error[E0277]: the trait bound `for<'a> F: Output<'a>` is not satisfied
+ --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:8:8
+  |
+8 |     fn do_something_wrapper<O, F>(&mut self, do_something_wrapper: F)
+  |        ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Output<'a>` is not implemented for `F`
+  |
+help: consider further restricting this bound
+  |
+11|         F: for<'a> FnOnce(<F as Output<i32, _>>::Type) + for<'a> Output<'a>,
+  |                                                        ++++++++++++++++++++
+
+error[E0277]: the trait bound `F: Output<'_>` is not satisfied
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:11:12
+   |
+11 |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type),
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Output<'_>` is not implemented for `F`
+   |
+help: consider further restricting this bound
+   |
+11 |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type) + Output<'_>,
+   |                                                        ++++++++++++
+
+error[E0277]: the trait bound `F: Output<'_>` is not satisfied
+  --> /tmp/icemaker_global_tempdir.wdCSc9CZAHuk/rustc_testrunner_tmpdir_reporting.I3PIjjehTcn6/mvce.rs:11:20
+   |
+11 |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type),
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Output<'_>` is not implemented for `F`
+   |
+help: consider further restricting this bound
+   |
+11 |         F: for<'a> FnOnce(<F as Output<i32, _>>::Type) + Output<'_>,
+   |                                                        ++++++++++++
+
+error: internal compiler error: compiler/rustc_infer/src/infer/at.rs:418:21: relating different kinds: (Alias(Projection, AliasTy { args: [?2t, RePlaceholder(!9_BoundRegion { var: 1, kind: BrNamed(DefId(0:15 ~ mvce[f223]::{impl#0}::do_something_wrapper::'_), '_) })], def_id: DefId(0:5 ~ mvce[f223]::Output::Type) }),) RePlaceholder(!7_BoundRegion { var: 1, kind: BrNamed(DefId(0:15 ~ mvce[f223]::{impl#0}::do_something_wrapper::'_), '_) })
+
+thread 'rustc' panicked at compiler/rustc_middle/src/util/bug.rs:35:44:
+Box<dyn Any>
+stack backtrace:
+   0:     0x7f1b8f656e46 - std::backtrace_rs::backtrace::libunwind::trace::h5168cb64cb843b87
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/../../backtrace/src/backtrace/libunwind.rs:104:5
+   1:     0x7f1b8f656e46 - std::backtrace_rs::backtrace::trace_unsynchronized::hbbff473666b784c6
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f1b8f656e46 - std::sys_common::backtrace::_print_fmt::h6c61b632e6cc7949
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x7f1b8f656e46 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h974a6b559c2b8d41
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f1b8f6a746c - core::fmt::rt::Argument::fmt::hf6a5273aff56768c
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/core/src/fmt/rt.rs:142:9
+   5:     0x7f1b8f6a746c - core::fmt::write::h1caffe3a78971207
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/core/src/fmt/mod.rs:1120:17
+   6:     0x7f1b8f64a7ef - std::io::Write::write_fmt::h2caf2bb3485e27a5
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/io/mod.rs:1854:15
+   7:     0x7f1b8f656bf4 - std::sys_common::backtrace::_print::h0414d95b24b9ea44
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7f1b8f656bf4 - std::sys_common::backtrace::print::hfdf60e3b3d06625d
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7f1b8f65993b - std::panicking::default_hook::{{closure}}::h3c1109072cde0ade
+  10:     0x7f1b8f659689 - std::panicking::default_hook::hfe3c076d4f24ecbe
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/panicking.rs:292:9
+  11:     0x7f1b8c3f563c - std[2308076c1424b998]::panicking::update_hook::<alloc[33ce0ef41c101337]::boxed::Box<rustc_driver_impl[d317596fd5f90102]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x7f1b8f65a0a0 - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h8a55f98e23703736
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/alloc/src/boxed.rs:2030:9
+  13:     0x7f1b8f65a0a0 - std::panicking::rust_panic_with_hook::hc147efcd5d482f2c
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/panicking.rs:785:13
+  14:     0x7f1b8c422cf4 - std[2308076c1424b998]::panicking::begin_panic::<rustc_errors[5b15740bab0110e6]::ExplicitBug>::{closure#0}
+  15:     0x7f1b8c41f656 - std[2308076c1424b998]::sys_common::backtrace::__rust_end_short_backtrace::<std[2308076c1424b998]::panicking::begin_panic<rustc_errors[5b15740bab0110e6]::ExplicitBug>::{closure#0}, !>
+  16:     0x7f1b8c41abd6 - std[2308076c1424b998]::panicking::begin_panic::<rustc_errors[5b15740bab0110e6]::ExplicitBug>
+  17:     0x7f1b8c42e841 - <rustc_errors[5b15740bab0110e6]::diagnostic_builder::BugAbort as rustc_errors[5b15740bab0110e6]::diagnostic_builder::EmissionGuarantee>::emit_producing_guarantee
+  18:     0x7f1b8c7eed3e - <rustc_errors[5b15740bab0110e6]::DiagCtxt>::bug::<alloc[33ce0ef41c101337]::string::String>
+  19:     0x7f1b8c88b47b - rustc_middle[efc8e2d5742a68dd]::util::bug::opt_span_bug_fmt::<rustc_span[e043cedf16fd8748]::span_encoding::Span>::{closure#0}
+  20:     0x7f1b8c870f9a - rustc_middle[efc8e2d5742a68dd]::ty::context::tls::with_opt::<rustc_middle[efc8e2d5742a68dd]::util::bug::opt_span_bug_fmt<rustc_span[e043cedf16fd8748]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+  21:     0x7f1b8c870e18 - rustc_middle[efc8e2d5742a68dd]::ty::context::tls::with_context_opt::<rustc_middle[efc8e2d5742a68dd]::ty::context::tls::with_opt<rustc_middle[efc8e2d5742a68dd]::util::bug::opt_span_bug_fmt<rustc_span[e043cedf16fd8748]::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+  22:     0x7f1b8aca02d0 - rustc_middle[efc8e2d5742a68dd]::util::bug::bug_fmt
+  23:     0x7f1b8c692657 - <rustc_middle[efc8e2d5742a68dd]::ty::generic_args::GenericArg as rustc_infer[70bd439f8050a3aa]::infer::at::ToTrace>::to_trace
+  24:     0x7f1b8cdf6d46 - <rustc_infer[70bd439f8050a3aa]::infer::at::At>::eq::<rustc_middle[efc8e2d5742a68dd]::ty::generic_args::GenericArg>
+  25:     0x7f1b8cdf745c - <rustc_infer[70bd439f8050a3aa]::infer::InferCtxt>::enter_forall::<rustc_middle[efc8e2d5742a68dd]::ty::predicate::TraitPredicate, (), <rustc_infer[70bd439f8050a3aa]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[8cacf4ad37a3d0db]::traits::error_reporting::suggestions::TypeErrCtxtExt>::note_function_argument_obligation::{closure#0}>
+  26:     0x7f1b8cecdd7c - <rustc_infer[70bd439f8050a3aa]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[8cacf4ad37a3d0db]::traits::error_reporting::suggestions::TypeErrCtxtExt>::note_function_argument_obligation
+  27:     0x7f1b8cec919f - <rustc_infer[70bd439f8050a3aa]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[8cacf4ad37a3d0db]::traits::error_reporting::suggestions::TypeErrCtxtExt>::note_obligation_cause_code::<rustc_middle[efc8e2d5742a68dd]::ty::predicate::Predicate>
+  28:     0x7f1b8cee7215 - <rustc_infer[70bd439f8050a3aa]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[8cacf4ad37a3d0db]::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt>::note_obligation_cause
+  29:     0x7f1b8ceda218 - <rustc_infer[70bd439f8050a3aa]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[8cacf4ad37a3d0db]::traits::error_reporting::type_err_ctxt_ext::TypeErrCtxtExt>::report_selection_error
+  30:     0x7f1b8cf029c1 - <rustc_infer[70bd439f8050a3aa]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[8cacf4ad37a3d0db]::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt>::report_fulfillment_error
+  31:     0x7f1b8ced77ca - <rustc_infer[70bd439f8050a3aa]::infer::error_reporting::TypeErrCtxt as rustc_trait_selection[8cacf4ad37a3d0db]::traits::error_reporting::type_err_ctxt_ext::TypeErrCtxtExt>::report_fulfillment_errors
+  32:     0x7f1b8df3c25f - <rustc_hir_typeck[7d91c7b0ed43ba5f]::fn_ctxt::FnCtxt>::type_inference_fallback
+  33:     0x7f1b8d782d76 - rustc_hir_typeck[7d91c7b0ed43ba5f]::typeck
+  34:     0x7f1b8d781fdf - rustc_query_impl[ecef4a4fa1cc3689]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[ecef4a4fa1cc3689]::query_impl::typeck::dynamic_query::{closure#2}::{closure#0}, rustc_middle[efc8e2d5742a68dd]::query::erase::Erased<[u8; 8usize]>>
+  35:     0x7f1b8d78cdb0 - rustc_query_system[8b26caae5283da17]::query::plumbing::try_execute_query::<rustc_query_impl[ecef4a4fa1cc3689]::DynamicConfig<rustc_query_system[8b26caae5283da17]::query::caches::VecCache<rustc_span[e043cedf16fd8748]::def_id::LocalDefId, rustc_middle[efc8e2d5742a68dd]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[ecef4a4fa1cc3689]::plumbing::QueryCtxt, false>
+  36:     0x7f1b8d78c98c - rustc_query_impl[ecef4a4fa1cc3689]::query_impl::typeck::get_query_non_incr::__rust_end_short_backtrace
+  37:     0x7f1b8d78c120 - <rustc_middle[efc8e2d5742a68dd]::hir::map::Map>::par_body_owners::<rustc_hir_analysis[2f1fe9f85dc7c390]::check_crate::{closure#5}>::{closure#0}
+  38:     0x7f1b8d78ac5e - rustc_hir_analysis[2f1fe9f85dc7c390]::check_crate
+  39:     0x7f1b8dffb5d3 - rustc_interface[e88069c12facd435]::passes::analysis
+  40:     0x7f1b8dffb229 - rustc_query_impl[ecef4a4fa1cc3689]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[ecef4a4fa1cc3689]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle[efc8e2d5742a68dd]::query::erase::Erased<[u8; 1usize]>>
+  41:     0x7f1b8e43afe5 - rustc_query_system[8b26caae5283da17]::query::plumbing::try_execute_query::<rustc_query_impl[ecef4a4fa1cc3689]::DynamicConfig<rustc_query_system[8b26caae5283da17]::query::caches::SingleCache<rustc_middle[efc8e2d5742a68dd]::query::erase::Erased<[u8; 1usize]>>, false, false, false>, rustc_query_impl[ecef4a4fa1cc3689]::plumbing::QueryCtxt, false>
+  42:     0x7f1b8e43ad49 - rustc_query_impl[ecef4a4fa1cc3689]::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+  43:     0x7f1b8e444695 - rustc_interface[e88069c12facd435]::interface::run_compiler::<core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>, rustc_driver_impl[d317596fd5f90102]::run_compiler::{closure#0}>::{closure#0}
+  44:     0x7f1b8e5c5ad8 - std[2308076c1424b998]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[e88069c12facd435]::util::run_in_thread_with_globals<rustc_interface[e88069c12facd435]::util::run_in_thread_pool_with_globals<rustc_interface[e88069c12facd435]::interface::run_compiler<core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>, rustc_driver_impl[d317596fd5f90102]::run_compiler::{closure#0}>::{closure#0}, core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>>::{closure#0}, core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>>
+  45:     0x7f1b8e5c5904 - <<std[2308076c1424b998]::thread::Builder>::spawn_unchecked_<rustc_interface[e88069c12facd435]::util::run_in_thread_with_globals<rustc_interface[e88069c12facd435]::util::run_in_thread_pool_with_globals<rustc_interface[e88069c12facd435]::interface::run_compiler<core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>, rustc_driver_impl[d317596fd5f90102]::run_compiler::{closure#0}>::{closure#0}, core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>>::{closure#0}, core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[db7e23408f407db6]::result::Result<(), rustc_span[e043cedf16fd8748]::ErrorGuaranteed>>::{closure#1} as core[db7e23408f407db6]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  46:     0x7f1b8f6631e5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hbe12538a3d7e111d
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/alloc/src/boxed.rs:2016:9
+  47:     0x7f1b8f6631e5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h306728bac30291a0
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/alloc/src/boxed.rs:2016:9
+  48:     0x7f1b8f6631e5 - std::sys::pal::unix::thread::Thread::new::thread_start::hec142a176366d167
+                               at /rustc/ee9c7c940c07d8b67c9a6b2ec930db70dcd23a46/library/std/src/sys/pal/unix/thread.rs:108:17
+  49:     0x7f1b894aa9eb - <unknown>
+  50:     0x7f1b8952e7cc - <unknown>
+  51:                0x0 - <unknown>
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.78.0-nightly (ee9c7c940 2024-02-14) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [typeck] type-checking `main`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 10 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0107, E0121, E0191, E0277, E0658.
+For more information about an error, try `rustc --explain E0107`.
+
+Bug Labels:
+A-inference, C-bug, I-ICE, S-bug-has-test, S-has-mcve, T-compiler

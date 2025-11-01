@@ -1,0 +1,102 @@
+Issue Title:
+ICE with higher-order trait-bounds (`AsyncFnOnce` emulation) · Issue #79146 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(unboxed_closures)]
+async fn with_usize<F> (f: F)
+where
+    F : for<'any> FnOnce<(&'any usize,)>,
+    for<'any>
+        <F as FnOnce<(&'any usize,)>>::Output : 'any + ::core::future::Future<Output = ()>
+    ,
+{
+    f(&42).await
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:945:9
+stack backtrace:
+   0:        0x10f05a6a4 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h808cc0fc691f5922
+   1:        0x10f0c2330 - core::fmt::write::h0ce880d33cd2a300
+   2:        0x10f04bea6 - std::io::Write::write_fmt::h057e6b5365b25cdb
+   3:        0x10f05f229 - std::panicking::default_hook::{{closure}}::hcbe1ecfff77305a1
+   4:        0x10f05eeed - std::panicking::default_hook::h8422621c02c35b35
+   5:        0x1076ff638 - rustc_driver::report_ice::hc552e667d6d38f36
+   6:        0x10f05f95e - std::panicking::rust_panic_with_hook::h82b76d3adf4cbc3a
+   7:        0x10bc6c9e1 - std::panicking::begin_panic::{{closure}}::h085bca95250ed8bf
+   8:        0x10bc6c989 - std::sys_common::backtrace::__rust_end_short_backtrace::h9a6e599d0c1b60d1
+   9:        0x10c0d18d1 - std::panicking::begin_panic::h3a64de21fa178bdd
+  10:        0x10bc9a5e7 - rustc_errors::HandlerInner::bug::he1b4901d1c33f4e1
+  11:        0x10bc99057 - rustc_errors::Handler::bug::hfa317f4299131d0f
+  12:        0x10b7c25b4 - rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}::h7f42b77a79094ea9
+  13:        0x10b7bd586 - rustc_middle::ty::context::tls::with_opt::{{closure}}::h02206696c3a105cf
+  14:        0x10b7bd543 - rustc_middle::ty::context::tls::with_opt::h26ddb50870ff0105
+  15:        0x10b7c24d1 - rustc_middle::util::bug::opt_span_bug_fmt::hbf114ecad48a4e81
+  16:        0x10c0b8306 - rustc_middle::util::bug::bug_fmt::h18f192f6a062df6a
+  17:        0x10a69d302 - rustc_mir::borrow_check::universal_regions::UniversalRegionIndices::to_region_vid::{{closure}}::hdfd84e3dd2845347
+  18:        0x10a69d287 - rustc_mir::borrow_check::universal_regions::UniversalRegionIndices::to_region_vid::h2a274da81ab4ec70
+  19:        0x10a4de603 - rustc_mir::borrow_check::region_infer::RegionInferenceContext::eval_verify_bound::h46d9c51157e4c52a
+  20:        0x10a4de51e - rustc_mir::borrow_check::region_infer::RegionInferenceContext::eval_verify_bound::h46d9c51157e4c52a
+  21:        0x10a4dc505 - rustc_mir::borrow_check::region_infer::RegionInferenceContext::solve::hb2a35b79b72da6b4
+  22:        0x10a740dd8 - rustc_mir::borrow_check::nll::compute_regions::h4736cdae26e4e30d
+  23:        0x10a8c880c - rustc_mir::borrow_check::do_mir_borrowck::hdc3227947f9536aa
+  24:        0x10a3d9d68 - rustc_infer::infer::InferCtxtBuilder::enter::h3514d217bee4b715
+  25:        0x10a8c5b82 - rustc_mir::borrow_check::mir_borrowck::hafed912fd0cd9a50
+  26:        0x10a8941fc - core::ops::function::FnOnce::call_once::hfdf61b33547bcc65
+  27:        0x109fd724d - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck>::compute::hd55160e35d123a6d
+  28:        0x109e23c21 - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h9067e7207120a7ed
+  29:        0x109ee8bb7 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::ha45c9ec4435ea414
+  30:        0x109e7235c - rustc_data_structures::stack::ensure_sufficient_stack::h20cadf0862855951
+  31:        0x109d76fa9 - rustc_query_system::query::plumbing::get_query_impl::h1cf43d0f4618a283
+  32:        0x109ffee4f - rustc_typeck::collect::type_of::type_of::h84d148a49e1f2c9e
+  33:        0x109e1b230 - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::type_of>::compute::h4fb6fa9d8ad2f834
+  34:        0x109e23529 - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h7e6397e645f369e0
+  35:        0x109edfb37 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h1fc93541384b0b33
+  36:        0x109e77b78 - rustc_data_structures::stack::ensure_sufficient_stack::h85a942655c09da04
+  37:        0x109db9348 - rustc_query_system::query::plumbing::get_query_impl::h9a732b032cea2c40
+  38:        0x109e3b6e6 - rustc_typeck::check::check::check_item_type::hcc842c183a784283
+  39:        0x109ed1c1a - rustc_middle::hir::map::Map::visit_item_likes_in_module::hb17735738c470d1e
+  40:        0x109e3f7cd - rustc_typeck::check::check::check_mod_item_types::h125e2f635e31f856
+  41:        0x109ece1cd - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_mod_item_types>::compute::he8ec2222ec9e068b
+  42:        0x109e22a8a - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h6b44cd0cd467b3f9
+  43:        0x109ede6e4 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h110b659726807b32
+  44:        0x109e7e8fd - rustc_data_structures::stack::ensure_sufficient_stack::hf876616283c177c6
+  45:        0x109d823e3 - rustc_query_system::query::plumbing::get_query_impl::h32643e1d86466f78
+  46:        0x109defd38 - rustc_query_system::query::plumbing::ensure_query_impl::hee0210e5cf1e94ee
+  47:        0x109ed3d54 - rustc_session::utils::<impl rustc_session::session::Session>::time::hbbb06727d4feb938
+  48:        0x109f21655 - rustc_typeck::check_crate::heab083594ec68626
+  49:        0x1078dc9ad - rustc_interface::passes::analysis::hd2b5ad3cc5fe453e
+  50:        0x107694aba - rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute::h620490f1f313a641
+  51:        0x1076955b4 - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps::h3d28d40dc412d809
+  52:        0x107717cc4 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h4ad8376470714065
+  53:        0x107713c1f - rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}::hfa9e026f3553f1cf
+  54:        0x1076bb681 - rustc_query_system::query::plumbing::get_query_impl::ha7bb177bffa54122
+  55:        0x107696eaa - rustc_interface::passes::QueryContext::enter::h49dada493e6a503c
+  56:        0x107714d95 - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::h41f348cdc8bbe333
+  57:        0x1076e412f - rustc_span::with_source_map::hc57a0c1060683b63
+  58:        0x1077169a1 - rustc_interface::interface::create_compiler_and_run::h7b3634e1b272bb77
+  59:        0x107703433 - scoped_tls::ScopedKey<T>::set::he87175a0cbe8a68d
+  60:        0x107719d76 - std::sys_common::backtrace::__rust_begin_short_backtrace::h11e569b16e975fec
+  61:        0x1076adf7c - core::ops::function::FnOnce::call_once{{vtable.shim}}::hf3134e9dfffbe255
+  62:        0x10f06dccd - std::sys::unix::thread::Thread::new::thread_start::h982ed3bd26e29e66
+  63:     0x7fff6d124109 - __pthread_start
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.49.0-nightly (ffa2e7ae8 2020-10-24) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `with_usize`
+#1 [type_of] computing type of `with_usize::{opaque#0}`
+#2 [check_mod_item_types] checking item types in top-level module
+#3 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-async-await, A-closures, A-trait-system, C-bug, I-ICE, T-compiler, requires-nightly

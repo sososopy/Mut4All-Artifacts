@@ -1,0 +1,39 @@
+Issue Title:
+Assertion !isValueDependent() && "Expression evaluator can't be called on a dependent expression."' failed.
+
+Source Code & Bug Trace:
+clang++: /root/llvm-project/clang/lib/AST/ExprConstant.cpp:15828:
+bool clang::Expr::EvaluateAsConstantExpr(clang::Expr::EvalResult&, const clang::ASTContext&, clang::Expr::ConstantExprKind) const:
+Assertion !isValueDependent() && "Expression evaluator can't be called on a dependent expression."' failed.`
+
+#include <concepts>
+
+// CRTP
+template <typename T, typename ConcreteClass>
+class Base {
+   protected:
+    Base() = default;
+    ~Base() = default;
+};
+
+template <typename T>
+class Derived final : public Base<T, Derived<T>> {};
+
+template <typename T, typename D>
+    requires std::derived_from<D, Base<T, D>>
+class Foo {
+   public:
+    explicit Foo(D* d) {}
+};
+
+// CTAD
+template <typename T, typename D>
+Foo(Base<T, D>*) -> Foo<T, D>;
+
+template <typename T>
+using SpecialFoo = Foo<T, Derived<T>>;
+
+SpecialFoo<int> Doit() { return SpecialFoo(new Derived<int>); }
+
+Bug Labels:
+c++20, clang:frontend, concepts, crash

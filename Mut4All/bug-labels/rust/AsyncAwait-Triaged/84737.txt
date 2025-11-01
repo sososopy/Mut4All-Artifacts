@@ -1,0 +1,183 @@
+Issue Title:
+Broken MIR with const_generics and async/await · Issue #84737 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(const_generics)]
+
+use actix_web::{App, Error, FromRequest, HttpServer, Responder, get};
+
+#[derive(PartialEq, Eq)]
+#[derive(Debug)]
+enum TestEnum {
+    ONE,
+    TWO
+}
+
+struct TestExtractor<const T: TestEnum>(TestEnum);
+
+impl<const T: TestEnum> FromRequest for TestExtractor<T> {
+    type Error = Error;
+    type Future = std::pin::Pin<Box<dyn futures::Future<Output = Result<TestExtractor<T>, Error>>>>;
+    type Config = ();
+
+    fn from_request(_: &actix_web::HttpRequest, _: &mut actix_web::dev::Payload) -> Self::Future {
+        Box::pin(async move {
+            Ok(TestExtractor(T))
+        })
+    }    
+}
+
+#[get("/test")]
+async fn test(test: TestExtractor<{TestEnum::TWO}>) -> impl Responder {
+    println!("{:?}", &test.0);
+    test_async_fn().await;
+    "Hello world"
+}
+
+async fn test_async_fn() -> u8 {
+    return 0;
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(move || {
+        App::new()
+            .service(test)
+    })
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', /rustc/42816d61ead7e46d462df997958ccfd514f8c21c\library\std\src\panic.rs:59:5
+stack backtrace:
+   0:     0x7ffeb8095bce - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h65f771762210e3e5
+   1:     0x7ffeb80bedac - core::fmt::write::h3d73561f801c6731
+   2:     0x7ffeb8089c28 - <std::io::IoSlice as core::fmt::Debug>::fmt::h6fd08a0ca4059bc8
+   3:     0x7ffeb8099c82 - std::panicking::take_hook::ha49dee799706a2d8
+   4:     0x7ffeb8099774 - std::panicking::take_hook::ha49dee799706a2d8
+   5:     0x7ffe9abbb2a7 - rustc_driver::report_ice::hab89c69e12b6dd11
+   6:     0x7ffeb809a465 - std::panicking::rust_panic_with_hook::h9e7cc259d68b1de2
+   7:     0x7ffe9de65250 - <rustc_mir::util::spanview::SpanViewable as core::fmt::Debug>::fmt::hfc04d9569cb1cb00
+   8:     0x7ffe9de651c9 - <rustc_mir::util::spanview::SpanViewable as core::fmt::Debug>::fmt::hfc04d9569cb1cb00
+   9:     0x7ffe9ef17d51 - <f64 as ryu::buffer::Sealed>::format_nonfinite::h0e70a5fe4e7d35d9
+  10:     0x7ffe9dd60470 - <rustc_middle::mir::traversal::ReversePostorder as core::iter::traits::iterator::Iterator>::size_hint::hb5cde41105608c57
+  11:     0x7ffe9dd4fd72 - <rustc_middle::mir::traversal::ReversePostorder as core::iter::traits::iterator::Iterator>::size_hint::hb5cde41105608c57
+  12:     0x7ffe9dd50172 - <rustc_middle::mir::traversal::ReversePostorder as core::iter::traits::iterator::Iterator>::size_hint::hb5cde41105608c57
+  13:     0x7ffe9dcc904e - <&rustc_middle::ty::sty::RegionKind as rustc_mir::borrow_check::nll::ToRegionVid>::to_region_vid::h2c9460b89eb22986
+  14:     0x7ffe9dcc8010 - <&rustc_middle::ty::sty::RegionKind as rustc_mir::borrow_check::nll::ToRegionVid>::to_region_vid::h2c9460b89eb22986
+  15:     0x7ffe9dcc7fb8 - <&rustc_middle::ty::sty::RegionKind as rustc_mir::borrow_check::nll::ToRegionVid>::to_region_vid::h2c9460b89eb22986
+  16:     0x7ffe9dcc8f59 - <&rustc_middle::ty::sty::RegionKind as rustc_mir::borrow_check::nll::ToRegionVid>::to_region_vid::h2c9460b89eb22986
+  17:     0x7ffe9ef17cb9 - <f64 as ryu::buffer::Sealed>::format_nonfinite::h0e70a5fe4e7d35d9
+  18:     0x7ffe9dbe486c - <rustc_mir::transform::generator::StateTransform as rustc_mir::transform::MirPass>::run_pass::h260db0e9b77084a8
+  19:     0x7ffe9dda7d71 - rustc_mir::transform::run_passes::h2ba1105ca65057bb
+  20:     0x7ffe9ddae89d - rustc_mir::transform::run_passes::h2ba1105ca65057bb
+  21:     0x7ffe9d9918c2 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h3c4346cc01dbde58
+  22:     0x7ffe9d924b75 - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance_of_const_arg>::hash_result::h18d43f9661c06064
+  23:     0x7ffe9d7bc329 - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hbd68f25166d1e477
+  24:     0x7ffe9d6da294 - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hbd68f25166d1e477
+  25:     0x7ffe9d5f01a3 - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hbd68f25166d1e477
+  26:     0x7ffe9d97bcb7 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h3c4346cc01dbde58
+  27:     0x7ffe9e9f84b4 - rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::instance_mir::hc706cbca4cb43800
+  28:     0x7ffe9df7c534 - <rustc_mir::monomorphize::collector::RootCollector as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_impl_item::hfb7712f4efbd0644
+  29:     0x7ffe9df750bd - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  30:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  31:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  32:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  33:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  34:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  35:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  36:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  37:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  38:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  39:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  40:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  41:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  42:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  43:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  44:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  45:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  46:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  47:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  48:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  49:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  50:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  51:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  52:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  53:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  54:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  55:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  56:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  57:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  58:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  59:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  60:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  61:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  62:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  63:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  64:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  65:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  66:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  67:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  68:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  69:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  70:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  71:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  72:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  73:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  74:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  75:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  76:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  77:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  78:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  79:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  80:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  81:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  82:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  83:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  84:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  85:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  86:     0x7ffe9df749b2 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  87:     0x7ffe9dc7be6c - <rustc_mir::transform::coverage::Error as core::fmt::Debug>::fmt::he59524bc9954242b
+  88:     0x7ffe9df73231 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hbeb6d2045a60cd71
+  89:     0x7ffe9dc87d9d - rustc_mir::monomorphize::partitioning::partition::h4e4f3b68f0632de5
+  90:     0x7ffe9d7797bf - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hbd68f25166d1e477
+  91:     0x7ffe9d993e31 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h3c4346cc01dbde58
+  92:     0x7ffe9d9356c5 - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance_of_const_arg>::hash_result::h18d43f9661c06064
+  93:     0x7ffe9d7c377b - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hbd68f25166d1e477
+  94:     0x7ffe9d6d315b - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hbd68f25166d1e477
+  95:     0x7ffe9d65f94b - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hbd68f25166d1e477
+  96:     0x7ffe9d9850e8 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h3c4346cc01dbde58
+  97:     0x7ffe9ae2cfa7 - <rustc_codegen_llvm::back::lto::ThinLTOKeysMap as core::fmt::Debug>::fmt::h8425f018b01633b9
+  98:     0x7ffe9ae297a9 - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::h3f7a7161df43cead
+  99:     0x7ffe9acf27f2 - rustc_interface::passes::BoxedResolver::to_resolver_outputs::h51cffbb6bc3edf8f
+ 100:     0x7ffe9ad09ff6 - rustc_interface::queries::Queries::ongoing_codegen::h30f27fdc61a86ed6
+ 101:     0x7ffe9abc5a77 - rustc_driver::pretty::print_after_hir_lowering::h018530f73994254f
+ 102:     0x7ffe9abbd9dc - <rustc_driver::Compilation as core::fmt::Debug>::fmt::h4409e290eea8174b
+ 103:     0x7ffe9abc6d56 - rustc_driver::pretty::print_after_hir_lowering::h018530f73994254f
+ 104:     0x7ffe9abed0e4 - <rustc_middle::ty::SymbolName as core::fmt::Debug>::fmt::ha51d28018e278c75
+ 105:     0x7ffe9abef7ff - <rustc_middle::ty::SymbolName as core::fmt::Debug>::fmt::ha51d28018e278c75
+ 106:     0x7ffe9abf9ddd - <rustc_middle::ty::SymbolName as core::fmt::Debug>::fmt::ha51d28018e278c75
+ 107:     0x7ffeb80a851a - std::sys::windows::thread::Thread::new::h35832c8baf769397
+ 108:     0x7fff13e37c24 - BaseThreadInitThunk
+ 109:     0x7fff14f6d721 - RtlUserThreadStart
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (42816d61e 2021-04-24) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [optimized_mir] optimizing MIR for `<impl at src\main.rs:27:1: 27:16>::register::test::{closure#0}`
+#1 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+
+Bug Labels:
+A-async-await, A-const-generics, AsyncAwait-Triaged, C-bug, E-needs-mcve, F-const_generics, I-ICE, T-compiler, glacier, requires-nightly

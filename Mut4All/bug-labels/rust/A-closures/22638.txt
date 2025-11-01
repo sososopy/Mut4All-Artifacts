@@ -1,0 +1,61 @@
+Issue Title:
+Stack overflow in compiler involving closures · Issue #22638 · rust-lang/rust · GitHub
+
+Rust Code:
+#[derive(Clone)]
+struct A (B);
+
+impl A {
+    pub fn matches<F: Fn()>(&self, f: &F) {
+        let &A(ref term) = self;
+        term.matches(f);
+    }
+}
+
+#[derive(Clone)]
+enum B {
+    Variant1,
+    Variant2(C),
+}
+
+impl B {
+    pub fn matches<F: Fn()>(&self, f: &F) {
+        match self {
+            &B::Variant2(ref factor) => {
+                factor.matches(&|| ())
+            }
+            _ => unreachable!("")
+        }
+    }
+}
+
+#[derive(Clone)]
+struct C (D);
+
+impl C {
+    pub fn matches<F: Fn()>(&self, f: &F) {
+        let &C(ref base) = self;
+        base.matches(&|| {
+            C(base.clone()).matches(f)
+        })
+    }
+}
+
+#[derive(Clone)]
+struct D (Box<A>);
+
+impl D {
+    pub fn matches<F: Fn()>(&self, f: &F) {
+        let &D(ref a) = self;
+        a.matches(f)
+    }
+}
+
+pub fn matches() {
+    A(B::Variant1).matches(&(|| ()))
+}
+
+fn main() {}
+
+Bug Labels:
+A-closures, E-needs-test, I-ICE

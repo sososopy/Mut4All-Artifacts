@@ -1,0 +1,109 @@
+Issue Title:
+ICE with `#![feature(allocator_api)]` · Issue #81270 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(allocator_api)]
+use std::alloc::{self, Allocator, Global, AllocError};
+use std::ptr;
+
+struct InlineAlloc<A: Allocator = Global> {
+    upstream: A,
+    buffer: [u8; 32],
+}
+impl InlineAlloc<Global> {
+    pub fn new() -> Self {
+        Self {
+            upstream: Global,
+            buffer: [0; 32],
+        }
+    }
+}
+unsafe impl<A: Allocator> Allocator for InlineAlloc<A> {
+    fn allocate(&self, _: alloc::Layout) -> Result<ptr::NonNull<[u8]>, AllocError> {
+        todo!();
+    }
+    
+    unsafe fn deallocate(&self, _: ptr::NonNull<u8>, _: alloc::Layout) {
+        todo!();
+    }
+}
+
+fn main() {
+    let x = Box::new_in(0, InlineAlloc::new());
+}
+
+Bug Trace:
+Standard Error
+
+   Compiling playground v0.0.1 (/playground)
+warning: unused variable: `x`
+  --> src/main.rs:28:9
+   |
+28 |     let x = Box::new_in(0, InlineAlloc::new());
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: field is never read: `upstream`
+ --> src/main.rs:6:5
+  |
+6 |     upstream: A,
+  |     ^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: field is never read: `buffer`
+ --> src/main.rs:7:5
+  |
+7 |     buffer: [u8; 32],
+  |     ^^^^^^^^^^^^^^^^
+
+error: internal compiler error: /rustc/202720bf483088dbdb343f78c0aa77067fdd8156/compiler/rustc_codegen_ssa/src/mir/operand.rs:133:38: Deref of by-Ref operand OperandRef(Ref((%"std::boxed::Box<std::mem::MaybeUninit<i32>, InlineAlloc>"*:  %10 = alloca %"std::boxed::Box<std::mem::MaybeUninit<i32>, InlineAlloc>", align 8), None, Align { pow2: 3 }) @ TyAndLayout { ty: std::boxed::Box<std::mem::MaybeUninit<i32>, InlineAlloc>, layout: Layout { fields: Arbitrary { offsets: [Size { raw: 0 }, Size { raw: 8 }], memory_index: [0, 1] }, variants: Single { index: 0 }, abi: Aggregate { sized: true }, largest_niche: Some(Niche { offset: Size { raw: 0 }, scalar: Scalar { value: Pointer, valid_range: 1..=18446744073709551615 } }), align: AbiAndPrefAlign { abi: Align { pow2: 3 }, pref: Align { pow2: 3 } }, size: Size { raw: 40 } } })
+
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:958:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::bug
+   2: rustc_errors::Handler::bug
+   3: rustc_middle::ty::context::tls::with_opt
+   4: rustc_middle::util::bug::opt_span_bug_fmt
+   5: rustc_middle::util::bug::bug_fmt
+   6: rustc_codegen_ssa::mir::operand::OperandRef<V>::deref
+   7: rustc_codegen_ssa::mir::place::<impl rustc_codegen_ssa::mir::FunctionCx<Bx>>::codegen_place
+   8: rustc_codegen_ssa::mir::rvalue::<impl rustc_codegen_ssa::mir::FunctionCx<Bx>>::codegen_rvalue_operand
+   9: rustc_codegen_ssa::mir::codegen_mir
+  10: rustc_codegen_ssa::base::codegen_instance
+  11: <rustc_middle::mir::mono::MonoItem as rustc_codegen_ssa::mono_item::MonoItemExt>::define
+  12: rustc_codegen_llvm::base::compile_codegen_unit::module_codegen
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  14: rustc_codegen_llvm::base::compile_codegen_unit
+  15: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  16: rustc_session::utils::<impl rustc_session::session::Session>::time
+  17: rustc_interface::passes::QueryContext::enter
+  18: rustc_interface::queries::Queries::ongoing_codegen
+  19: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  20: rustc_span::with_source_map
+  21: rustc_interface::interface::create_compiler_and_run
+  22: rustc_span::with_session_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.51.0-nightly (202720bf4 2021-01-21) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+error: aborting due to previous error; 3 warnings emitted
+
+error: could not compile `playground`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-allocators, C-bug, I-ICE, T-compiler, glacier, requires-nightly

@@ -1,0 +1,133 @@
+Issue Title:
+ICE when forwarding `$item` with inner attr through a proc-macro layer · Issue #78675 · rust-lang/rust · GitHub
+
+Rust Code:
+macro_rules! foo {(
+    #[fake_attr]
+    $item:item
+) => (
+    $item
+)}
+
+macro_rules! outer {($item:item) => (
+    ::paste::paste! { // Identity proc-macro
+        foo! {
+            #[fake_attr]
+            $item
+        }
+    }
+)}
+outer! {
+    mod bar {
+        //! Foo
+    }
+}
+
+Bug Trace:
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_parse::prepend_attrs
+   3: rustc_parse::nt_to_tokenstream
+   4: <proc_macro::bridge::TokenTree<rustc_expand::proc_macro_server::Group,rustc_expand::proc_macro_server::Punct,rustc_expand::proc_macro_server::Ident,rustc_expand::proc_macro_server::Literal> as rustc_expand::proc_macro_server::FromInternal<((rustc_ast::tokenstream::TokenTree,rustc_ast::tokenstream::Spacing),&rustc_session::parse::ParseSess,&mut alloc::vec::Vec<proc_macro::bridge::TokenTree<rustc_expand::proc_macro_server::Group,rustc_expand::proc_macro_server::Punct,rustc_expand::proc_macro_server::Ident,rustc_expand::proc_macro_server::Literal>>)>>::from_internal
+   5: <rustc_expand::proc_macro_server::Rustc as proc_macro::bridge::server::TokenStreamIter>::next
+   6: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+   7: std::panicking::try
+   8: <proc_macro::bridge::server::Dispatcher<proc_macro::bridge::server::MarkedTypes<S>> as proc_macro::bridge::server::DispatcherTrait>::dispatch
+   9: <proc_macro::bridge::closure::Closure<A,R> as core::convert::From<&mut F>>::from::call
+  10: proc_macro::bridge::closure::Closure<A,R>::call
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/closure.rs:27:18
+  11: proc_macro::bridge::client::TokenStreamIter::next::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:244:25
+  12: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::with::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:336:47
+  13: proc_macro::bridge::client::BridgeState::with::{{closure}}::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:293:17
+  14: proc_macro::bridge::scoped_cell::ScopedCell<T>::replace
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/scoped_cell.rs:75:9
+  15: proc_macro::bridge::client::BridgeState::with::{{closure}}
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:291:13
+  16: std::thread::local::LocalKey<T>::try_with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/thread/local.rs:272:16
+  17: std::thread::local::LocalKey<T>::with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/std/src/thread/local.rs:248:9
+  18: proc_macro::bridge::client::BridgeState::with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:290:9
+  19: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::with
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:329:9
+  20: proc_macro::bridge::client::TokenStreamIter::next
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/bridge/client.rs:237:17
+  21: <proc_macro::token_stream::IntoIter as core::iter::traits::iterator::Iterator>::next
+             at /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/library/proc_macro/src/lib.rs:239:13
+  22: <proc_macro2::imp::TokenTreeIter as core::iter::traits::iterator::Iterator>::next
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.24/src/wrapper.rs:304:46
+  23: <proc_macro2::token_stream::IntoIter as core::iter::traits::iterator::Iterator>::next
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.24/src/lib.rs:1213:13
+  24: syn::buffer::TokenBuffer::inner_new
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.48/src/buffer.rs:53:19
+  25: syn::buffer::TokenBuffer::inner_new
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.48/src/buffer.rs:89:25
+  26: syn::buffer::TokenBuffer::inner_new
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.48/src/buffer.rs:89:25
+  27: syn::buffer::TokenBuffer::new2
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.48/src/buffer.rs:112:9
+  28: <F as syn::parse::Parser>::parse2
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.48/src/parse.rs:1184:19
+  29: syn::parse::Parser::parse
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.48/src/parse.rs:1138:9
+  30: syn::parse_macro_input::parse
+             at /Users/dhm/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.48/src/parse_macro_input.rs:138:5
+  31: with_builtin_macros_proc_macros::with_builtin
+             at /Users/dhm/git/dhm/with_builtin_macros.rs/src/lib.rs:54:9
+  32: core::ops::function::FnOnce::call_once
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:227:5
+  33: proc_macro::bridge::client::Client<fn(proc_macro::TokenStream) .> proc_macro::TokenStream>::expand1::run::{{closure}}
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/client.rs:410:40
+  34: proc_macro::bridge::client::run_client::{{closure}}::{{closure}}
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/client.rs:377:26
+  35: proc_macro::bridge::scoped_cell::ScopedCell<T>::set::{{closure}}
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/scoped_cell.rs:80:33
+  36: proc_macro::bridge::scoped_cell::ScopedCell<T>::replace
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/scoped_cell.rs:75:9
+  37: proc_macro::bridge::scoped_cell::ScopedCell<T>::set
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/scoped_cell.rs:80:9
+  38: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter::{{closure}}
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/client.rs:325:35
+  39: std::thread::local::LocalKey<T>::try_with
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs:272:16
+  40: std::thread::local::LocalKey<T>::with
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs:248:9
+  41: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/client.rs:325:9
+  42: proc_macro::bridge::client::run_client::{{closure}}
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/client.rs:370:9
+  43: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/std/src/panic.rs:308:9
+  44: std::panicking::try::do_call
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/std/src/panicking.rs:381:40
+  45: ___rust_try
+  46: std::panicking::try
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/std/src/panicking.rs:345:19
+  47: std::panic::catch_unwind
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/std/src/panic.rs:382:14
+  48: proc_macro::bridge::client::run_client
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/client.rs:369:5
+  49: proc_macro::bridge::client::Client<fn(proc_macro::TokenStream) .> proc_macro::TokenStream>::expand1::run
+             at /Users/dhm/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/proc_macro/src/bridge/client.rs:410:13
+  50: proc_macro::bridge::server::run_server
+  51: <rustc_expand::proc_macro::BangProcMacro as rustc_expand::base::ProcMacro>::expand
+  52: rustc_expand::expand::MacroExpander::fully_expand_fragment
+  53: rustc_expand::expand::MacroExpander::expand_crate
+  54: rustc_interface::passes::configure_and_expand_inner
+  55: rustc_interface::passes::configure_and_expand::{{closure}}
+  56: rustc_data_structures::box_region::PinnedGenerator<I,A,R>::new
+  57: rustc_interface::passes::configure_and_expand
+  58: rustc_interface::queries::Queries::expansion
+  59: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  60: rustc_span::with_source_map
+  61: rustc_interface::interface::create_compiler_and_run
+  62: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+A-macros, A-proc-macros, C-bug, I-ICE, T-compiler, regression-from-stable-to-stable

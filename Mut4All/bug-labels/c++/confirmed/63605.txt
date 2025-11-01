@@ -1,0 +1,63 @@
+Issue Title:
+clang crashes when bitfields are initialized out-of-order
+
+Source Code & Bug Trace:
+struct {
+  unsigned : 2;
+  unsigned a : 6;
+  unsigned : 1;
+  unsigned b : 6;
+  unsigned : 2;
+  unsigned c : 6;
+  unsigned d : 1;
+  unsigned e : 2;
+} data = {
+    .e = 1,
+    .c = 1,
+    .a = 1,
+};
+
+$ clang++ -c test.cpp
+PLEASE submit a bug report to https://bugs.llvm.org/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-11.0.1/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-10.2.0 -fcolor-diagnostics -fno-crash-diagnostics -Wall -Wdoc-deprecated-not-sync <source> 
+1.	<source>:14:2: current parser token ';'
+ #0 0x000055ce73eacc5a llvm::sys::PrintStackTrace(llvm::raw_ostream&) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x2cacc5a)
+ #1 0x000055ce73eaaa04 llvm::sys::RunSignalHandlers() (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x2caaa04)
+ #2 0x000055ce73eaac75 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x2caac75)
+ #3 0x000055ce73e1f4a0 CrashRecoverySignalHandler(int) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x2c1f4a0)
+ #4 0x00007fb1a9a93420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #5 0x000055ce7660331f clang::Stmt::getBeginLoc() const (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x540331f)
+ #6 0x000055ce75eaec6b (anonymous namespace)::InitListChecker::CheckDesignatedInitializer(clang::InitializedEntity const&, clang::InitListExpr*, clang::DesignatedInitExpr*, unsigned int, clang::QualType&, clang::DeclContext::specific_decl_iterator<clang::FieldDecl>*, llvm::APSInt*, unsigned int&, clang::InitListExpr*, unsigned int&, bool, bool) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x4caec6b)
+ #7 0x000055ce75eab6b9 (anonymous namespace)::InitListChecker::CheckStructUnionTypes(clang::InitializedEntity const&, clang::InitListExpr*, clang::QualType, llvm::iterator_range<clang::CXXBaseSpecifier*>, clang::DeclContext::specific_decl_iterator<clang::FieldDecl>, bool, unsigned int&, clang::InitListExpr*, unsigned int&, bool) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x4cab6b9)
+ #8 0x000055ce75eaa233 (anonymous namespace)::InitListChecker::CheckListElementTypes(clang::InitializedEntity const&, clang::InitListExpr*, clang::QualType&, bool, unsigned int&, clang::InitListExpr*, unsigned int&, bool) (.constprop.893) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x4caa233)
+ #9 0x000055ce75ea138f (anonymous namespace)::InitListChecker::InitListChecker(clang::Sema&, clang::InitializedEntity const&, clang::InitListExpr*, clang::QualType&, bool, bool, bool) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x4ca138f)
+#10 0x000055ce75ea5b01 clang::InitializationSequence::Perform(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::QualType*) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x4ca5b01)
+#11 0x000055ce75c174a4 clang::Sema::AddInitializerToDecl(clang::Decl*, clang::Expr*, bool) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x4a174a4)
+#12 0x000055ce759ff207 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x47ff207)
+#13 0x000055ce75a058b5 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x48058b5)
+#14 0x000055ce759e7fa9 clang::Parser::ParseDeclOrFunctionDefInternal(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x47e7fa9)
+#15 0x000055ce759e8ca1 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.228) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x47e8ca1)
+#16 0x000055ce759eeb79 clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x47eeb79)
+#17 0x000055ce759f0289 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x47f0289)
+#18 0x000055ce759f08e7 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x47f08e7)
+#19 0x000055ce759e3e93 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x47e3e93)
+#20 0x000055ce74698809 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x3498809)
+#21 0x000055ce7465232b clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x345232b)
+#22 0x000055ce7475ee9b clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x355ee9b)
+#23 0x000055ce720867ac cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0xe867ac)
+#24 0x000055ce720832ad ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0xe832ad)
+#25 0x000055ce7452a055 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()>(long) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x332a055)
+#26 0x000055ce73e1f583 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x2c1f583)
+#27 0x000055ce7452ab30 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const (.part.148) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x332ab30)
+#28 0x000055ce74504d05 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x3304d05)
+#29 0x000055ce7450574f clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x330574f)
+#30 0x000055ce7450e2e5 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0x330e2e5)
+#31 0x000055ce71fc3421 main (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0xdc3421)
+#32 0x00007fb1a9541083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#33 0x000055ce72082e2a _start (/opt/compiler-explorer/clang-11.0.1/bin/clang+++0xe82e2a)
+clang-11: error: clang frontend command failed due to signal (use -v to see invocation)
+Compiler returned: 254
+
+Bug Labels:
+clang:frontend, confirmed, crash

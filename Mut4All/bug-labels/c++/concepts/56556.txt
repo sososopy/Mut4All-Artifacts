@@ -1,0 +1,109 @@
+Issue Title:
+clang error when partial specialization with a single template parameter
+
+Source Code & Bug Trace:
+// partial specialization for A<...>
+template <typename TType> requires true
+	&& IsTemplateInstanceOfT<TType, A> // ok if msvc/gcc, failed if clang
+struct Adapter<TType> {
+	static auto fun (
+	) -> void {
+		std::cout << "A" << std::endl;
+		return;
+	}
+};
+
+y.cpp:59:2: error: ambiguous partial specializations of 'Adapter<A<int>>'
+        Adapter<A<int>>::fun(); // print : A
+        ^
+y.cpp:34:8: note: partial specialization matches [with TType = A<int>]
+struct Adapter<TType> {
+       ^
+y.cpp:46:8: note: partial specialization matches [with TType = A<int>]
+struct Adapter<TType> {
+       ^
+1 error generated.
+
+
+// partial specialization for A<...>
+template <typename TType> requires true
+	&& std::is_base_of_v<A<typename TType::Value>, TType> // ok if msvc/gcc/clang
+struct Adapter<TType> {
+	static auto fun (
+	) -> void {
+		std::cout << "A" << std::endl;
+		return;
+	}
+};
+
+Ubuntu clang version 15.0.0-++20220627042157+655dc02cb023-1~exp1~20220627042241.261
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+
+
+#include <iostream>
+
+// declare a value
+template <typename It>
+inline constexpr auto declare (
+) -> It;
+
+// check a type is template's instance or not
+template <typename It, template <typename> typename Template>
+concept IsTemplateInstanceOfT = requires {
+	{ [] <typename T1> (Template<T1> &) {}(declare<It &>()) };
+};
+
+// class A
+template <typename TValue>
+struct A {
+	using Value = TValue;
+};
+
+// class B
+template <typename TValue>
+struct B {
+	using Value = TValue;
+};
+
+// template
+template <typename TType>
+struct Adapter;
+
+// partial specialization for A<...>
+template <typename TType> requires true
+	&& IsTemplateInstanceOfT<TType, A> // ok if msvc/gcc, failed if clang
+	//&& std::is_base_of_v<A<typename TType::Value>, TType> // ok if msvc/gcc/clang
+struct Adapter<TType> {
+	static auto fun (
+	) -> void {
+		std::cout << "A" << std::endl;
+		return;
+	}
+};
+
+// partial specialization for B<...>
+template <typename TType> requires true
+	&& IsTemplateInstanceOfT<TType, B> // ok if msvc/gcc, failed if clang
+	//&& std::is_base_of_v<B<typename TType::Value>, TType> // ok if msvc/gcc/clang
+struct Adapter<TType> {
+	static auto fun (
+	) -> void {
+		std::cout << "B" << std::endl;
+		return;
+	}
+};
+
+// test
+auto main (
+) -> int {
+	std::cout << "A<int> is A ? " << IsTemplateInstanceOfT<A<int>, A> << std::endl; // print : A<int> is A ? 1
+	std::cout << "B<int> is A ? " << IsTemplateInstanceOfT<B<int>, A> << std::endl; // print : B<int> is A ? 0
+	Adapter<A<int>>::fun(); // print : A
+	Adapter<B<int>>::fun(); // print : B
+	return 0;
+}
+
+
+Bug Labels:
+clang:frontend, concepts, crash-on-valid

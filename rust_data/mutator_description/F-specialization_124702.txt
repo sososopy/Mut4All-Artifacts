@@ -1,0 +1,26 @@
+Mutation Operator: Modify Type Projections in Trait Implementations
+
+This mutation operator targets trait implementations involving associated types with projections. It applies to the part of the code where a type is being projected from a trait, particularly in the context of associated types.
+
+Mutation Rule:
+1. Identify a trait `TraitName` with an associated type `AssocType` being projected in an implementation, such as `impl<Type> From<<ConcreteType as TraitName>::AssocType> for Type {}`.
+2. Modify the projection by introducing an additional layer of type wrapping or nesting. This introduces complexity in type resolution, potentially triggering the compiler bug.
+3. Specifically, take an existing type projection and wrap it within another generic type or apply multiple projections. For example, if the original projection is `<ConcreteType as TraitName>::AssocType`, change it to `WrapperType<<AnotherConcreteType as AnotherTrait>::AnotherAssocType>`.
+
+Example:
+Original Code:
+```rust
+impl<T> From<<A<A<T>> as Z>::Assoc> for T {}
+```
+
+Mutated Code:
+```rust
+impl<T> From<Wrapper<<A<A<T>> as Z>::Assoc>> for T {}
+```
+
+Where `Wrapper` is an additional generic type that is declared in the seed program, such as:
+```rust
+struct Wrapper<U>(U);
+```
+
+This mutation forces the compiler to resolve a more intricate projection path, which can increase the chances of encountering edge cases and potential bugs in type inference and specialization logic.

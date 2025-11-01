@@ -1,0 +1,149 @@
+Issue Title:
+Normalization error with `ToOwned` · Issue #71113 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::borrow::{Borrow, Cow};
+use std::ops::{Deref, DerefMut};
+
+enum Recursive<'a>
+where
+    Self: ToOwned<Owned=Box<Self>>
+{
+    Variant(MyCow<'a, Recursive<'a>>),
+}
+
+pub struct Wrapper<T>(T);
+
+pub struct MyCow<'a, T: ToOwned<Owned=Box<T>> + 'a>(Wrapper<Cow<'a, T>>);
+
+Bug Trace:
+error: internal compiler error: src/librustc_traits/normalize_erasing_regions.rs:37: could not fully normalize `<Recursive as std::borrow::ToOwned>::Owned`
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:880:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1069
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1504
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:515
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  17: rustc_middle::ty::context::tls::with_opt
+  18: rustc_middle::util::bug::opt_span_bug_fmt
+  19: rustc_middle::util::bug::bug_fmt
+  20: rustc_middle::ty::context::GlobalCtxt::enter_local
+  21: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions
+  22: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::normalize_generic_arg_after_erasing_regions>::compute
+  23: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  24: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  25: rustc_query_system::query::plumbing::get_query
+  26: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::normalize_erasing_regions
+  27: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  28: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  29: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  30: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  31: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  32: rustc_middle::ty::layout::layout_raw
+  33: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  34: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  35: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  36: rustc_query_system::query::plumbing::get_query
+  37: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  38: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  39: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  40: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  41: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  42: rustc_middle::ty::layout::layout_raw
+  43: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  44: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  45: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  46: rustc_query_system::query::plumbing::get_query
+  47: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  48: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  49: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  50: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  51: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  52: rustc_middle::ty::layout::layout_raw
+  53: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  54: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  55: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  56: rustc_query_system::query::plumbing::get_query
+  57: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  58: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  59: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  60: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  61: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  62: rustc_middle::ty::layout::layout_raw
+  63: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  64: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  65: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  66: rustc_query_system::query::plumbing::get_query
+  67: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  68: <rustc_lint::types::VariantSizeDifferences as rustc_lint::passes::LateLintPass>::check_item
+  69: <rustc_lint::BuiltinCombinedModuleLateLintPass as rustc_lint::passes::LateLintPass>::check_item
+  70: rustc_hir::intravisit::Visitor::visit_nested_item
+  71: rustc_hir::intravisit::walk_mod
+  72: rustc_lint::late::late_lint_mod
+  73: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::lint_mod>::compute
+  74: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  75: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  76: rustc_query_system::query::plumbing::get_query
+  77: rustc_query_system::query::plumbing::ensure_query
+  78: rustc_session::utils::<impl rustc_session::session::Session>::time
+  79: rustc_data_structures::sync::join
+  80: rustc_interface::passes::analysis::{{closure}}::{{closure}}
+  81: rustc_session::utils::<impl rustc_session::session::Session>::time
+  82: rustc_interface::passes::analysis
+  83: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  84: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  85: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  86: rustc_query_system::query::plumbing::get_query
+  87: rustc_middle::ty::context::tls::enter_global
+  88: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  89: scoped_tls::ScopedKey<T>::set
+  90: rustc_ast::attr::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.44.0-nightly (94d346360 2020-04-09) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [normalize_generic_arg_after_erasing_regions] normalizing `<Recursive as std::borrow::ToOwned>::Owned`
+#1 [layout_raw] computing layout of `std::borrow::Cow<Recursive>`
+#2 [layout_raw] computing layout of `DummyHolder<std::borrow::Cow<Recursive>>`
+#3 [layout_raw] computing layout of `Cow<Recursive>`
+#4 [layout_raw] computing layout of `Recursive`
+#5 [lint_mod] linting top-level module
+#6 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-associated-items, C-bug, I-ICE, P-medium, T-compiler, glacier

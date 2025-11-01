@@ -1,0 +1,126 @@
+Issue Title:
+ICE when checking size_of of closure in const generics · Issue #86033 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+#![feature(const_evaluatable_checked)]
+
+pub trait IsTrue<const T: bool> {}
+impl IsTrue<true> for () {}
+
+pub trait IsZST {}
+
+impl<T> IsZST for T
+where
+    (): IsTrue<{ std::mem::size_of::<T>() == 0 }>
+{}
+
+fn func() -> impl IsZST {
+    // Changing closure to unit type makes code to compile
+    || {}
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:1007:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+   8: rustc_middle::ty::layout::layout_raw
+   9: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::layout_raw>::compute
+  10: rustc_query_system::query::plumbing::get_query_impl
+  11: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::layout_raw
+  12: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::query::TyCtxtAt> as rustc_target::abi::LayoutOf>::layout_of
+  13: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+  14: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+  15: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+  16: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_allocation_raw>::compute
+  17: rustc_query_system::query::plumbing::get_query_impl
+  18: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_allocation_raw
+  19: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  20: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_const_value_raw>::compute
+  21: rustc_query_system::query::plumbing::get_query_impl
+  22: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_const_value_raw
+  23: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  24: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  25: rustc_infer::infer::InferCtxt::const_eval_resolve
+  26: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations::{{closure}}
+  27: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  28: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  29: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  30: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_vars_with_obligations
+  31: rustc_typeck::check::coercion::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::try_coerce
+  32: rustc_typeck::check::coercion::CoerceMany<E>::coerce_inner
+  33: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  34: rustc_typeck::check::check::check_fn
+  35: rustc_typeck::check::inherited::InheritedBuilder::enter
+  36: rustc_typeck::check::typeck
+  37: rustc_query_system::query::plumbing::get_query_impl
+  38: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  39: rustc_middle::ty::context::TyCtxt::typeck_opt_const_arg
+  40: rustc_mir_build::build::mir_built
+  41: rustc_query_system::query::plumbing::get_query_impl
+  42: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_built
+  43: rustc_mir::transform::check_unsafety::unsafety_check_result
+  44: core::ops::function::FnOnce::call_once
+  45: rustc_query_system::query::plumbing::get_query_impl
+  46: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::unsafety_check_result
+  47: rustc_mir::transform::mir_const
+  48: rustc_query_system::query::plumbing::get_query_impl
+  49: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_const
+  50: rustc_mir::transform::mir_promoted
+  51: rustc_query_system::query::plumbing::get_query_impl
+  52: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_promoted
+  53: rustc_mir::borrow_check::mir_borrowck
+  54: core::ops::function::FnOnce::call_once
+  55: rustc_query_system::query::plumbing::get_query_impl
+  56: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_borrowck
+  57: rustc_typeck::collect::type_of::type_of
+  58: rustc_query_system::query::plumbing::get_query_impl
+  59: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_of
+  60: rustc_typeck::check::check::check_item_type
+  61: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  62: rustc_typeck::check::check::check_mod_item_types
+  63: rustc_query_system::query::plumbing::get_query_impl
+  64: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_mod_item_types
+  65: rustc_session::utils::<impl rustc_session::session::Session>::time
+  66: rustc_typeck::check_crate
+  67: rustc_interface::passes::analysis
+  68: rustc_query_system::query::plumbing::get_query_impl
+  69: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  70: rustc_interface::passes::QueryContext::enter
+  71: rustc_span::with_session_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.54.0-nightly (c79419af0 2021-06-04) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [layout_raw] computing layout of `[closure@src/lib.rs:16:5: 16:10]`
+#1 [eval_to_allocation_raw] const-evaluating + checking `<impl at src/lib.rs:9:1: 12:3>::{constant#0}`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `<impl at src/lib.rs:9:1: 12:3>::{constant#0}`
+#3 [typeck] type-checking `func`
+#4 [mir_built] building MIR for `func`
+#5 [unsafety_check_result] unsafety-checking `func`
+#6 [mir_const] processing MIR for `func`
+#7 [mir_promoted] processing `func`
+#8 [mir_borrowck] borrow-checking `func`
+#9 [type_of] computing type of `func::{opaque#0}`
+#10 [check_mod_item_types] checking item types in top-level module
+#11 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-closures, A-const-eval, A-const-generics, C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, glacier, requires-nightly

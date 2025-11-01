@@ -1,0 +1,48 @@
+Issue Title:
+ICE: 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:588:9 · Issue #59609 · rust-lang/rust · GitHub
+
+Rust Code:
+fn main() {
+    pretty_env_logger::init();
+
+    let address = ([127, 0, 0, 1], 3000).into();
+    let pool = Arc::new(Database::get_pool());
+    let root_node = Arc::new(RootNode::new(Query, Mutation));
+    let ctx = Arc::new(Context { pool: pool.clone() });
+
+    let service = move || {
+        let root_node = root_node.clone();
+        let ctx = ctx.clone();
+
+        service_fn(
+            move |req| -> Box<Future<Item = Response<Body>, Error = _> + Send> {
+                let root_node = root_node.clone();
+                let ctx = ctx.clone();
+                match (req.method(), req.uri().path()) {
+                    (&Method::GET, "/") => Box::new(juniper_hyper::graphiql("/graphql")),
+                    (&Method::GET, "/graphql") => {
+                        Box::new(juniper_hyper::graphql(root_node, ctx, req))
+                    }
+                    (&Method::POST, "/graphql") => {
+                        Box::new(juniper_hyper::graphql(root_node, ctx, req))
+                    }
+                    _ => {
+                        let mut response = Response::new(Body::empty());
+                        *response.status_mut() = StatusCode::NOT_FOUND;
+                        Box::new(future::ok(response))
+                    }
+                }
+            },
+        )
+    };
+
+    let server = Server::bind(&address)
+        .serve(service)
+        .map_err(|e| eprintln!("server error: {}", e));
+    println!("Listening on http://{}", address);
+
+    rt::run(server);
+}
+
+Bug Labels:
+A-NLL, C-bug, I-ICE, T-compiler

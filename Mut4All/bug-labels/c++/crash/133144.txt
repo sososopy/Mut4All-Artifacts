@@ -1,0 +1,322 @@
+Issue Title:
+AST importer crash with CTU analysis enabled.
+
+Source Code & Bug Trace:
+ClassTemplatePartialSpecializationDecl 0x559d19543328 </opt/rh/gcc-toolset-12/root/usr/lib/gcc/x86_64-redhat-linux/12/../../../../include/c++/12/type_traits:496:3, line:498:47> line:497:12 imported struct __is_member_object_pointer_helper definition explicit_specialization
+|-DefinitionData empty standard_layout trivially_copyable trivial literal has_constexpr_non_copy_move_ctor can_const_default_init
+| |-DefaultConstructor exists trivial constexpr needs_implicit defaulted_is_constexpr
+| |-CopyConstructor simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveConstructor exists simple trivial needs_implicit
+| |-CopyAssignment simple trivial has_const_param needs_implicit implicit_has_const_param
+| |-MoveAssignment exists simple trivial needs_implicit
+| `-Destructor simple irrelevant trivial needs_implicit
+|-public '__not_<is_function<_Tp>>::type'
+|-TemplateArgument type 'type-parameter-0-0 type-parameter-0-1::*'
+| `-MemberPointerType 0x559d195435d0 'type-parameter-0-0 type-parameter-0-1::*' dependent imported
+|   |-TemplateTypeParmType 0x559d1931cbc0 'type-parameter-0-1' dependent imported depth 0 index 1
+|   |-<<<NULL>>>
+|   `-TemplateTypeParmType 0x559d194e9b70 'type-parameter-0-0' dependent imported depth 0 index 0
+|-TemplateTypeParmDecl 0x559d19543410 <line:496:12, col:21> col:21 imported referenced typename depth 0 index 0 _Tp
+|-TemplateTypeParmDecl 0x559d19543498 <col:26, col:35> col:35 imported typename depth 0 index 1 _Cp
+`-CXXRecordDecl 0x559d196083c8 <line:497:5, col:12> col:12 imported implicit struct __is_member_object_pointer_helper
+
+
+diff --git a/clang/lib/AST/ASTStructuralEquivalence.cpp b/clang/lib/AST/ASTStructuralEquivalence.cpp
+index 2c2c8fd..2e58465 100644
+--- a/clang/lib/AST/ASTStructuralEquivalence.cpp
++++ b/clang/lib/AST/ASTStructuralEquivalence.cpp
+@@ -2300,8 +2300,11 @@
+ /// Determine structural equivalence of two declarations.
+ static bool IsStructurallyEquivalent(StructuralEquivalenceContext &Context,
+                                      Decl *D1, Decl *D2) {
+-  // FIXME: Check for known structural equivalences via a callback of some sort.
++  // FIXME: Remove crash in case of NULL elements in the AST tree
++  if (D1 == NULL && D2 == NULL)
++    return true;
+ 
++  // FIXME: Check for known structural equivalences via a callback of some sort.
+   D1 = D1->getCanonicalDecl();
+   D2 = D2->getCanonicalDecl();
+   std::pair<Decl *, Decl *> P{D1, D2};
+
+
+cd /projects/testlibs/bstrlib
+CodeChecker log -b 'g++ -c bsafe.c bstraux.c bstrlib.c buniutil.c testaux.c utf8util.c test.cpp bstrwrap.cpp' -o compile_commands.json
+CodeChecker analyzers --details
+CodeChecker analyze compile_commands.json --clean --output=report-reference --analyzers clang-tidy clangsa --ctu --enable=alpha.unix.cstring.OutOfBounds --enable=alpha.unix.cstring.BufferOverlap --enable=unix.cstring.BadSizeArg --enable=unix.cstring.NullArg --enable=readability-implicit-bool-conversion
+
+
+ clang --analyze -Qunused-arguments -Xclang -analyzer-opt-analyze-headers -Xclang -analyzer-output=plist-multi-file -o /projects/testlibs/bstrlib/report-reference/test.cpp_clangsa_17ca506c130931842db95a1569373b9c.plist -Xclang -analyzer-config -Xclang expand-macros=true -Xclang -analyzer-checker=core.BitwiseShift,core.CallAndMessage,core.DivideZero,core.NonNullParamChecker,core.NullDereference,core.StackAddressEscape,core.UndefinedBinaryOperatorResult,core.VLASize,core.uninitialized.ArraySubscript,core.uninitialized.Assign,core.uninitialized.Branch,core.uninitialized.CapturedBlockVariable,core.uninitialized.NewArraySize,core.uninitialized.UndefReturn,cplusplus.ArrayDelete,cplusplus.InnerPointer,cplusplus.Move,cplusplus.NewDelete,cplusplus.NewDeleteLeaks,cplusplus.PlacementNew,cplusplus.PureVirtualCall,cplusplus.StringChecker,deadcode.DeadStores,nullability.NullPassedToNonnull,nullability.NullReturnedFromNonnull,optin.cplusplus.UninitializedObject,optin.cplusplus.VirtualCall,optin.portability.UnixAPI,security.FloatLoopCounter,security.cert.env.InvalidPtr,security.insecureAPI.UncheckedReturn,security.insecureAPI.getpw,security.insecureAPI.gets,security.insecureAPI.mkstemp,security.insecureAPI.mktemp,security.insecureAPI.rand,security.insecureAPI.vfork,unix.API,unix.Malloc,unix.MallocSizeof,unix.MismatchedDeallocator,unix.StdCLibraryFunctions,unix.Stream,unix.Vfork,valist.CopyToSelf,valist.Uninitialized,valist.Unterminated,alpha.unix.cstring.OutOfBounds,alpha.unix.cstring.BufferOverlap,unix.cstring.BadSizeArg,unix.cstring.NullArg -Xclang -analyzer-config -Xclang aggressive-binary-operation-simplification=true -Xclang -analyzer-config -Xclang crosscheck-with-z3=true -Xclang -analyzer-config -Xclang experimental-enable-naive-ctu-analysis=true -Xclang -analyzer-config -Xclang ctu-dir=/projects/testlibs/bstrlib/report-reference/ctu-dir/x86_64 -Xclang -analyzer-config -Xclang display-ctu-progress=true -x c++ --target=x86_64-pc-linux-gnu -std=gnu++14 -idirafter /compilers/RHEL8-x86_64/gcc/10.3.0/include/c++/10.3.0 -idirafter /compilers/RHEL8-x86_64/gcc/10.3.0/include/c++/10.3.0/x86_64-pc-linux-gnu -idirafter /compilers/RHEL8-x86_64/gcc/10.3.0/include/c++/10.3.0/backward -idirafter /usr/local/include -idirafter /compilers/RHEL8-x86_64/gcc/10.3.0/include -idirafter /usr/include /projects/testlibs/bstrlib/test.cpp
+
+
+clang --target=x86_64-redhat-linux -c -x c++ -idirafter /usr/include/c++/8 -idirafter /usr/include/c++/8/x86_64-redhat-linux -idirafter /usr/include/c++/8/backward -idirafter /usr/local/include -idirafter /usr/include  /projects/testlibs/bstrlib/bstrwrap.cpp -std=gnu++14 -Xclang -ast-dump -fno-diagnostics-color  -D__clang_analyzer__ -w -o bstrwrap.cpp.hast >bstrwrap.cpp.hhast
+
+
+1.      <eof> parser at end of file
+2.      While analyzing stack:
+        #0 Calling test0() at line 1685
+        #1 Calling main()
+3.      /projects/testlibs/bstrlib/test.cpp:78:12: Error evaluating statement
+4.      /projects/testlibs/bstrlib/test.cpp:78:12: Error evaluating statement
+  #0 0x00005614610eda9d llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /projects/llvm-project/llvm/lib/Support/Unix/Signals.inc:804:11
+  #1 0x00005614610ee08b PrintStackTraceSignalHandler(void*) /projects/llvm-project/llvm/lib/Support/Unix/Signals.inc:880:1
+  #2 0x00005614610ebc53 llvm::sys::RunSignalHandlers() /projects/llvm-project/llvm/lib/Support/Signals.cpp:105:5
+  #3 0x00005614610ed19b llvm::sys::CleanupOnSignal(unsigned long) /projects/llvm-project/llvm/lib/Support/Unix/Signals.inc:370:1
+  #4 0x0000561460fe6277 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) /projects/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:0:7
+  #5 0x0000561460fe66b0 CrashRecoverySignalHandler(int) /projects/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:391:1
+  #6 0x00007fe43b00bd10 __restore_rt (/lib64/libpthread.so.0+0x12d10)
+  #7 0x0000561466d51dab IsStructurallyEquivalent(clang::StructuralEquivalenceContext&, clang::Decl*, clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTStructuralEquivalence.cpp:2305:12
+  #8 0x0000561466d5281f IsStructurallyEquivalent(clang::StructuralEquivalenceContext&, clang::QualType, clang::QualType) /projects/llvm-project/clang/lib/AST/ASTStructuralEquivalence.cpp:900:9
+  #9 0x0000561466d5ac92 IsStructurallyEquivalent(clang::StructuralEquivalenceContext&, clang::TemplateArgument const&, clang::TemplateArgument const&) /projects/llvm-project/clang/lib/AST/ASTStructuralEquivalence.cpp:673:5
+ #10 0x0000561466d5788d IsStructurallyEquivalent(clang::StructuralEquivalenceContext&, clang::RecordDecl*, clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTStructuralEquivalence.cpp:1688:11
+ #11 0x0000561466d55a23 clang::StructuralEquivalenceContext::CheckKindSpecificEquivalence(clang::Decl*, clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:440:1
+ #12 0x0000561466d51f9b clang::StructuralEquivalenceContext::Finish() /projects/llvm-project/clang/lib/AST/ASTStructuralEquivalence.cpp:2515:43
+ #13 0x0000561466d51d5f clang::StructuralEquivalenceContext::IsEquivalent(clang::Decl*, clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTStructuralEquivalence.cpp:2450:10
+ #14 0x0000561466c2002a clang::ASTNodeImporter::IsStructuralMatch(clang::Decl*, clang::Decl*, bool, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2504:14
+ #15 0x0000561466c39e02 clang::ASTNodeImporter::VisitClassTemplateSpecializationDecl(clang::ClassTemplateSpecializationDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6243:9
+ #16 0x0000561466ca9668 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::VisitClassTemplatePartialSpecializationDecl(clang::ClassTemplatePartialSpecializationDecl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:440:1
+ #17 0x0000561466c76462 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:440:1
+ #18 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #19 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #20 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+ #21 0x0000561466c1efec clang::ASTNodeImporter::ImportDeclContext(clang::DeclContext*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2184:10
+ #22 0x0000561466c21747 clang::ASTNodeImporter::VisitNamespaceDecl(clang::NamespaceDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2707:13
+ #23 0x0000561466c76134 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:188:1
+ #24 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #25 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #26 0x0000561466c1f120 clang::ASTImporter::ImportContext(clang::DeclContext*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9653:8
+ #27 0x0000561466c1c4ff clang::ASTNodeImporter::ImportDeclContext(clang::Decl*, clang::DeclContext*&, clang::DeclContext*&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2228:8
+ #28 0x0000561466c1c130 clang::ASTNodeImporter::ImportDeclParts(clang::NamedDecl*, clang::DeclContext*&, clang::DeclContext*&, clang::DeclarationName&, clang::NamedDecl*&, clang::SourceLocation&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1967:19
+ #29 0x0000561466c39057 clang::ASTNodeImporter::VisitClassTemplateDecl(clang::ClassTemplateDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6073:13
+ #30 0x0000561466c76554 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:542:1
+ #31 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #32 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #33 0x0000561466c58e5c clang::ASTImporter::Import(clang::TemplateName) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9894:22
+ #34 0x0000561466c5928e clang::ASTImporter::Import(clang::TemplateName) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9926:10
+ #35 0x0000561466c60773 llvm::Expected<clang::TemplateName> clang::ASTNodeImporter::import<clang::TemplateName>(clang::TemplateName const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+ #36 0x0000561466c19b63 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1655:8
+ #37 0x0000561466c76f74 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:77:1
+ #38 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+ #39 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+ #40 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+ #41 0x0000561466c19f13 clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1684:8
+ #42 0x0000561466c76d64 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:49:1
+ #43 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+ #44 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+ #45 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+ #46 0x0000561466c622ae clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:693:12
+ #47 0x0000561466c22618 clang::ASTNodeImporter::VisitTypedefNameDecl(clang::TypedefNameDecl*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2827:27
+ #48 0x0000561466c22d4d clang::ASTNodeImporter::VisitTypeAliasDecl(clang::TypeAliasDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2870:10
+ #49 0x0000561466c764ba clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:484:1
+ #50 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #51 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #52 0x0000561466c629f0 std::conditional<std::is_base_of_v<clang::Type, clang::TypedefNameDecl>, llvm::Expected<clang::TypedefNameDecl const*>, llvm::Expected<clang::TypedefNameDecl*>>::type clang::ASTNodeImporter::import<clang::TypedefNameDecl>(clang::TypedefNameDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+ #53 0x0000561466c17fac clang::ASTNodeImporter::VisitTypedefType(clang::TypedefType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1446:8
+ #54 0x0000561466c76fcc clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:81:1
+ #55 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+ #56 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+ #57 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+ #58 0x0000561466c19f13 clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1684:8
+ #59 0x0000561466c76d64 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:49:1
+ #60 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+ #61 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+ #62 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+ #63 0x0000561466c1dc6f clang::ASTNodeImporter::ImportDefinition(clang::RecordDecl*, clang::RecordDecl*, clang::ASTNodeImporter::ImportDefinitionKind) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2350:12
+ #64 0x0000561466c25e74 clang::ASTNodeImporter::VisitRecordDecl(clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3332:15
+ #65 0x0000561466ca9628 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::VisitCXXRecordDecl(clang::CXXRecordDecl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+ #66 0x0000561466c76436 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+ #67 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #68 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #69 0x0000561466c6e044 llvm::Error clang::ASTNodeImporter::importInto<clang::CXXRecordDecl>(clang::CXXRecordDecl*&, clang::CXXRecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:192:11
+ #70 0x0000561466c3961c clang::ASTNodeImporter::VisitClassTemplateDecl(clang::ClassTemplateDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6161:13
+ #71 0x0000561466c76554 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:542:1
+ #72 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #73 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #74 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+ #75 0x0000561466c1efec clang::ASTNodeImporter::ImportDeclContext(clang::DeclContext*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2184:10
+ #76 0x0000561466c21747 clang::ASTNodeImporter::VisitNamespaceDecl(clang::NamespaceDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2707:13
+ #77 0x0000561466c76134 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:188:1
+ #78 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #79 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #80 0x0000561466c1f120 clang::ASTImporter::ImportContext(clang::DeclContext*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9653:8
+ #81 0x0000561466c1c4ff clang::ASTNodeImporter::ImportDeclContext(clang::Decl*, clang::DeclContext*&, clang::DeclContext*&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2228:8
+ #82 0x0000561466c1c130 clang::ASTNodeImporter::ImportDeclParts(clang::NamedDecl*, clang::DeclContext*&, clang::DeclContext*&, clang::DeclarationName&, clang::NamedDecl*&, clang::SourceLocation&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1967:19
+ #83 0x0000561466c39057 clang::ASTNodeImporter::VisitClassTemplateDecl(clang::ClassTemplateDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6073:13
+ #84 0x0000561466c76554 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:542:1
+ #85 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #86 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #87 0x0000561466c66bb4 llvm::Error clang::ASTNodeImporter::importInto<clang::ClassTemplateDecl>(clang::ClassTemplateDecl*&, clang::ClassTemplateDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:192:11
+ #88 0x0000561466c39a8c clang::ASTNodeImporter::VisitClassTemplateSpecializationDecl(clang::ClassTemplateSpecializationDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6208:13
+ #89 0x0000561466c7644c clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:436:1
+ #90 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #91 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #92 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+ #93 0x0000561466c1efec clang::ASTNodeImporter::ImportDeclContext(clang::DeclContext*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2184:10
+ #94 0x0000561466c21747 clang::ASTNodeImporter::VisitNamespaceDecl(clang::NamespaceDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2707:13
+ #95 0x0000561466c76134 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:188:1
+ #96 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+ #97 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+ #98 0x0000561466c1f120 clang::ASTImporter::ImportContext(clang::DeclContext*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9653:8
+ #99 0x0000561466c1c4ff clang::ASTNodeImporter::ImportDeclContext(clang::Decl*, clang::DeclContext*&, clang::DeclContext*&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2228:8
+#100 0x0000561466c1c130 clang::ASTNodeImporter::ImportDeclParts(clang::NamedDecl*, clang::DeclContext*&, clang::DeclContext*&, clang::DeclarationName&, clang::NamedDecl*&, clang::SourceLocation&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1967:19
+#101 0x0000561466c24665 clang::ASTNodeImporter::VisitRecordDecl(clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3097:13
+#102 0x0000561466ca9628 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::VisitCXXRecordDecl(clang::CXXRecordDecl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#103 0x0000561466c76436 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#104 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#105 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#106 0x0000561466c63070 std::conditional<std::is_base_of_v<clang::Type, clang::RecordDecl>, llvm::Expected<clang::RecordDecl const*>, llvm::Expected<clang::RecordDecl*>>::type clang::ASTNodeImporter::import<clang::RecordDecl>(clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#107 0x0000561466c18edd clang::ASTNodeImporter::VisitRecordType(clang::RecordType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1564:8
+#108 0x0000561466c76f5e clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:76:1
+#109 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#110 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#111 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#112 0x0000561466c19f13 clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1684:8
+#113 0x0000561466c76d64 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:49:1
+#114 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#115 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#116 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#117 0x0000561466c1dc6f clang::ASTNodeImporter::ImportDefinition(clang::RecordDecl*, clang::RecordDecl*, clang::ASTNodeImporter::ImportDefinitionKind) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2350:12
+#118 0x0000561466c25e74 clang::ASTNodeImporter::VisitRecordDecl(clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3332:15
+#119 0x0000561466ca9628 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::VisitCXXRecordDecl(clang::CXXRecordDecl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#120 0x0000561466c76436 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#121 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#122 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#123 0x0000561466c6e044 llvm::Error clang::ASTNodeImporter::importInto<clang::CXXRecordDecl>(clang::CXXRecordDecl*&, clang::CXXRecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:192:11
+#124 0x0000561466c3961c clang::ASTNodeImporter::VisitClassTemplateDecl(clang::ClassTemplateDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6161:13
+#125 0x0000561466c76554 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:542:1
+#126 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#127 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#128 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#129 0x0000561466c1efec clang::ASTNodeImporter::ImportDeclContext(clang::DeclContext*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2184:10
+#130 0x0000561466c21747 clang::ASTNodeImporter::VisitNamespaceDecl(clang::NamespaceDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2707:13
+#131 0x0000561466c76134 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:188:1
+#132 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#133 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#134 0x0000561466c1f120 clang::ASTImporter::ImportContext(clang::DeclContext*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9653:8
+#135 0x0000561466c1c4ff clang::ASTNodeImporter::ImportDeclContext(clang::Decl*, clang::DeclContext*&, clang::DeclContext*&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2228:8
+#136 0x0000561466c1c130 clang::ASTNodeImporter::ImportDeclParts(clang::NamedDecl*, clang::DeclContext*&, clang::DeclContext*&, clang::DeclarationName&, clang::NamedDecl*&, clang::SourceLocation&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1967:19
+#137 0x0000561466c24665 clang::ASTNodeImporter::VisitRecordDecl(clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3097:13
+#138 0x0000561466ca9628 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::VisitCXXRecordDecl(clang::CXXRecordDecl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#139 0x0000561466c76436 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#140 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#141 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#142 0x0000561466c1f120 clang::ASTImporter::ImportContext(clang::DeclContext*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9653:8
+#143 0x0000561466c1c4ff clang::ASTNodeImporter::ImportDeclContext(clang::Decl*, clang::DeclContext*&, clang::DeclContext*&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2228:8
+#144 0x0000561466c1c130 clang::ASTNodeImporter::ImportDeclParts(clang::NamedDecl*, clang::DeclContext*&, clang::DeclContext*&, clang::DeclarationName&, clang::NamedDecl*&, clang::SourceLocation&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1967:19
+#145 0x0000561466c27a04 clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3776:13
+#146 0x0000561466c2a5e8 clang::ASTNodeImporter::VisitCXXMethodDecl(clang::CXXMethodDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:4148:10
+#147 0x0000561466c76226 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:260:1
+#148 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#149 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#150 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#151 0x0000561466c278d1 clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3766:10
+#152 0x0000561466c2a5e8 clang::ASTNodeImporter::VisitCXXMethodDecl(clang::CXXMethodDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:4148:10
+#153 0x0000561466c76226 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:260:1
+#154 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#155 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#156 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#157 0x0000561466c1efec clang::ASTNodeImporter::ImportDeclContext(clang::DeclContext*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2184:10
+#158 0x0000561466c21747 clang::ASTNodeImporter::VisitNamespaceDecl(clang::NamespaceDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2707:13
+#159 0x0000561466c76134 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:188:1
+#160 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#161 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#162 0x0000561466c1f120 clang::ASTImporter::ImportContext(clang::DeclContext*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9653:8
+#163 0x0000561466c1c592 clang::ASTNodeImporter::ImportDeclContext(clang::Decl*, clang::DeclContext*&, clang::DeclContext*&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2235:10
+#164 0x0000561466c39b1d clang::ASTNodeImporter::VisitClassTemplateSpecializationDecl(clang::ClassTemplateSpecializationDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6213:13
+#165 0x0000561466c7644c clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:436:1
+#166 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#167 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#168 0x0000561466c63070 std::conditional<std::is_base_of_v<clang::Type, clang::RecordDecl>, llvm::Expected<clang::RecordDecl const*>, llvm::Expected<clang::RecordDecl*>>::type clang::ASTNodeImporter::import<clang::RecordDecl>(clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#169 0x0000561466c18edd clang::ASTNodeImporter::VisitRecordType(clang::RecordType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1564:8
+#170 0x0000561466c76f5e clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:76:1
+#171 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#172 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#173 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#174 0x0000561466c19ce1 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1667:22
+#175 0x0000561466c76f74 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:77:1
+#176 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#177 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#178 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#179 0x0000561466c19f13 clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1684:8
+#180 0x0000561466c76d64 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:49:1
+#181 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#182 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#183 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#184 0x0000561466c622ae clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:693:12
+#185 0x0000561466c22618 clang::ASTNodeImporter::VisitTypedefNameDecl(clang::TypedefNameDecl*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2827:27
+#186 0x0000561466c22d0a clang::ASTNodeImporter::VisitTypedefDecl(clang::TypedefDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2866:10
+#187 0x0000561466c764a4 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:478:1
+#188 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#189 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#190 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#191 0x0000561466c1efec clang::ASTNodeImporter::ImportDeclContext(clang::DeclContext*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2184:10
+#192 0x0000561466c21747 clang::ASTNodeImporter::VisitNamespaceDecl(clang::NamespaceDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2707:13
+#193 0x0000561466c76134 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:188:1
+#194 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#195 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#196 0x0000561466c1f120 clang::ASTImporter::ImportContext(clang::DeclContext*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9653:8
+#197 0x0000561466c1c4ff clang::ASTNodeImporter::ImportDeclContext(clang::Decl*, clang::DeclContext*&, clang::DeclContext*&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2228:8
+#198 0x0000561466c1c130 clang::ASTNodeImporter::ImportDeclParts(clang::NamedDecl*, clang::DeclContext*&, clang::DeclContext*&, clang::DeclarationName&, clang::NamedDecl*&, clang::SourceLocation&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1967:19
+#199 0x0000561466c39057 clang::ASTNodeImporter::VisitClassTemplateDecl(clang::ClassTemplateDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6073:13
+#200 0x0000561466c76554 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:542:1
+#201 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#202 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#203 0x0000561466c58e5c clang::ASTImporter::Import(clang::TemplateName) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9894:22
+#204 0x0000561466c5928e clang::ASTImporter::Import(clang::TemplateName) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9926:10
+#205 0x0000561466c60773 llvm::Expected<clang::TemplateName> clang::ASTNodeImporter::import<clang::TemplateName>(clang::TemplateName const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#206 0x0000561466c19b63 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1655:8
+#207 0x0000561466c76f74 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:77:1
+#208 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#209 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#210 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#211 0x0000561466c19f13 clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1684:8
+#212 0x0000561466c76d64 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:49:1
+#213 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#214 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#215 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#216 0x0000561466c0ebf0 llvm::Expected<clang::TemplateArgument> clang::ASTNodeImporter::import<clang::TemplateArgument>(clang::TemplateArgument const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:833:10
+#217 0x0000561466c0e664 clang::ASTNodeImporter::ImportTemplateArguments(llvm::ArrayRef<clang::TemplateArgument>, llvm::SmallVectorImpl<clang::TemplateArgument>&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2457:14
+#218 0x0000561466c19c00 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1659:13
+#219 0x0000561466c76f74 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:77:1
+#220 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#221 0x0000561466c581e7 clang::ASTImporter::Import(clang::NestedNameSpecifier*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9792:25
+#222 0x0000561466c61d80 std::conditional<std::is_base_of_v<clang::Type, clang::NestedNameSpecifier>, llvm::Expected<clang::NestedNameSpecifier const*>, llvm::Expected<clang::NestedNameSpecifier*>>::type clang::ASTNodeImporter::import<clang::NestedNameSpecifier>(clang::NestedNameSpecifier*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#223 0x0000561466c1a4cc clang::ASTNodeImporter::VisitDependentNameType(clang::DependentNameType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1728:8
+#224 0x0000561466c76d0c clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:45:1
+#225 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#226 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#227 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#228 0x0000561466c17573 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:1367:8
+#229 0x0000561466c76d90 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/TypeNodes.inc:52:1
+#230 0x0000561466c521ac clang::ASTImporter::Import(clang::Type const*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9162:8
+#231 0x0000561466c52335 clang::ASTImporter::Import(clang::QualType) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9176:8
+#232 0x0000561466c60043 llvm::Expected<clang::QualType> clang::ASTNodeImporter::import<clang::QualType>(clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:217:7
+#233 0x0000561466c622ae clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:693:12
+#234 0x0000561466c28532 clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3920:12
+#235 0x0000561466c76210 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:256:1
+#236 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#237 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#238 0x0000561466c6f584 llvm::Error clang::ASTNodeImporter::importInto<clang::FunctionDecl>(clang::FunctionDecl*&, clang::FunctionDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:192:11
+#239 0x0000561466c3d4df clang::ASTNodeImporter::VisitFunctionTemplateDecl(clang::FunctionTemplateDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:6735:13
+#240 0x0000561466c7653e clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:536:1
+#241 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#242 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#243 0x0000561466c694a4 llvm::Error clang::ASTNodeImporter::importInto<clang::NamedDecl>(clang::NamedDecl*&, clang::NamedDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:192:11
+#244 0x0000561466c2bfc3 clang::ASTNodeImporter::VisitFriendDecl(clang::FriendDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:4410:15
+#245 0x0000561466c76672 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:640:1
+#246 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#247 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+#248 0x0000561466c61130 std::conditional<std::is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:204:12
+#249 0x0000561466c1eb3a clang::ASTNodeImporter::ImportDeclContext(clang::DeclContext*, bool) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2112:10
+#250 0x0000561466c1e11d clang::ASTNodeImporter::ImportDefinition(clang::RecordDecl*, clang::RecordDecl*, clang::ASTNodeImporter::ImportDefinitionKind) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:2388:21
+#251 0x0000561466c25e74 clang::ASTNodeImporter::VisitRecordDecl(clang::RecordDecl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:3332:15
+#252 0x0000561466ca9628 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::VisitCXXRecordDecl(clang::CXXRecordDecl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#253 0x0000561466c76436 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /projects/llvm-project/llvm/build-all-Debug/tools/clang/include/clang/AST/DeclNodes.inc:432:1
+#254 0x0000561466c51e2e clang::ASTImporter::ImportImpl(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9130:3
+#255 0x0000561466c33d9d clang::ASTImporter::Import(clang::Decl*) /projects/llvm-project/clang/lib/AST/ASTImporter.cpp:9526:8
+clang: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+clang version 21.0.0git (https://github.com/earnol/llvm-64100.git a8add7a86042f38d57c2245824699b272dd5b855)
+
+
+Bug Labels:
+clang:frontend, crash

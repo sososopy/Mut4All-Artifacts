@@ -1,0 +1,124 @@
+Issue Title:
+[clang] Segmentation fault in  clang::ParseAST
+
+Source Code & Bug Trace:
+template <typename... Ts> void foo(Ts&&... args) {}
+void bar(int i) { foo<int, int>(0, i); }
+
+main.cpp:2:19: error: no matching function for call to 'foo'
+    2 | void bar(int i) { foo<int, int>(0, i); }
+      |                   ^~~~~~~~~~~~~
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/bin/clang++ -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all -dumpdir a- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name main.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/tmp -fcoverage-compilation-dir=/tmp -resource-dir /usr/lib/clang/18 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/x86_64-pc-linux-gnu -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/backward -internal-isystem /usr/lib/clang/18/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem/include -internal-externc-isystem /usr/include -fdeprecated-macro -ferror-limit 19 -stack-protector 2 -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/main-5fcbfb.o -x c++ main.cpp
+1.      main.cpp:2:37: current parser token ')'
+2.      main.cpp:2:17: parsing function body 'bar'
+3.      main.cpp:2:17: in compound statement ('{}')
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM.so.18.1      0x00007f35e2dc4d90 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 64
+1  libLLVM.so.18.1      0x00007f35e2dc1d4d
+2  libc.so.6            0x00007f35e2050ae0
+3  libclang-cpp.so.18.1 0x00007f35ebb35ee8 clang::OverloadCandidateSet::NoteCandidates(clang::Sema&, llvm::ArrayRef<clang::Expr*>, llvm::ArrayRef<clang::OverloadCandidate*>, llvm::StringRef, clang::SourceLocation) + 9144
+4  libclang-cpp.so.18.1 0x00007f35ecfa4a35
+5  libclang-cpp.so.18.1 0x00007f35ebb496ce
+6  libclang-cpp.so.18.1 0x00007f35ebb4a0d0 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 672
+7  libclang-cpp.so.18.1 0x00007f35eb8d5f5c clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 3996
+8  libclang-cpp.so.18.1 0x00007f35eb8d68f8 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 88
+9  libclang-cpp.so.18.1 0x00007f35eada6766 clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) + 694
+10 libclang-cpp.so.18.1 0x00007f35eadbc98f clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) + 1007
+11 libclang-cpp.so.18.1 0x00007f35ecf84d1a
+12 libclang-cpp.so.18.1 0x00007f35ecf84deb
+13 libclang-cpp.so.18.1 0x00007f35ecf84f55
+14 libclang-cpp.so.18.1 0x00007f35eae5bdc2 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) + 82
+15 libclang-cpp.so.18.1 0x00007f35eae59fd7 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 3479
+16 libclang-cpp.so.18.1 0x00007f35eae5a1e8 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 344
+17 libclang-cpp.so.18.1 0x00007f35eae5fa6a clang::Parser::ParseCompoundStatementBody(bool) + 1322
+18 libclang-cpp.so.18.1 0x00007f35eae61a24 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) + 228
+19 libclang-cpp.so.18.1 0x00007f35eae62b5f clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) + 1903
+20 libclang-cpp.so.18.1 0x00007f35eadc1590 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 3760
+21 libclang-cpp.so.18.1 0x00007f35eae4c7cb clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 1099
+22 libclang-cpp.so.18.1 0x00007f35eae653d2 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) + 642
+23 libclang-cpp.so.18.1 0x00007f35eae65fdb clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 427
+24 libclang-cpp.so.18.1 0x00007f35ead89ec0 clang::ParseAST(clang::Sema&, bool, bool) + 608
+25 libclang-cpp.so.18.1 0x00007f35ec81a7c1 clang::FrontendAction::Execute() + 417
+26 libclang-cpp.so.18.1 0x00007f35ec7bbad7 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 439
+27 libclang-cpp.so.18.1 0x00007f35ec86e11d clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 445
+28 clang++              0x00005c331882f284 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 8852
+29 clang++              0x00005c33188335ba
+30 clang++              0x00005c331883411a clang_main(int, char**, llvm::ToolContext const&) + 2026
+31 clang++              0x00005c3318826fb5 main + 133
+32 libc.so.6            0x00007f35e2039c88
+33 libc.so.6            0x00007f35e2039d4c __libc_start_main + 140
+34 clang++              0x00005c3318827015 _start + 37
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 18.1.8
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+
+
+main.cpp:2:19: error: no matching function for call to 'foo'
+    2 | void bar(int i) { foo<int, int>(0, i); }
+      |                   ^~~~~~~~~~~~~
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -mrelax-all -dumpdir a- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name main.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fcoverage-compilation-dir=/tmp -resource-dir /tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/lib/clang/17 -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1 -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/x86_64-pc-linux-gnu -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/backward -internal-isystem /tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/lib/clang/17/include -internal-isystem /usr/local/include -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -fdeprecated-macro -fdebug-compilation-dir=/tmp -ferror-limit 19 -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/main-dcc3e9.o -x c++ main.cpp
+1.      main.cpp:2:37: current parser token ')'
+2.      main.cpp:2:17: parsing function body 'bar'
+3.      main.cpp:2:17: in compound statement ('{}')
+ #0 0x0000598fee40f268 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x2bbd268)
+ #1 0x0000598fee40d22e llvm::sys::RunSignalHandlers() (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x2bbb22e)
+ #2 0x0000598fee40f8f8 SignalHandler(int) Signals.cpp:0:0
+ #3 0x0000717823050ae0 (/usr/lib/libc.so.6+0x3cae0)
+ #4 0x0000598ff086633c clang::OverloadCandidateSet::NoteCandidates(clang::Sema&, llvm::ArrayRef<clang::Expr*>, llvm::ArrayRef<clang::OverloadCandidate*>, llvm::StringRef, clang::SourceLocation) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x501433c)
+ #5 0x0000598ff087c27f clang::OverloadCandidateSet::NoteCandidates(std::pair<clang::SourceLocation, clang::PartialDiagnostic>, clang::Sema&, clang::OverloadCandidateDisplayKind, llvm::ArrayRef<clang::Expr*>, llvm::StringRef, clang::SourceLocation, llvm::function_ref<bool (clang::OverloadCandidate&)>) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x502a27f)
+ #6 0x0000598ff0881d6f FinishOverloadedCallExpr(clang::Sema&, clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, clang::OverloadCandidateSet*, clang::OverloadCandidate**, clang::OverloadingResult, bool) SemaOverload.cpp:0:0
+ #7 0x0000598ff08816ce clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x502f6ce)
+ #8 0x0000598ff0595668 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4d43668)
+ #9 0x0000598ff05ad35a clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4d5b35a)
+#10 0x0000598ff0253802 clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4a01802)
+#11 0x0000598ff0254e12 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4a02e12)
+#12 0x0000598ff0250adf clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49feadf)
+#13 0x0000598ff02509e9 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49fe9e9)
+#14 0x0000598ff02aed81 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4a5cd81)
+#15 0x0000598ff02ad2f7 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4a5b2f7)
+#16 0x0000598ff02accaf clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4a5acaf)
+#17 0x0000598ff02b5031 clang::Parser::ParseCompoundStatementBody(bool) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4a63031)
+#18 0x0000598ff02b5f84 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x4a63f84)
+#19 0x0000598ff0208d4e clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49b6d4e)
+#20 0x0000598ff022138f clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49cf38f)
+#21 0x0000598ff02079ac clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49b59ac)
+#22 0x0000598ff02073f1 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49b53f1)
+#23 0x0000598ff02066f1 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49b46f1)
+#24 0x0000598ff0204c24 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49b2c24)
+#25 0x0000598ff0200c3e clang::ParseAST(clang::Sema&, bool, bool) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x49aec3e)
+#26 0x0000598feec71087 clang::FrontendAction::Execute() (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x341f087)
+#27 0x0000598feebe49a4 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x33929a4)
+#28 0x0000598feed280cf clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0x34d60cf)
+#29 0x0000598fec62d332 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0xddb332)
+#30 0x0000598fec62af01 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#31 0x0000598fec629e4c clang_main(int, char**, llvm::ToolContext const&) (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0xdd7e4c)
+#32 0x0000598fec638041 main (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0xde6041)
+#33 0x0000717823039c88 (/usr/lib/libc.so.6+0x25c88)
+#34 0x0000717823039d4c __libc_start_main (/usr/lib/libc.so.6+0x25d4c)
+#35 0x0000598fec627515 _start (/tmp/clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin/clang-17+0xdd5515)
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 17.0.2 (https://github.com/llvm/llvm-project b2417f51dbbd7435eb3aaf203de24de6754da50e)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /tmp/./clang+llvm-17.0.2-x86_64-linux-gnu-ubuntu-22.04/bin
+
+
+main.cpp:2:19: error: no matching function for call to 'foo'
+void bar(int i) { foo<int, int>(0, i); }
+                  ^~~~~~~~~~~~~
+main.cpp:1:32: note: candidate function template not viable: expects an rvalue for 2nd argument
+template <typename... Ts> void foo(Ts&&... args) {}
+                               ^
+1 error generated.
+
+
+Bug Labels:
+clang:frontend, crash-on-invalid

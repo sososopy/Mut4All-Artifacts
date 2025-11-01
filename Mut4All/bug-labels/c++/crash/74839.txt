@@ -1,0 +1,455 @@
+Issue Title:
+[Clang][ASTImporter] Segmentation fault in  clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*)
+
+Source Code & Bug Trace:
+clang++-18 -x c++-header -std=c++17 -ferror-limit=0 -o qitemselectionmodel.cpp.oclango qitemselectionmodel.cpp
+clang++-18 -cc1 -O0 -x c++ -ast-merge qitemselectionmodel.cpp.oclango /dev/null -ast-dump-all=json
+
+template <int> struct array {};
+namespace QtPrivate {
+template <int StringLength, typename Extractor>
+auto makeStaticString(Extractor) {
+  array<StringLength> result;
+  return result;
+}
+template <int N> struct StaticString {
+  StaticString(const char (&)[N]);
+};
+template <typename StringExtractor, typename... T>
+auto makeOffsetStringArray(StringExtractor, T... entries) {
+  makeStaticString<0>(entries...);
+}
+} // namespace QtPrivate
+template <int... Nx> auto qOffsetStringArray(const char (&...strings)[Nx]) {
+  auto extractString = [] {};
+  makeOffsetStringArray(extractString, QtPrivate::StaticString(strings)...);
+}
+void QItemSelectionModelPrivateinitModel() { qOffsetStringArray(""); }
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: clang-18 -cc1 -O0 -x c++ -ast-merge qitemselectionmodel.cpp.oclango /dev/null -ast-dump-all=json
+  #0 0x000055555adf59e8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /data/llvm-project/llvm/lib/Support/Unix/Signals.inc:727:0
+  #1 0x000055555adf3524 llvm::sys::RunSignalHandlers() /data/llvm-project/llvm/lib/Support/Signals.cpp:105:0
+  #2 0x000055555adf413e SignalHandler(int) /data/llvm-project/llvm/lib/Support/Unix/Signals.inc:403:0
+  #3 0x00007ffff7bc6980 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x12980)
+  #4 0x000055555db050ab clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/llvm/include/llvm/Support/Error.h:332:0
+  #5 0x000055555daf905f clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1492:0
+  #6 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+  #7 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+  #8 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+  #9 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+ #10 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #11 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+ #12 0x000055555dafe63a llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #13 0x000055555dafe63a clang::Expr* clang::ASTNodeImporter::importChecked<clang::Expr*>(llvm::Error&, clang::Expr* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+ #14 0x000055555daf8c42 clang::ASTNodeImporter::VisitConstantExpr(clang::ConstantExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:7502:0
+ #15 0x000055555daf8fa9 clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1174:0
+ #16 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #17 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+ #18 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #19 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+ #20 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #21 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+ #22 0x000055555db0d6f2 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #23 0x000055555db0d6f2 llvm::Expected<clang::TemplateArgument> clang::ASTNodeImporter::import<clang::TemplateArgument>(clang::TemplateArgument const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:845:0
+ #24 0x000055555db0ead8 llvm::Expected<clang::TemplateArgument>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #25 0x000055555db0ead8 clang::ASTNodeImporter::ImportTemplateArguments(llvm::ArrayRef<clang::TemplateArgument>, llvm::SmallVectorImpl<clang::TemplateArgument>&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:2336:0
+ #26 0x000055555db0f5d7 llvm::Error::setChecked(bool) /data/llvm-project/llvm/include/llvm/Support/Error.h:307:0
+ #27 0x000055555db0f5d7 llvm::Error::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:239:0
+ #28 0x000055555db0f5d7 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1554:0
+ #29 0x000055555dadf845 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:72:0
+ #30 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #31 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+ #32 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #33 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+ #34 0x000055555dae54ab llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #35 0x000055555dae54ab clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1578:0
+ #36 0x000055555dadf9a5 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:46:0
+ #37 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #38 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+ #39 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #40 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+ #41 0x000055555db0f2a1 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #42 0x000055555db0f2a1 clang::ASTNodeImporter::VisitAutoType(clang::AutoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1434:0
+ #43 0x000055555dadfa25 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:38:0
+ #44 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #45 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+ #46 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #47 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+ #48 0x000055555db05854 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #49 0x000055555db05854 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1296:0
+ #50 0x000055555dadf985 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:49:0
+ #51 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #52 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+ #53 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #54 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+ #55 0x000055555dae3474 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #56 0x000055555dae3474 clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+ #57 0x000055555db2115e clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:3772:0
+ #58 0x000055555db22fb0 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /data/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:428:0
+ #59 0x000055555db23314 clang::ASTImporter::ImportImpl(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8885:0
+ #60 0x000055555dad9c2e llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #61 0x000055555dad9c2e clang::ASTImporter::Import(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9297:0
+ #62 0x000055555daddc45 llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #63 0x000055555daddc45 std::conditional<is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+ #64 0x000055555db051bc llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #65 0x000055555db051bc clang::Decl* clang::ASTNodeImporter::importChecked<clang::Decl*>(llvm::Error&, clang::Decl* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+ #66 0x000055555db051bc clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8714:0
+ #67 0x000055555daf905f clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1492:0
+ #68 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #69 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+ #70 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #71 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+ #72 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #73 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+ #74 0x000055555dafe63a llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #75 0x000055555dafe63a clang::Expr* clang::ASTNodeImporter::importChecked<clang::Expr*>(llvm::Error&, clang::Expr* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+ #76 0x000055555daf8c42 clang::ASTNodeImporter::VisitConstantExpr(clang::ConstantExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:7502:0
+ #77 0x000055555daf8fa9 clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1174:0
+ #78 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #79 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+ #80 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #81 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+ #82 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #83 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+ #84 0x000055555db0d6f2 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #85 0x000055555db0d6f2 llvm::Expected<clang::TemplateArgument> clang::ASTNodeImporter::import<clang::TemplateArgument>(clang::TemplateArgument const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:845:0
+ #86 0x000055555db0ead8 llvm::Expected<clang::TemplateArgument>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #87 0x000055555db0ead8 clang::ASTNodeImporter::ImportTemplateArguments(llvm::ArrayRef<clang::TemplateArgument>, llvm::SmallVectorImpl<clang::TemplateArgument>&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:2336:0
+ #88 0x000055555db0f5d7 llvm::Error::setChecked(bool) /data/llvm-project/llvm/include/llvm/Support/Error.h:307:0
+ #89 0x000055555db0f5d7 llvm::Error::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:239:0
+ #90 0x000055555db0f5d7 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1554:0
+ #91 0x000055555dadf845 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:72:0
+ #92 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #93 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+ #94 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #95 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+ #96 0x000055555dae54ab llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+ #97 0x000055555dae54ab clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1578:0
+ #98 0x000055555dadf9a5 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:46:0
+ #99 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#100 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#101 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#102 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#103 0x000055555db0f2a1 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#104 0x000055555db0f2a1 clang::ASTNodeImporter::VisitAutoType(clang::AutoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1434:0
+#105 0x000055555dadfa25 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:38:0
+#106 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#107 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#108 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#109 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#110 0x000055555db05854 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#111 0x000055555db05854 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1296:0
+#112 0x000055555dadf985 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:49:0
+#113 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#114 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#115 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#116 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#117 0x000055555dae3474 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#118 0x000055555dae3474 clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#119 0x000055555db2115e clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:3772:0
+#120 0x000055555db22fb0 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /data/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:428:0
+#121 0x000055555db23314 clang::ASTImporter::ImportImpl(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8885:0
+#122 0x000055555dad9c2e llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#123 0x000055555dad9c2e clang::ASTImporter::Import(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9297:0
+#124 0x000055555daddc45 llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#125 0x000055555daddc45 std::conditional<is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#126 0x000055555db051bc llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#127 0x000055555db051bc clang::Decl* clang::ASTNodeImporter::importChecked<clang::Decl*>(llvm::Error&, clang::Decl* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#128 0x000055555db051bc clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8714:0
+#129 0x000055555daf905f clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1492:0
+#130 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#131 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#132 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#133 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#134 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#135 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#136 0x000055555dafe63a llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#137 0x000055555dafe63a clang::Expr* clang::ASTNodeImporter::importChecked<clang::Expr*>(llvm::Error&, clang::Expr* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#138 0x000055555daf8c42 clang::ASTNodeImporter::VisitConstantExpr(clang::ConstantExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:7502:0
+#139 0x000055555daf8fa9 clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1174:0
+#140 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#141 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#142 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#143 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#144 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#145 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#146 0x000055555db0d6f2 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#147 0x000055555db0d6f2 llvm::Expected<clang::TemplateArgument> clang::ASTNodeImporter::import<clang::TemplateArgument>(clang::TemplateArgument const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:845:0
+#148 0x000055555db0ead8 llvm::Expected<clang::TemplateArgument>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#149 0x000055555db0ead8 clang::ASTNodeImporter::ImportTemplateArguments(llvm::ArrayRef<clang::TemplateArgument>, llvm::SmallVectorImpl<clang::TemplateArgument>&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:2336:0
+#150 0x000055555db0f5d7 llvm::Error::setChecked(bool) /data/llvm-project/llvm/include/llvm/Support/Error.h:307:0
+#151 0x000055555db0f5d7 llvm::Error::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:239:0
+#152 0x000055555db0f5d7 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1554:0
+#153 0x000055555dadf845 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:72:0
+#154 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#155 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#156 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#157 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#158 0x000055555dae54ab llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#159 0x000055555dae54ab clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1578:0
+#160 0x000055555dadf9a5 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:46:0
+#161 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#162 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#163 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#164 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#165 0x000055555db0f2a1 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#166 0x000055555db0f2a1 clang::ASTNodeImporter::VisitAutoType(clang::AutoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1434:0
+#167 0x000055555dadfa25 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:38:0
+#168 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#169 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#170 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#171 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#172 0x000055555db05854 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#173 0x000055555db05854 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1296:0
+#174 0x000055555dadf985 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:49:0
+#175 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#176 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#177 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#178 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#179 0x000055555dae3474 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#180 0x000055555dae3474 clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#181 0x000055555db2115e clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:3772:0
+#182 0x000055555db22fb0 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /data/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:428:0
+#183 0x000055555db23314 clang::ASTImporter::ImportImpl(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8885:0
+#184 0x000055555dad9c2e llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#185 0x000055555dad9c2e clang::ASTImporter::Import(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9297:0
+#186 0x000055555daddc45 llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#187 0x000055555daddc45 std::conditional<is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#188 0x000055555db051bc llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#189 0x000055555db051bc clang::Decl* clang::ASTNodeImporter::importChecked<clang::Decl*>(llvm::Error&, clang::Decl* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#190 0x000055555db051bc clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8714:0
+#191 0x000055555daf905f clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1492:0
+#192 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#193 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#194 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#195 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#196 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#197 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#198 0x000055555dafe63a llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#199 0x000055555dafe63a clang::Expr* clang::ASTNodeImporter::importChecked<clang::Expr*>(llvm::Error&, clang::Expr* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#200 0x000055555daf8c42 clang::ASTNodeImporter::VisitConstantExpr(clang::ConstantExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:7502:0
+#201 0x000055555daf8fa9 clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1174:0
+#202 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#203 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#204 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#205 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#206 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#207 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#208 0x000055555db0d6f2 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#209 0x000055555db0d6f2 llvm::Expected<clang::TemplateArgument> clang::ASTNodeImporter::import<clang::TemplateArgument>(clang::TemplateArgument const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:845:0
+#210 0x000055555db0ead8 llvm::Expected<clang::TemplateArgument>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#211 0x000055555db0ead8 clang::ASTNodeImporter::ImportTemplateArguments(llvm::ArrayRef<clang::TemplateArgument>, llvm::SmallVectorImpl<clang::TemplateArgument>&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:2336:0
+#212 0x000055555db0f5d7 llvm::Error::setChecked(bool) /data/llvm-project/llvm/include/llvm/Support/Error.h:307:0
+#213 0x000055555db0f5d7 llvm::Error::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:239:0
+#214 0x000055555db0f5d7 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1554:0
+#215 0x000055555dadf845 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:72:0
+#216 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#217 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#218 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#219 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#220 0x000055555dae54ab llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#221 0x000055555dae54ab clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1578:0
+#222 0x000055555dadf9a5 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:46:0
+#223 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#224 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#225 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#226 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#227 0x000055555db0f2a1 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#228 0x000055555db0f2a1 clang::ASTNodeImporter::VisitAutoType(clang::AutoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1434:0
+#229 0x000055555dadfa25 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:38:0
+#230 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#231 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#232 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#233 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#234 0x000055555db05854 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#235 0x000055555db05854 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1296:0
+#236 0x000055555dadf985 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:49:0
+#237 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#238 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#239 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#240 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#241 0x000055555dae3474 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#242 0x000055555dae3474 clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#243 0x000055555db2115e clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:3772:0
+#244 0x000055555db22fb0 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /data/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:428:0
+#245 0x000055555db23314 clang::ASTImporter::ImportImpl(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8885:0
+#246 0x000055555dad9c2e llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#247 0x000055555dad9c2e clang::ASTImporter::Import(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9297:0
+#248 0x000055555daddc45 llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#249 0x000055555daddc45 std::conditional<is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#250 0x000055555db051bc llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#251 0x000055555db051bc clang::Decl* clang::ASTNodeImporter::importChecked<clang::Decl*>(llvm::Error&, clang::Decl* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#252 0x000055555db051bc clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8714:0
+
+<snip>
+
+#285 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#286 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#287 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#288 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#289 0x000055555db0f2a1 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#290 0x000055555db0f2a1 clang::ASTNodeImporter::VisitAutoType(clang::AutoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1434:0
+#291 0x000055555dadfa25 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:38:0
+#292 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#293 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#294 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#295 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#296 0x000055555db05854 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#297 0x000055555db05854 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1296:0
+#298 0x000055555dadf985 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:49:0
+#299 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#300 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#301 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#302 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#303 0x000055555dae3474 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#304 0x000055555dae3474 clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#305 0x000055555db2115e clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:3772:0
+#306 0x000055555db22fb0 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /data/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:428:0
+#307 0x000055555db23314 clang::ASTImporter::ImportImpl(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8885:0
+#308 0x000055555dad9c2e llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#309 0x000055555dad9c2e clang::ASTImporter::Import(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9297:0
+#310 0x000055555daddc45 llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#311 0x000055555daddc45 std::conditional<is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#312 0x000055555db051bc llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#313 0x000055555db051bc clang::Decl* clang::ASTNodeImporter::importChecked<clang::Decl*>(llvm::Error&, clang::Decl* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#314 0x000055555db051bc clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8714:0
+#315 0x000055555daf905f clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1492:0
+#316 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#317 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#318 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#319 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#320 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#321 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#322 0x000055555dafe63a llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#323 0x000055555dafe63a clang::Expr* clang::ASTNodeImporter::importChecked<clang::Expr*>(llvm::Error&, clang::Expr* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#324 0x000055555daf8c42 clang::ASTNodeImporter::VisitConstantExpr(clang::ConstantExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:7502:0
+#325 0x000055555daf8fa9 clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1174:0
+#326 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#327 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#328 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#329 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#330 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#331 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#332 0x000055555db0d6f2 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#333 0x000055555db0d6f2 llvm::Expected<clang::TemplateArgument> clang::ASTNodeImporter::import<clang::TemplateArgument>(clang::TemplateArgument const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:845:0
+#334 0x000055555db0ead8 llvm::Expected<clang::TemplateArgument>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#335 0x000055555db0ead8 clang::ASTNodeImporter::ImportTemplateArguments(llvm::ArrayRef<clang::TemplateArgument>, llvm::SmallVectorImpl<clang::TemplateArgument>&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:2336:0
+#336 0x000055555db0f5d7 llvm::Error::setChecked(bool) /data/llvm-project/llvm/include/llvm/Support/Error.h:307:0
+#337 0x000055555db0f5d7 llvm::Error::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:239:0
+#338 0x000055555db0f5d7 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1554:0
+#339 0x000055555dadf845 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:72:0
+#340 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#341 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#342 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#343 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#344 0x000055555dae54ab llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#345 0x000055555dae54ab clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1578:0
+#346 0x000055555dadf9a5 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:46:0
+#347 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#348 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#349 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#350 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#351 0x000055555db0f2a1 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#352 0x000055555db0f2a1 clang::ASTNodeImporter::VisitAutoType(clang::AutoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1434:0
+#353 0x000055555dadfa25 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:38:0
+#354 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#355 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#356 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#357 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#358 0x000055555db05854 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#359 0x000055555db05854 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1296:0
+#360 0x000055555dadf985 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:49:0
+#361 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#362 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#363 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#364 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#365 0x000055555dae3474 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#366 0x000055555dae3474 clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#367 0x000055555db2115e clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:3772:0
+#368 0x000055555db22fb0 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /data/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:428:0
+#369 0x000055555db23314 clang::ASTImporter::ImportImpl(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8885:0
+#370 0x000055555dad9c2e llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#371 0x000055555dad9c2e clang::ASTImporter::Import(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9297:0
+#372 0x000055555daddc45 llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#373 0x000055555daddc45 std::conditional<is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#374 0x000055555db051bc llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#375 0x000055555db051bc clang::Decl* clang::ASTNodeImporter::importChecked<clang::Decl*>(llvm::Error&, clang::Decl* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#376 0x000055555db051bc clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8714:0
+#377 0x000055555daf905f clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1492:0
+#378 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#379 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#380 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#381 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#382 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#383 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#384 0x000055555dafe63a llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#385 0x000055555dafe63a clang::Expr* clang::ASTNodeImporter::importChecked<clang::Expr*>(llvm::Error&, clang::Expr* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#386 0x000055555daf8c42 clang::ASTNodeImporter::VisitConstantExpr(clang::ConstantExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:7502:0
+#387 0x000055555daf8fa9 clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1174:0
+#388 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#389 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#390 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#391 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#392 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#393 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#394 0x000055555db0d6f2 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#395 0x000055555db0d6f2 llvm::Expected<clang::TemplateArgument> clang::ASTNodeImporter::import<clang::TemplateArgument>(clang::TemplateArgument const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:845:0
+#396 0x000055555db0ead8 llvm::Expected<clang::TemplateArgument>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#397 0x000055555db0ead8 clang::ASTNodeImporter::ImportTemplateArguments(llvm::ArrayRef<clang::TemplateArgument>, llvm::SmallVectorImpl<clang::TemplateArgument>&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:2336:0
+#398 0x000055555db0f5d7 llvm::Error::setChecked(bool) /data/llvm-project/llvm/include/llvm/Support/Error.h:307:0
+#399 0x000055555db0f5d7 llvm::Error::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:239:0
+#400 0x000055555db0f5d7 clang::ASTNodeImporter::VisitTemplateSpecializationType(clang::TemplateSpecializationType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1554:0
+#401 0x000055555dadf845 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:72:0
+#402 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#403 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#404 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#405 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#406 0x000055555dae54ab llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#407 0x000055555dae54ab clang::ASTNodeImporter::VisitElaboratedType(clang::ElaboratedType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1578:0
+#408 0x000055555dadf9a5 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:46:0
+#409 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#410 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#411 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#412 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#413 0x000055555db0f2a1 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#414 0x000055555db0f2a1 clang::ASTNodeImporter::VisitAutoType(clang::AutoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1434:0
+#415 0x000055555dadfa25 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:38:0
+#416 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#417 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#418 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#419 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#420 0x000055555db05854 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#421 0x000055555db05854 clang::ASTNodeImporter::VisitFunctionProtoType(clang::FunctionProtoType const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:1296:0
+#422 0x000055555dadf985 clang::TypeVisitor<clang::ASTNodeImporter, llvm::Expected<clang::QualType>>::Visit(clang::Type const*) /data/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:49:0
+#423 0x000055555dadfbbc llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#424 0x000055555dadfbbc clang::ASTImporter::Import(clang::Type const*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8916:0
+#425 0x000055555dae0f77 llvm::Expected<clang::Type const*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#426 0x000055555dae0f77 clang::ASTImporter::Import(clang::QualType) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8930:0
+#427 0x000055555dae3474 llvm::Expected<clang::QualType>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#428 0x000055555dae3474 clang::QualType clang::ASTNodeImporter::importChecked<clang::QualType>(llvm::Error&, clang::QualType const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#429 0x000055555db2115e clang::ASTNodeImporter::VisitFunctionDecl(clang::FunctionDecl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:3772:0
+#430 0x000055555db22fb0 clang::declvisitor::Base<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Decl*>>::Visit(clang::Decl*) /data/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:428:0
+#431 0x000055555db23314 clang::ASTImporter::ImportImpl(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8885:0
+#432 0x000055555dad9c2e llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#433 0x000055555dad9c2e clang::ASTImporter::Import(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9297:0
+#434 0x000055555daddc45 llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#435 0x000055555daddc45 std::conditional<is_base_of_v<clang::Type, clang::Decl>, llvm::Expected<clang::Decl const*>, llvm::Expected<clang::Decl*>>::type clang::ASTNodeImporter::import<clang::Decl>(clang::Decl*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#436 0x000055555db051bc llvm::Expected<clang::Decl*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#437 0x000055555db051bc clang::Decl* clang::ASTNodeImporter::importChecked<clang::Decl*>(llvm::Error&, clang::Decl* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#438 0x000055555db051bc clang::ASTNodeImporter::VisitSubstNonTypeTemplateParmExpr(clang::SubstNonTypeTemplateParmExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:8714:0
+#439 0x000055555daf905f clang::StmtVisitorBase<std::add_pointer, clang::ASTNodeImporter, llvm::Expected<clang::Stmt*>>::Visit(clang::Stmt*) /data/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1492:0
+#440 0x000055555daf948f llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#441 0x000055555daf948f clang::ASTImporter::Import(clang::Stmt*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9499:0
+#442 0x000055555daf9712 llvm::Expected<clang::Stmt*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#443 0x000055555daf9712 clang::ASTImporter::Import(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:9481:0
+#444 0x000055555dafa035 llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#445 0x000055555dafa035 std::conditional<is_base_of_v<clang::Type, clang::Expr>, llvm::Expected<clang::Expr const*>, llvm::Expected<clang::Expr*>>::type clang::ASTNodeImporter::import<clang::Expr>(clang::Expr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:205:0
+#446 0x000055555dafe63a llvm::Expected<clang::Expr*>::operator bool() /data/llvm-project/llvm/include/llvm/Support/Error.h:565:0
+#447 0x000055555dafe63a clang::Expr* clang::ASTNodeImporter::importChecked<clang::Expr*>(llvm::Error&, clang::Expr* const&) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:654:0
+#448 0x000055555daf8c42 clang::ASTNodeImporter::VisitConstantExpr(clang::ConstantExpr*) /data/llvm-project/clang/lib/AST/ASTImporter.cpp:7502:0
+./test.sh: line 3:  1383 Segmentation fault      (core dumped) clang-18 -cc1 -O0 -x c++ -ast-merge qitemselectionmodel.cpp.oclango /dev/null -ast-dump-all=json
+
+Bug Labels:
+clang:frontend, crash

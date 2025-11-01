@@ -1,0 +1,111 @@
+Issue Title:
+reordering type parameters causes const generics ICE · Issue #69970 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+
+struct Bad<const N: usize, T> {
+    arr: [u8; { N }],
+    another: T,
+}
+
+// struct Good<T, const N: usize> {
+//     arr: [u8; { N }],
+//     another: T,
+// }
+
+fn main() {}
+
+Bug Trace:
+error: type parameters must be declared prior to const parameters
+ --> src/main.rs:3:28
+  |
+3 | struct Bad<const N: usize, T> {
+  |           -----------------^- help: reorder the parameters: lifetimes, then types, then consts: `<T, const N: usize>`
+
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+ --> src/main.rs:1:12
+  |
+1 | #![feature(const_generics)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+
+thread 'rustc' panicked at 'index out of bounds: the len is 1 but the index is 1', src/librustc_typeck/collect.rs:1318:54
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1063
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1426
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:204
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:224
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:474
+  12: rust_begin_unwind
+             at src/libstd/panicking.rs:378
+  13: core::panicking::panic_fmt
+             at src/libcore/panicking.rs:111
+  14: core::panicking::panic_bounds_check
+             at src/libcore/panicking.rs:69
+  15: core::ops::function::impls::<impl core::ops::function::FnMut<A> for &mut F>::call_mut
+  16: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::spec_extend
+  17: rustc_typeck::collect::generics_of
+  18: rustc::ty::query::__query_compute::generics_of
+  19: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::generics_of>::compute
+  20: rustc::dep_graph::graph::DepGraph::with_task_impl
+  21: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  22: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  23: rustc::hir::map::Map::visit_item_likes_in_module
+  24: rustc_typeck::collect::collect_mod_item_types
+  25: rustc::ty::query::__query_compute::collect_mod_item_types
+  26: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::collect_mod_item_types>::compute
+  27: rustc::dep_graph::graph::DepGraph::with_task_impl
+  28: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  29: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::ensure_query
+  30: rustc_typeck::check_crate
+  31: rustc_interface::passes::analysis
+  32: rustc::ty::query::__query_compute::analysis
+  33: rustc::dep_graph::graph::DepGraph::with_task_impl
+  34: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  35: rustc::ty::context::tls::enter_global
+  36: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  37: scoped_tls::ScopedKey<T>::set
+  38: rustc_ast::attr::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.43.0-nightly (c20d7eecb 2020-03-11) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [generics_of] processing `Bad`
+#1 [collect_mod_item_types] collecting item types in top-level module
+#2 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, I-ICE, T-compiler, glacier

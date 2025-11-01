@@ -1,0 +1,69 @@
+Issue Title:
+Compiler panics on #[repr(C)] + #[derive(debug)] + #[rustc_layout_scalar_valid_range_end(_)] on tuple structs  · Issue #83394 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(rustc_attrs)]
+
+// Uncommenting any of these attributes will successfully compile 
+#[repr(C)]
+#[derive(Debug)]
+#[rustc_layout_scalar_valid_range_end(0x7F)]
+struct Integer(u8);
+
+
+// triggers different compiler panic
+/*
+#[repr(C)]
+#[derive(Debug)]
+#[rustc_layout_scalar_valid_range_end(0xFFFF)]
+struct Integers(u8, u8);
+*/
+
+Bug Trace:
+stack backtrace:
+   0:     0x7ff9efe0857e - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h160322fcc0f12a19
+   1:     0x7ff9efe3461b - core::fmt::write::ha3ea633b18d2da75
+   2:     0x7ff9efdfb6c8 - <std::io::IoSliceMut as core::fmt::Debug>::fmt::h0112a934cd010a1c
+   3:     0x7ff9efe0c74d - std::panicking::take_hook::h7c389d310fc84231
+   4:     0x7ff9efe0c219 - std::panicking::take_hook::h7c389d310fc84231
+   5:     0x7ff9db5e7fb7 - rustc_driver::report_ice::hd4f773c8d782ddcc
+   6:     0x7ff9efe0d1b2 - std::panicking::rust_panic_with_hook::h13af0da83034d6f3
+   7:     0x7ff9efe0cca1 - rust_begin_unwind
+   8:     0x7ff9efe08f0f - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h160322fcc0f12a19
+   9:     0x7ff9efe0cbf9 - rust_begin_unwind
+  10:     0x7ff9efe0cbac - std::panicking::begin_panic_fmt::he3c286d5fa8e7e0e
+  11:     0x7ff9df76efdc - rustc_middle::ty::layout::provide::h744eb072f27cc1fb
+  12:     0x7ff9df762eee - <rustc_middle::ty::layout::LayoutError as core::fmt::Display>::fmt::heca06e76b524fab9
+  13:     0x7ff9df6c733e - <rustc_infer::infer::error_reporting::nice_region_error::find_anon_type::TyPathVisitor as rustc_hir::intravisit::Visitor>::visit_lifetime::h8f7e64a9af649c18
+  14:     0x7ff9df92a7af - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::debug_node::h9ab25c38d7e58d1f
+  15:     0x7ff9df99538f - rustc_middle::ty::structural_impls::<impl rustc_middle::ty::context::Lift for rustc_ast::ast::InlineAsmOptions>::lift_to_tcx::hb296e5db2f221b13
+  16:     0x7ff9df71ee49 - <rustc_middle::ty::relate::GeneratorWitness as core::fmt::Debug>::fmt::h92978b980e216966
+  17:     0x7ff9df68bc2c - <rustc_infer::infer::error_reporting::nice_region_error::find_anon_type::TyPathVisitor as rustc_hir::intravisit::Visitor>::visit_lifetime::h8f7e64a9af649c18
+  18:     0x7ff9df5ab1f9 - <rustc_infer::infer::error_reporting::nice_region_error::find_anon_type::TyPathVisitor as rustc_hir::intravisit::Visitor>::visit_lifetime::h8f7e64a9af649c18
+  19:     0x7ff9df772055 - <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of::h163bea4617d945e6
+  20:     0x7ff9db9e8672 - <rustc_codegen_llvm::context::CodegenCx as rustc_target::abi::LayoutOf>::layout_of::h8a1f9503e576acc2
+  21:     0x7ff9db8f7bbe - <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_codegen_llvm::abi::FnAbiLlvmExt>::apply_attrs_callsite::h7396d38e02214aaa
+  22:     0x7ff9db8b25ec - <rustc_codegen_llvm::llvm_::SectionIter as core::ops::drop::Drop>::drop::ha2c97848c144591f
+  23:     0x7ff9db8b4747 - <rustc_codegen_llvm::llvm_::SectionIter as core::ops::drop::Drop>::drop::ha2c97848c144591f
+  24:     0x7ff9db9db57a - <rustc_codegen_llvm::back::lto::ThinLTOKeysMap as core::fmt::Debug>::fmt::he99486cc7e05be9d
+  25:     0x7ff9db8afa1f - <rustc_codegen_llvm::llvm_::SectionIter as core::ops::drop::Drop>::drop::ha2c97848c144591f
+  26:     0x7ff9db8f0a8a - <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_codegen_llvm::abi::FnAbiLlvmExt>::apply_attrs_callsite::h7396d38e02214aaa
+  27:     0x7ff9db8b086e - <rustc_codegen_llvm::llvm_::SectionIter as core::ops::drop::Drop>::drop::ha2c97848c144591f
+  28:     0x7ff9db9eb32a - rustc_codegen_llvm::mono_item::<impl rustc_codegen_ssa::traits::declare::PreDefineMethods for rustc_codegen_llvm::context::CodegenCx>::predefine_fn::hedf0f64e9e762a10
+  29:     0x7ff9db8ac83b - <rustc_codegen_llvm::base::ValueIter as core::iter::traits::iterator::Iterator>::next::h587d021e0c727ed0
+  30:     0x7ff9db8fc68e - <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_codegen_llvm::abi::FnAbiLlvmExt>::apply_attrs_callsite::h7396d38e02214aaa
+  31:     0x7ff9dba1ba25 - <rustc_codegen_llvm::llvm_::ffi::coverageinfo::CounterMappingRegion as core::fmt::Debug>::fmt::hdb8b973c68ec0bd5
+  32:     0x7ff9db8ac453 - <rustc_codegen_llvm::base::ValueIter as core::iter::traits::iterator::Iterator>::next::h587d021e0c727ed0
+  33:     0x7ff9db9d38a1 - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::hd916541c477771f1
+  34:     0x7ff9db801431 - rustc_interface::queries::Queries::ongoing_codegen::hf5bf7ace4f995c32
+  35:     0x7ff9db612ac4 - rustc_ast::util::parser::prec_let_scrutinee_needs_par::hfc7ab7b91c80b01e
+  36:     0x7ff9db5ec17c - <rustc_driver::Compilation as core::fmt::Debug>::fmt::h565c544a3fcd0386
+  37:     0x7ff9db609009 - <rustc_driver::Compilation as core::fmt::Debug>::fmt::h565c544a3fcd0386
+  38:     0x7ff9db615cee - rustc_ast::util::parser::prec_let_scrutinee_needs_par::hfc7ab7b91c80b01e
+  39:     0x7ff9db58962d - <tracing_subscriber::util::TryInitError as core::fmt::Display>::fmt::ha43055df5546b109
+  40:     0x7ff9efe1c9fa - std::sys::windows::thread::Thread::new::hd38a560d738a063d
+  41:     0x7ffa58957034 - BaseThreadInitThunk
+  42:     0x7ffa58d42651 - RtlUserThreadStart
+
+Bug Labels:
+C-bug, E-needs-test, F-rustc_attrs, I-ICE, T-compiler, glacier, requires-internal-features

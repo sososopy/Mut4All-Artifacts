@@ -1,0 +1,11 @@
+Mutation Operator: Add Generic Type Bounds Target: - Type parameters in generic function definitions - Type parameters in methods inside `impl` blocks
+Mutation Rule: 
+1. Traverse all function definitions in the source file, including both free functions and methods in `impl` blocks. 
+2. For each function signature, extract its generic type parameters. 
+3. For every type parameter found, append multiple trait bounds: - `?Sized` (may be unsized) - `Sized` (must be sized) - `Default`, `Clone`, `PartialEq`, `Ord` 
+4. This operation results in intentionally conflicting or redundant constraints, combining `Sized` and `?Sized` on the same type. 
+Example Before Mutation: 
+fn process<T>() {} impl MyStruct { fn handle<U>() {} } 
+Example After Mutation: 
+fn process<T: ?Sized + Sized + Default + Clone + PartialEq + Ord>() {} impl MyStruct { fn handle<U: ?Sized + Sized + Default + Clone + PartialEq + Ord>() {} } 
+Explanation: This mutation operator introduces multiple trait bounds — including both `Sized` and `?Sized` — to every type parameter in functions and methods. The conflicting nature of `?Sized` and `Sized` is intentional, as it increases the chances of type system confusion or internal inconsistency. The inclusion of common traits like `Default`, `Clone`, `PartialEq`, and `Ord` further increases the complexity of generic resolution, monomorphization, and trait checking logic in the compiler. This transformation is designed to stress-test the compiler's type system and bound resolution algorithms under highly constrained generic parameter conditions.

@@ -1,0 +1,103 @@
+Issue Title:
+ICE when trying to match on non-PartialEq slice. · Issue #61188 · rust-lang/rust · GitHub
+
+Rust Code:
+struct B(i32);
+
+const A: &[B] = &[];
+
+fn main() {
+    match &[][..] {
+        A => (),
+        _ => (),
+    }
+}
+
+Bug Trace:
+error: internal compiler error: src/librustc/traits/codegen/mod.rs:156: Encountered errors `[FulfillmentError(Obligation(predicate=Binder(TraitPredicate(<B as std::cmp::PartialEq>)),depth=2),Unimplemented)]` resolving bounds after type-checking
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:570:9
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+stack backtrace:
+
+ 0: std::sys::unix::backtrace::tracing::imp::unwind_backtrace
+             at src/libstd/sys/unix/backtrace/tracing/gcc_s.rs:39
+   1: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:71
+   2: std::panicking::default_hook::{{closure}}
+             at src/libstd/sys_common/backtrace.rs:59
+             at src/libstd/panicking.rs:197
+   3: std::panicking::default_hook
+             at src/libstd/panicking.rs:211
+   4: rustc::util::common::panic_hook
+   5: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:478
+   6: std::panicking::begin_panic
+   7: rustc_errors::Handler::span_bug
+   8: rustc::util::bug::opt_span_bug_fmt::{{closure}}
+   9: rustc::ty::context::tls::with_opt::{{closure}}
+  10: rustc::ty::context::tls::with_context_opt
+  11: rustc::ty::context::tls::with_opt
+  12: rustc::util::bug::opt_span_bug_fmt
+  13: rustc::util::bug::span_bug_fmt
+  14: rustc::traits::codegen::<impl rustc::infer::InferCtxt>::drain_fulfillment_cx_or_panic
+  15: rustc::ty::context::GlobalCtxt::enter_local
+  16: rustc::traits::codegen::codegen_fulfill_obligation
+  17: rustc::ty::query::__query_compute::codegen_fulfill_obligation
+  18: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::codegen_fulfill_obligation>::compute
+  19: rustc::dep_graph::graph::DepGraph::with_task_impl
+  20: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  21: rustc::ty::instance::Instance::resolve
+  22: rustc_mir::lints::check
+  23: rustc::ty::context::GlobalCtxt::enter_local
+  24: rustc_mir::build::mir_build
+  25: rustc_mir::transform::mir_built
+  26: rustc::ty::query::__query_compute::mir_built
+  27: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::mir_built>::compute
+  28: rustc::dep_graph::graph::DepGraph::with_task_impl
+  29: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  30: rustc_mir::transform::check_unsafety::unsafety_check_result
+  31: rustc::ty::query::__query_compute::unsafety_check_result
+  32: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::unsafety_check_result>::compute
+  33: rustc::dep_graph::graph::DepGraph::with_task_impl
+  34: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  35: rustc_mir::transform::mir_const
+  36: rustc::ty::query::__query_compute::mir_const
+  37: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::mir_const>::compute
+  38: rustc::dep_graph::graph::DepGraph::with_task_impl
+  39: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  40: rustc_mir::transform::mir_validated
+  41: rustc::ty::query::__query_compute::mir_validated
+  42: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::mir_validated>::compute
+  43: rustc::dep_graph::graph::DepGraph::with_task_impl
+  44: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  45: rustc_mir::borrow_check::mir_borrowck
+  46: rustc::ty::query::__query_compute::mir_borrowck
+  47: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::mir_borrowck>::compute
+  48: rustc::dep_graph::graph::DepGraph::with_task_impl
+  49: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  50: rustc::ty::<impl rustc::ty::context::TyCtxt>::par_body_owners
+  51: rustc::util::common::time
+  52: rustc_interface::passes::analysis
+  53: rustc::ty::query::__query_compute::analysis
+  54: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::analysis>::compute
+  55: rustc::dep_graph::graph::DepGraph::with_task_impl
+  56: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  57: rustc_interface::passes::BoxedGlobalCtxt::access::{{closure}}
+  58: rustc_interface::passes::create_global_ctxt::{{closure}}
+  59: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  60: std::thread::local::LocalKey<T>::with
+  61: scoped_tls::ScopedKey<T>::set
+  62: syntax::with_globals
+query stack during panic:
+#0 [codegen_fulfill_obligation] checking if `std::cmp::PartialEq` fulfills its obligations
+#1 [mir_built] processing `main`
+#2 [unsafety_check_result] processing `main`
+#3 [mir_const] processing `main`
+#4 [mir_validated] processing `main`
+#5 [mir_borrowck] processing `main`
+#6 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-MIR, C-bug, I-ICE, P-high, T-compiler, glacier

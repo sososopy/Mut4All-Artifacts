@@ -1,0 +1,344 @@
+Issue Title:
+ICE: E0109: `suggestion must not have overlapping parts` · Issue #116473 · rust-lang/rust · GitHub
+
+Rust Code:
+enum Enum<T> {  SVariant { _v: T }, UVariant }
+
+type AliasFixed = Enum<()>;
+
+macro_rules! is_variant {
+    (TSVariant, ) => (!);
+    (SVariant, ) => (!);
+    (UVariant, $expr:expr) => (is_variant!(@check UVariant, {}, $expr));
+    (@check $variant:ident, $matcher:tt, $expr:expr) => (
+        assert!(if let AliasFixed::$variant::<(TSVariant, Enum::<()>::TSVariant(()))> $matcher = $expr { true } else { false },
+                );
+    );
+}
+
+fn main() {
+    is_variant!(UVariant, AliasFixed::UVariant);
+}
+
+Bug Trace:
+error[E0412]: cannot find type `TSVariant` in this scope
+  --> a.rs:10:48
+   |
+10 |         assert!(if let AliasFixed::$variant::<(TSVariant, Enum::<()>::TSVariant(()))> $matcher = $expr { true } else { false },
+   |                                                ^^^^^^^^^ not found in this scope
+...
+16 |     is_variant!(UVariant, AliasFixed::UVariant);
+   |     ------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `is_variant` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> a.rs:10:71
+   |
+10 |         assert!(if let AliasFixed::$variant::<(TSVariant, Enum::<()>::TSVariant(()))> $matcher = $expr { true } else { false },
+   |                                                                       ^^^^^^^^^^^^^ only `Fn` traits may use parentheses
+...
+16 |     is_variant!(UVariant, AliasFixed::UVariant);
+   |     ------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `is_variant` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use angle brackets instead
+   |
+10 |         assert!(if let AliasFixed::$variant::<(TSVariant, Enum::<()>::TSVariant<()>)> $matcher = $expr { true } else { false },
+   |                                                                                ~  ~
+
+thread 'rustc' panicked at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_errors/src/diagnostic.rs:642:9:
+assertion `left == right` failed: suggestion must not have overlapping parts
+  left: Some([SubstitutionPart { span: a.rs:8:59: 10:86 (#4), snippet: "" }, SubstitutionPart { span: a.rs:10:34: 10:34 (#5), snippet: ", {}, $expr));\n    (@check $variant:ident, $matcher:tt, $expr:expr) => (\n        assert!(if let AliasFixed::$variant::<(TSVariant, Enum::<()>::TSVariant(()))>" }])
+ right: None
+stack backtrace:
+   0:     0x7fa13fd24e82 - std::backtrace_rs::backtrace::libunwind::trace::h20e1d55977458f85
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7fa13fd24e82 - std::backtrace_rs::backtrace::trace_unsynchronized::h477756935e21eddd
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fa13fd24e82 - std::sys_common::backtrace::_print_fmt::h8d7cfccc0aa7e0a6
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:67:5
+   3:     0x7fa13fd24e82 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h6d6c798a88c3c0a3
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7fa13fdad32f - core::fmt::rt::Argument::fmt::h7c0abaa263c1a6d5
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/rt.rs:142:9
+   5:     0x7fa13fdad32f - core::fmt::write::h7c6fa3986b639831
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/mod.rs:1116:17
+   6:     0x7fa13fd21e35 - std::io::Write::write_fmt::h9597fd225307c998
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/io/mod.rs:1763:15
+   7:     0x7fa13fd24c54 - std::sys_common::backtrace::_print::h4fb69cb547ef0878
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7fa13fd24c54 - std::sys_common::backtrace::print::h3c19964e48771f0c
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7fa13fd110cc - std::panicking::default_hook::{{closure}}::h01c06bc296bdd31c
+  10:     0x7fa13fd10d71 - std::panicking::default_hook::h27c789c492c45dbd
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:292:9
+  11:     0x7fa142863699 - rustc_driver_impl[9a86a90e19736c7b]::install_ice_hook::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver_impl/src/lib.rs:1348:17
+  12:     0x7fa142863699 - <alloc[7c6619a74188b8e7]::boxed::Box<rustc_driver_impl[9a86a90e19736c7b]::install_ice_hook::{closure#0}> as core[21dd56430bf6a4c3]::ops::function::Fn<(&dyn for<'a, 'b> core[21dd56430bf6a4c3]::ops::function::Fn<(&'a core[21dd56430bf6a4c3]::panic::panic_info::PanicInfo<'b>,), Output = ()> + core[21dd56430bf6a4c3]::marker::Sync + core[21dd56430bf6a4c3]::marker::Send, &core[21dd56430bf6a4c3]::panic::panic_info::PanicInfo)>>::call
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:2021:9
+  13:     0x7fa13fd11967 - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h91ec1c7fe87a3318
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:2021:9
+  14:     0x7fa13fd11967 - std::panicking::rust_panic_with_hook::hf02fcf8fdf0d7cc7
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:735:13
+  15:     0x7fa13fd25351 - std::panicking::begin_panic_handler::{{closure}}::h120d23ce775301a7
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:609:13
+  16:     0x7fa13fd25146 - std::sys_common::backtrace::__rust_end_short_backtrace::h451aa61ea3313d98
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:170:18
+  17:     0x7fa13fd114a2 - rust_begin_unwind
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:597:5
+  18:     0x7fa13fdc7185 - core::panicking::panic_fmt::h9be85dd9111718f1
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:72:14
+  19:     0x7fa13fdc787b - core::panicking::assert_failed_inner::hcd4954d27e4a1b16
+  20:     0x7fa142d19b1f - core[21dd56430bf6a4c3]::panicking::assert_failed::<core[21dd56430bf6a4c3]::option::Option<&[rustc_errors[6a8e8d45788746f]::SubstitutionPart; 2usize]>, core[21dd56430bf6a4c3]::option::Option<&[rustc_errors[6a8e8d45788746f]::SubstitutionPart; 2usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:280:5
+  21:     0x7fa142b9f58c - <rustc_errors[6a8e8d45788746f]::diagnostic::Diagnostic>::multipart_suggestion_with_style::<alloc[7c6619a74188b8e7]::string::String>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_errors/src/diagnostic.rs:642:9
+  22:     0x7fa142d0f30d - <rustc_errors[6a8e8d45788746f]::diagnostic::Diagnostic>::multipart_suggestion_verbose::<alloc[7c6619a74188b8e7]::string::String>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_errors/src/diagnostic.rs:614:9
+  23:     0x7fa142d0f30d - <dyn rustc_hir_analysis[a4464cf92861975c]::astconv::AstConv>::associated_path_to_ty::{closure#0}::{closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/astconv/mod.rs:1352:33
+  24:     0x7fa142d0f30d - <dyn rustc_hir_analysis[a4464cf92861975c]::astconv::AstConv>::prohibit_generics::<core[21dd56430bf6a4c3]::slice::iter::Iter<rustc_hir[ad99a2c62ee065e0]::hir::PathSegment>, <dyn rustc_hir_analysis[a4464cf92861975c]::astconv::AstConv>::associated_path_to_ty::{closure#0}::{closure#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/astconv/mod.rs:1988:13
+  25:     0x7fa142d0f30d - <dyn rustc_hir_analysis[a4464cf92861975c]::astconv::AstConv>::associated_path_to_ty::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/astconv/mod.rs:1267:25
+  26:     0x7fa142d0352f - <dyn rustc_hir_analysis[a4464cf92861975c]::astconv::AstConv>::associated_path_to_ty
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/astconv/mod.rs:1238:5
+  27:     0x7fa142e3597a - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::finish_resolving_struct_path
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1822:30
+  28:     0x7fa142e3597a - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_struct_path
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1359:25
+  29:     0x7fa142eb3446 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_pat_struct
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/pat.rs:854:39
+  30:     0x7fa142eb3446 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_pat
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/pat.rs:191:17
+  31:     0x7fa142e3683f - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_pat_top
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/pat.rs:155:9
+  32:     0x7fa142e3683f - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_decl
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1477:9
+  33:     0x7fa142e8f39d - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_let
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:1210:9
+  34:     0x7fa142e8f39d - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:316:40
+  35:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:228:18
+  36:     0x7fa142e09960 - stacker[e84c0ac142b46db]::maybe_grow::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  37:     0x7fa142e09960 - rustc_data_structures[e7d5d0ee59919296]::stack::ensure_sufficient_stack::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  38:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:224:18
+  39:     0x7fa142e8e8da - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:178:9
+  40:     0x7fa142e8fa63 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_has_type_or_error::<<rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_then_else::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:71:22
+  41:     0x7fa142e8fa63 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_then_else
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:1018:23
+  42:     0x7fa142e8fa63 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:337:17
+  43:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:228:18
+  44:     0x7fa142e09960 - stacker[e84c0ac142b46db]::maybe_grow::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  45:     0x7fa142e09960 - rustc_data_structures[e7d5d0ee59919296]::stack::ensure_sufficient_stack::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  46:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:224:18
+  47:     0x7fa142e8e8da - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:178:9
+  48:     0x7fa142e90f7f - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_unary
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:370:27
+  49:     0x7fa142e90f7f - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:287:45
+  50:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:228:18
+  51:     0x7fa142e09960 - stacker[e84c0ac142b46db]::maybe_grow::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  52:     0x7fa142e09960 - rustc_data_structures[e7d5d0ee59919296]::stack::ensure_sufficient_stack::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  53:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:224:18
+  54:     0x7fa142e8e8da - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:178:9
+  55:     0x7fa142e8ffab - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:339:39
+  56:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:228:18
+  57:     0x7fa142e09960 - stacker[e84c0ac142b46db]::maybe_grow::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  58:     0x7fa142e09960 - rustc_data_structures[e7d5d0ee59919296]::stack::ensure_sufficient_stack::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  59:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:224:18
+  60:     0x7fa142e8e8da - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:178:9
+  61:     0x7fa142e8fa63 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_has_type_or_error::<<rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_then_else::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:71:22
+  62:     0x7fa142e8fa63 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_then_else
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:1018:23
+  63:     0x7fa142e8fa63 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:337:17
+  64:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:228:18
+  65:     0x7fa142e09960 - stacker[e84c0ac142b46db]::maybe_grow::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  66:     0x7fa142e09960 - rustc_data_structures[e7d5d0ee59919296]::stack::ensure_sufficient_stack::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  67:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:224:18
+  68:     0x7fa142e8e8da - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:178:9
+  69:     0x7fa142e36d24 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:151:9
+  70:     0x7fa142e36d24 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_stmt
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1526:17
+  71:     0x7fa142e3747d - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_block_with_expected::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1578:17
+  72:     0x7fa142e3747d - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::with_breakable_ctxt::<<rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_block_with_expected::{closure#0}, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:1527:22
+  73:     0x7fa142e3747d - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_block_with_expected
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1576:26
+  74:     0x7fa142e8f8c9 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:324:41
+  75:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:228:18
+  76:     0x7fa142e09960 - stacker[e84c0ac142b46db]::maybe_grow::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  77:     0x7fa142e09960 - rustc_data_structures[e7d5d0ee59919296]::stack::ensure_sufficient_stack::<rustc_middle[209d3c4051728f5e]::ty::Ty, <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  78:     0x7fa142e09960 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:224:18
+  79:     0x7fa142e8e8da - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:178:9
+  80:     0x7fa142e0b410 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_expr_with_hint
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:130:9
+  81:     0x7fa142e0b410 - <rustc_hir_typeck[f8bdffb408d1dd91]::fn_ctxt::FnCtxt>::check_return_expr
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:821:30
+  82:     0x7fa14309faea - rustc_hir_typeck[f8bdffb408d1dd91]::check::check_fn
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/check.rs:121:5
+  83:     0x7fa14309a909 - rustc_hir_typeck[f8bdffb408d1dd91]::typeck_with_fallback::<rustc_hir_typeck[f8bdffb408d1dd91]::typeck::{closure#0}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/lib.rs:200:9
+  84:     0x7fa14309a909 - rustc_hir_typeck[f8bdffb408d1dd91]::typeck_with_fallback::<rustc_hir_typeck[f8bdffb408d1dd91]::typeck::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/lib.rs:159:1
+  85:     0x7fa14309a909 - rustc_hir_typeck[f8bdffb408d1dd91]::typeck
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/lib.rs:146:5
+  86:     0x7fa144469e83 - rustc_query_impl[dc87cdf6e038fb5a]::query_impl::typeck::dynamic_query::{closure#2}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:585:47
+  87:     0x7fa144469e83 - rustc_query_impl[dc87cdf6e038fb5a]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[dc87cdf6e038fb5a]::query_impl::typeck::dynamic_query::{closure#2}::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:509:18
+  88:     0x7fa14474b3cd - rustc_query_impl[dc87cdf6e038fb5a]::query_impl::typeck::dynamic_query::{closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:581:25
+  89:     0x7fa14474b3cd - <rustc_query_impl[dc87cdf6e038fb5a]::query_impl::typeck::dynamic_query::{closure#2} as core[21dd56430bf6a4c3]::ops::function::FnOnce<(rustc_middle[209d3c4051728f5e]::ty::context::TyCtxt, rustc_span[a94a85dbff5811f1]::def_id::LocalDefId)>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+  90:     0x7fa144400cd2 - <rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false> as rustc_query_system[12eae60210ea368c]::query::config::QueryConfig<rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>>::compute
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/lib.rs:117:9
+  91:     0x7fa144400cd2 - rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr::<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:456:72
+  92:     0x7fa144400cd2 - rustc_middle[209d3c4051728f5e]::ty::context::tls::enter_context::<rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+  93:     0x7fa144400cd2 - <std[4c86c792f832264]::thread::local::LocalKey<core[21dd56430bf6a4c3]::cell::Cell<*const ()>>>::try_with::<rustc_middle[209d3c4051728f5e]::ty::context::tls::enter_context<rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:270:16
+  94:     0x7fa144400cd2 - <std[4c86c792f832264]::thread::local::LocalKey<core[21dd56430bf6a4c3]::cell::Cell<*const ()>>>::with::<rustc_middle[209d3c4051728f5e]::ty::context::tls::enter_context<rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:246:9
+  95:     0x7fa144400cd2 - rustc_middle[209d3c4051728f5e]::ty::context::tls::enter_context::<rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+  96:     0x7fa144400cd2 - <rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt as rustc_query_system[12eae60210ea368c]::query::QueryContext>::start_query::<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:151:13
+  97:     0x7fa144400cd2 - rustc_middle[209d3c4051728f5e]::ty::context::tls::with_related_context::<<rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt as rustc_query_system[12eae60210ea368c]::query::QueryContext>::start_query<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:133:9
+  98:     0x7fa144400cd2 - rustc_middle[209d3c4051728f5e]::ty::context::tls::with_context::<rustc_middle[209d3c4051728f5e]::ty::context::tls::with_related_context<<rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt as rustc_query_system[12eae60210ea368c]::query::QueryContext>::start_query<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:36
+  99:     0x7fa144400cd2 - rustc_middle[209d3c4051728f5e]::ty::context::tls::with_context_opt::<rustc_middle[209d3c4051728f5e]::ty::context::tls::with_context<rustc_middle[209d3c4051728f5e]::ty::context::tls::with_related_context<<rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt as rustc_query_system[12eae60210ea368c]::query::QueryContext>::start_query<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:100:18
+ 100:     0x7fa144400cd2 - rustc_middle[209d3c4051728f5e]::ty::context::tls::with_context::<rustc_middle[209d3c4051728f5e]::ty::context::tls::with_related_context<<rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt as rustc_query_system[12eae60210ea368c]::query::QueryContext>::start_query<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:5
+ 101:     0x7fa144400cd2 - rustc_middle[209d3c4051728f5e]::ty::context::tls::with_related_context::<<rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt as rustc_query_system[12eae60210ea368c]::query::QueryContext>::start_query<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:124:5
+ 102:     0x7fa144400cd2 - <rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt as rustc_query_system[12eae60210ea368c]::query::QueryContext>::start_query::<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:136:9
+ 103:     0x7fa144400cd2 - rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr::<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:456:18
+ 104:     0x7fa144400cd2 - rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job::<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:389:9
+ 105:     0x7fa144400cd2 - rustc_query_system[12eae60210ea368c]::query::plumbing::try_execute_query::<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:332:13
+ 106:     0x7fa1446c4326 - rustc_query_system[12eae60210ea368c]::query::plumbing::get_query_non_incr::<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:786:32
+ 107:     0x7fa1446c4326 - stacker[e84c0ac142b46db]::maybe_grow::<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::get_query_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+ 108:     0x7fa1446c4326 - rustc_data_structures[e7d5d0ee59919296]::stack::ensure_sufficient_stack::<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>, rustc_query_system[12eae60210ea368c]::query::plumbing::get_query_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+ 109:     0x7fa1446c4326 - rustc_query_system[12eae60210ea368c]::query::plumbing::get_query_non_incr::<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:786:5
+ 110:     0x7fa1446c4326 - rustc_query_impl[dc87cdf6e038fb5a]::query_impl::typeck::get_query_non_incr::__rust_end_short_backtrace
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:559:26
+ 111:     0x7fa142bc7f1d - rustc_middle[209d3c4051728f5e]::query::plumbing::query_ensure::<rustc_query_system[12eae60210ea368c]::query::caches::VecCache<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 8usize]>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:172:9
+ 112:     0x7fa142bc7f1d - <rustc_middle[209d3c4051728f5e]::query::plumbing::TyCtxtEnsure>::typeck::<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:347:17
+ 113:     0x7fa142bc7f1d - rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/lib.rs:227:13
+ 114:     0x7fa142bc7f1d - <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners::<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/hir/map/mod.rs:491:82
+ 115:     0x7fa142bc7f1d - rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in::<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/sync/parallel.rs:75:30
+ 116:     0x7fa142bc7f1d - <core[21dd56430bf6a4c3]::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}> as core[21dd56430bf6a4c3]::ops::function::FnOnce<()>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panic/unwind_safe.rs:271:9
+ 117:     0x7fa142c9098b - std[4c86c792f832264]::panicking::try::do_call::<core[21dd56430bf6a4c3]::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:504:40
+ 118:     0x7fa142c9098b - std[4c86c792f832264]::panicking::try::<(), core[21dd56430bf6a4c3]::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:468:19
+ 119:     0x7fa142c9098b - std[4c86c792f832264]::panic::catch_unwind::<core[21dd56430bf6a4c3]::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panic.rs:142:14
+ 120:     0x7fa142c9098b - <rustc_data_structures[e7d5d0ee59919296]::sync::parallel::ParallelGuard>::run::<(), rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/sync/parallel.rs:26:9
+ 121:     0x7fa142c9098b - rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in::<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/sync/parallel.rs:75:17
+ 122:     0x7fa142c9098b - <core[21dd56430bf6a4c3]::slice::iter::Iter<rustc_span[a94a85dbff5811f1]::def_id::LocalDefId> as core[21dd56430bf6a4c3]::iter::traits::iterator::Iterator>::for_each::<rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/slice/iter/macros.rs:254:21
+ 123:     0x7fa142c9098b - rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in::<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/sync/parallel.rs:74:13
+ 124:     0x7fa142c9098b - rustc_data_structures[e7d5d0ee59919296]::sync::parallel::parallel_guard::<(), rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/sync/parallel.rs:39:15
+ 125:     0x7fa142c9098b - rustc_data_structures[e7d5d0ee59919296]::sync::parallel::disabled::par_for_each_in::<&[rustc_span[a94a85dbff5811f1]::def_id::LocalDefId], <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>::{closure#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/sync/parallel.rs:73:9
+ 126:     0x7fa142d9b286 - <rustc_middle[209d3c4051728f5e]::hir::map::Map>::par_body_owners::<rustc_hir_analysis[a4464cf92861975c]::check_crate::{closure#7}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/hir/map/mod.rs:491:9
+ 127:     0x7fa142d9b286 - rustc_hir_analysis[a4464cf92861975c]::check_crate
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/lib.rs:224:5
+ 128:     0x7fa1433e2540 - rustc_interface[100b8cd82d9dd990]::passes::analysis
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:775:5
+ 129:     0x7fa14446a431 - rustc_query_impl[dc87cdf6e038fb5a]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:585:47
+ 130:     0x7fa14446a431 - rustc_query_impl[dc87cdf6e038fb5a]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[dc87cdf6e038fb5a]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 1usize]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:509:18
+ 131:     0x7fa1447bff59 - rustc_query_impl[dc87cdf6e038fb5a]::query_impl::analysis::dynamic_query::{closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:581:25
+ 132:     0x7fa1447bff59 - <rustc_query_impl[dc87cdf6e038fb5a]::query_impl::analysis::dynamic_query::{closure#2} as core[21dd56430bf6a4c3]::ops::function::FnOnce<(rustc_middle[209d3c4051728f5e]::ty::context::TyCtxt, ())>>::call_once
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+ 133:     0x7fa144373005 - <rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::SingleCache<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 1usize]>>, false, false, false> as rustc_query_system[12eae60210ea368c]::query::config::QueryConfig<rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>>::compute
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/lib.rs:117:9
+ 134:     0x7fa144373005 - rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr::<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::SingleCache<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 1usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:456:72
+ 135:     0x7fa144373005 - rustc_middle[209d3c4051728f5e]::ty::context::tls::enter_context::<rustc_query_system[12eae60210ea368c]::query::plumbing::execute_job_non_incr<rustc_query_impl[dc87cdf6e038fb5a]::DynamicConfig<rustc_query_system[12eae60210ea368c]::query::caches::SingleCache<rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 1usize]>>, false, false, false>, rustc_query_impl[dc87cdf6e038fb5a]::plumbing::QueryCtxt>::{closure#0}, rustc_middle[209d3c4051728f5e]::query::erase::Erased<[u8; 1usize]>>::{closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+
+......
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please attach the file at `/tmp/O/rustc-ice-2023-10-06T04:38:22.719740215Z-2498356.txt` to your bug report
+
+query stack during panic:
+#0 [typeck] type-checking `main`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0214, E0412.
+For more information about an error, try `rustc --explain E0214`
+
+Bug Labels:
+A-diagnostics, C-bug, I-ICE, T-compiler, requires-debug-assertions

@@ -1,0 +1,104 @@
+Issue Title:
+thread 'rustc' panicked at 'index out of bounds: the len is 0 but the index is 43 · Issue #78017 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::io::{Read, Write};
+use std::fmt::Debug;
+use std::io::{stdout,stdin, BufRead};
+use arrayvec::ArrayString;
+use std::vec::Vec;
+use std::convert::TryInto;
+
+struct VM {
+    r: [u32;16],
+    pc: u32,
+    mem: Vec<u8>,
+}
+
+impl VM{
+
+    fn check_instr(&mut self)-> bool{
+        self.pc += 1;
+        let idx = self.pc as usize;
+        match self.mem[idx]{
+            0x00 => {
+                self.r[self.mem[idx+1] as usize] ^= self.r[self.mem[idx+2] as usize];
+                self.pc += 3;
+                return false;
+            }, //xor det_reg,src_reg
+            0x01 => {
+                self.r[self.mem[idx+1] as usize] &= self.r[self.mem[idx+2] as usize];
+                self.pc += 3;
+                return false;
+            },
+            0x02 => {
+                self.r[self.mem[idx+1] as usize] |= self.r[self.mem[idx+2] as usize];
+                self.pc += 3;
+                return false;
+            },
+            // MOV dst_reg, std_reg
+            0x11 =>{
+                let idx = self.pc as usize;
+                let data = self.mem[idx+1];
+                self.mem[idx+2].clone_from(&data);
+                self.pc += 6;
+                return false;
+            },
+            // MOV dst_reg, imm32
+            0x10 =>{
+                let idx = self.pc as usize;
+                let data = self.mem[idx+1] as u32;
+                self.r[self.mem[idx+2] as usize].clone_from(&data);
+                self.pc += 3;
+                return false;
+            },
+            0xff =>{
+                return true;
+            }
+            _ => return false,
+        }
+        println!("Should never get here!");
+        return true;
+    }
+
+    fn check(&mut self, key: &[u8;16]) -> bool{
+        key.chunks_exact(4)
+            .take(4)
+            .zip(&mut self.r[..4])
+            .for_each(|(chunk,slot)| * slot = u32::from_le_bytes(chunk.try_into().unwrap()));
+
+        let mut end = false;
+
+        while !end {
+            end = self.check_instr();
+        }
+        return self.r[0] == 0;
+    }
+}
+
+fn main() {
+    const MAX_SIZE: u64 = 256;
+    let key_valid = false;
+    let mut key = [0;16];
+
+    println!("Hello there\nPlease enter your key: ");
+    let _ = stdout().flush();
+    if let Err(_) = stdin().read_exact(&mut key){
+        println!("Bad user input!");
+    }
+
+    // let mut vm = VM::new();
+    // let key_valid = vm.check(key);
+
+    if (key_valid){
+        println!("Yup.");
+    }else{
+        println!("Nope.");
+    }
+}
+
+Bug Trace:
+stack trace is included above
+
+Bug Labels:
+A-incr-comp, C-bug, I-ICE, T-compiler

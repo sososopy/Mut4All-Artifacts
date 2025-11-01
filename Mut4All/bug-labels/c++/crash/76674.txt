@@ -1,0 +1,63 @@
+Issue Title:
+[clang] Crash when calling object of type obtained from lambda in unevaluated context
+
+Source Code & Bug Trace:
+template <class>
+struct A {
+    template <class U>
+    using Func = decltype([] {return U{};});
+};
+
+A<int>::Func<int> f{};
+int i{f()};
+
+clang++: /root/llvm-project/clang/lib/AST/Decl.cpp:2503: clang::APValue* clang::VarDecl::evaluateValueImpl(llvm::SmallVectorImpl<std::pair<clang::SourceLocation, clang::PartialDiagnostic> >&, bool) const: Assertion `!Init->isValueDependent()' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-17.0.1/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-13.2.0 -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 -emit-llvm -Xclang -disable-llvm-passes <source>
+1.	<eof> parser at end of file
+2.	<source>:8:5: LLVM IR generation of declaration 'i'
+3.	<source>:8:5: Generating code for declaration 'i'
+ #0 0x00000000036e7558 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x36e7558)
+ #1 0x00000000036e53dc llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x36e53dc)
+ #2 0x0000000003632918 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f729cc42520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x00007f729cc969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x00007f729cc42476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x00007f729cc287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x00007f729cc2871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x00007f729cc39e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x0000000006e29bd3 (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x6e29bd3)
+#10 0x0000000006e29c25 clang::VarDecl::evaluateValue() const (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x6e29c25)
+#11 0x00000000039de21b clang::CodeGen::ConstantEmitter::tryEmitPrivateForVarInit(clang::VarDecl const&) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x39de21b)
+#12 0x00000000039de5d1 clang::CodeGen::ConstantEmitter::tryEmitForInitializer(clang::VarDecl const&) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x39de5d1)
+#13 0x0000000003ab0867 clang::CodeGen::CodeGenModule::EmitGlobalVarDefinition(clang::VarDecl const*, bool) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x3ab0867)
+#14 0x0000000003ad2831 clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x3ad2831)
+#15 0x0000000003ad2e8b clang::CodeGen::CodeGenModule::EmitGlobal(clang::GlobalDecl) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x3ad2e8b)
+#16 0x0000000003adc05b clang::CodeGen::CodeGenModule::EmitTopLevelDecl(clang::Decl*) (.part.0) CodeGenModule.cpp:0:0
+#17 0x000000000493c1e6 (anonymous namespace)::CodeGeneratorImpl::HandleTopLevelDecl(clang::DeclGroupRef) ModuleBuilder.cpp:0:0
+#18 0x000000000492e988 clang::BackendConsumer::HandleTopLevelDecl(clang::DeclGroupRef) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x492e988)
+#19 0x0000000005deb754 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x5deb754)
+#20 0x0000000004939258 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x4939258)
+#21 0x00000000041a1c09 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x41a1c09)
+#22 0x00000000041278ce clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x41278ce)
+#23 0x0000000004281de6 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x4281de6)
+#24 0x0000000000bc67eb cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0xbc67eb)
+#25 0x0000000000bbefaa ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#26 0x0000000003f83419 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#27 0x0000000003632dc4 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x3632dc4)
+#28 0x0000000003f83a0f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#29 0x0000000003f4b275 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x3f4b275)
+#30 0x0000000003f4bcdd clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x3f4bcdd)
+#31 0x0000000003f5385d clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0x3f5385d)
+#32 0x0000000000bc4a87 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0xbc4a87)
+#33 0x0000000000abef61 main (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0xabef61)
+#34 0x00007f729cc29d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#35 0x00007f729cc29e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#36 0x0000000000bbea8e _start (/opt/compiler-explorer/clang-assertions-17.0.1/bin/clang+++0xbbea8e)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Compiler returned: 134
+
+
+Bug Labels:
+clang:frontend, confirmed, crash, lambda

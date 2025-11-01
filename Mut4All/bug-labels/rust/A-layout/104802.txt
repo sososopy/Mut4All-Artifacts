@@ -1,0 +1,122 @@
+Issue Title:
+ICE with packed union: "alignment mismatch between ABI and layout" · Issue #104802 · rust-lang/rust · GitHub
+
+Rust Code:
+#[repr(packed(1))]
+union U {
+    x: u32,
+}
+
+const B: U = U { x: 0 };
+
+fn main() {}
+
+Bug Trace:
+thread 'rustc' panicked at 'assertion failed: `(left == right)`
+  left: `Align(1 bytes)`,
+ right: `Align(4 bytes)`: alignment mismatch between ABI and layout in TyAndLayout {
+    ty: U,
+    layout: Layout {
+        size: Size(4 bytes),
+        align: AbiAndPrefAlign {
+            abi: Align(1 bytes),
+            pref: Align(1 bytes),
+        },
+        abi: Scalar(
+            Union {
+                value: Int(
+                    I32,
+                    false,
+                ),
+            },
+        ),
+        fields: Union(
+            1,
+        ),
+        largest_niche: None,
+        variants: Single {
+            index: 0,
+        },
+    },
+}', compiler/rustc_ty_utils/src/layout_sanity_check.rs:77:21
+stack backtrace:
+   0:        0x10f448f21 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hcf5aac4d53eab431
+   1:        0x10f506818 - core::fmt::write::hed31846cddb4e13c
+   2:        0x10f4abec8 - std::io::Write::write_fmt::h01887004f97cedc7
+   3:        0x10f448d12 - std::sys_common::backtrace::print::h2141c6543b5865e5
+   4:        0x10f4ace45 - std::panicking::default_hook::{{closure}}::hfe93a58a10a72158
+   5:        0x10f4acc2e - std::panicking::default_hook::hafca10424d622dfb
+   6:        0x123176708 - rustc_driver[bfe6130b33d7dd9c]::DEFAULT_HOOK::{closure#0}::{closure#0}
+   7:        0x10f4ad636 - std::panicking::rust_panic_with_hook::hafe3bb82e805c420
+   8:        0x10f49a173 - std::panicking::begin_panic_handler::{{closure}}::h2797e20f8763cc3a
+   9:        0x10f49a0a8 - std::sys_common::backtrace::__rust_end_short_backtrace::hde7c42687ab67a11
+  10:        0x10f4acf18 - _rust_begin_unwind
+  11:        0x10f52b443 - core::panicking::panic_fmt::h7ec57a9a63e6db71
+  12:        0x10f51a125 - core::panicking::assert_failed_inner::hb961e0acdeb20af8
+  13:        0x12860ee6e - core[95bb6d661b676f4d]::panicking::assert_failed::<rustc_target[b76a068d308f1d4a]::abi::Align, rustc_target[b76a068d308f1d4a]::abi::Align>
+  14:        0x12594e82a - rustc_ty_utils[eaca7fb7b7a0869]::layout_sanity_check::sanity_check_layout
+  15:        0x1259669c0 - rustc_ty_utils[eaca7fb7b7a0869]::layout::layout_of
+  16:        0x127303ac1 - rustc_query_system[2c5b580ea3a12206]::query::plumbing::get_query::<rustc_query_impl[e5b327371ad57e64]::queries::layout_of, rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt>
+  17:        0x126e9bcc1 - <rustc_query_impl[e5b327371ad57e64]::Queries as rustc_middle[42f89e9b8d5efbfa]::ty::query::QueryEngine>::layout_of
+  18:        0x126b79f9e - rustc_const_eval[d19bca16da1661a0]::const_eval::eval_queries::eval_to_allocation_raw_provider
+  19:        0x1272d223a - rustc_query_system[2c5b580ea3a12206]::query::plumbing::get_query::<rustc_query_impl[e5b327371ad57e64]::queries::eval_to_allocation_raw, rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt>
+  20:        0x126e84f6c - <rustc_query_impl[e5b327371ad57e64]::Queries as rustc_middle[42f89e9b8d5efbfa]::ty::query::QueryEngine>::eval_to_allocation_raw
+  21:        0x126b77d1f - rustc_const_eval[d19bca16da1661a0]::const_eval::eval_queries::eval_to_const_value_raw_provider
+  22:        0x1272da487 - rustc_query_system[2c5b580ea3a12206]::query::plumbing::get_query::<rustc_query_impl[e5b327371ad57e64]::queries::eval_to_const_value_raw, rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt>
+  23:        0x126e8568c - <rustc_query_impl[e5b327371ad57e64]::Queries as rustc_middle[42f89e9b8d5efbfa]::ty::query::QueryEngine>::eval_to_const_value_raw
+  24:        0x126b778b7 - rustc_const_eval[d19bca16da1661a0]::const_eval::eval_queries::eval_to_const_value_raw_provider
+  25:        0x1272da487 - rustc_query_system[2c5b580ea3a12206]::query::plumbing::get_query::<rustc_query_impl[e5b327371ad57e64]::queries::eval_to_const_value_raw, rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt>
+  26:        0x126e8568c - <rustc_query_impl[e5b327371ad57e64]::Queries as rustc_middle[42f89e9b8d5efbfa]::ty::query::QueryEngine>::eval_to_const_value_raw
+  27:        0x1281462c9 - <rustc_middle[42f89e9b8d5efbfa]::ty::query::TyCtxtEnsure>::const_eval_poly
+  28:        0x127ac10f3 - <rustc_lint[8943d723f788f8fc]::BuiltinCombinedModuleLateLintPass as rustc_lint[8943d723f788f8fc]::passes::LateLintPass>::check_item
+  29:        0x127ad9f0c - <rustc_lint[8943d723f788f8fc]::late::LateContextAndPass<rustc_lint[8943d723f788f8fc]::BuiltinCombinedModuleLateLintPass> as rustc_hir[112137b1c6e29e52]::intravisit::Visitor>::visit_nested_item
+  30:        0x127b0ffbc - rustc_hir[112137b1c6e29e52]::intravisit::walk_mod::<rustc_lint[8943d723f788f8fc]::late::LateContextAndPass<rustc_lint[8943d723f788f8fc]::BuiltinCombinedModuleLateLintPass>>
+  31:        0x127adf103 - rustc_lint[8943d723f788f8fc]::late::late_lint_mod::<rustc_lint[8943d723f788f8fc]::BuiltinCombinedModuleLateLintPass>
+  32:        0x127abb610 - rustc_lint[8943d723f788f8fc]::lint_mod
+  33:        0x1271cff1e - rustc_query_system[2c5b580ea3a12206]::query::plumbing::try_execute_query::<rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt, rustc_query_system[2c5b580ea3a12206]::query::caches::DefaultCache<rustc_span[7d7aa17bf13bea16]::def_id::LocalDefId, ()>>
+  34:        0x127302a83 - rustc_query_system[2c5b580ea3a12206]::query::plumbing::get_query::<rustc_query_impl[e5b327371ad57e64]::queries::lint_mod, rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt>
+  35:        0x126e7932f - <rustc_query_impl[e5b327371ad57e64]::Queries as rustc_middle[42f89e9b8d5efbfa]::ty::query::QueryEngine>::lint_mod
+  36:        0x1232a4cbd - <core[95bb6d661b676f4d]::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures[6f5f4852afd2a743]::sync::par_for_each_in<&[rustc_hir[112137b1c6e29e52]::hir_id::OwnerId], <rustc_middle[42f89e9b8d5efbfa]::hir::map::Map>::par_for_each_module<rustc_lint[8943d723f788f8fc]::late::check_crate<rustc_lint[8943d723f788f8fc]::BuiltinCombinedLateLintPass, rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}::{closure#2}::{closure#0}::{closure#0}>::{closure#1}::{closure#0}::{closure#0}>::{closure#0}>::{closure#0}::{closure#0}> as core[95bb6d661b676f4d]::ops::function::FnOnce<()>>::call_once
+  37:        0x123254040 - std[e4564114326e8c6]::panicking::try::<(), core[95bb6d661b676f4d]::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures[6f5f4852afd2a743]::sync::par_for_each_in<&[rustc_hir[112137b1c6e29e52]::hir_id::OwnerId], <rustc_middle[42f89e9b8d5efbfa]::hir::map::Map>::par_for_each_module<rustc_lint[8943d723f788f8fc]::late::check_crate<rustc_lint[8943d723f788f8fc]::BuiltinCombinedLateLintPass, rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}::{closure#2}::{closure#0}::{closure#0}>::{closure#1}::{closure#0}::{closure#0}>::{closure#0}>::{closure#0}::{closure#0}>>
+  38:        0x123239183 - rustc_data_structures[6f5f4852afd2a743]::sync::par_for_each_in::<&[rustc_hir[112137b1c6e29e52]::hir_id::OwnerId], <rustc_middle[42f89e9b8d5efbfa]::hir::map::Map>::par_for_each_module<rustc_lint[8943d723f788f8fc]::late::check_crate<rustc_lint[8943d723f788f8fc]::BuiltinCombinedLateLintPass, rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}::{closure#2}::{closure#0}::{closure#0}>::{closure#1}::{closure#0}::{closure#0}>::{closure#0}>
+  39:        0x1232453ea - <rustc_session[6f273c4587eb1b50]::session::Session>::time::<(), rustc_lint[8943d723f788f8fc]::late::check_crate<rustc_lint[8943d723f788f8fc]::BuiltinCombinedLateLintPass, rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}::{closure#2}::{closure#0}::{closure#0}>::{closure#1}::{closure#0}>
+  40:        0x1232454cf - <rustc_session[6f273c4587eb1b50]::session::Session>::time::<(), rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}::{closure#2}::{closure#0}>
+  41:        0x12325433c - std[e4564114326e8c6]::panicking::try::<(), core[95bb6d661b676f4d]::panic::unwind_safe::AssertUnwindSafe<rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}::{closure#2}>>
+  42:        0x1232a5b50 - <core[95bb6d661b676f4d]::panic::unwind_safe::AssertUnwindSafe<rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}> as core[95bb6d661b676f4d]::ops::function::FnOnce<()>>::call_once
+  43:        0x1232545f0 - std[e4564114326e8c6]::panicking::try::<(), core[95bb6d661b676f4d]::panic::unwind_safe::AssertUnwindSafe<rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}::{closure#1}>>
+  44:        0x123246d79 - <rustc_session[6f273c4587eb1b50]::session::Session>::time::<(), rustc_interface[fb7297f02cc960f4]::passes::analysis::{closure#5}>
+  45:        0x1232a131c - rustc_interface[fb7297f02cc960f4]::passes::analysis
+  46:        0x12721595f - rustc_query_system[2c5b580ea3a12206]::query::plumbing::try_execute_query::<rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt, rustc_query_system[2c5b580ea3a12206]::query::caches::DefaultCache<(), core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>>
+  47:        0x127302589 - rustc_query_system[2c5b580ea3a12206]::query::plumbing::get_query::<rustc_query_impl[e5b327371ad57e64]::queries::analysis, rustc_query_impl[e5b327371ad57e64]::plumbing::QueryCtxt>
+  48:        0x126e5b3b7 - <rustc_query_impl[e5b327371ad57e64]::Queries as rustc_middle[42f89e9b8d5efbfa]::ty::query::QueryEngine>::analysis
+  49:        0x12316a1db - <rustc_interface[fb7297f02cc960f4]::passes::QueryContext>::enter::<rustc_driver[bfe6130b33d7dd9c]::run_compiler::{closure#1}::{closure#2}::{closure#3}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>
+  50:        0x123164688 - <rustc_interface[fb7297f02cc960f4]::interface::Compiler>::enter::<rustc_driver[bfe6130b33d7dd9c]::run_compiler::{closure#1}::{closure#2}, core[95bb6d661b676f4d]::result::Result<core[95bb6d661b676f4d]::option::Option<rustc_interface[fb7297f02cc960f4]::queries::Linker>, rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>
+  51:        0x1231622bb - rustc_span[7d7aa17bf13bea16]::with_source_map::<core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>, rustc_interface[fb7297f02cc960f4]::interface::run_compiler<core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>, rustc_driver[bfe6130b33d7dd9c]::run_compiler::{closure#1}>::{closure#0}::{closure#1}>
+  52:        0x123138acc - <scoped_tls[c451c38e2ed76225]::ScopedKey<rustc_span[7d7aa17bf13bea16]::SessionGlobals>>::set::<rustc_interface[fb7297f02cc960f4]::interface::run_compiler<core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>, rustc_driver[bfe6130b33d7dd9c]::run_compiler::{closure#1}>::{closure#0}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>
+  53:        0x12312f240 - std[e4564114326e8c6]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[fb7297f02cc960f4]::util::run_in_thread_pool_with_globals<rustc_interface[fb7297f02cc960f4]::interface::run_compiler<core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>, rustc_driver[bfe6130b33d7dd9c]::run_compiler::{closure#1}>::{closure#0}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>
+  54:        0x123161d90 - std[e4564114326e8c6]::panicking::try::<core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>, core[95bb6d661b676f4d]::panic::unwind_safe::AssertUnwindSafe<<std[e4564114326e8c6]::thread::Builder>::spawn_unchecked_<rustc_interface[fb7297f02cc960f4]::util::run_in_thread_pool_with_globals<rustc_interface[fb7297f02cc960f4]::interface::run_compiler<core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>, rustc_driver[bfe6130b33d7dd9c]::run_compiler::{closure#1}>::{closure#0}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>::{closure#1}::{closure#0}>>
+  55:        0x12315d141 - <<std[e4564114326e8c6]::thread::Builder>::spawn_unchecked_<rustc_interface[fb7297f02cc960f4]::util::run_in_thread_pool_with_globals<rustc_interface[fb7297f02cc960f4]::interface::run_compiler<core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>, rustc_driver[bfe6130b33d7dd9c]::run_compiler::{closure#1}>::{closure#0}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[95bb6d661b676f4d]::result::Result<(), rustc_errors[48ad5d4ad3523473]::ErrorGuaranteed>>::{closure#1} as core[95bb6d661b676f4d]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  56:        0x10f462b5b - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hd10a5c38d6c64916
+  57:        0x10f44d19f - std::sys::unix::thread::Thread::new::thread_start::he793914283faf21a
+  58:     0x7ff816f934e1 - __pthread_start
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.67.0-dev running on x86_64-apple-darwin
+
+query stack during panic:
+#0 [layout_of] computing layout of `U`
+#1 [eval_to_allocation_raw] const-evaluating + checking `B`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `B`
+#3 [eval_to_const_value_raw] simplifying constant for the type system `B`
+#4 [lint_mod] linting top-level module
+#5 [analysis] running analysis passes on this crate
+end of query stack
+warning: 2 warnings emitted
+
+Bug Labels:
+A-layout, C-bug, I-ICE, T-compiler

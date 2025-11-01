@@ -1,0 +1,101 @@
+Issue Title:
+Operations with const-generics in array types and converting between between different const-generic-based types · Issue #84408 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics, const_evaluatable_checked)]
+#![allow(incomplete_features)]
+
+trait Melon<const X: usize> {
+    fn new(arr: [i32; X]) -> Self;
+    fn change<T: Melon<X>>(self) -> T;
+}
+
+struct Foo([i32; 5]);
+struct Bar<const A: usize, const B: usize>([i32; A + B])
+where [(); A + B]: ;
+
+impl Melon<5> for Foo {
+    fn new(arr: [i32; 5]) -> Self {
+        Foo(arr)
+    }
+    fn change<T: Melon<5>>(self) -> T {
+        T::new(self.0)
+    }
+}
+
+impl<const A: usize, const B: usize> Melon<{A + B}> for Bar<A, B>
+where [(); A + B]: ,
+{
+    fn new(arr: [i32; A + B]) -> Self {
+        Bar(arr)
+    }
+    fn change<T: Melon<{A + B}>>(self) -> T {
+        T::new(self.0)
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', /rustc/6df26f897cffb2d86880544bb451c6b5f8509b2d\library\std\src\panic.rs:59:5
+stack backtrace:
+   0:     0x7ffd4ce958ae - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h65f771762210e3e5
+   1:     0x7ffd4cebea9c - core::fmt::write::h3d73561f801c6731
+   2:     0x7ffd4ce89a28 - <std::io::IoSlice as core::fmt::Debug>::fmt::h6fd08a0ca4059bc8
+   3:     0x7ffd4ce99982 - std::panicking::take_hook::ha49dee799706a2d8
+   4:     0x7ffd4ce99474 - std::panicking::take_hook::ha49dee799706a2d8
+   5:     0x7ffd2b2fbf97 - rustc_driver::report_ice::h812a9754403fbbdc
+   6:     0x7ffd4ce9a165 - std::panicking::rust_panic_with_hook::h9e7cc259d68b1de2
+   7:     0x7ffd2f17be10 - <rustc_middle::ty::adt::AdtKind as core::fmt::Debug>::fmt::h2ee351654030b4fc
+   8:     0x7ffd2f17bd59 - <rustc_middle::ty::adt::AdtKind as core::fmt::Debug>::fmt::h2ee351654030b4fc
+   9:     0x7ffd2f6aa9f1 - rustc_middle::ty::context::invalid_hir_id_for_typeck_results::h6c48d2fdfa70f6d1
+  10:     0x7ffd2f0f6600 - rustc_middle::ty::subst::_DERIVE_rustc_middle_ty_Lift_lifted_FOR_UserSubsts::<impl rustc_middle::ty::context::Lift for rustc_middle::ty::subst::UserSubsts>::lift_to_tcx::h021776e9417d5213
+  11:     0x7ffd2f0f38f2 - rustc_middle::ty::subst::_DERIVE_rustc_middle_ty_Lift_lifted_FOR_UserSubsts::<impl rustc_middle::ty::context::Lift for rustc_middle::ty::subst::UserSubsts>::lift_to_tcx::h021776e9417d5213
+  12:     0x7ffd2f0f4a02 - rustc_middle::ty::subst::_DERIVE_rustc_middle_ty_Lift_lifted_FOR_UserSubsts::<impl rustc_middle::ty::context::Lift for rustc_middle::ty::subst::UserSubsts>::lift_to_tcx::h021776e9417d5213
+  13:     0x7ffd2f2bc7ee - <rustc_middle::ty::sty::Binder<rustc_middle::ty::ProjectionPredicate> as rustc_middle::ty::ToPredicate>::to_predicate::h8dc1b09e3ae97c82
+  14:     0x7ffd2f2b0f50 - rustc_middle::ty::query::on_disk_cache::<impl rustc_serialize::serialize::Decodable<rustc_middle::ty::query::on_disk_cache::CacheDecoder> for &[rustc_middle::mir::abstract_const::Node]>::decode::h7681f01fb2de2107
+  15:     0x7ffd2f2b0e99 - rustc_middle::ty::query::on_disk_cache::<impl rustc_serialize::serialize::Decodable<rustc_middle::ty::query::on_disk_cache::CacheDecoder> for &[rustc_middle::mir::abstract_const::Node]>::decode::h7681f01fb2de2107
+  16:     0x7ffd2f2bc6f9 - <rustc_middle::ty::sty::Binder<rustc_middle::ty::ProjectionPredicate> as rustc_middle::ty::ToPredicate>::to_predicate::h8dc1b09e3ae97c82
+  17:     0x7ffd2f6b2c79 - rustc_middle::util::bug::bug_fmt::hd1c51d8be5b3ef25
+  18:     0x7ffd2f0e5a9e - <rustc_middle::ty::subst::SubstFolder as rustc_middle::ty::fold::TypeFolder>::fold_const::hcf2e6a45c1bf75de
+  19:     0x7ffd2efabee6 - rustc_trait_selection::traits::const_evaluatable::AbstractConst::from_const::heb6093fdb2e42508
+  20:     0x7ffd2efabf52 - rustc_trait_selection::traits::const_evaluatable::AbstractConst::from_const::heb6093fdb2e42508
+  21:     0x7ffd2efa817e - rustc_trait_selection::traits::const_evaluatable::is_const_evaluatable::h4eeb4758f6a96962
+  22:     0x7ffd2eecdc6d - rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations::h39afafb54186303c
+  23:     0x7ffd2ef16f9a - <rustc_trait_selection::traits::structural_match::NonStructuralMatchTy as core::fmt::Debug>::fmt::h2d930786959ab225
+  24:     0x7ffd2eeccf6c - <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible::h6a17fc15f71eaec4
+  25:     0x7ffd2eeccd7d - <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_all_or_error::hacaee408d2a3c454
+  26:     0x7ffd2d928327 - rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::field_ty::hb9fe98508141df72
+  27:     0x7ffd2db4a15e - <rustc_typeck::check::wfcheck::check_where_clauses::{{closure}}::CountParams as rustc_middle::ty::fold::TypeVisitor>::visit_const::h48e0340e336549f9
+  28:     0x7ffd2da171ec - <<dyn rustc_typeck::astconv::AstConv>::create_substs_for_ast_path::SubstsForAstPathCtxt as rustc_typeck::astconv::CreateSubstsForGenericArgsCtxt>::inferred_kind::h7103ec010d5dbc70
+  29:     0x7ffd2db4320c - <rustc_typeck::outlives::explicit::ExplicitPredicatesMap as core::fmt::Debug>::fmt::h8d282f693ebe6563
+  30:     0x7ffd2daeeac1 - rustc_typeck::check::check::check_item_type::h6d0181cf4ad8d1c0
+  31:     0x7ffd2e0d91b9 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h07e195f66514fe41
+  32:     0x7ffd2e0709ef - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance>::hash_result::h0c68ae38607363e3
+  33:     0x7ffd2def56ea - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hff6f397d94ea9c2d
+  34:     0x7ffd2de2b27b - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hff6f397d94ea9c2d
+  35:     0x7ffd2ddc298e - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hff6f397d94ea9c2d
+  36:     0x7ffd2e0c5622 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h07e195f66514fe41
+  37:     0x7ffd2db4acac - <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_impl_item::h2124384b81c410ea
+  38:     0x7ffd2db117e3 - <rustc_typeck::check::diverges::Diverges as core::fmt::Debug>::fmt::h1d95cb539170b8de
+  39:     0x7ffd2da3f86d - <<dyn rustc_typeck::astconv::AstConv>::create_substs_for_ast_path::SubstsForAstPathCtxt as rustc_typeck::astconv::CreateSubstsForGenericArgsCtxt>::inferred_kind::h7103ec010d5dbc70
+  40:     0x7ffd2d9aadeb - <rustc_typeck::check::op::Op as core::fmt::Debug>::fmt::h5fe8945ca2b804a2
+  41:     0x7ffd2da535cc - rustc_typeck::check_crate::h0f0522b8cfef46ab
+  42:     0x7ffd2b4353f5 - rustc_interface::passes::BoxedResolver::to_resolver_outputs::hed3f4a674c84aa76
+  43:     0x7ffd2e0d8489 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h07e195f66514fe41
+  44:     0x7ffd2e063c22 - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance>::hash_result::h0c68ae38607363e3
+  45:     0x7ffd2defe9a7 - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hff6f397d94ea9c2d
+  46:     0x7ffd2de4ce2a - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hff6f397d94ea9c2d
+  47:     0x7ffd2dd7b18e - <rustc_ast_lowering::item::ItemLowerer as rustc_ast::visit::Visitor>::visit_foreign_item::hff6f397d94ea9c2d
+  48:     0x7ffd2e0bd8a2 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_print_query_stack::h07e195f66514fe41
+  49:     0x7ffd2b333e8a - <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt::h96a1e17f3d7b1192
+  50:     0x7ffd2b30673b - rustc_driver::pretty::print_after_hir_lowering::h34fc3daaffe50b1c
+  51:     0x7ffd2b2fecac - <rustc_driver::Compilation as core::fmt::Debug>::fmt::hfa68f16ac1132e65
+  52:     0x7ffd2b308426 - rustc_driver::pretty::print_after_hir_lowering::h34fc3daaffe50b1c
+  53:     0x7ffd2b32e2a4 - <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt::h96a1e17f3d7b1192
+  54:     0x7ffd2b33077f - <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt::h96a1e17f3d7b1192
+  55:     0x7ffd2b33ad7d - <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt::h96a1e17f3d7b1192
+  56:     0x7ffd4cea821a - std::sys::windows::thread::Thread::new::h35832c8baf769397
+  57:     0x7ffda3797034 - BaseThreadInitThunk
+  58:     0x7ffda55e2651 - RtlUserThreadStart
+
+Bug Labels:
+A-const-generics, C-bug, E-needs-test, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, glacier

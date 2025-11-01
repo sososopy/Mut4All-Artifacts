@@ -1,0 +1,177 @@
+Issue Title:
+ICE: `unexpected inference var` · Issue #122549 · rust-lang/rust · GitHub
+
+Rust Code:
+trait ConstChunksExactTrait<T> {
+    fn const_chunks_exact<const N: usize>(&self) -> ConstChunksExact<'a, T, { N }>;
+}
+
+impl<T> ConstChunksExactTrait<T> for [T] {}
+
+struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
+
+impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+    type Item = &'a [T; N];
+}
+
+fn main() {
+    let slice = &[1i32, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    let mut iter = [[1, 2, 3], [4, 5, 6], [7, 8, 9]].iter();
+
+    for a in slice.const_chunks_exact::<3>() {
+        assert_eq!(a, iter.next().unwrap());
+    }
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+error[E0261]: use of undeclared lifetime name `'a`
+ --> /tmp/icemaker_global_tempdir.vydRDKClcHJ4/rustc_testrunner_tmpdir_reporting.YGOeGphNiRlB/mvce.rs:2:70
+  |
+2 |     fn const_chunks_exact<const N: usize>(&self) -> ConstChunksExact<'a, T, { N }>;
+  |                                                                      ^^ undeclared lifetime
+  |
+help: consider introducing lifetime `'a` here
+  |
+2 |     fn const_chunks_exact<'a, const N: usize>(&self) -> ConstChunksExact<'a, T, { N }>;
+  |                           +++
+help: consider introducing lifetime `'a` here
+  |
+1 | trait ConstChunksExactTrait<'a, T> {
+  |                             +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+ --> /tmp/icemaker_global_tempdir.vydRDKClcHJ4/rustc_testrunner_tmpdir_reporting.YGOeGphNiRlB/mvce.rs:7:34
+  |
+7 | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
+  |                         -        ^^ undeclared lifetime
+  |                         |
+  |                         help: consider introducing lifetime `'a` here: `'a,`
+
+error[E0046]: not all trait items implemented, missing: `const_chunks_exact`
+ --> /tmp/icemaker_global_tempdir.vydRDKClcHJ4/rustc_testrunner_tmpdir_reporting.YGOeGphNiRlB/mvce.rs:5:1
+  |
+2 |     fn const_chunks_exact<const N: usize>(&self) -> ConstChunksExact<'a, T, { N }>;
+  |     ------------------------------------------------------------------------------- `const_chunks_exact` from trait
+...
+5 | impl<T> ConstChunksExactTrait<T> for [T] {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `const_chunks_exact` in implementation
+
+error[E0392]: lifetime parameter `'rem` is never used
+ --> /tmp/icemaker_global_tempdir.vydRDKClcHJ4/rustc_testrunner_tmpdir_reporting.YGOeGphNiRlB/mvce.rs:7:25
+  |
+7 | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
+  |                         ^^^^ unused lifetime parameter
+  |
+  = help: consider removing `'rem`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+ --> /tmp/icemaker_global_tempdir.vydRDKClcHJ4/rustc_testrunner_tmpdir_reporting.YGOeGphNiRlB/mvce.rs:7:31
+  |
+7 | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
+  |                               ^ unused type parameter
+  |
+  = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+ --> /tmp/icemaker_global_tempdir.vydRDKClcHJ4/rustc_testrunner_tmpdir_reporting.YGOeGphNiRlB/mvce.rs:9:13
+  |
+9 | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+  |             ^^^^^^^^^^^^^^ unconstrained const parameter
+  |
+  = note: expressions using a const parameter must map each value to a distinct output value
+  = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0308]: mismatched types
+ --> /tmp/icemaker_global_tempdir.vydRDKClcHJ4/rustc_testrunner_tmpdir_reporting.YGOeGphNiRlB/mvce.rs:9:66
+  |
+9 | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+  |                                                                  ^^ expected `usize`, found `()`
+
+thread 'rustc' panicked at compiler/rustc_borrowck/src/type_check/relate_tys.rs:362:9:
+unexpected inference var std::option::Option<&'?16 [i32; ?0c: usize]>
+stack backtrace:
+   0:     0x7ff8073a4912 - std::backtrace_rs::backtrace::libunwind::trace::h2da6c6ec1776ed1b
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/../../backtrace/src/backtrace/libunwind.rs:105:5
+   1:     0x7ff8073a4912 - std::backtrace_rs::backtrace::trace_unsynchronized::h0cb696e9cf0107ba
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7ff8073a4912 - std::sys_common::backtrace::_print_fmt::hfb11ed7a7d38a028
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x7ff8073a4912 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h1048d052a888b26c
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7ff8073f5c8c - core::fmt::rt::Argument::fmt::hcf8265a03a389e34
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/core/src/fmt/rt.rs:142:9
+   5:     0x7ff8073f5c8c - core::fmt::write::hd12c3a84e62e1cec
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/core/src/fmt/mod.rs:1153:17
+   6:     0x7ff80739980f - std::io::Write::write_fmt::h236993be0d5d91de
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/io/mod.rs:1843:15
+   7:     0x7ff8073a46e4 - std::sys_common::backtrace::_print::he44e9b7b149d34c3
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7ff8073a46e4 - std::sys_common::backtrace::print::h6f8e8e3b9f052551
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7ff8073a73eb - std::panicking::default_hook::{{closure}}::h321d04c9179dccca
+  10:     0x7ff8073a7143 - std::panicking::default_hook::hd949d1362c2e5565
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/panicking.rs:292:9
+  11:     0x7ff803fa68ef - std[8d86c5c35c0bd7fb]::panicking::update_hook::<alloc[b74d3dbad420fbd6]::boxed::Box<rustc_driver_impl[724f095572d73222]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x7ff8073a7b50 - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h4f6c988be7bdee68
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/alloc/src/boxed.rs:2034:9
+  13:     0x7ff8073a7b50 - std::panicking::rust_panic_with_hook::hb71de646be3b3469
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/panicking.rs:783:13
+  14:     0x7ff8073a7892 - std::panicking::begin_panic_handler::{{closure}}::hbca15a8a0a3dee72
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/panicking.rs:657:13
+  15:     0x7ff8073a4de6 - std::sys_common::backtrace::__rust_end_short_backtrace::h885125d06f4d13f0
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/sys_common/backtrace.rs:171:18
+  16:     0x7ff8073a75c4 - rust_begin_unwind
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/panicking.rs:645:5
+  17:     0x7ff8073f21a5 - core::panicking::panic_fmt::ha3facef8c988a935
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/core/src/panicking.rs:72:14
+  18:     0x7ff80529d0a8 - <rustc_borrowck[3ad0b086a2cf7c0e]::type_check::relate_tys::NllTypeRelating as rustc_middle[35d2191f4cbfc53b]::ty::relate::TypeRelation>::tys
+  19:     0x7ff80608d936 - <rustc_borrowck[3ad0b086a2cf7c0e]::type_check::TypeChecker>::typeck_mir
+  20:     0x7ff802afa5fa - rustc_borrowck[3ad0b086a2cf7c0e]::type_check::type_check
+  21:     0x7ff802b34257 - rustc_borrowck[3ad0b086a2cf7c0e]::nll::compute_regions
+  22:     0x7ff80601edc1 - rustc_borrowck[3ad0b086a2cf7c0e]::do_mir_borrowck
+  23:     0x7ff806011128 - rustc_borrowck[3ad0b086a2cf7c0e]::mir_borrowck
+  24:     0x7ff806010c17 - rustc_query_impl[5406894609d381a6]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[5406894609d381a6]::query_impl::mir_borrowck::dynamic_query::{closure#2}::{closure#0}, rustc_middle[35d2191f4cbfc53b]::query::erase::Erased<[u8; 8usize]>>
+  25:     0x7ff80540ff2e - rustc_query_system[40cbee46219fc421]::query::plumbing::try_execute_query::<rustc_query_impl[5406894609d381a6]::DynamicConfig<rustc_query_system[40cbee46219fc421]::query::caches::VecCache<rustc_span[6c3fee00dc2a924e]::def_id::LocalDefId, rustc_middle[35d2191f4cbfc53b]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[5406894609d381a6]::plumbing::QueryCtxt, false>
+  26:     0x7ff80540fa4c - rustc_query_impl[5406894609d381a6]::query_impl::mir_borrowck::get_query_non_incr::__rust_end_short_backtrace
+  27:     0x7ff80599919e - rustc_interface[62605c20d0dc0fef]::passes::analysis
+  28:     0x7ff805998425 - rustc_query_impl[5406894609d381a6]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[5406894609d381a6]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle[35d2191f4cbfc53b]::query::erase::Erased<[u8; 1usize]>>
+  29:     0x7ff806006165 - rustc_query_system[40cbee46219fc421]::query::plumbing::try_execute_query::<rustc_query_impl[5406894609d381a6]::DynamicConfig<rustc_query_system[40cbee46219fc421]::query::caches::SingleCache<rustc_middle[35d2191f4cbfc53b]::query::erase::Erased<[u8; 1usize]>>, false, false, false>, rustc_query_impl[5406894609d381a6]::plumbing::QueryCtxt, false>
+  30:     0x7ff806005ec9 - rustc_query_impl[5406894609d381a6]::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+  31:     0x7ff805d5e284 - rustc_interface[62605c20d0dc0fef]::interface::run_compiler::<core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>, rustc_driver_impl[724f095572d73222]::run_compiler::{closure#0}>::{closure#0}
+  32:     0x7ff806223805 - std[8d86c5c35c0bd7fb]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[62605c20d0dc0fef]::util::run_in_thread_with_globals<rustc_interface[62605c20d0dc0fef]::util::run_in_thread_pool_with_globals<rustc_interface[62605c20d0dc0fef]::interface::run_compiler<core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>, rustc_driver_impl[724f095572d73222]::run_compiler::{closure#0}>::{closure#0}, core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>>::{closure#0}, core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>>
+  33:     0x7ff806223632 - <<std[8d86c5c35c0bd7fb]::thread::Builder>::spawn_unchecked_<rustc_interface[62605c20d0dc0fef]::util::run_in_thread_with_globals<rustc_interface[62605c20d0dc0fef]::util::run_in_thread_pool_with_globals<rustc_interface[62605c20d0dc0fef]::interface::run_compiler<core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>, rustc_driver_impl[724f095572d73222]::run_compiler::{closure#0}>::{closure#0}, core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>>::{closure#0}, core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[d25ee0c10dd6dc91]::result::Result<(), rustc_span[6c3fee00dc2a924e]::ErrorGuaranteed>>::{closure#1} as core[d25ee0c10dd6dc91]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  34:     0x7ff8073b11e5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hab5d072bb143d8fe
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/alloc/src/boxed.rs:2020:9
+  35:     0x7ff8073b11e5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::he1f566ad483a8fda
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/alloc/src/boxed.rs:2020:9
+  36:     0x7ff8073b11e5 - std::sys::pal::unix::thread::Thread::new::thread_start::h23d47a8da771b95c
+                               at /rustc/d7723b21910075a3c38c2b6e64b2467394c93724/library/std/src/sys/pal/unix/thread.rs:108:17
+  37:     0x7ff800ea955a - <unknown>
+  38:     0x7ff800f26a3c - <unknown>
+  39:                0x0 - <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.78.0-nightly (d7723b219 2024-03-15) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `main`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0046, E0207, E0261, E0308, E0392.
+For more information about an error, try `rustc --explain E0046`.
+
+Bug Labels:
+A-const-generics, C-bug, E-needs-test, I-ICE, S-has-mcve, T-compiler

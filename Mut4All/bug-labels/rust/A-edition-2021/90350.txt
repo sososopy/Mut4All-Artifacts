@@ -1,0 +1,138 @@
+Issue Title:
+Error running cargo fix --edition --allow-dirty on nightly with const generics · Issue #90350 · rust-lang/rust · GitHub
+
+Rust Code:
+use rusty_ulid::Ulid;
+
+fn main() {
+    println!("Hello, world!");
+}
+
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
+pub struct A(Ulid);
+
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
+pub struct B<const GRAPH_ID: usize>(usize);
+
+#[derive(Debug, Clone)]
+pub struct C<const GRAPH_ID: usize> {
+    node_list: Vec<B<GRAPH_ID>>,
+    sorted_node_list: Vec<A>,
+}
+
+impl<const GRAPH_ID: usize> C<GRAPH_ID> {
+    pub fn rem(mut self, node: A) -> Result<Self, ()> {
+        self.sorted_node_list
+            .iter()
+            .position(|n| *n == node)
+            .map(|pos| self.sorted_node_list.remove(pos));
+        Ok(self)
+    }
+}
+
+Bug Trace:
+error: internal compiler error: compiler\rustc_middle\src\ty\subst.rs:560:17: expected const for `GRAPH_ID/#0` (Const { ty: usize, val: Param(GRAPH_ID/#0) }/0) but found Type(dir_graph::star::Star<GRAPH_ID>) when substituting substs=[dir_graph::sta
+r::Star<GRAPH_ID>, std::alloc::Global]
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/e269e6bf47f40c9046cd44ab787881d700099252\compiler\rustc_errors\src\lib.rs:1094:9
+stack backtrace:
+   0:     0x7fff79428b4f - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h4287336b592e4e30
+   1:     0x7fff7945280a - core::fmt::write::h8a2c40ddb66ccc71
+   2:     0x7fff7941b4f8 - <std::io::IoSlice as core::fmt::Debug>::fmt::h37489b9473b33977
+   3:     0x7fff7942c2a6 - std::panicking::take_hook::hf14c76592f73c762
+   4:     0x7fff7942bd8c - std::panicking::take_hook::hf14c76592f73c762
+   5:     0x7fff67f8aa85 - <rustc_lint[ac274ea23e4e7fac]::BuiltinCombinedLateLintPass as rustc_lint[ac274ea23e4e7fac]::passes::LateLintPass>::check_name
+   6:     0x7fff7942cbb9 - std::panicking::rust_panic_with_hook::hbc0e9c80ca88eac0
+   7:     0x7fff6c3f5f40 - <rustc_middle[68438b5bfe988d4e]::mir::GeneratorInfo as core[3b5640218fb446b]::fmt::Debug>::fmt
+   8:     0x7fff6c3ea8e9 - <rustc_middle[68438b5bfe988d4e]::mir::GeneratorInfo as core[3b5640218fb446b]::fmt::Debug>::fmt
+   9:     0x7fff6ca0ca41 - rustc_middle[68438b5bfe988d4e]::ty::context::invalid_hir_id_for_typeck_results
+  10:     0x7fff6c549e90 - <rustc_span[abfcba77a0dab5e7]::span_encoding::Span as rustc_middle[68438b5bfe988d4e]::ty::context::Lift>::lift_to_tcx
+  11:     0x7fff6c5492f2 - <rustc_span[abfcba77a0dab5e7]::span_encoding::Span as rustc_middle[68438b5bfe988d4e]::ty::context::Lift>::lift_to_tcx
+  12:     0x7fff6c549212 - <rustc_span[abfcba77a0dab5e7]::span_encoding::Span as rustc_middle[68438b5bfe988d4e]::ty::context::Lift>::lift_to_tcx
+  13:     0x7fff6c3ddc30 - <rustc_middle[68438b5bfe988d4e]::ty::consts::int::ScalarInt as core[3b5640218fb446b]::fmt::UpperHex>::fmt
+  14:     0x7fff6c3ddca9 - <rustc_middle[68438b5bfe988d4e]::ty::consts::int::ScalarInt as core[3b5640218fb446b]::fmt::UpperHex>::fmt
+  15:     0x7fff6ca0c8e2 - rustc_middle[68438b5bfe988d4e]::util::bug::bug_fmt
+  16:     0x7fff6c5a8232 - <rustc_middle[68438b5bfe988d4e]::ty::subst::SubstFolder as rustc_middle[68438b5bfe988d4e]::ty::fold::TypeFolder>::fold_const
+  17:     0x7fff6c5a1d60 - <rustc_middle[68438b5bfe988d4e]::traits::query::OutlivesBound as rustc_data_structures[a3e9c1b18d558309]::stable_hasher::HashStable<rustc_query_system[993d4a9a8633e257]::ich::hcx::StableHashingContext>>::hash_stable
+  18:     0x7fff6c4d3b33 - <rustc_middle[68438b5bfe988d4e]::ty::instance::InstanceDef as rustc_middle[68438b5bfe988d4e]::ty::context::Lift>::lift_to_tcx
+  19:     0x7fff6ab388a2 - rustc_ty_utils[19a1db2655bac3aa]::provide
+  20:     0x7fff6ab33a44 - rustc_ty_utils[19a1db2655bac3aa]::provide
+  21:     0x7fff6ab39ebc - rustc_ty_utils[19a1db2655bac3aa]::provide
+  22:     0x7fff6b8279ef - <rustc_query_impl[2492acdb0e5eb4f6]::on_disk_cache::CacheDecoder as rustc_serialize[e9f3e8e17ec8afb5]::serialize::Decoder>::error
+  23:     0x7fff6b7aa836 - <rustc_query_impl[2492acdb0e5eb4f6]::Queries as rustc_middle[68438b5bfe988d4e]::ty::query::QueryEngine>::try_mark_green
+  24:     0x7fff6b6f5e7b - rustc_query_impl[2492acdb0e5eb4f6]::profiling_support::alloc_self_profile_query_strings
+  25:     0x7fff6b51e54c - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  26:     0x7fff6b635ed9 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  27:     0x7fff6ab365e6 - rustc_ty_utils[19a1db2655bac3aa]::provide
+  28:     0x7fff6b82497f - <rustc_query_impl[2492acdb0e5eb4f6]::on_disk_cache::CacheDecoder as rustc_serialize[e9f3e8e17ec8afb5]::serialize::Decoder>::error
+  29:     0x7fff6b792643 - <rustc_query_impl[2492acdb0e5eb4f6]::Queries as rustc_middle[68438b5bfe988d4e]::ty::query::QueryEngine>::try_mark_green
+  30:     0x7fff6b706643 - rustc_query_impl[2492acdb0e5eb4f6]::profiling_support::alloc_self_profile_query_strings
+  31:     0x7fff6b4ce6e5 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  32:     0x7fff6b6361d6 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  33:     0x7fff6a888682 - <rustc_builtin_macros[aed12fe09b5690c7]::proc_macro_harness::CollectProcMacros as rustc_ast[3ebc127026e5cc83]::visit::Visitor>::visit_item
+  34:     0x7fff6a905d44 - <rustc_typeck[2dede4d9058b9b75]::check::fn_ctxt::FnCtxt>::resolve_fully_qualified_call
+  35:     0x7fff6aa98b9e - <rustc_typeck[2dede4d9058b9b75]::check::upvar::InferBorrowKindVisitor as rustc_hir[c1b1b26d2913040d]::intravisit::Visitor>::visit_expr
+  36:     0x7fff6a9200ef - <rustc_typeck[2dede4d9058b9b75]::check::fn_ctxt::FnCtxt>::resolve_fully_qualified_call
+  37:     0x7fff6aa98ba9 - <rustc_typeck[2dede4d9058b9b75]::check::upvar::InferBorrowKindVisitor as rustc_hir[c1b1b26d2913040d]::intravisit::Visitor>::visit_expr
+  38:     0x7fff6a92030d - <rustc_typeck[2dede4d9058b9b75]::check::fn_ctxt::FnCtxt>::resolve_fully_qualified_call
+  39:     0x7fff6aa98ba9 - <rustc_typeck[2dede4d9058b9b75]::check::upvar::InferBorrowKindVisitor as rustc_hir[c1b1b26d2913040d]::intravisit::Visitor>::visit_expr
+  40:     0x7fff6a9cac22 - <rustc_typeck[2dede4d9058b9b75]::variance::test::VarianceTest as rustc_hir[c1b1b26d2913040d]::itemlikevisit::ItemLikeVisitor>::visit_item
+  41:     0x7fff6a93959c - rustc_typeck[2dede4d9058b9b75]::check::provide
+  42:     0x7fff6b826a76 - <rustc_query_impl[2492acdb0e5eb4f6]::on_disk_cache::CacheDecoder as rustc_serialize[e9f3e8e17ec8afb5]::serialize::Decoder>::error
+  43:     0x7fff6b7a3261 - <rustc_query_impl[2492acdb0e5eb4f6]::Queries as rustc_middle[68438b5bfe988d4e]::ty::query::QueryEngine>::try_mark_green
+  44:     0x7fff6b702bb0 - rustc_query_impl[2492acdb0e5eb4f6]::profiling_support::alloc_self_profile_query_strings
+  45:     0x7fff6b4fdae1 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  46:     0x7fff6b64b065 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  47:     0x7fff6a939c47 - rustc_typeck[2dede4d9058b9b75]::check::provide
+  48:     0x7fff6b826a76 - <rustc_query_impl[2492acdb0e5eb4f6]::on_disk_cache::CacheDecoder as rustc_serialize[e9f3e8e17ec8afb5]::serialize::Decoder>::error
+  49:     0x7fff6b7a3261 - <rustc_query_impl[2492acdb0e5eb4f6]::Queries as rustc_middle[68438b5bfe988d4e]::ty::query::QueryEngine>::try_mark_green
+  50:     0x7fff6b702bb0 - rustc_query_impl[2492acdb0e5eb4f6]::profiling_support::alloc_self_profile_query_strings
+  51:     0x7fff6b4fdae1 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  52:     0x7fff6b64b065 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  53:     0x7fff6a9bd19e - <rustc_typeck[2dede4d9058b9b75]::variance::test::VarianceTest as rustc_hir[c1b1b26d2913040d]::itemlikevisit::ItemLikeVisitor>::visit_item
+  54:     0x7fff6a93e753 - <rustc_typeck[2dede4d9058b9b75]::check::CheckItemTypesVisitor as rustc_hir[c1b1b26d2913040d]::itemlikevisit::ItemLikeVisitor>::visit_item
+  55:     0x7fff6b82942b - <rustc_query_impl[2492acdb0e5eb4f6]::on_disk_cache::CacheDecoder as rustc_serialize[e9f3e8e17ec8afb5]::serialize::Decoder>::error
+  56:     0x7fff6b7cab5e - <rustc_query_impl[2492acdb0e5eb4f6]::Queries as rustc_middle[68438b5bfe988d4e]::ty::query::QueryEngine>::try_mark_green
+  57:     0x7fff6b707dba - rustc_query_impl[2492acdb0e5eb4f6]::profiling_support::alloc_self_profile_query_strings
+  58:     0x7fff6b5975cd - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  59:     0x7fff6b61fad5 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  60:     0x7fff6a995493 - <rustc_typeck[2dede4d9058b9b75]::check::PlaceOp as core[3b5640218fb446b]::fmt::Debug>::fmt
+  61:     0x7fff6a962b95 - rustc_typeck[2dede4d9058b9b75]::check_crate
+  62:     0x7fff6810a1df - rustc_interface[ff1d7c07a753e82f]::passes::analysis
+  63:     0x7fff6b828e6b - <rustc_query_impl[2492acdb0e5eb4f6]::on_disk_cache::CacheDecoder as rustc_serialize[e9f3e8e17ec8afb5]::serialize::Decoder>::error
+  64:     0x7fff6b7c244e - <rustc_query_impl[2492acdb0e5eb4f6]::Queries as rustc_middle[68438b5bfe988d4e]::ty::query::QueryEngine>::try_mark_green
+  65:     0x7fff6b6f8171 - rustc_query_impl[2492acdb0e5eb4f6]::profiling_support::alloc_self_profile_query_strings
+  66:     0x7fff6b583489 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  67:     0x7fff6b64b4b2 - <rustc_mir_dataflow[b218101e43c2c97d]::framework::cursor::CursorPosition as core[3b5640218fb446b]::fmt::Debug>::fmt
+  68:     0x7fff67feaf10 - <rustc_middle[68438b5bfe988d4e]::ty::SymbolName as core[3b5640218fb446b]::fmt::Display>::fmt
+  69:     0x7fff67feb9ab - <rustc_middle[68438b5bfe988d4e]::ty::SymbolName as core[3b5640218fb446b]::fmt::Display>::fmt
+  70:     0x7fff67fa4836 - rustc_driver[af3c8dcfa508860b]::pretty::print_after_hir_lowering
+  71:     0x7fff68008b96 - <rustc_middle[68438b5bfe988d4e]::ty::SymbolName as core[3b5640218fb446b]::fmt::Display>::fmt
+  72:     0x7fff67fadf07 - <rustc_middle[68438b5bfe988d4e]::ty::SymbolName as core[3b5640218fb446b]::fmt::Display>::fmt
+  73:     0x7fff67fab15c - <tracing_subscriber[281ba6a53a80a207]::util::TryInitError as core[3b5640218fb446b]::fmt::Display>::fmt
+  74:     0x7fff68026788 - <rustc_driver[af3c8dcfa508860b]::args::Error as core[3b5640218fb446b]::fmt::Debug>::fmt
+  75:     0x7fff7943927c - std::sys::windows::thread::Thread::new::he49a5cdb1d3d1cfc
+  76:     0x7ff807697034 - BaseThreadInitThunk
+  77:     0x7ff807902651 - RtlUserThreadStart
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (e269e6bf4 2021-10-26) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [adt_significant_drop_tys] computing when `dir_graph::SimpleDirectedGraph` has a significant destructor
+#1 [has_significant_drop_raw] computing whether `dir_graph::SimpleDirectedGraph<GRAPH_ID>` has a significant drop
+#2 [typeck] type-checking `dir_graph::<impl at src\dir_graph.rs:297:1: 380:2>::with_removed_node`
+#3 [typeck] type-checking `dir_graph::<impl at src\dir_graph.rs:297:1: 380:2>::with_removed_node::{closure#0}`
+#4 [typeck_item_bodies] type-checking all item bodies
+#5 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-edition-2021, C-bug, I-ICE, T-compiler

@@ -1,0 +1,72 @@
+Issue Title:
+ICE with async + HRTB + Closures · Issue #79144 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(unboxed_closures)]
+
+async fn wrapper<F>(f: F) 
+where for<'a> F: FnOnce<(&'a mut i32,)>,
+    for<'a> <F as FnOnce<(&'a mut i32,)>>::Output: Future<Output=()> + 'a
+{
+    let mut i = 41;
+    f(&mut i).await;
+}
+
+async fn add_one(i: &mut i32) {
+    *i = *i + 1;
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_mir/src/borrow_check/universal_regions.rs:768:36: cannot convert `RePlaceholder(Placeholder { universe: U4, name: BrNamed(DefId(0:8 ~ playground[beb8]::wrapper::'a#1), 'a) })` to a region vid
+
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:958:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::bug
+   2: rustc_errors::Handler::bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::bug_fmt
+   8: rustc_mir::borrow_check::universal_regions::UniversalRegionIndices::to_region_vid::{{closure}}
+   9: rustc_mir::borrow_check::universal_regions::UniversalRegionIndices::to_region_vid
+  10: rustc_mir::borrow_check::region_infer::RegionInferenceContext::eval_verify_bound
+  11: rustc_mir::borrow_check::region_infer::RegionInferenceContext::eval_verify_bound
+  12: rustc_mir::borrow_check::region_infer::RegionInferenceContext::solve
+  13: rustc_mir::borrow_check::nll::compute_regions
+  14: rustc_mir::borrow_check::do_mir_borrowck
+  15: rustc_infer::infer::InferCtxtBuilder::enter
+  16: rustc_mir::borrow_check::mir_borrowck
+  17: core::ops::function::FnOnce::call_once
+  18: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck>::compute
+  19: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  20: rustc_data_structures::stack::ensure_sufficient_stack
+  21: rustc_query_system::query::plumbing::get_query_impl
+  22: rustc_typeck::collect::type_of::type_of
+  23: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::type_of>::compute
+  24: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  25: rustc_data_structures::stack::ensure_sufficient_stack
+  26: rustc_query_system::query::plumbing::get_query_impl
+  27: rustc_typeck::check::check::check_item_type
+  28: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  29: rustc_typeck::check::check::check_mod_item_types
+  30: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_mod_item_types>::compute
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: rustc_query_system::query::plumbing::ensure_query_impl
+  35: rustc_session::utils::<impl rustc_session::session::Session>::time
+  36: rustc_typeck::check_crate
+  37: rustc_interface::passes::analysis
+  38: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  39: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  40: rustc_data_structures::stack::ensure_sufficient_stack
+  41: rustc_query_system::query::plumbing::get_query_impl
+  42: rustc_interface::passes::QueryContext::enter
+  43: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  44: rustc_span::with_source_map
+  45: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-async-await, A-closures, F-unboxed_closures, I-ICE, T-compiler, requires-nightly

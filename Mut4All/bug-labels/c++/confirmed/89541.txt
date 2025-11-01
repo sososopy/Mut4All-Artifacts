@@ -1,0 +1,55 @@
+Issue Title:
+Crash with reference captures in inherited lambda with explicit parameters 
+
+Source Code & Bug Trace:
+int one = 1;
+auto factory(int& x = one) {
+    return [&](this auto self) {
+      x;
+    };
+};
+
+using Base = decltype(factory());
+struct Derived : Base {
+  Derived() : Base(factory()) {}
+};
+
+int main() {
+  Derived d;
+  d();
+}
+
+clang++: /root/llvm-project/clang/lib/CodeGen/CGValue.h:277: void clang::CodeGen::LValue::initializeSimpleLValue(clang::CodeGen::Address, clang::QualType, clang::CodeGen::LValueBaseInfo, clang::CodeGen::TBAAAccessInfo, clang::ASTContext&): Assertion `Addr.getBasePointer()->getType()->isPointerTy()' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++23 <source>
+1.	<eof> parser at end of file
+2.	Per-file LLVM IR generation
+3.	<source>:3:12: Generating code for declaration 'factory(int &)::(anonymous class)::operator()'
+ #0 0x0000000003945d28 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3945d28)
+ #1 0x0000000003943a0c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3943a0c)
+ #2 0x0000000003889f78 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f6c4c242520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x00007f6c4c2969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x00007f6c4c242476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x00007f6c4c2287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x00007f6c4c22871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x00007f6c4c239e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x0000000003c5e24c clang::CodeGen::LValue::MakeAddr(clang::CodeGen::Address, clang::QualType, clang::ASTContext&, clang::CodeGen::LValueBaseInfo, clang::CodeGen::TBAAAccessInfo) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3c5e24c)
+#10 0x000000000406b34f clang::CodeGen::CodeGenFunction::EmitLValueForField(clang::CodeGen::LValue, clang::FieldDecl const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x406b34f)
+#11 0x000000000406cc1d clang::CodeGen::CodeGenFunction::EmitLValueForLambdaField(clang::FieldDecl const*, llvm::Value*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x406cc1d)
+#12 0x0000000004079515 clang::CodeGen::CodeGenFunction::EmitDeclRefLValue(clang::DeclRefExpr const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4079515)
+#13 0x0000000004076402 clang::CodeGen::CodeGenFunction::EmitLValueHelper(clang::Expr const*, clang::CodeGen::KnownNonNull_t) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4076402)
+#14 0x0000000004082845 clang::CodeGen::CodeGenFunction::EmitIgnoredExpr(clang::Expr const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4082845)
+#15 0x0000000003c6f195 clang::CodeGen::CodeGenFunction::EmitStmt(clang::Stmt const*, llvm::ArrayRef<clang::Attr const*>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3c6f195)
+#16 0x0000000003c75a5c clang::CodeGen::CodeGenFunction::EmitCompoundStmtWithoutScope(clang::CompoundStmt const&, bool, clang::CodeGen::AggValueSlot) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3c75a5c)
+#17 0x0000000003cd8405 clang::CodeGen::CodeGenFunction::EmitFunctionBody(clang::Stmt const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3cd8405)
+#18 0x0000000003cebddc clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3cebddc)
+#19 0x0000000003d4b442 clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3d4b442)
+#20 0x0000000003d45d05 clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3d45d05)
+#21 0x0000000003d51dad clang::CodeGen::CodeGenModule::EmitDeferred() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3d51dad)
+#22 0x0000000003d54653 clang::CodeGen::CodeGenModule::Release() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3d
+
+
+Bug Labels:
+c++23, clang:codegen, clang:frontend, confirmed, crash-on-valid

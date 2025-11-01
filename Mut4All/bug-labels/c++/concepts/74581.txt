@@ -1,0 +1,97 @@
+Issue Title:
+Clang crashes with error: satisfaction of constraint 'std::is_constructible_v<std::decay_t<F>, F>' depends on itself
+
+Source Code & Bug Trace:
+#include <functional>
+#include <type_traits>
+
+class Co {};
+
+struct Derived {
+    Derived() = default;
+
+    template <typename F>
+        requires std::is_constructible_v<std::decay_t<F>, F>
+    Derived(F&& f);
+
+    Co operator()();
+};
+
+void foo() { std::function<Co()> f = Derived(); }
+
+<source>:10:18: error: satisfaction of constraint 'std::is_constructible_v<std::decay_t<F>, F>' depends on itself
+   10 |         requires std::is_constructible_v<std::decay_t<F>, F>
+      |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+<source>:10:18: note: while substituting template arguments into constraint expression here
+   10 |         requires std::is_constructible_v<std::decay_t<F>, F>
+
+
+clang++: /root/llvm-project/clang/include/clang/AST/DeclCXX.h:869: void clang::CXXRecordDecl::setImplicitCopyConstructorIsDeleted(): Assertion `(data().DefaultedCopyConstructorIsDeleted || needsOverloadResolutionForCopyConstructor()) && "Copy constructor should not be deleted"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 -stdlib=libc++ <source>
+1.	<eof> parser at end of file
+2.	/opt/compiler-explorer/clang-assertions-trunk-20231206/bin/../include/c++/v1/__functional/function.h:1113:30: instantiating function definition 'std::function<Co ()>::function<Derived, void>'
+3.	/opt/compiler-explorer/clang-assertions-trunk-20231206/bin/../include/c++/v1/__functional/function.h:440:36: instantiating function definition 'std::__function::__value_func<Co ()>::__value_func<Derived, 0>'
+4.	/opt/compiler-explorer/clang-assertions-trunk-20231206/bin/../include/c++/v1/__functional/function.h:412:27: instantiating function definition 'std::__function::__value_func<Co ()>::__value_func<Derived, std::allocator<Derived>>'
+5.	/opt/compiler-explorer/clang-assertions-trunk-20231206/bin/../include/c++/v1/__functional/function.h:310:14: instantiating function definition 'std::__function::__func<Derived, std::allocator<Derived>, Co ()>::__func'
+ #0 0x00000000037935b8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x37935b8)
+ #1 0x000000000379129c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x379129c)
+ #2 0x00000000036d9db8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fbc92c42520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x00007fbc92c969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x00007fbc92c42476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x00007fbc92c287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x00007fbc92c2871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x00007fbc92c39e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x00000000063de33d clang::Sema::DeclareImplicitCopyConstructor(clang::CXXRecordDecl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63de33d)
+#10 0x000000000609e201 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x609e201)
+#11 0x0000000006702f4f clang::Sema::LookupSpecialMember(clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, bool, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6702f4f)
+#12 0x00000000063d8852 specialMemberIsConstexpr(clang::Sema&, clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, unsigned int, bool, clang::CXXConstructorDecl*, clang::Sema::InheritedConstructorInfo*) SemaDeclCXX.cpp:0:0
+#13 0x00000000063d8b87 defaultedSpecialMemberIsConstexpr(clang::Sema&, clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, clang::CXXConstructorDecl*, clang::Sema::InheritedConstructorInfo*) SemaDeclCXX.cpp:0:0
+#14 0x00000000063ddc71 clang::Sema::DeclareImplicitCopyConstructor(clang::CXXRecordDecl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63ddc71)
+#15 0x000000000609e201 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x609e201)
+#16 0x0000000006702f4f clang::Sema::LookupSpecialMember(clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, bool, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6702f4f)
+#17 0x00000000063d8852 specialMemberIsConstexpr(clang::Sema&, clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, unsigned int, bool, clang::CXXConstructorDecl*, clang::Sema::InheritedConstructorInfo*) SemaDeclCXX.cpp:0:0
+#18 0x00000000063d8c9b defaultedSpecialMemberIsConstexpr(clang::Sema&, clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, clang::CXXConstructorDecl*, clang::Sema::InheritedConstructorInfo*) SemaDeclCXX.cpp:0:0
+#19 0x00000000063ddc71 clang::Sema::DeclareImplicitCopyConstructor(clang::CXXRecordDecl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63ddc71)
+#20 0x00000000066cfb5f void llvm::function_ref<void ()>::callback_fn<clang::Sema::LookupConstructors(clang::CXXRecordDecl*)::'lambda'()>(long) SemaLookup.cpp:0:0
+#21 0x000000000609e201 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x609e201)
+#22 0x00000000066cfe73 clang::Sema::LookupConstructors(clang::CXXRecordDecl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x66cfe73)
+#23 0x00000000066a334b TryConstructorInitialization(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::QualType, clang::QualType, clang::InitializationSequence&, bool, bool) SemaInit.cpp:0:0
+#24 0x00000000066abe5e clang::InitializationSequence::InitializeFrom(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x66abe5e)
+#25 0x000000000634e4b4 clang::Sema::BuildMemberInitializer(clang::ValueDecl*, clang::Expr*, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x634e4b4)
+#26 0x0000000006aedf18 clang::Sema::InstantiateMemInitializers(clang::CXXConstructorDecl*, clang::CXXConstructorDecl const*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6aedf18)
+#27 0x0000000006af3d69 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af3d69)
+#28 0x0000000006af21cf clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af21cf)
+#29 0x0000000006af403e clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af403e)
+#30 0x0000000006af21cf clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af21cf)
+#31 0x0000000006af403e clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af403e)
+#32 0x0000000006af21cf clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af21cf)
+#33 0x0000000006af403e clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af403e)
+#34 0x0000000006af21cf clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6af21cf)
+#35 0x00000000060c2479 clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) (.part.0) Sema.cpp:0:0
+#36 0x00000000060c2c52 clang::Sema::ActOnEndOfTranslationUnit() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x60c2c52)
+#37 0x0000000005f54331 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5f54331)
+#38 0x0000000005f470fa clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5f470fa)
+#39 0x000000000400fd28 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x400fd28)
+#40 0x000000000427aad9 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x427aad9)
+#41 0x00000000041fa96e clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x41fa96e)
+#42 0x0000000004359f5e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4359f5e)
+#43 0x0000000000c013d6 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc013d6)
+#44 0x0000000000bf8c9a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#45 0x0000000004051049 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#46 0x00000000036da264 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x36da264)
+#47 0x000000000405163f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#48 0x00000000040195b5 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x40195b5)
+#49 0x000000000401a01d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x401a01d)
+#50 0x0000000004021f45 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4021f45)
+#51 0x0000000000bfe87c clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbfe87c)
+#52 0x0000000000af7b41 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xaf7b41)
+#53 0x00007fbc92c29d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#54 0x00007fbc92c29e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#55 0x0000000000bf877e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbf877e)
+
+
+Bug Labels:
+c++20, clang:frontend, concepts, crash-on-valid, needs-reduction

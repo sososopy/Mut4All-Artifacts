@@ -1,0 +1,71 @@
+Issue Title:
+`min_specialization` with default generic causes an ICE · Issue #79224 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(min_specialization)]
+use std::fmt::{self, Display};
+
+pub enum Cow<'a, B: ?Sized + 'a, O = <B as ToOwned>::Owned>
+where
+    B: ToOwned,
+{
+    Borrowed(&'a B),
+    Owned(O),
+}
+
+
+impl ToString for Cow<'_, str> {
+    fn to_string(&self) -> String {
+        panic!()
+    }
+}
+
+impl<B: ?Sized> Display for Cow<'_, B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        panic!()
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:958:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::bug
+   2: rustc_errors::Handler::bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::bug_fmt
+   8: rustc_trait_selection::traits::specialize::translate_substs::{{closure}}
+   9: rustc_trait_selection::traits::specialize::translate_substs
+  10: rustc_typeck::impl_wf_check::min_specialization::check_always_applicable
+  11: rustc_infer::infer::InferCtxtBuilder::enter
+  12: rustc_typeck::impl_wf_check::min_specialization::check_min_specialization
+  13: <rustc_typeck::impl_wf_check::ImplWfCheck as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_item
+  14: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  15: rustc_typeck::impl_wf_check::check_mod_impl_wf
+  16: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_mod_impl_wf>::compute
+  17: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  18: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  19: rustc_data_structures::stack::ensure_sufficient_stack
+  20: rustc_query_system::query::plumbing::get_query_impl
+  21: rustc_query_system::query::plumbing::ensure_query_impl
+  22: rustc_typeck::impl_wf_check::impl_wf_check
+  23: rustc_typeck::check_crate
+  24: rustc_interface::passes::analysis
+  25: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  26: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  27: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  28: rustc_data_structures::stack::ensure_sufficient_stack
+  29: rustc_query_system::query::plumbing::get_query_impl
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+Bug Labels:
+A-specialization, C-bug, E-needs-test, I-ICE, P-low, T-compiler, glacier, regression-from-stable-to-stable

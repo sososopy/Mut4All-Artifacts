@@ -1,0 +1,77 @@
+Issue Title:
+clang Crash in clang::ASTContext::getTypeInfoImpl
+
+Source Code & Bug Trace:
+clang --version
+clang version 16.0.6
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+
+
+
+enum apple
+{
+  apple_0 = 0x7fffffffffffffffLL,
+  apple_1
+};
+enum banana
+{
+  banana_0 = ("Loudness" * 312) + 1ULL,
+  banana_1
+};
+
+
+./mini.c:5:3: warning: incremented enumerator value 9223372036854775808 is not representable in the largest integer type [-Wenum-too-large]
+  apple_1
+  ^
+./mini.c:9:26: error: invalid operands to binary expression ('char[9]' and 'int')
+  banana_0 = ("Loudness" * 312) + 1ULL,
+              ~~~~~~~~~~ ^ ~~~
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: clang-16 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name mini.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -fcoverage-compilation-dir=/media/Store/Project/C-compiler/crashes/llvm/2023-0005 -resource-dir /media/Store/Installs/llvm/16.0.6/llvm-project-16.0.6.install/lib/clang/16 -internal-isystem /media/Store/Installs/llvm/16.0.6/llvm-project-16.0.6.install/lib/clang/16/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/10/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -fdebug-compilation-dir=/media/Store/Project/C-compiler/crashes/llvm/2023-0005 -ferror-limit 19 -fgnuc-version=4.2.1 -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/mini-b0babe.o -x c ./mini.c
+1.	./mini.c:11:1: current parser token '}'
+ #0 0x000055ee28344eb8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (clang-16+0x2d84eb8)
+ #1 0x000055ee28342e2e llvm::sys::RunSignalHandlers() (clang-16+0x2d82e2e)
+ #2 0x000055ee2834564d SignalHandler(int) Signals.cpp:0:0
+ #3 0x00007f09c0253420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x000055ee2a952904 clang::ASTContext::getTypeInfoImpl(clang::Type const*) const (clang-16+0x5392904)
+ #5 0x000055ee2a95337e clang::ASTContext::getTypeInfo(clang::Type const*) const (clang-16+0x539337e)
+ #6 0x000055ee2a969eea clang::ASTContext::getIntWidth(clang::QualType) const (clang-16+0x53a9eea)
+ #7 0x000055ee2a1926a6 isRepresentableIntegerValue(clang::ASTContext&, llvm::APSInt&, clang::QualType) SemaDecl.cpp:0:0
+ #8 0x000055ee2a191ed3 clang::Sema::CheckEnumConstant(clang::EnumDecl*, clang::EnumConstantDecl*, clang::SourceLocation, clang::IdentifierInfo*, clang::Expr*) (clang-16+0x4bd1ed3)
+ #9 0x000055ee2a192a87 clang::Sema::ActOnEnumConstant(clang::Scope*, clang::Decl*, clang::Decl*, clang::SourceLocation, clang::IdentifierInfo*, clang::ParsedAttributesView const&, clang::SourceLocation, clang::Expr*) (clang-16+0x4bd2a87)
+#10 0x000055ee29f83c7a clang::Parser::ParseEnumBody(clang::SourceLocation, clang::Decl*) (clang-16+0x49c3c7a)
+#11 0x000055ee29f80d0c clang::Parser::ParseEnumSpecifier(clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext) (clang-16+0x49c0d0c)
+#12 0x000055ee29f7b254 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (clang-16+0x49bb254)
+#13 0x000055ee29f1b542 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (clang-16+0x495b542)
+#14 0x000055ee29f1b2b9 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (clang-16+0x495b2b9)
+#15 0x000055ee29f1a5ce clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (clang-16+0x495a5ce)
+#16 0x000055ee29f1890e clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (clang-16+0x495890e)
+#17 0x000055ee29f1491e clang::ParseAST(clang::Sema&, bool, bool) (clang-16+0x495491e)
+#18 0x000055ee28de8647 clang::FrontendAction::Execute() (clang-16+0x3828647)
+#19 0x000055ee28d5d584 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (clang-16+0x379d584)
+#20 0x000055ee28ea659f clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (clang-16+0x38e659f)
+#21 0x000055ee27327724 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (clang-16+0x1d67724)
+#22 0x000055ee27324dbe ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#23 0x000055ee27324a33 clang_main(int, char**) (clang-16+0x1d64a33)
+#24 0x00007f09bfd13083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#25 0x000055ee27320dee _start (clang-16+0x1d60dee)
+clang-16: error: unable to execute command: Segmentation fault (core dumped)
+clang-16: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 16.0.6
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /llvm/16.0.6/llvm-project-16.0.6.install/bin
+clang-16: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang-16: note: diagnostic msg: /tmp/mini-a7cf2b.c
+clang-16: note: diagnostic msg: /tmp/mini-a7cf2b.sh
+clang-16: note: diagnostic msg: 
+
+
+Bug Labels:
+clang:frontend, crash

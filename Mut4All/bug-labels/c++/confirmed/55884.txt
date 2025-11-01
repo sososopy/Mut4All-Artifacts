@@ -1,0 +1,206 @@
+Issue Title:
+Segfault during template instantiation in clang
+
+Source Code & Bug Trace:
+#include <stddef.h>
+
+#include <type_traits>
+
+template<typename T, typename... Ts>
+struct Tuple {
+    T elem;
+    Tuple<Ts...> next;
+};
+
+template<>
+struct Tuple<void> {};
+
+template<typename T>
+struct Tuple<T> {
+    T elem;
+    Tuple<void> next;
+};
+
+template<typename T>
+static constexpr T&& rvalue_cast(T& val) {
+    return static_cast<T&&>(val);
+}
+
+template<typename T>
+static consteval bool is_cstring_type() {
+    return std::is_same_v<char*,
+        std::add_pointer_t<std::remove_cv_t<std::remove_pointer_t<std::decay_t<T>>>>>;
+}
+
+template<typename T>
+inline constexpr bool is_really_pointer = std::is_pointer_v<std::remove_reference_t<T>>;
+
+// string types
+
+template<size_t size>
+struct Buffer {
+    char data[size];
+};
+
+struct BufferView {
+    size_t size;
+    char* data;
+};
+
+namespace buffer {
+    template<size_t n>
+    consteval size_t size(Buffer<n>&) {
+        return n;
+    }
+
+    constexpr size_t size(BufferView& buf) {
+        return buf.size;
+    }
+} // namespace buffer
+
+// actual code
+
+template<bool is_really_pointer>
+struct CStringHelper;
+
+template<>
+struct CStringHelper<true> {
+    template<typename>
+    using BufferType = BufferView;
+};
+
+template<>
+struct CStringHelper<false> {
+    template<size_t n>
+    static consteval size_t length(const char (&)[n]) {
+        return n;
+    }
+
+    template<typename T>
+    using BufferType = Buffer<length(T{})>;
+};
+
+// transform into buffer
+
+template<typename T>
+using BufferType = decltype(CStringHelper<
+    is_really_pointer<std::remove_reference_t<T>>
+>::template BufferType<std::remove_reference_t<T>>);
+
+template<typename ...Ts>
+using TupleOfBuffersType = Tuple<BufferType<Ts>...>;
+
+
+template<typename ...Ts>
+static auto print(const Ts&... srcs) {
+    // transform everything into a buffer/bufferview
+    auto buffers = TupleOfBuffersType<Ts...>();
+
+
+    return buffers;
+}
+
+int main(int argc, char** argv) {
+    // clang-format off
+
+    print(
+        "afaifjiaogjrtogjoajrgoapgrjgjotjpasjgsfghshjspjhghjoghsjohijspjgsptjsjpgtoistghsòjòas"
+        , 
+        "aiogjgjhowrtjhòoijtyhoejyojhjyeiohjojyjheyjhjsfogsgòsfglksògksàòkà"
+    );
+
+    // clang-format on
+
+    return 0;
+}
+
+clang -ffreestanding -nostdlib -nostdlib++ -std=gnu++20 -O2 example_crash.cpp
+
+Stack dump:
+0.      Program arguments: /usr/bin/clang-13 -cc1 -triple x86_64-pc-linux-gnu -emit-obj --mrelax-relocations -disable-free -disable-llvm-verifier -discard-value-names -main-file-name example_crash.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=none -fmath-errno -fno-rounding-math -mconstructor-aliases -ffreestanding -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fcoverage-compilation-dir=/Projects/utter2 -resource-dir /usr/lib/clang/13.0.1 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/12.1.0/../../../../include/c++/12.1.0 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/12.1.0/../../../../include/c++/12.1.0/x86_64-pc-linux-gnu -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/12.1.0/../../../../include/c++/12.1.0/backward -internal-isystem /usr/lib/clang/13.0.1/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/12.1.0/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -O2 -std=gnu++20 -fdeprecated-macro -fdebug-compilation-dir=/Projects/utter2 -ferror-limit 19 -stack-protector 2 -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fcolor-diagnostics -vectorize-loops -vectorize-slp -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/example_crash-e67e49.o -x c++ example_crash.cpp
+1.      example_crash.cpp:106:5: current parser token ')'
+2.      example_crash.cpp:99:33: parsing function body 'main'
+3.      example_crash.cpp:99:33: in compound statement ('{}')
+4.      example_crash.cpp:91:13: instantiating function definition 'print<char [88], char [73]>'
+ #0 0x00007f89e959ffda (/usr/lib/libLLVM-13.so+0xb97fda)
+ #1 0x00007f89e959d65f llvm::sys::RunSignalHandlers() (/usr/lib/libLLVM-13.so+0xb9565f)
+ #2 0x00007f89e959d7ad (/usr/lib/libLLVM-13.so+0xb957ad)
+ #3 0x00007f89e86028e0 (/usr/lib/libc.so.6+0x3e8e0)
+ #4 0x00007f89f08c8272 clang::Sema::SubstituteExplicitTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, llvm::SmallVectorImpl<clang::QualType>&, clang::QualType*, clang::sema::TemplateDeductionInfo&) (/usr/lib/libclang-cpp.so.13+0x15e6272)
+ #5 0x00007f89f08c8c65 (/usr/lib/libclang-cpp.so.13+0x15e6c65)
+ #6 0x00007f89f03832a0 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/usr/lib/libclang-cpp.so.13+0x10a12a0)
+ #7 0x00007f89f08d4826 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, clang::QualType, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool) (/usr/lib/libclang-cpp.so.13+0x15f2826)
+ #8 0x00007f89f0806f23 (/usr/lib/libclang-cpp.so.13+0x1524f23)
+ #9 0x00007f89f0807746 clang::Sema::ResolveAndFixSingleFunctionTemplateSpecialization(clang::ActionResult<clang::Expr*, true>&, bool, bool, clang::SourceRange, clang::QualType, unsigned int) (/usr/lib/libclang-cpp.so.13+0x1525746)
+#10 0x00007f89f060a1a5 clang::Sema::CheckPlaceholderExpr(clang::Expr*) (/usr/lib/libclang-cpp.so.13+0x13281a5)
+#11 0x00007f89f067cb4a clang::Sema::ActOnDecltypeExpression(clang::Expr*) (/usr/lib/libclang-cpp.so.13+0x139ab4a)
+#12 0x00007f89f0904e85 (/usr/lib/libclang-cpp.so.13+0x1622e85)
+#13 0x00007f89f0908178 (/usr/lib/libclang-cpp.so.13+0x1626178)
+#14 0x00007f89f09082d7 (/usr/lib/libclang-cpp.so.13+0x16262d7)
+#15 0x00007f89f090838f clang::Sema::SubstType(clang::QualType, clang::MultiLevelTemplateArgumentList const&, clang::SourceLocation, clang::DeclarationName) (/usr/lib/libclang-cpp.so.13+0x162638f)
+#16 0x00007f89f0861e74 clang::Sema::CheckTemplateIdType(clang::TemplateName, clang::SourceLocation, clang::TemplateArgumentListInfo&) (/usr/lib/libclang-cpp.so.13+0x157fe74)
+#17 0x00007f89f0921145 (/usr/lib/libclang-cpp.so.13+0x163f145)
+#18 0x00007f89f0905f4b (/usr/lib/libclang-cpp.so.13+0x1623f4b)
+#19 0x00007f89f0908178 (/usr/lib/libclang-cpp.so.13+0x1626178)
+#20 0x00007f89f091ea8e (/usr/lib/libclang-cpp.so.13+0x163ca8e)
+#21 0x00007f89f092128c (/usr/lib/libclang-cpp.so.13+0x163f28c)
+#22 0x00007f89f0905f4b (/usr/lib/libclang-cpp.so.13+0x1623f4b)
+#23 0x00007f89f0908178 (/usr/lib/libclang-cpp.so.13+0x1626178)
+#24 0x00007f89f09082d7 (/usr/lib/libclang-cpp.so.13+0x16262d7)
+#25 0x00007f89f090838f clang::Sema::SubstType(clang::QualType, clang::MultiLevelTemplateArgumentList const&, clang::SourceLocation, clang::DeclarationName) (/usr/lib/libclang-cpp.so.13+0x162638f)
+#26 0x00007f89f0861e74 clang::Sema::CheckTemplateIdType(clang::TemplateName, clang::SourceLocation, clang::TemplateArgumentListInfo&) (/usr/lib/libclang-cpp.so.13+0x157fe74)
+#27 0x00007f89f0921145 (/usr/lib/libclang-cpp.so.13+0x163f145)
+#28 0x00007f89f0905f4b (/usr/lib/libclang-cpp.so.13+0x1623f4b)
+#29 0x00007f89f0908178 (/usr/lib/libclang-cpp.so.13+0x1626178)
+#30 0x00007f89f0911760 (/usr/lib/libclang-cpp.so.13+0x162f760)
+#31 0x00007f89f090e4b9 clang::Sema::SubstInitializer(clang::Expr*, clang::MultiLevelTemplateArgumentList const&, bool) (/usr/lib/libclang-cpp.so.13+0x162c4b9)
+#32 0x00007f89f0933a39 clang::Sema::InstantiateVariableInitializer(clang::VarDecl*, clang::VarDecl*, clang::MultiLevelTemplateArgumentList const&) (/usr/lib/libclang-cpp.so.13+0x1651a39)
+#33 0x00007f89f0944472 clang::Sema::BuildVariableInstantiation(clang::VarDecl*, clang::VarDecl*, clang::MultiLevelTemplateArgumentList const&, llvm::SmallVector<clang::Sema::LateInstantiatedAttribute, 16u>*, clang::DeclContext*, clang::LocalInstantiationScope*, bool, clang::VarTemplateSpecializationDecl*) (/usr/lib/libclang-cpp.so.13+0x1662472)
+#34 0x00007f89f09449af clang::TemplateDeclInstantiator::VisitVarDecl(clang::VarDecl*, bool, llvm::ArrayRef<clang::BindingDecl*>*) (/usr/lib/libclang-cpp.so.13+0x16629af)
+#35 0x00007f89f0917668 (/usr/lib/libclang-cpp.so.13+0x1635668)
+#36 0x00007f89f091d9c1 (/usr/lib/libclang-cpp.so.13+0x163b9c1)
+#37 0x00007f89f0920329 (/usr/lib/libclang-cpp.so.13+0x163e329)
+#38 0x00007f89f093d51d clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/usr/lib/libclang-cpp.so.13+0x165b51d)
+#39 0x00007f89f03832a0 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/usr/lib/libclang-cpp.so.13+0x10a12a0)
+#40 0x00007f89f08cc7b4 clang::Sema::DeduceReturnType(clang::FunctionDecl*, clang::SourceLocation, bool) (/usr/lib/libclang-cpp.so.13+0x15ea7b4)
+#41 0x00007f89f05bb64f clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*) (/usr/lib/libclang-cpp.so.13+0x12d964f)
+#42 0x00007f89f0811b7e (/usr/lib/libclang-cpp.so.13+0x152fb7e)
+#43 0x00007f89f0812312 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/usr/lib/libclang-cpp.so.13+0x1530312)
+#44 0x00007f89f05fd8d5 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/usr/lib/libclang-cpp.so.13+0x131b8d5)
+#45 0x00007f89f05fdee2 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/usr/lib/libclang-cpp.so.13+0x131bee2)
+#46 0x00007f89efcfa3ed clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) (/usr/lib/libclang-cpp.so.13+0xa183ed)
+#47 0x00007f89efcfd2b1 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/usr/lib/libclang-cpp.so.13+0xa1b2b1)
+#48 0x00007f89f1938ade (/usr/lib/libclang-cpp.so.13+0x2656ade)
+#49 0x00007f89f1938c57 (/usr/lib/libclang-cpp.so.13+0x2656c57)
+#50 0x00007f89f1938dad (/usr/lib/libclang-cpp.so.13+0x2656dad)
+#51 0x00007f89efd7b45e clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/usr/lib/libclang-cpp.so.13+0xa9945e)
+#52 0x00007f89efd799e3 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributesWithRange&) (/usr/lib/libclang-cpp.so.13+0xa979e3)
+#53 0x00007f89efd79c11 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/usr/lib/libclang-cpp.so.13+0xa97c11)
+#54 0x00007f89efd7e5c2 clang::Parser::ParseCompoundStatementBody(bool) (/usr/lib/libclang-cpp.so.13+0xa9c5c2)
+#55 0x00007f89efd7ff1a clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/usr/lib/libclang-cpp.so.13+0xa9df1a)
+#56 0x00007f89efd80f8b clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/usr/lib/libclang-cpp.so.13+0xa9ef8b)
+#57 0x00007f89efd02a9b clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/usr/lib/libclang-cpp.so.13+0xa20a9b)
+#58 0x00007f89efd6ee7a (/usr/lib/libclang-cpp.so.13+0xa8ce7a)
+#59 0x00007f89efd852dd clang::Parser::ParseExternalDeclaration(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/usr/lib/libclang-cpp.so.13+0xaa32dd)
+#60 0x00007f89efd855f8 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/usr/lib/libclang-cpp.so.13+0xaa35f8)
+#61 0x00007f89efcd0139 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/libclang-cpp.so.13+0x9ee139)
+#62 0x00007f89f1259f79 clang::FrontendAction::Execute() (/usr/lib/libclang-cpp.so.13+0x1f77f79)
+#63 0x00007f89f12002cf clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/libclang-cpp.so.13+0x1f1e2cf)
+#64 0x00007f89f12a55f0 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/libclang-cpp.so.13+0x1fc35f0)
+#65 0x0000563fe92be84c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/bin/clang-13+0x1684c)
+#66 0x0000563fe92c0c2d (/usr/bin/clang-13+0x18c2d)
+#67 0x0000563fe92b5185 main (/usr/bin/clang-13+0xd185)
+#68 0x00007f89e85ed290 (/usr/lib/libc.so.6+0x29290)
+#69 0x00007f89e85ed34a __libc_start_main (/usr/lib/libc.so.6+0x2934a)
+#70 0x0000563fe92b7485 _start (/usr/bin/clang-13+0xf485)
+clang-13: error: unable to execute command: Segmentation fault (core dumped)
+clang-13: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 13.0.1
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang-13: note: diagnostic msg: 
+
+
+Bug Labels:
+clang:frontend, confirmed, consteval, crash

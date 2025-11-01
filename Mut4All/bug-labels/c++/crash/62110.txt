@@ -1,0 +1,71 @@
+Issue Title:
+Crash inside TemplateInstantiator on complex constraint expressions
+
+Source Code & Bug Trace:
+template <class T1, class T2>
+int foo(const T1 &t1, const T2 &t2)
+  requires requires {
+    { t1 < t2 };
+    { t2 < t1 };
+  }
+{
+  return 1;
+}
+
+template <class T3, class T4>
+int foo(const T3 &t3, const T4 &t4)
+  requires requires {
+    { t3 + t4 };
+  }
+{
+  return 2;
+}
+
+#12 0x00005560e45a2958 clang::LocalInstantiationScope::findInstantiationOf(clang::Decl const*) 
+llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:4104:3
+#13 0x00005560e4616113 clang::Sema::FindInstantiatedDecl(clang::SourceLocation, clang::NamedDecl*, clang::MultiLevelTemplateArgumentList const&, bool) 
+llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:6081:16
+#14 0x00005560e45a4f2e (anonymous namespace)::TemplateInstantiator::TransformDecl(clang::SourceLocation, clang::Decl*) 
+llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:1526:3
+#15 0x00005560e45be4ae clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformDeclRefExpr(clang::DeclRefExpr*)
+llvm-project/clang/lib/Sema/TreeTransform.h:10761:44
+#16 0x00005560e45ad1d2 (anonymous namespace)::TemplateInstantiator::TransformDeclRefExpr(clang::DeclRefExpr*) llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:2035:21
+#17 0x00005560e459ef71 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) 
+llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1109:1
+#18 0x00005560e45a5e79 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformBinaryOperator(clang::BinaryOperator*) 
+llvm-project/clang/lib/Sema/TreeTransform.h:11400:33
+#19 0x00005560e459e647 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) 
+llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:783:1
+#20 0x00005560e45c6797 (anonymous namespace)::TemplateInstantiator::TransformExprRequirement(clang::concepts::ExprRequirement*)
+llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:2316:31
+#21 0x00005560e45c4d14 (anonymous namespace)::TemplateInstantiator::TransformRequiresExprRequirements(llvm::ArrayRef<clang::concepts::Requirement*>, llvm::SmallVectorImpl<clang::concepts::Requirement*>&) 
+llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:1421:22
+#22 0x00005560e45c46db clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformRequiresExpr(clang::RequiresExpr*) 
+llvm-project/clang/lib/Sema/TreeTransform.h:12837:7
+#23 0x00005560e45b3832 (anonymous namespace)::TemplateInstantiator::TransformRequiresExpr(clang::RequiresExpr*) 
+llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:1393:40
+#24 0x00005560e459f996 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) 
+llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1443:1
+#25 0x00005560e459fcd1 clang::Sema::SubstConstraintExpr(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) 
+llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:3979:23
+#26 0x00005560e34d54eb SubstituteConstraintExpression(clang::Sema&, clang::NamedDecl const*, clang::Expr const*, clang::NamedDecl const*) 
+llvm-project/clang/lib/Sema/SemaConcept.cpp:785:9
+#27 0x00005560e34d52ad clang::Sema::AreConstraintExpressionsEqual(clang::NamedDecl const*, clang::Expr const*, clang::NamedDecl const*, clang::Expr const*) 
+llvm-project/clang/lib/Sema/SemaConcept.cpp:798:21
+#28 0x00005560e4179074 clang::Sema::IsOverload(clang::FunctionDecl*, clang::FunctionDecl*, bool, bool, bool) 
+llvm-project/clang/lib/Sema/SemaOverload.cpp:1329:9
+#29 0x00005560e41787b1 clang::Sema::CheckOverload(clang::Scope*, clang::FunctionDecl*, clang::LookupResult const&, clang::NamedDecl*&, bool) 
+llvm-project/clang/lib/Sema/SemaOverload.cpp:1154:11
+#30 0x00005560e35c1145 clang::Sema::CheckFunctionDeclaration(clang::Scope*, clang::FunctionDecl*, clang::LookupResult&, bool, bool) 
+llvm-project/clang/lib/Sema/SemaDecl.cpp:11661:7
+#31 0x00005560e35b36ee clang::Sema::ActOnFunctionDeclarator(clang::Scope*, clang::Declarator&, clang::DeclContext*, clang::TypeSourceInfo*, clang::LookupResult&, llvm::MutableArrayRef<clang::TemplateParameterList*>, bool&) 
+llvm-project/clang/lib/Sema/SemaDecl.cpp:10392:28
+#32 0x00005560e35ae674 clang::Sema::HandleDeclarator(clang::Scope*, clang::Declarator&, llvm::MutableArrayRef<clang::TemplateParameterList*>)
+llvm-project/clang/lib/Sema/SemaDecl.cpp:6422:9
+#33 0x00005560e35cf51d clang::Sema::ActOnStartOfFunctionDef(clang::Scope*, clang::Declarator&, llvm::MutableArrayRef<clang::TemplateParameterList*>, clang::Sema::SkipBodyInfo*, clang::Sema::FnBodyKind) 
+llvm-project/clang/lib/Sema/SemaDecl.cpp:14970:14
+#34 0x00005560e30e0f60 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) 
+llvm-project/clang/lib/Parse/Parser.cpp:1398:9
+
+Bug Labels:
+clang:frontend, crash

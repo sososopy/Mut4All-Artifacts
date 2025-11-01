@@ -1,0 +1,117 @@
+Issue Title:
+bug in template substitution: function expected versus type given
+
+Source Code & Bug Trace:
+#include <type_traits>
+
+template<typename T, typename V, typename=void> struct has_fun_diff: public std::false_type {};
+template<typename T, typename V> struct has_fun_diff<T, V, std::void_t<decltype(&T::template fun_diff<V>)>>: public std::true_type {};
+template<typename T, typename V> constexpr bool has_fun_diff_v = has_fun_diff<T, V>::value;
+
+struct test { template<typename T> using fun_diff = int; }; // templated type instead of function
+
+int main() {
+  bool b = has_fun_diff_v<test, int>;
+  return 0;
+}
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.  Program arguments: /opt/wandbox/clang-head/bin/clang-17 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name prog.cc -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fcoverage-compilation-dir=/home/jail -nostdinc++ -resource-dir /opt/wandbox/clang-head/lib/clang/17 -I /opt/wandbox/clang-head/include/c++/v1 -I /opt/wandbox/clang-head/include/x86_64-unknown-linux-gnu/c++/v1/ -internal-isystem /opt/wandbox/clang-head/lib/clang/17/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/10/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -Wall -Wextra -std=c++17 -fdeprecated-macro -fdebug-compilation-dir=/home/jail -ferror-limit 19 -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fcolor-diagnostics -fansi-escape-codes -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/prog-8b2b00.o -x c++ prog.cc
+1.  prog.cc:10:37: current parser token ';'
+2.  prog.cc:9:12: parsing function body 'main'
+3.  prog.cc:9:12: in compound statement ('{}')
+4.  prog.cc:5:49: instantiating variable definition 'has_fun_diff_v<test, int>'
+ #0 0x0000000002969e37 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/wandbox/clang-head/bin/clang-17+0x2969e37)
+ #1 0x0000000002967dae llvm::sys::RunSignalHandlers() (/opt/wandbox/clang-head/bin/clang-17+0x2967dae)
+ #2 0x000000000296a4ef SignalHandler(int) Signals.cpp:0:0
+ #3 0x00007f6c2abb53c0 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x143c0)
+ #4 0x0000000004b17263 clang::Sema::SubstituteExplicitTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, llvm::SmallVectorImpl<clang::QualType>&, clang::QualType*, clang::sema::TemplateDeductionInfo&) (/opt/wandbox/clang-head/bin/clang-17+0x4b17263)
+ #5 0x0000000004b63a13 void llvm::function_ref<void ()>::callback_fn<clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, clang::QualType, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool)::$_5>(long) SemaTemplateDeduction.cpp:0:0
+ #6 0x00000000044f928b clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/wandbox/clang-head/bin/clang-17+0x44f928b)
+ #7 0x0000000004b1b369 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, clang::QualType, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool) (/opt/wandbox/clang-head/bin/clang-17+0x4b1b369)
+ #8 0x0000000004b1f195 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool) (/opt/wandbox/clang-head/bin/clang-17+0x4b1f195)
+ #9 0x0000000004a1b146 clang::Sema::ResolveSingleFunctionTemplateSpecialization(clang::OverloadExpr*, bool, clang::DeclAccessPair*) (/opt/wandbox/clang-head/bin/clang-17+0x4a1b146)
+#10 0x0000000004a1b6aa clang::Sema::ResolveAndFixSingleFunctionTemplateSpecialization(clang::ActionResult<clang::Expr*, true>&, bool, bool, clang::SourceRange, clang::QualType, unsigned int) (/opt/wandbox/clang-head/bin/clang-17+0x4a1b6aa)
+#11 0x000000000474a594 clang::Sema::CheckPlaceholderExpr(clang::Expr*) (/opt/wandbox/clang-head/bin/clang-17+0x474a594)
+#12 0x0000000004857d26 clang::Sema::ActOnDecltypeExpression(clang::Expr*) (/opt/wandbox/clang-head/bin/clang-17+0x4857d26)
+#13 0x0000000004b69e8e clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#14 0x0000000004b69876 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#15 0x0000000004b84d6a clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArgument(clang::TemplateArgumentLoc const&, clang::TemplateArgumentLoc&, bool) SemaTemplateInstantiate.cpp:0:0
+#16 0x0000000004b83de2 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateSpecializationType(clang::TypeLocBuilder&, clang::TemplateSpecializationTypeLoc, clang::TemplateName) SemaTemplateInstantiate.cpp:0:0
+#17 0x0000000004b69d15 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#18 0x0000000004b6bde6 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#19 0x0000000004b69876 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#20 0x0000000004b84d6a clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArgument(clang::TemplateArgumentLoc const&, clang::TemplateArgumentLoc&, bool) SemaTemplateInstantiate.cpp:0:0
+#21 0x0000000004b74145 bool clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArguments<clang::TemplateArgumentLoc const*>(clang::TemplateArgumentLoc const*, clang::TemplateArgumentLoc const*, clang::TemplateArgumentListInfo&, bool) SemaTemplateInstantiate.cpp:0:0
+#22 0x0000000004b6eec6 clang::Sema::SubstTemplateArguments(llvm::ArrayRef<clang::TemplateArgumentLoc>, clang::MultiLevelTemplateArgumentList const&, clang::TemplateArgumentListInfo&) (/opt/wandbox/clang-head/bin/clang-17+0x4b6eec6)
+#23 0x0000000004b5f825 std::enable_if<IsPartialSpecialization<clang::ClassTemplatePartialSpecializationDecl>::value, clang::Sema::TemplateDeductionResult>::type FinishTemplateArgumentDeduction<clang::ClassTemplatePartialSpecializationDecl>(clang::Sema&, clang::ClassTemplatePartialSpecializationDecl*, bool, clang::TemplateArgumentList const&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, clang::sema::TemplateDeductionInfo&) SemaTemplateDeduction.cpp:0:0
+#24 0x0000000004b5ef72 void llvm::function_ref<void ()>::callback_fn<clang::Sema::DeduceTemplateArguments(clang::ClassTemplatePartialSpecializationDecl*, clang::TemplateArgumentList const&, clang::sema::TemplateDeductionInfo&)::$_0>(long) SemaTemplateDeduction.cpp:0:0
+#25 0x00000000044f928b clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/wandbox/clang-head/bin/clang-17+0x44f928b)
+#26 0x0000000004b16731 clang::Sema::DeduceTemplateArguments(clang::ClassTemplatePartialSpecializationDecl*, clang::TemplateArgumentList const&, clang::sema::TemplateDeductionInfo&) (/opt/wandbox/clang-head/bin/clang-17+0x4b16731)
+#27 0x0000000004b725bf clang::Sema::InstantiateClassTemplateSpecialization(clang::SourceLocation, clang::ClassTemplateSpecializationDecl*, clang::TemplateSpecializationKind, bool) (/opt/wandbox/clang-head/bin/clang-17+0x4b725bf)
+#28 0x0000000004c1956e void llvm::function_ref<void ()>::callback_fn<clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*)::$_3>(long) SemaType.cpp:0:0
+#29 0x00000000044f928b clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/wandbox/clang-head/bin/clang-17+0x44f928b)
+#30 0x0000000004c08a66 clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*) (/opt/wandbox/clang-head/bin/clang-17+0x4c08a66)
+#31 0x0000000004c08292 clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser&) (/opt/wandbox/clang-head/bin/clang-17+0x4c08292)
+#32 0x000000000451ce3c clang::Sema::RequireCompleteDeclContext(clang::CXXScopeSpec&, clang::DeclContext*) (/opt/wandbox/clang-head/bin/clang-17+0x451ce3c)
+#33 0x000000000475501f clang::Sema::BuildQualifiedDeclarationNameExpr(clang::CXXScopeSpec&, clang::DeclarationNameInfo const&, bool, clang::Scope const*, clang::TypeSourceInfo**) (/opt/wandbox/clang-head/bin/clang-17+0x475501f)
+#34 0x0000000004b85bc3 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformDependentScopeDeclRefExpr(clang::DependentScopeDeclRefExpr*, bool, clang::TypeSourceInfo**) SemaTemplateInstantiate.cpp:0:0
+#35 0x0000000004b7200e clang::Sema::SubstInitializer(clang::Expr*, clang::MultiLevelTemplateArgumentList const&, bool) (/opt/wandbox/clang-head/bin/clang-17+0x4b7200e)
+#36 0x0000000004baf1a0 clang::Sema::InstantiateVariableInitializer(clang::VarDecl*, clang::VarDecl*, clang::MultiLevelTemplateArgumentList const&) (/opt/wandbox/clang-head/bin/clang-17+0x4baf1a0)
+#37 0x0000000004bb4048 clang::Sema::InstantiateVariableDefinition(clang::SourceLocation, clang::VarDecl*, bool, bool, bool) (/opt/wandbox/clang-head/bin/clang-17+0x4bb4048)
+#38 0x00000000044f928b clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/wandbox/clang-head/bin/clang-17+0x44f928b)
+#39 0x000000000478f489 DoMarkVarDeclReferenced(clang::Sema&, clang::SourceLocation, clang::VarDecl*, clang::Expr*, llvm::DenseMap<clang::VarDecl const*, int, llvm::DenseMapInfo<clang::VarDecl const*, void>, llvm::detail::DenseMapPair<clang::VarDecl const*, int>>&) SemaExpr.cpp:0:0
+#40 0x0000000004752d8f clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) (/opt/wandbox/clang-head/bin/clang-17+0x4752d8f)
+#41 0x0000000004756bbb clang::Sema::BuildDeclarationNameExpr(clang::CXXScopeSpec const&, clang::DeclarationNameInfo const&, clang::NamedDecl*, clang::NamedDecl*, clang::TemplateArgumentListInfo const*, bool) (/opt/wandbox/clang-head/bin/clang-17+0x4756bbb)
+#42 0x0000000004a888df clang::Sema::BuildTemplateIdExpr(clang::CXXScopeSpec const&, clang::SourceLocation, clang::LookupResult&, bool, clang::TemplateArgumentListInfo const*) (/opt/wandbox/clang-head/bin/clang-17+0x4a888df)
+#43 0x000000000474da72 clang::Sema::ActOnIdExpression(clang::Scope*, clang::CXXScopeSpec&, clang::SourceLocation, clang::UnqualifiedId&, bool, bool, clang::CorrectionCandidateCallback*, bool, clang::Token*) (/opt/wandbox/clang-head/bin/clang-17+0x474da72)
+#44 0x000000000444c75e clang::Parser::tryParseCXXIdExpression(clang::CXXScopeSpec&, bool, clang::Token&) (/opt/wandbox/clang-head/bin/clang-17+0x444c75e)
+#45 0x000000000444dca3 clang::Parser::ParseCXXIdExpression(bool) (/opt/wandbox/clang-head/bin/clang-17+0x444dca3)
+#46 0x000000000443a9bb clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/wandbox/clang-head/bin/clang-17+0x443a9bb)
+#47 0x00000000044412fb clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/wandbox/clang-head/bin/clang-17+0x44412fb)
+#48 0x0000000004437991 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) (/opt/wandbox/clang-head/bin/clang-17+0x4437991)
+#49 0x000000000443625c clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/wandbox/clang-head/bin/clang-17+0x443625c)
+#50 0x0000000004407aae clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/opt/wandbox/clang-head/bin/clang-17+0x4407aae)
+#51 0x00000000044050b0 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/wandbox/clang-head/bin/clang-17+0x44050b0)
+#52 0x0000000004404679 clang::Parser::ParseSimpleDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, bool, clang::Parser::ForRangeInit*, clang::SourceLocation*) (/opt/wandbox/clang-head/bin/clang-17+0x4404679)
+#53 0x000000000440412d clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (/opt/wandbox/clang-head/bin/clang-17+0x440412d)
+#54 0x000000000449be14 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/wandbox/clang-head/bin/clang-17+0x449be14)
+#55 0x000000000449a2e5 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/wandbox/clang-head/bin/clang-17+0x449a2e5)
+#56 0x00000000044a2c00 clang::Parser::ParseCompoundStatementBody(bool) (/opt/wandbox/clang-head/bin/clang-17+0x44a2c00)
+#57 0x00000000044a3fba clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/wandbox/clang-head/bin/clang-17+0x44a3fba)
+#58 0x00000000043ed93c clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/wandbox/clang-head/bin/clang-17+0x43ed93c)
+#59 0x00000000044060e3 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/wandbox/clang-head/bin/clang-17+0x44060e3)
+#60 0x00000000043ec79a clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/wandbox/clang-head/bin/clang-17+0x43ec79a)
+#61 0x00000000043ec190 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/wandbox/clang-head/bin/clang-17+0x43ec190)
+#62 0x00000000043eb38b clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/wandbox/clang-head/bin/clang-17+0x43eb38b)
+#63 0x00000000043e9363 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/wandbox/clang-head/bin/clang-17+0x43e9363)
+#64 0x00000000043e534e clang::ParseAST(clang::Sema&, bool, bool) (/opt/wandbox/clang-head/bin/clang-17+0x43e534e)
+#65 0x00000000031d44a7 clang::FrontendAction::Execute() (/opt/wandbox/clang-head/bin/clang-17+0x31d44a7)
+#66 0x0000000003142896 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/wandbox/clang-head/bin/clang-17+0x3142896)
+#67 0x000000000327b23b clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/wandbox/clang-head/bin/clang-17+0x327b23b)
+#68 0x0000000000a187a5 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/wandbox/clang-head/bin/clang-17+0xa187a5)
+#69 0x0000000000a15375 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#70 0x0000000000a145e6 clang_main(int, char**, llvm::ToolContext const&) (/opt/wandbox/clang-head/bin/clang-17+0xa145e6)
+#71 0x0000000000a22d41 main (/opt/wandbox/clang-head/bin/clang-17+0xa22d41)
+#72 0x00007f6c2a6290b3 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x240b3)
+#73 0x0000000000a116be _start (/opt/wandbox/clang-head/bin/clang-17+0xa116be)
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 17.0.0 (https://github.com/llvm/llvm-project.git 6abcaa078d0f8466a6cd387fa55551123fe1140a)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /opt/wandbox/clang-head/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/prog-df235d.cpp
+clang++: note: diagnostic msg: /tmp/prog-df235d.sh
+clang++: note: diagnostic msg: 
+
+********************
+
+Bug Labels:
+clang:frontend, confirmed, crash

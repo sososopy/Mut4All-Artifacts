@@ -1,0 +1,58 @@
+Issue Title:
+[clang] clang frontend crash with friend class declaration and overloaded  operator ==
+
+Source Code & Bug Trace:
+struct foo {
+};
+
+struct bar {
+    friend bool operator==(const bar& a, const bar& b);
+    friend class foo;
+};
+
+bool operator==(const bar& a, const bar& b) = default;
+
+
+<source>:9:47: warning: defaulted comparison operators are a C++20 extension [-Wc++20-extensions]
+    9 | bool operator==(const bar& a, const bar& b) = default;
+      |                                               ^
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -fno-verbose-asm -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics <source>
+1.	<eof> parser at end of file
+ #0 0x0000000003b7abe8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3b7abe8)
+ #1 0x0000000003b78d2c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3b78d2c)
+ #2 0x0000000003ac85a8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007e2311642520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x0000000000c167b0 clang::Sema::CheckExplicitlyDefaultedComparison(clang::Scope*, clang::FunctionDecl*, clang::Sema::DefaultedComparisonKind) (.cold) SemaDeclCXX.cpp:0:0
+ #5 0x00000000065642e9 clang::Sema::SetDeclDefaulted(clang::Decl*, clang::SourceLocation) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x65642e9)
+ #6 0x00000000060e2751 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60e2751)
+ #7 0x000000000612cfdf clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x612cfdf)
+ #8 0x00000000060da427 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60da427)
+ #9 0x00000000060db23e clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60db23e)
+#10 0x00000000060e4f3a clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60e4f3a)
+#11 0x00000000060e67d8 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60e67d8)
+#12 0x00000000060d4b5a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x60d4b5a)
+#13 0x00000000044f8d8d clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x44f8d8d)
+#14 0x00000000047ddc31 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x47ddc31)
+#15 0x000000000475c1bb clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x475c1bb)
+#16 0x00000000048cddb3 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x48cddb3)
+#17 0x0000000000d65be1 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xd65be1)
+#18 0x0000000000d5e3dd ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#19 0x0000000004546089 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#20 0x0000000003ac89c3 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x3ac89c3)
+#21 0x00000000045462a9 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#22 0x00000000045095cd clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x45095cd)
+#23 0x000000000450a591 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-trunk/bin/clang+++0x450a591)
+#24 0x000000000451492c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x451492c)
+#25 0x0000000000d629b1 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0xd629b1)
+#26 0x0000000000c23264 main (/opt/compiler-explorer/clang-trunk/bin/clang+++0xc23264)
+#27 0x00007e2311629d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#28 0x00007e2311629e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#29 0x0000000000d5de75 _start (/opt/compiler-explorer/clang-trunk/bin/clang+++0xd5de75)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+
+Bug Labels:
+clang:frontend, confirmed, crash, good first issue

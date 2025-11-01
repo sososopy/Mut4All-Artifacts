@@ -1,0 +1,114 @@
+Issue Title:
+ICE on stable and nightly: [codegen_fulfill_obligation] checking if `std::ops::FnOnce` fulfills its obligations · Issue #80351 · rust-lang/rust · GitHub
+
+Rust Code:
+fn main() {
+    enqueue::<(), _>(|_result| {});
+}
+
+trait Query<'a> {
+    type Result: 'a;
+    fn execute() -> Self::Result;
+}
+
+impl<'a> Query<'a> for () {
+    type Result = ();
+    fn execute() -> () {
+        ()
+    }
+}
+
+fn enqueue<Q: for<'q> Query<'q>, F: 'static + for<'r> FnOnce(<Q as Query<'r>>::Result)>(f: F) {
+    let _: Box<dyn FnOnce()> = Box::new(move || f(Q::execute()));
+}
+
+Bug Trace:
+Compiling rustc-ice-repro v0.1.0 (C:\***\rustc-ice-repro)
+error: internal compiler error: compiler\rustc_trait_selection\src\traits\codegen.rs:78:17: Encountered error `OutputTypeParameterMismatch(Binder(<[closure@src\main.rs:2:22: 2:34] as std::ops::FnOnce<(<() as Query<'_>>::Result,)>>), Binder(<[closure@src\main.rs:2:22: 2:34] as std::ops::FnOnce<((),)>>), Sorts(ExpectedFound { expected: (), found: <() as Query<'_>>::Result }))` selecting `Binder(<[closure@src\main.rs:2:22: 2:34] as std::ops::FnOnce<((),)>>)` during codegen
+
+thread 'rustc' panicked at 'Box<Any>', compiler\rustc_errors\src\lib.rs:958:9
+stack backtrace:
+   0:     0x7ffb94b9bce5 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h17841712fc816a42
+   1:     0x7ffb94bc871b - core::fmt::write::ha3ea633b18d2da75
+   2:     0x7ffb94b8d4cd - <std::io::IoSlice as core::fmt::Debug>::fmt::h9df41d37d9186c48
+   3:     0x7ffb94b9fecd - std::panicking::take_hook::h78f8a454f3a4df82
+   4:     0x7ffb94b9f9da - std::panicking::take_hook::h78f8a454f3a4df82
+   5:     0x7ffb780c9377 - rustc_driver::report_ice::h4f570b5a4fba1dc9
+   6:     0x7ffb94ba09af - std::panicking::rust_panic_with_hook::h9fd6ff93f12148ea
+   7:     0x7ffb7c9800f0 - <rustc_errors::diagnostic::StringPart as core::fmt::Debug>::fmt::h7af67de8d2c3b61b
+   8:     0x7ffb7c980079 - <rustc_errors::diagnostic::StringPart as core::fmt::Debug>::fmt::h7af67de8d2c3b61b
+   9:     0x7ffb7c980091 - <rustc_errors::diagnostic::StringPart as core::fmt::Debug>::fmt::h7af67de8d2c3b61b
+  10:     0x7ffb7c9b71cb - rustc_errors::HandlerInner::err_count::h50c6ffc480963ac8
+  11:     0x7ffb7c9b5312 - rustc_errors::Handler::bug::hb269e1fa812030f1
+  12:     0x7ffb7c43696f - rustc_middle::util::bug::bug_fmt::ha0061901ad88904d
+  13:     0x7ffb7c4324e0 - rustc_middle::ty::walk::<impl rustc_middle::ty::subst::GenericArg>::walk_shallow::hfcd570d087b90349
+  14:     0x7ffb7c432483 - rustc_middle::ty::walk::<impl rustc_middle::ty::subst::GenericArg>::walk_shallow::hfcd570d087b90349
+  15:     0x7ffb7c436899 - rustc_middle::util::bug::bug_fmt::ha0061901ad88904d
+  16:     0x7ffb7c436807 - rustc_middle::util::bug::bug_fmt::ha0061901ad88904d
+  17:     0x7ffb7bf4a884 - unicode_normalization::__test_api::stream_safe::h4a800097b98fe8b6
+  18:     0x7ffb7c15ee9c - rustc_trait_selection::traits::codegen::codegen_fulfill_obligation::heb359a89dcda61be
+  19:     0x7ffb7a3ad1d9 - regex_syntax::hir::ClassUnicodeRange::end::hbd23d559724b5da5
+  20:     0x7ffb7a395725 - regex_syntax::hir::ClassUnicodeRange::end::hbd23d559724b5da5
+  21:     0x7ffb7a3a7d02 - regex_syntax::hir::ClassUnicodeRange::end::hbd23d559724b5da5
+  22:     0x7ffb7a3b4f4d - rustc_ty_utils::instance::provide::h4b164d63df4db7c9
+  23:     0x7ffb7a368f39 - regex_syntax::hir::ClassUnicodeRange::end::hbd23d559724b5da5
+  24:     0x7ffb7a3af815 - regex_syntax::hir::ClassUnicodeRange::end::hbd23d559724b5da5
+  25:     0x7ffb7a3af3c1 - regex_syntax::hir::ClassUnicodeRange::end::hbd23d559724b5da5
+  26:     0x7ffb7c36de8c - <rustc_middle::ty::adjustment::CustomCoerceUnsized as core::fmt::Debug>::fmt::hd5caefa151f67633
+  27:     0x7ffb7c647466 - rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::debug_node::h067a466f347afbfa
+  28:     0x7ffb7c8a3c90 - <rustc_middle::ty::layout::SizeSkeleton as core::fmt::Debug>::fmt::hdf39e1a062a831fa
+  29:     0x7ffb7c4c6877 - rustc_middle::ty::context::TyCtxt::_intern_place_elems::h4e412a0a09631fd5
+  30:     0x7ffb7c72080e - <rustc_middle::ty::layout::SizeSkeleton as core::fmt::Debug>::fmt::hdf39e1a062a831fa
+  31:     0x7ffb7c35b5fd - rustc_middle::ty::instance::Instance::resolve_opt_const_arg::hd412f8d69c49b383
+  32:     0x7ffb7c35b357 - rustc_middle::ty::instance::Instance::resolve::h792afa8d1a698994
+  33:     0x7ffb7b2409c8 - <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_terminator::h9371f020c44c4369
+  34:     0x7ffb7b243639 - <rustc_mir::monomorphize::collector::RootCollector as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_impl_item::h56d4e421d02eeb1b
+  35:     0x7ffb7b23cd52 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hdc49dd9b65a71123
+  36:     0x7ffb7b23cfd0 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hdc49dd9b65a71123
+  37:     0x7ffb7b23cfd0 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hdc49dd9b65a71123
+  38:     0x7ffb7b23cfd0 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hdc49dd9b65a71123
+  39:     0x7ffb7b42d283 - <rustc_mir::util::storage::AlwaysLiveLocals as core::fmt::Debug>::fmt::h0c9fc37ba57fd7cd
+  40:     0x7ffb7b23bf21 - rustc_mir::monomorphize::collector::collect_crate_mono_items::hdc49dd9b65a71123
+  41:     0x7ffb7b2e2d31 - rustc_mir::monomorphize::partitioning::partition::h855dd72ec131e9de
+  42:     0x7ffb7851f467 - <rustc_codegen_llvm::back::lto::ThinLTOKeysMap as core::fmt::Debug>::fmt::hbc55bf07d7d5ff94
+  43:     0x7ffb7841533e - <rustc_codegen_llvm::llvm_::ffi::PassKind as core::fmt::Debug>::fmt::ha4490398b447c3e3
+  44:     0x7ffb784625b7 - <rustc_ast::ast::FloatTy as rustc_codegen_llvm::debuginfo::metadata::MsvcBasicName>::msvc_basic_name::h13038d476c4525fe
+  45:     0x7ffb78491351 - rustc_codegen_llvm::type_::<impl rustc_codegen_ssa::traits::type_::LayoutTypeMethods for rustc_codegen_llvm::context::CodegenCx>::reg_backend_type::h90e24b99f24a4f79
+  46:     0x7ffb7838e914 - rustc_interface::util::commit_date_str::hd5efa7d3825e0a94
+  47:     0x7ffb785382c4 - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::h822bcfb8449dad95
+  48:     0x7ffb782e21ae - rustc_interface::interface::parse_cfgspecs::h699038d7e71e784d
+  49:     0x7ffb7831542a - rustc_interface::passes::BoxedResolver::to_resolver_outputs::h62b13ab93254cba7
+  50:     0x7ffb783600f6 - rustc_interface::queries::Queries::ongoing_codegen::ha4c64625b69244aa
+  51:     0x7ffb7812fa7a - <rustc_mir::transform::generator::PinArgVisitor as rustc_middle::mir::visit::MutVisitor>::tcx::h7fe0c34315986731
+  52:     0x7ffb780eff0c - <rustc_ast::ast::Variant as rustc_ast::attr::HasAttrs>::attrs::h9b5124b2e6e5fe34
+  53:     0x7ffb7813118c - <rustc_mir::transform::generator::PinArgVisitor as rustc_middle::mir::visit::MutVisitor>::tcx::h7fe0c34315986731
+  54:     0x7ffb78103b54 - <rustc_ast::ast::Variant as rustc_ast::attr::HasAttrs>::attrs::h9b5124b2e6e5fe34
+  55:     0x7ffb7811599f - rustc_ast::util::parser::prec_let_scrutinee_needs_par::h0da38a96661182e5
+  56:     0x7ffb7808c63d - <tracing_subscriber::util::TryInitError as core::fmt::Display>::fmt::h9f271cb85bcd455c
+  57:     0x7ffb94bb00e3 - std::sys::windows::thread::Thread::new::h0de7ecb752bc4a62
+  58:     0x7ffc0a247034 - BaseThreadInitThunk
+  59:     0x7ffc0bc1d0d1 - RtlUserThreadStart
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.50.0-nightly (7f9c43cf9 2020-12-23) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [codegen_fulfill_obligation] checking if `std::ops::FnOnce` fulfills its obligations
+#1 [resolve_instance] resolving instance `<[closure@src\main.rs:2:22: 2:34] as std::ops::FnOnce<((),)>>::call_once`
+#2 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `rustc-ice-repro`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-trait-system, C-bug, I-ICE, P-medium, T-compiler, glacier

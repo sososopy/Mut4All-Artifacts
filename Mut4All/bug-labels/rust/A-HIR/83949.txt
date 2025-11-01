@@ -1,0 +1,150 @@
+Issue Title:
+Rust compiler error:  'rustc' panicked at 'Box<Any>', · Issue #83949 · rust-lang/rust · GitHub
+
+Rust Code:
+extern crate glutin_window;
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate piston;
+
+use glutin_window::GlutinWindow as Window;
+use opengl_graphics::{GlGraphics, OpenGL};
+use piston::event_loop::{EventSettings, Events};
+use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
+use piston::window::WindowSettings;
+
+struct Particle {
+    x: f64,
+    y: f64,
+    color: [f32; 4],
+    size: f64,
+    velocity: (f64, f64)
+}
+pub struct App {
+    gl: GlGraphics, // OpenGL drawing backend.
+    particles: Vec<Particle>,
+}
+
+const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+impl App {
+    fn render(&mut self, args: &RenderArgs) {
+        use graphics::*;
+
+        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
+        let particles = &self.particles;
+
+        self.gl.draw(args.viewport(), |c, gl| {
+            // Clear the screen.
+            clear(GREEN, gl);
+            for particle in particles {
+                let size = particle.size;
+                let circle = ellipse::circle(0.0, 0.0, size);
+                let transform = c.transform.trans(particle.x, particle.y);
+
+                // Draw a box rotating around the middle of the screen.
+                ellipse(particle.color, circle, transform, gl);
+            }
+        });
+    }
+
+    fn update(&mut self, args: &UpdateArgs) {
+        // Rotate 2 radians per second.
+        let particles = &self.particles;
+        for mut particle in particles {
+            let new_velocity = (particle.velocity.0, particle.velocity.1 * GRAVITY * args.dt);
+            particle.velocity = new_velocity;
+            particle.x += new_velocity.0 ;
+            particle.x += new_velocity.1;
+        }
+    }
+}
+const GRAVITY: f64 = -1.0;
+
+fn main() {
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
+
+    // Create an Glutin window.
+    let mut window: Window = WindowSettings::new("particular", [1024, 860])
+        .graphics_api(opengl)
+        .exit_on_esc(true)
+        .build()
+        .unwrap();
+
+    // Create a new game and run it.
+    let particles = vec![
+        Particle {
+            x: 0.0,
+            y: 0.0,
+            color: RED,
+            size: 50.0,
+            velocity: (0f64, 0f64)
+        },
+        Particle {
+            x: 100.0,
+            y: 100.0,
+            color: RED,
+            size: 20.0,
+            velocity: (0f64, 0f64)
+        },
+    ];
+    let mut app = App {
+        gl: GlGraphics::new(opengl),
+        particles: particles,
+    };
+
+    let mut events = Events::new(EventSettings::new());
+    while let Some(e) = events.next(&mut window) {
+        if let Some(args) = e.render_args() {
+            app.render(&args);
+        }
+
+        if let Some(args) = e.update_args() {
+            app.update(&args);
+        }
+    }
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', /rustc/3f5aee2d5241139d808f4fdece0026603489afd1/library/std/src/panic.rs:59:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_middle::hir::map::Map::item
+   8: rustc_mir::borrow_check::diagnostics::mutability_errors::<impl rustc_mir::borrow_check::MirBorrowckCtxt>::report_mutability_error
+   9: rustc_mir::borrow_check::MirBorrowckCtxt::access_place
+  10: rustc_mir::borrow_check::MirBorrowckCtxt::mutate_place
+  11: <rustc_mir::borrow_check::MirBorrowckCtxt as rustc_mir::dataflow::framework::visitor::ResultsVisitor>::visit_statement_before_primary_effect
+  12: <rustc_mir::dataflow::framework::direction::Forward as rustc_mir::dataflow::framework::direction::Direction>::visit_results_in_block
+  13: rustc_mir::dataflow::framework::visitor::visit_results
+  14: rustc_mir::borrow_check::do_mir_borrowck
+  15: rustc_infer::infer::InferCtxtBuilder::enter
+  16: rustc_mir::borrow_check::mir_borrowck
+  17: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck>::compute
+  18: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  19: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  20: rustc_data_structures::stack::ensure_sufficient_stack
+  21: rustc_query_system::query::plumbing::force_query_with_job
+  22: rustc_query_system::query::plumbing::get_query_impl
+  23: rustc_query_system::query::plumbing::ensure_query_impl
+  24: rustc_session::utils::<impl rustc_session::session::Session>::time
+  25: rustc_interface::passes::analysis
+  26: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  27: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  28: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  29: rustc_data_structures::stack::ensure_sufficient_stack
+  30: rustc_query_system::query::plumbing::force_query_with_job
+  31: rustc_query_system::query::plumbing::get_query_impl
+  32: rustc_interface::passes::QueryContext::enter
+  33: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  34: rustc_span::with_source_map
+  35: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+A-HIR, C-bug, I-ICE, T-compiler

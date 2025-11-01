@@ -1,0 +1,149 @@
+Issue Title:
+`generic_associated_types` fails on dyn dyn · Issue #79422 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+#![allow(incomplete_features)]
+
+trait RefCont<'a, T> {
+    fn t(&'a self) -> &'a T;
+}
+
+impl<'a, T> RefCont<'a, T> for &'a T {
+    fn t(&'a self) -> &'a T {
+        self
+    }
+}
+
+impl<'a, T> RefCont<'a, T> for Box<T> {
+    fn t(&'a self) -> &'a T {
+        self.as_ref()
+    }
+}
+
+trait MapLike<K, V> {
+    type VRefCont<'a>: RefCont<'a, V>;
+    fn get<'a>(&'a self, key: &K) -> Option<Self::VRefCont<'a>>;
+}
+
+impl<K: Ord, V: 'static> MapLike<K, V> for std::collections::BTreeMap<K, V> {
+    type VRefCont<'a> = &'a V;
+    fn get<'a>(&'a self, key: &K) -> Option<&'a V> {
+        std::collections::BTreeMap::get(self, key)
+    }
+}
+
+struct Source;
+
+impl<K, V: Default> MapLike<K, V> for Source {
+    type VRefCont<'a> = Box<V>;
+    fn get<'a>(&self, _: &K) -> Option<Box<V>> {
+        Some(Box::new(V::default()))
+    }
+}
+
+fn main() {
+    let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
+        as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_middle/src/ty/subst.rs:476:25: Region parameter out of range when substituting in region 'a (index=3)
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/fe982319aa0aa5bbfc2795791a753832292bd2ba/compiler/rustc_errors/src/lib.rs:904:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::span_bug
+   2: rustc_errors::Handler::span_bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::span_bug_fmt
+   8: <rustc_middle::ty::subst::SubstFolder as rustc_middle::ty::fold::TypeFolder>::fold_region
+   9: <smallvec::SmallVec<A> as core::iter::traits::collect::Extend<<A as smallvec::Array>::Item>>::extend
+  10: rustc_middle::ty::fold::TypeFoldable::fold_with
+  11: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+  12: rustc_middle::ty::fold::TypeFoldable::fold_with
+  13: rustc_middle::ty::fold::TypeFoldable::fold_with
+  14: rustc_middle::ty::Predicate::subst_supertrait
+  15: <core::iter::adapters::Map<I,F> as core::iter::traits::iterator::Iterator>::try_fold
+  16: <smallvec::SmallVec<A> as core::iter::traits::collect::Extend<<A as smallvec::Array>::Item>>::extend
+  17: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &mut F>::call_once
+  18: <core::iter::adapters::flatten::FlatMap<I,U,F> as core::iter::traits::iterator::Iterator>::next
+  19: <smallvec::SmallVec<A> as core::iter::traits::collect::Extend<<A as smallvec::Array>::Item>>::extend
+  20: rustc_middle::arena::Arena::alloc_from_iter
+  21: rustc_trait_selection::traits::object_safety::object_safety_violations
+  22: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  23: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  24: rustc_data_structures::stack::ensure_sufficient_stack
+  25: rustc_query_system::query::plumbing::get_query_impl
+  26: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::is_object_safe
+  27: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  28: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  29: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_vars_with_obligations
+  30: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::structurally_resolved_type
+  31: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  32: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  33: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  34: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  35: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  36: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_coercable_to_type
+  37: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_local
+  38: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  39: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  40: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  41: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  42: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  43: rustc_typeck::check::check::check_fn
+  44: rustc_infer::infer::InferCtxtBuilder::enter
+  45: rustc_typeck::check::typeck
+  46: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck>::compute
+  47: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  48: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  49: rustc_data_structures::stack::ensure_sufficient_stack
+  50: rustc_query_system::query::plumbing::get_query_impl
+  51: rustc_query_system::query::plumbing::ensure_query_impl
+  52: rustc_typeck::check::typeck_item_bodies
+  53: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck_item_bodies>::compute
+  54: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  55: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  56: rustc_data_structures::stack::ensure_sufficient_stack
+  57: rustc_query_system::query::plumbing::get_query_impl
+  58: rustc_typeck::check_crate
+  59: rustc_interface::passes::analysis
+  60: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  61: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  62: rustc_query_system::dep_graph::graph::DepGraph<K>::with_eval_always_task
+  63: rustc_data_structures::stack::ensure_sufficient_stack
+  64: rustc_query_system::query::plumbing::get_query_impl
+  65: rustc_interface::passes::QueryContext::enter
+  66: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  67: rustc_span::with_source_map
+  68: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.50.0-nightly (fe982319a 2020-11-19) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [object_safety_violations] determine object safety of trait `MapLike`
+#1 [typeck] type-checking `main`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `ttt`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-DSTs, A-GATs, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier

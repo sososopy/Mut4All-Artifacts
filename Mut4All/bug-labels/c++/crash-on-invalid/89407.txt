@@ -1,0 +1,55 @@
+Issue Title:
+[Clang] Crash on user-defined  static_assert  message if  size()  returns a negative value
+
+Source Code & Bug Trace:
+struct S {
+    constexpr __SIZE_TYPE__ size() const { return -1; }
+    constexpr const char* data() const { return ""; }
+};
+
+static_assert(true, S{});
+
+clang++: /root/llvm-project/llvm/include/llvm/ADT/APSInt.h:99: int64_t llvm::APSInt::getExtValue() const: 
+Assertion `isRepresentableByInt64() && "Too many bits for int64_t"' failed.
+
+
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++26 <source>
+1.	<eof> parser at end of file
+ #0 0x00000000039476a8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x39476a8)
+ #1 0x000000000394538c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x394538c)
+ #2 0x000000000388b8f8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fb883e42520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x00007fb883e969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x00007fb883e42476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x00007fb883e287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x00007fb883e2871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x00007fb883e39e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x00000000074baf8f clang::Expr::EvaluateCharRangeAsString(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&, clang::Expr const*, clang::Expr const*, clang::ASTContext&, clang::Expr::EvalResult&) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x74baf8f)
+#10 0x0000000006631340 clang::Sema::EvaluateStaticAssertMessageAsString(clang::Expr*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>&, clang::ASTContext&, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6631340)
+#11 0x0000000006665216 clang::Sema::BuildStaticAssertDeclaration(clang::SourceLocation, clang::Expr*, clang::Expr*, clang::SourceLocation, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6665216)
+#12 0x000000000625833e clang::Parser::ParseStaticAssertDeclaration(clang::SourceLocation&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x625833e)
+#13 0x0000000006248bef clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6248bef)
+#14 0x0000000006204e1e clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6204e1e)
+#15 0x0000000006205c9d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6205c9d)
+#16 0x00000000061f88ea clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x61f88ea)
+#17 0x00000000041f6c08 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x41f6c08)
+#18 0x0000000004476ec9 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4476ec9)
+#19 0x00000000043ffcfe clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x43ffcfe)
+#20 0x000000000455a25e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x455a25e)
+#21 0x0000000000c487ec cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc487ec)
+#22 0x0000000000c41a7a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#23 0x0000000004239c29 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#24 0x000000000388bda4 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x388bda4)
+#25 0x000000000423a21f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#26 0x0000000004200555 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4200555)
+#27 0x0000000004200fbd clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4200fbd)
+#28 0x0000000004208d45 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4208d45)
+#29 0x0000000000c45c85 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc45c85)
+#30 0x0000000000b28884 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xb28884)
+#31 0x00007fb883e29d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#32 0x00007fb883e29e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#33 0x0000000000c4156e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc4156e)
+
+
+Bug Labels:
+clang:frontend, crash-on-invalid

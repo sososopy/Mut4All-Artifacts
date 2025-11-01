@@ -1,0 +1,66 @@
+Issue Title:
+[Clang] ICE in CheckPointerToMemberOperands passing decltype of lambda
+
+Source Code & Bug Trace:
+template <typename Fn>
+static bool has_explicitly_named_overload() {
+    return requires { Fn().*&Fn::operator(); };
+}
+int main(){
+    has_explicitly_named_overload<decltype([](auto){})>();
+}
+
+clang++: /root/llvm-project/clang/lib/Sema/SemaExprCXX.cpp:5729: clang::QualType clang::Sema::CheckPointerToMemberOperands(clang::ExprResult&, clang::ExprResult&, clang::ExprValueKind&, clang::SourceLocation, bool): Assertion `!LHS.get()->hasPlaceholderType() && !RHS.get()->hasPlaceholderType() && "placeholders should have been weeded out by now"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 <source>
+1.	<eof> parser at end of file
+2.	<source>:2:13: instantiating function definition 'has_explicitly_named_overload<(lambda at <source>:6:44)>'
+ #0 0x00005623412ac8ef PrintStackTraceSignalHandler(void*) Signals.cpp:0:0
+ #1 0x00005623412aa6f0 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3aaa6f0)
+ #2 0x00005623411e0ff8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f11c3c0d3c0 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x153c0)
+ #4 0x00007f11c36dc18b raise (/lib/x86_64-linux-gnu/libc.so.6+0x4618b)
+ #5 0x00007f11c36bb859 abort (/lib/x86_64-linux-gnu/libc.so.6+0x25859)
+ #6 0x00007f11c36bb729 (/lib/x86_64-linux-gnu/libc.so.6+0x25729)
+ #7 0x00007f11c36ccf36 (/lib/x86_64-linux-gnu/libc.so.6+0x36f36)
+ #8 0x000056234367ad2b clang::Sema::CheckPointerToMemberOperands(clang::ActionResult<clang::Expr*, true>&, clang::ActionResult<clang::Expr*, true>&, clang::ExprValueKind&, clang::SourceLocation, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5e7ad2b)
+ #9 0x00005623435ceb09 clang::Sema::CreateBuiltinBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5dceb09)
+#10 0x000056234388ee0c clang::Sema::CreateOverloadedBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, clang::Expr*, bool, bool, clang::FunctionDecl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x608ee0c)
+#11 0x0000562343587d61 BuildOverloadedBinOp(clang::Sema&, clang::Scope*, clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) SemaExpr.cpp:0:0
+#12 0x00005623435cf857 clang::Sema::BuildBinOp(clang::Scope*, clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5dcf857)
+#13 0x0000562343a00cbb clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformBinaryOperator(clang::BinaryOperator*) SemaTemplateInstantiate.cpp:0:0
+#14 0x00005623439fdf51 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#15 0x0000562343a20e00 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformRequiresExpr(clang::RequiresExpr*) SemaTemplateInstantiate.cpp:0:0
+#16 0x00005623439fe471 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#17 0x00005623439feb4c clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformInitializer(clang::Expr*, bool) (.part.4112) SemaTemplateInstantiate.cpp:0:0
+#18 0x00005623439fee8c clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) SemaTemplateInstantiate.cpp:0:0
+#19 0x0000562343a2df6b clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#20 0x0000562343a305c3 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x62305c3)
+#21 0x0000562343a73b1a clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6273b1a)
+#22 0x0000562343a72981 clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6272981)
+#23 0x000056234330d34b clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) (.part.1495) Sema.cpp:0:0
+#24 0x000056234330db4a clang::Sema::ActOnEndOfTranslationUnit() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5b0db4a)
+#25 0x00005623431fa946 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x59fa946)
+#26 0x00005623431f08c9 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x59f08c9)
+#27 0x00005623422f0938 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4af0938)
+#28 0x0000562341c849f1 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x44849f1)
+#29 0x0000562341c1f42a clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x441f42a)
+#30 0x0000562341d50ae3 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4550ae3)
+#31 0x000056233ec08011 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x1408011)
+#32 0x000056233ec03ea9 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#33 0x0000562341abfad5 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#34 0x00005623411e15e3 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x39e15e3)
+#35 0x0000562341ac1e66 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x42c1e66)
+#36 0x0000562341a94dca clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4294dca)
+#37 0x0000562341a95a5f clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4295a5f)
+#38 0x0000562341a9df0a clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x429df0a)
+#39 0x000056233eb2c03f main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x132c03f)
+#40 0x00007f11c36bd0b3 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x270b3)
+#41 0x000056233ec03a1a _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x1403a1a)
+clang-15: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Compiler returned: 134
+
+
+Bug Labels:
+clang:frontend, confirmed, crash

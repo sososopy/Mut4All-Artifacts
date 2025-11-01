@@ -1,0 +1,137 @@
+Issue Title:
+ICE: compiler/rustc_mir/src/interpret/validity.rs:918:17: Unexpected error during validation: unable to turn pointer into raw bytes · Issue #79690 · rust-lang/rust · GitHub
+
+Rust Code:
+union Transmute<T: Copy, U: Copy> {
+    t: T,
+    u: U,
+}
+trait Bar {
+    fn bar(&self) -> u32;
+}
+struct Foo {
+    foo: u32,
+    bar: bool,
+}
+impl Bar for Foo {
+    fn bar(&self) -> u32 {
+        self.foo
+    }
+}
+#[derive(Copy, Clone)]
+struct Fat<'a>(&'a Foo, &'static VTable);
+struct VTable {
+    size: Foo,
+}
+const FOO: &Bar = &Foo {
+    foo: 128,
+    bar: false,
+};
+const G: Fat = unsafe { Transmute { t: FOO }.u };
+
+Bug Trace:
+warning: trait objects without an explicit `dyn` are deprecated
+  --> perses_node_priority_with_dfs_delta_reduced_mutant.rs:22:13
+   |
+22 | const FOO: &Bar = &Foo {
+   |             ^^^ help: use `dyn`: `dyn Bar`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+
+warning: union is never used: `Transmute`
+ --> perses_node_priority_with_dfs_delta_reduced_mutant.rs:1:7
+  |
+1 | union Transmute<T: Copy, U: Copy> {
+  |       ^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: field is never read: `bar`
+  --> perses_node_priority_with_dfs_delta_reduced_mutant.rs:10:5
+   |
+10 |     bar: bool,
+   |     ^^^^^^^^^
+
+warning: field is never read: `size`
+  --> perses_node_priority_with_dfs_delta_reduced_mutant.rs:20:5
+   |
+20 |     size: Foo,
+   |     ^^^^^^^^^
+
+warning: constant is never used: `FOO`
+  --> perses_node_priority_with_dfs_delta_reduced_mutant.rs:22:1
+   |
+22 | / const FOO: &Bar = &Foo {
+23 | |     foo: 128,
+24 | |     bar: false,
+25 | | };
+   | |__^
+
+warning: constant is never used: `G`
+  --> perses_node_priority_with_dfs_delta_reduced_mutant.rs:26:1
+   |
+26 | const G: Fat = unsafe { Transmute { t: FOO }.u };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: compiler/rustc_mir/src/interpret/validity.rs:918:17: Unexpected error during validation: unable to turn pointer into raw bytes
+
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:958:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::bug
+   2: rustc_errors::Handler::bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::bug_fmt
+   8: rustc_mir::interpret::validity::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::validate_operand_internal
+   9: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+  10: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_allocation_raw>::compute
+  11: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+  12: rustc_query_system::query::plumbing::get_query_impl
+  13: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  14: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_const_value_raw>::compute
+  15: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  18: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_const_value_raw>::compute
+  19: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  20: rustc_data_structures::stack::ensure_sufficient_stack
+  21: rustc_query_system::query::plumbing::get_query_impl
+  22: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_poly
+  23: <rustc_lint::BuiltinCombinedLateLintPass as rustc_lint::passes::LateLintPass>::check_item
+  24: rustc_hir::intravisit::Visitor::visit_nested_item
+  25: rustc_hir::intravisit::walk_crate
+  26: rustc_session::utils::<impl rustc_session::session::Session>::time
+  27: rustc_interface::passes::analysis::{{closure}}::{{closure}}
+  28: rustc_session::utils::<impl rustc_session::session::Session>::time
+  29: rustc_interface::passes::analysis
+  30: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_eval_always_task
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: rustc_interface::passes::QueryContext::enter
+  35: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  36: rustc_span::with_source_map
+  37: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.50.0-nightly (3ff10e74a 2020-12-04) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type staticlib
+
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `G`
+#1 [eval_to_const_value_raw] simplifying constant for the type system `G`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `G`
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error; 6 warnings emitted
+
+Bug Labels:
+A-const-eval, C-bug, E-easy, E-mentor, I-ICE, P-medium, T-compiler, glacier, regression-from-stable-to-stable

@@ -1,0 +1,92 @@
+Issue Title:
+ICE adt_const_params with slice of static str · Issue #88876 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(adt_const_params)]
+
+struct FooConst<const ARRAY: &'static [&'static str]> {}
+
+const FOO_ARR: &[&'static str; 2] = &["Hello", "Friend"];
+
+fn main() {
+    // Commenting the following line avoids the panic.
+    let foo = FooConst::<FOO_ARR> {};
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+error: internal compiler error: compiler/rustc_mir/src/const_eval/mod.rs:160:14: cannot destructure constant Const { ty: &'static [&'static str], val: Value(ByRef { alloc: Allocation { bytes: [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [(Size { raw: 0 }, alloc5)] }), init_mask: InitMask { blocks: [65535], len: Size { raw: 16 } }, align: Align { pow2: 3 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1147:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_mir::const_eval::destructure_const
+   8: core::ops::function::FnOnce::call_once
+   9: rustc_query_system::query::plumbing::get_query_impl
+  10: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::destructure_const
+  11: rustc_middle::ty::relate::super_relate_consts
+  12: <rustc_infer::infer::combine::Generalizer as rustc_middle::ty::relate::TypeRelation>::consts
+  13: <rustc_infer::infer::combine::Generalizer as rustc_middle::ty::relate::TypeRelation>::relate_with_variance
+  14: <core::result::Result<T,E> as rustc_middle::ty::context::InternIteratorElement<T,R>>::intern_with
+  15: <rustc_infer::infer::combine::Generalizer as rustc_middle::ty::relate::TypeRelation>::relate_item_substs
+  16: rustc_middle::ty::relate::super_relate_tys
+  17: <rustc_infer::infer::combine::Generalizer as rustc_middle::ty::relate::TypeRelation>::tys
+  18: rustc_infer::infer::combine::CombineFields::instantiate
+  19: <rustc_infer::infer::sub::Sub as rustc_middle::ty::relate::TypeRelation>::tys
+  20: rustc_infer::infer::InferCtxt::commit_if_ok
+  21: rustc_infer::infer::fudge::<impl rustc_infer::infer::InferCtxt>::fudge_inference_if_ok
+  22: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  23: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  24: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_initializer
+  25: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_local
+  26: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  27: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  28: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  29: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  30: rustc_typeck::check::check::check_fn
+  31: rustc_infer::infer::InferCtxtBuilder::enter
+  32: rustc_typeck::check::typeck
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  35: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  36: rustc_typeck::check::typeck_item_bodies
+  37: rustc_query_system::query::plumbing::get_query_impl
+  38: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck_item_bodies
+  39: rustc_session::utils::<impl rustc_session::session::Session>::time
+  40: rustc_typeck::check_crate
+  41: rustc_interface::passes::analysis
+  42: rustc_query_system::query::plumbing::get_query_impl
+  43: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  44: rustc_interface::passes::QueryContext::enter
+  45: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  46: rustc_span::with_source_map
+  47: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.56.0-nightly (50171c310 2021-09-01) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [destructure_const] destructure constant
+#1 [typeck] type-checking `main`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `playground`
+
+Bug Labels:
+A-const-generics, C-bug, F-adt_const_params, I-ICE, T-compiler, glacier

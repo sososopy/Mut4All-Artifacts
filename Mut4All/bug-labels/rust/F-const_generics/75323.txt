@@ -1,0 +1,164 @@
+Issue Title:
+`min_const_generic` ICE w/ const-argument-non-static-lifetime · Issue #75323 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(min_const_generics)]
+
+fn test<const N: usize>() {}
+
+fn wow<'a>() -> &'a () {
+    test::<
+        {
+            let _: &'a ();
+            3
+        },
+    >();
+    &()
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:915:9
+stack backtrace:
+   0: std::backtrace_rs::backtrace::libunwind::trace
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/../../backtrace/src/backtrace/libunwind.rs:96
+   1: std::backtrace_rs::backtrace::trace_unsynchronized
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/../../backtrace/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/sys_common/backtrace.rs:77
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/sys_common/backtrace.rs:58
+   4: core::fmt::write
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/core/src/fmt/mod.rs:1117
+   5: std::io::Write::write_fmt
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/io/mod.rs:1510
+   6: std::sys_common::backtrace::_print
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/sys_common/backtrace.rs:61
+   7: std::sys_common::backtrace::print
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/sys_common/backtrace.rs:48
+   8: std::panicking::default_hook::{{closure}}
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/panicking.rs:198
+   9: std::panicking::default_hook
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/panicking.rs:217
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at /rustc/09f4c9f5082f78b0adcee83d3ab4337e000cd28e/library/std/src/panicking.rs:530
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  17: rustc_middle::ty::context::tls::with_opt
+  18: rustc_middle::util::bug::opt_span_bug_fmt
+  19: rustc_middle::util::bug::bug_fmt
+  20: rustc_mir::borrow_check::universal_regions::UniversalRegionIndices::to_region_vid::{{closure}}
+  21: rustc_mir::borrow_check::universal_regions::UniversalRegionIndices::to_region_vid
+  22: <rustc_mir::borrow_check::type_check::relate_tys::NllTypeRelatingDelegate as rustc_infer::infer::nll_relate::TypeRelatingDelegate>::push_outlives
+  23: <rustc_infer::infer::nll_relate::TypeRelating<D> as rustc_middle::ty::relate::TypeRelation>::regions
+  24: rustc_middle::ty::relate::super_relate_tys
+  25: rustc_infer::infer::combine::<impl rustc_infer::infer::InferCtxt>::super_combine_tys
+  26: rustc_middle::ty::relate::TypeRelation::relate
+  27: rustc_mir::borrow_check::type_check::TypeChecker::relate_types
+  28: rustc_mir::borrow_check::type_check::type_check
+  29: rustc_mir::borrow_check::nll::compute_regions
+  30: rustc_mir::borrow_check::do_mir_borrowck
+  31: rustc_infer::infer::InferCtxtBuilder::enter
+  32: rustc_mir::borrow_check::mir_borrowck
+  33: core::ops::function::FnOnce::call_once
+  34: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck_const_arg>::compute
+  35: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  36: rustc_data_structures::stack::ensure_sufficient_stack
+  37: rustc_query_system::query::plumbing::get_query_impl
+  38: rustc_query_system::query::plumbing::ensure_query_impl
+  39: rustc_mir::transform::mir_drops_elaborated_and_const_checked
+  40: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_drops_elaborated_and_const_checked>::compute
+  41: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  42: rustc_data_structures::stack::ensure_sufficient_stack
+  43: rustc_query_system::query::plumbing::get_query_impl
+  44: rustc_mir::transform::inner_optimized_mir
+  45: rustc_mir::transform::optimized_mir_of_const_arg
+  46: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::optimized_mir_of_const_arg>::compute
+  47: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  48: rustc_data_structures::stack::ensure_sufficient_stack
+  49: rustc_query_system::query::plumbing::get_query_impl
+  50: rustc_mir::interpret::eval_context::InterpCx<M>::load_mir
+  51: rustc_mir::const_eval::eval_queries::const_eval_raw_provider
+  52: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_raw>::compute
+  53: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  54: rustc_data_structures::stack::ensure_sufficient_stack
+  55: rustc_query_system::query::plumbing::get_query_impl
+  56: rustc_mir::const_eval::eval_queries::const_eval_validated_provider
+  57: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_validated>::compute
+  58: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  59: rustc_data_structures::stack::ensure_sufficient_stack
+  60: rustc_query_system::query::plumbing::get_query_impl
+  61: rustc_mir::const_eval::eval_queries::const_eval_validated_provider
+  62: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::const_eval_validated>::compute
+  63: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  64: rustc_data_structures::stack::ensure_sufficient_stack
+  65: rustc_query_system::query::plumbing::get_query_impl
+  66: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  67: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  68: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const
+  69: rustc_middle::ty::fold::TypeFoldable::fold_with
+  70: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+  71: <rustc_trait_selection::traits::project::AssocTypeNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  72: rustc_data_structures::stack::ensure_sufficient_stack
+  73: rustc_trait_selection::traits::project::normalize
+  74: <rustc_infer::infer::InferCtxt as rustc_trait_selection::infer::InferCtxtExt>::partially_normalize_associated_types_in
+  75: rustc_typeck::check::FnCtxt::instantiate_value_path
+  76: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  77: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation
+  78: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::check_call
+  79: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  80: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation
+  81: rustc_typeck::check::FnCtxt::check_stmt
+  82: rustc_typeck::check::FnCtxt::check_block_with_expected
+  83: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  84: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation
+  85: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_return_expr
+  86: rustc_typeck::check::check_fn
+  87: rustc_infer::infer::InferCtxtBuilder::enter
+  88: rustc_typeck::check::typeck
+  89: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck>::compute
+  90: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  91: rustc_data_structures::stack::ensure_sufficient_stack
+  92: rustc_query_system::query::plumbing::get_query_impl
+  93: rustc_query_system::query::plumbing::ensure_query_impl
+  94: rustc_typeck::check::typeck_item_bodies
+  95: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck_item_bodies>::compute
+  96: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  97: rustc_data_structures::stack::ensure_sufficient_stack
+  98: rustc_query_system::query::plumbing::get_query_impl
+  99: rustc_typeck::check_crate
+ 100: rustc_interface::passes::analysis
+ 101: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+ 102: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+ 103: rustc_data_structures::stack::ensure_sufficient_stack
+ 104: rustc_query_system::query::plumbing::get_query_impl
+ 105: rustc_interface::passes::QueryContext::enter
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.47.0-nightly (09f4c9f50 2020-08-07) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck_const_arg] borrow-checking the const argument`wow::{{constant}}#0`
+#1 [mir_drops_elaborated_and_const_checked] elaborating drops for `wow::{{constant}}#0`
+#2 [optimized_mir_of_const_arg] optimizing MIR for the const argument `wow::{{constant}}#0`
+#3 [const_eval_raw] const-evaluating `wow::{{constant}}#0`
+#4 [const_eval_validated] const-evaluating + checking `wow::{{constant}}#0`
+#5 [const_eval_validated] const-evaluating + checking `wow::{{constant}}#0`
+#6 [typeck] type-checking `wow`
+#7 [typeck_item_bodies] type-checking all item bodies
+#8 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, I-ICE, T-compiler, glacier

@@ -1,0 +1,47 @@
+Issue Title:
+ICE: cannot relate bound region: ReLateBound · Issue #82612 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::marker::PhantomData;
+
+pub trait SparseSetIndex: Clone {
+    fn sparse_set_index(&self) -> usize;
+    fn get_sparse_set_index(value: usize) -> Self;
+}
+
+
+#[derive(Debug)]
+pub struct SparseArray<I, V = I> {
+    values: Vec<Option<V>>,
+    marker: PhantomData<I>,
+}
+
+impl<I: SparseSetIndex, V> Default for SparseArray<I, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<I: SparseSetIndex, V> SparseArray<I, V> {
+    #[inline]
+    pub fn get_or_insert_with(&mut self, index: I, func: impl FnOnce() -> V) -> &mut V {
+        let index = index.sparse_set_index();
+        if index < self.values.len() {
+            // SAFE: just checked bounds
+            let value = unsafe { self.values.get_unchecked_mut(index) };
+            value.get_or_insert_with(func)
+        }
+        self.values.resize_with(index + 1, || None);
+        // SAFE: just inserted
+        unsafe {
+            let value = self.values.get_unchecked_mut(index);
+            *value = Some(func());
+            value.as_mut().unwrap()
+        }
+    }
+}
+fn main() {
+}
+
+Bug Labels:
+A-lifetimes, C-bug, I-ICE, T-compiler, regression-from-stable-to-nightly

@@ -1,0 +1,128 @@
+Issue Title:
+ICE: `interpret const eval failure of Unevaluated(UnevaluatedConst .. which is not in required_consts` · Issue #133968 · rust-lang/rust · GitHub
+
+Rust Code:
+struct A<T: 'static>(&'static T);
+struct B<T: ?Sized + Send> {
+    x: &'static T,
+}
+static STR: &'static [u8] = "a b";
+static C: A<B<B<[u8]>>> = { A(&B { x: &B { x: STR } }) };
+
+Version Information:
+Possibly related line of code:
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+warning: unnecessary braces around assigned value
+ --> /tmp/icemaker_global_tempdir.xOeHTpmH6ZfT/rustc_testrunner_tmpdir_reporting.M0zB4QRO8XGI/mvce.rs:6:27
+  |
+6 | static C: A<B<B<[u8]>>> = { A(&B { x: &B { x: STR } }) };
+  |                           ^^                          ^^
+  |
+  = note: `#[warn(unused_braces)]` on by default
+help: remove these braces
+  |
+6 - static C: A<B<B<[u8]>>> = { A(&B { x: &B { x: STR } }) };
+6 + static C: A<B<B<[u8]>>> = A(&B { x: &B { x: STR } });
+  |
+
+error[E0601]: `main` function not found in crate `mvce`
+ --> /tmp/icemaker_global_tempdir.xOeHTpmH6ZfT/rustc_testrunner_tmpdir_reporting.M0zB4QRO8XGI/mvce.rs:6:58
+  |
+6 | static C: A<B<B<[u8]>>> = { A(&B { x: &B { x: STR } }) };
+  |                                                          ^ consider adding a `main` function to `/tmp/icemaker_global_tempdir.xOeHTpmH6ZfT/rustc_testrunner_tmpdir_reporting.M0zB4QRO8XGI/mvce.rs`
+
+error[E0310]: the parameter type `T` may not live long enough
+ --> /tmp/icemaker_global_tempdir.xOeHTpmH6ZfT/rustc_testrunner_tmpdir_reporting.M0zB4QRO8XGI/mvce.rs:3:8
+  |
+3 |     x: &'static T,
+  |        ^^^^^^^^^^
+  |        |
+  |        the parameter type `T` must be valid for the static lifetime...
+  |        ...so that the reference type `&'static T` does not outlive the data it points at
+  |
+help: consider adding an explicit lifetime bound
+  |
+2 | struct B<T: ?Sized + Send + 'static> {
+  |                           +++++++++
+
+error[E0308]: mismatched types
+ --> /tmp/icemaker_global_tempdir.xOeHTpmH6ZfT/rustc_testrunner_tmpdir_reporting.M0zB4QRO8XGI/mvce.rs:5:29
+  |
+5 | static STR: &'static [u8] = "a b";
+  |                             ^^^^^ expected `&[u8]`, found `&str`
+  |
+  = note: expected reference `&'static [u8]`
+             found reference `&'static str`
+help: consider adding a leading `b`
+  |
+5 | static STR: &'static [u8] = b"a b";
+  |                             +
+
+error: internal compiler error: compiler/rustc_const_eval/src/interpret/eval_context.rs:594:33: interpret const eval failure of Unevaluated(UnevaluatedConst { def: DefId(0:11 ~ mvce[d812]::C), args: [], promoted: Some(promoted[0]) }, &'{erased} B<B<[u8]>>) which is not in required_consts
+ --> /tmp/icemaker_global_tempdir.xOeHTpmH6ZfT/rustc_testrunner_tmpdir_reporting.M0zB4QRO8XGI/mvce.rs:6:31
+  |
+6 | static C: A<B<B<[u8]>>> = { A(&B { x: &B { x: STR } }) };
+  |                               ^^^^^^^^^^^^^^^^^^^^^^^
+
+thread 'rustc' panicked at compiler/rustc_const_eval/src/interpret/eval_context.rs:594:33:
+Box<dyn Any>
+stack backtrace:
+   0:     0x73bca0f4895a - <std::sys::backtrace::BacktraceLock::print::DisplayBacktrace as core::fmt::Display>::fmt::h69edfa39ad21a03a
+   1:     0x73bca1613e26 - core::fmt::write::h54afaacea6c2c9e2
+   2:     0x73bca25f3ad1 - std::io::Write::write_fmt::h00e73f8f3070368c
+   3:     0x73bca0f487b2 - std::sys::backtrace::BacktraceLock::print::h2b0900033e71643f
+   4:     0x73bca0f4acca - std::panicking::default_hook::{{closure}}::h325b3b03f2ea7a39
+   5:     0x73bca0f4ab13 - std::panicking::default_hook::haaf25a6e7afde799
+   6:     0x73bca00c1238 - std[85c61899f894cf29]::panicking::update_hook::<alloc[98b3c20953f4fbe5]::boxed::Box<rustc_driver_impl[45224e78b6d2fe59]::install_ice_hook::{closure#0}>>::{closure#0}
+   7:     0x73bca0f4b488 - std::panicking::rust_panic_with_hook::hdc045113cf0fafba
+   8:     0x73bca00f6771 - std[85c61899f894cf29]::panicking::begin_panic::<rustc_errors[2297728cd06420b6]::ExplicitBug>::{closure#0}
+   9:     0x73bca00eb916 - std[85c61899f894cf29]::sys::backtrace::__rust_end_short_backtrace::<std[85c61899f894cf29]::panicking::begin_panic<rustc_errors[2297728cd06420b6]::ExplicitBug>::{closure#0}, !>
+  10:     0x73bca00eb6d3 - std[85c61899f894cf29]::panicking::begin_panic::<rustc_errors[2297728cd06420b6]::ExplicitBug>
+  11:     0x73bca0100711 - <rustc_errors[2297728cd06420b6]::diagnostic::BugAbort as rustc_errors[2297728cd06420b6]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  12:     0x73bca0655d3c - <rustc_errors[2297728cd06420b6]::DiagCtxtHandle>::span_bug::<rustc_span[267b34eb586afd37]::span_encoding::Span, alloc[98b3c20953f4fbe5]::string::String>
+  13:     0x73bca06e86e7 - rustc_middle[2b65deb07cad4442]::util::bug::opt_span_bug_fmt::<rustc_span[267b34eb586afd37]::span_encoding::Span>::{closure#0}
+  14:     0x73bca06d0c0a - rustc_middle[2b65deb07cad4442]::ty::context::tls::with_opt::<rustc_middle[2b65deb07cad4442]::util::bug::opt_span_bug_fmt<rustc_span[267b34eb586afd37]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+  15:     0x73bca06d0a9b - rustc_middle[2b65deb07cad4442]::ty::context::tls::with_context_opt::<rustc_middle[2b65deb07cad4442]::ty::context::tls::with_opt<rustc_middle[2b65deb07cad4442]::util::bug::opt_span_bug_fmt<rustc_span[267b34eb586afd37]::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+  16:     0x73bc9f0446a7 - rustc_middle[2b65deb07cad4442]::util::bug::span_bug_fmt::<rustc_span[267b34eb586afd37]::span_encoding::Span>
+  17:     0x73bca2a8bc20 - rustc_const_eval[c1d2b202d9973a02]::const_eval::eval_queries::eval_body_using_ecx::<rustc_middle[2b65deb07cad4442]::mir::interpret::allocation::ConstAllocation>
+  18:     0x73bca29f2e3d - rustc_const_eval[c1d2b202d9973a02]::const_eval::eval_queries::eval_static_initializer_provider
+  19:     0x73bca29f2be7 - rustc_query_impl[31526c927efa8eec]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[31526c927efa8eec]::query_impl::eval_static_initializer::dynamic_query::{closure#2}::{closure#0}, rustc_middle[2b65deb07cad4442]::query::erase::Erased<[u8; 16usize]>>
+  20:     0x73bca29f2bc9 - <rustc_query_impl[31526c927efa8eec]::query_impl::eval_static_initializer::dynamic_query::{closure#2} as core[ce4f568dace374e]::ops::function::FnOnce<(rustc_middle[2b65deb07cad4442]::ty::context::TyCtxt, rustc_span[267b34eb586afd37]::def_id::DefId)>>::call_once
+  21:     0x73bca180e6da - rustc_query_system[8b7296974754ceb3]::query::plumbing::try_execute_query::<rustc_query_impl[31526c927efa8eec]::DynamicConfig<rustc_query_system[8b7296974754ceb3]::query::caches::DefIdCache<rustc_middle[2b65deb07cad4442]::query::erase::Erased<[u8; 16usize]>>, false, false, false>, rustc_query_impl[31526c927efa8eec]::plumbing::QueryCtxt, false>
+  22:     0x73bca26252b8 - rustc_query_impl[31526c927efa8eec]::query_impl::eval_static_initializer::get_query_non_incr::__rust_end_short_backtrace
+  23:     0x73bca1a3a249 - <rustc_middle[2b65deb07cad4442]::hir::map::Map>::par_body_owners::<rustc_hir_analysis[4e6fa7c2cad24599]::check_crate::{closure#3}>::{closure#0}
+  24:     0x73bca1a37b37 - rustc_hir_analysis[4e6fa7c2cad24599]::check_crate
+  25:     0x73bca1a42584 - rustc_interface[51c1904b6ef58290]::passes::run_required_analyses
+  26:     0x73bca25d88de - rustc_interface[51c1904b6ef58290]::passes::analysis
+  27:     0x73bca25d88af - rustc_query_impl[31526c927efa8eec]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[31526c927efa8eec]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle[2b65deb07cad4442]::query::erase::Erased<[u8; 1usize]>>
+  28:     0x73bca25af7ba - rustc_query_system[8b7296974754ceb3]::query::plumbing::try_execute_query::<rustc_query_impl[31526c927efa8eec]::DynamicConfig<rustc_query_system[8b7296974754ceb3]::query::caches::SingleCache<rustc_middle[2b65deb07cad4442]::query::erase::Erased<[u8; 1usize]>>, false, false, false>, rustc_query_impl[31526c927efa8eec]::plumbing::QueryCtxt, false>
+  29:     0x73bca25af48e - rustc_query_impl[31526c927efa8eec]::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+  30:     0x73bca26503eb - rustc_interface[51c1904b6ef58290]::interface::run_compiler::<core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>, rustc_driver_impl[45224e78b6d2fe59]::run_compiler::{closure#0}>::{closure#1}
+  31:     0x73bca2541ca1 - std[85c61899f894cf29]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[51c1904b6ef58290]::util::run_in_thread_with_globals<rustc_interface[51c1904b6ef58290]::util::run_in_thread_pool_with_globals<rustc_interface[51c1904b6ef58290]::interface::run_compiler<core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>, rustc_driver_impl[45224e78b6d2fe59]::run_compiler::{closure#0}>::{closure#1}, core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>>::{closure#0}, core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>>
+  32:     0x73bca2541948 - <<std[85c61899f894cf29]::thread::Builder>::spawn_unchecked_<rustc_interface[51c1904b6ef58290]::util::run_in_thread_with_globals<rustc_interface[51c1904b6ef58290]::util::run_in_thread_pool_with_globals<rustc_interface[51c1904b6ef58290]::interface::run_compiler<core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>, rustc_driver_impl[45224e78b6d2fe59]::run_compiler::{closure#0}>::{closure#1}, core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>>::{closure#0}, core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[ce4f568dace374e]::result::Result<(), rustc_span[267b34eb586afd37]::ErrorGuaranteed>>::{closure#1} as core[ce4f568dace374e]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  33:     0x73bca254107b - std::sys::pal::unix::thread::Thread::new::thread_start::h6f16c939ae6ab66d
+  34:     0x73bc9c8a339d - <unknown>
+  35:     0x73bc9c92849c - <unknown>
+  36:                0x0 - <unknown>
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.85.0-nightly (acf48426b 2024-12-06) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [eval_static_initializer] evaluating initializer of static `C`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 4 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0308, E0310, E0601.
+For more information about an error, try `rustc --explain E0308`.
+
+Bug Labels:
+A-const-eval, C-bug, I-ICE, T-compiler

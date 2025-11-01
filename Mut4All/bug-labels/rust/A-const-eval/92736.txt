@@ -1,0 +1,99 @@
+Issue Title:
+MIRI: vtable not supported on type  · Issue #92736 · rust-lang/rust · GitHub
+
+Rust Code:
+#[test]
+    fn it_can_kill_miri() -> Result<()> {
+        use anyhow::Result;
+        use async_trait::async_trait;
+        use futures_lite::future;
+
+        #[async_trait]
+        trait KillMiri {
+            async fn kill_miri(&self) -> Result<()>;
+        }
+
+        struct MiriKiller;
+
+        #[async_trait]
+        impl KillMiri for MiriKiller {
+            async fn kill_miri(&self) -> Result<()> {
+                Ok(())
+            }
+        }
+
+        async fn test() -> Result<()> {
+            let miri_killer = MiriKiller;
+            miri_killer.kill_miri().await?;
+            Ok(())
+        }
+
+        future::block_on(test())?;
+
+        Ok(())
+    }
+
+Bug Trace:
+<backtrace>
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1169:9
+stack backtrace:
+   0:     0x7fa575486c6c - std::backtrace_rs::backtrace::libunwind::trace::hc1f41e65d4294016
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7fa575486c6c - std::backtrace_rs::backtrace::trace_unsynchronized::h5a974591ec8bc62a
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fa575486c6c - std::sys_common::backtrace::_print_fmt::h71fe75d902dfecdb
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/sys_common/backtrace.rs:67:5
+   3:     0x7fa575486c6c - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h7261409758c3e058
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/sys_common/backtrace.rs:46:22
+   4:     0x7fa5754e77cc - core::fmt::write::h7045c9c964fa2f47
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/core/src/fmt/mod.rs:1168:17
+   5:     0x7fa5754760e3 - std::io::Write::write_fmt::h8665bc996551d0a2
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/io/mod.rs:1660:15
+   6:     0x7fa57548b132 - std::sys_common::backtrace::_print::hb980676397d9741f
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/sys_common/backtrace.rs:49:5
+   7:     0x7fa57548b132 - std::sys_common::backtrace::print::h980833031c6aefb9
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/sys_common/backtrace.rs:36:9
+   8:     0x7fa57548b132 - std::panicking::default_hook::{{closure}}::he31fc4e35881eb50
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/panicking.rs:211:50
+   9:     0x7fa57548ad15 - std::panicking::default_hook::h7e2201a5aaddd7f3
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/panicking.rs:228:9
+  10:     0x7fa575c77541 - rustc_driver[152a76eda93436b1]::DEFAULT_HOOK::{closure#0}::{closure#0}
+  11:     0x7fa56def8a03 - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h29097d4ebe9db4a6
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/alloc/src/boxed.rs:1868:9
+  12:     0x7fa56df1292d - proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter::{{closure}}::{{closure}}::hab4aff0bd936435e
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/proc_macro/src/bridge/client.rs:320:21
+  13:     0x7fa57548b8e5 - std::panicking::rust_panic_with_hook::h336217e29c331d0c
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/panicking.rs:610:17
+  14:     0x7fa576dbe83b - std[474966bf2c019f46]::panicking::begin_panic::<rustc_errors[22fbc031f3f8978c]::ExplicitBug>::{closure#0}
+  15:     0x7fa576dbe066 - std[474966bf2c019f46]::sys_common::backtrace::__rust_end_short_backtrace::<std[474966bf2c019f46]::panicking::begin_panic<rustc_errors[22fbc031f3f8978c]::ExplicitBug>::{closure#0}, !>
+  16:     0x7fa576dbe7df - std[474966bf2c019f46]::panicking::begin_panic::<rustc_errors[22fbc031f3f8978c]::ExplicitBug>
+  17:     0x7fa576dc954d - std[474966bf2c019f46]::panic::panic_any::<rustc_errors[22fbc031f3f8978c]::ExplicitBug>
+  18:     0x7fa576dc87dd - <rustc_errors[22fbc031f3f8978c]::HandlerInner>::bug
+  19:     0x7fa576dc82c0 - <rustc_errors[22fbc031f3f8978c]::Handler>::bug
+  20:     0x7fa576c54a39 - rustc_middle[53223a46696853a7]::ty::context::tls::with_opt::<rustc_middle[53223a46696853a7]::util::bug::opt_span_bug_fmt<rustc_span[bfc47d25200f03ec]::span_encoding::Span>::{closure#0}, ()>
+  21:     0x7fa576c555c0 - rustc_middle[53223a46696853a7]::util::bug::opt_span_bug_fmt::<rustc_span[bfc47d25200f03ec]::span_encoding::Span>
+  22:     0x7fa576c55536 - rustc_middle[53223a46696853a7]::util::bug::bug_fmt
+  23:     0x563b23d933b5 - <rustc_const_eval[fced7eedfc96b039]::interpret::eval_context::InterpCx<miri[f14960ce3b16780e]::machine::Evaluator>>::eval_fn_call
+  24:     0x563b23d8ece5 - <rustc_const_eval[fced7eedfc96b039]::interpret::eval_context::InterpCx<miri[f14960ce3b16780e]::machine::Evaluator>>::terminator
+  25:     0x563b23cee16d - miri[f14960ce3b16780e]::eval::eval_entry
+  26:     0x563b23c654aa - <rustc_interface[5414e3fbb5937d75]::passes::QueryContext>::enter::<<miri[483dfacf39f12478]::MiriCompilerCalls as rustc_driver[152a76eda93436b1]::Callbacks>::after_analysis::{closure#0}, ()>
+  27:     0x563b23c677c1 - <miri[483dfacf39f12478]::MiriCompilerCalls as rustc_driver[152a76eda93436b1]::Callbacks>::after_analysis
+  28:     0x7fa577b1bb1e - <rustc_interface[5414e3fbb5937d75]::interface::Compiler>::enter::<rustc_driver[152a76eda93436b1]::run_compiler::{closure#1}::{closure#2}, core[cb5a01f974729455]::result::Result<core[cb5a01f974729455]::option::Option<rustc_interface[5414e3fbb5937d75]::queries::Linker>, rustc_errors[22fbc031f3f8978c]::ErrorReported>>
+  29:     0x7fa577afd62c - rustc_span[bfc47d25200f03ec]::with_source_map::<core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>, rustc_interface[5414e3fbb5937d75]::interface::create_compiler_and_run<core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>, rustc_driver[152a76eda93436b1]::run_compiler::{closure#1}>::{closure#1}>
+  30:     0x7fa577b1aebe - rustc_interface[5414e3fbb5937d75]::interface::create_compiler_and_run::<core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>, rustc_driver[152a76eda93436b1]::run_compiler::{closure#1}>
+  31:     0x7fa577afeb8b - <scoped_tls[859af76ec6adcc74]::ScopedKey<rustc_span[bfc47d25200f03ec]::SessionGlobals>>::set::<rustc_interface[5414e3fbb5937d75]::util::setup_callbacks_and_run_in_thread_pool_with_globals<rustc_interface[5414e3fbb5937d75]::interface::run_compiler<core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>, rustc_driver[152a76eda93436b1]::run_compiler::{closure#1}>::{closure#0}, core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>>::{closure#0}::{closure#0}, core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>>
+  32:     0x7fa577afe985 - std[474966bf2c019f46]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[5414e3fbb5937d75]::util::setup_callbacks_and_run_in_thread_pool_with_globals<rustc_interface[5414e3fbb5937d75]::interface::run_compiler<core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>, rustc_driver[152a76eda93436b1]::run_compiler::{closure#1}>::{closure#0}, core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>>::{closure#0}, core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>>
+  33:     0x7fa577b2b479 - <<std[474966bf2c019f46]::thread::Builder>::spawn_unchecked<rustc_interface[5414e3fbb5937d75]::util::setup_callbacks_and_run_in_thread_pool_with_globals<rustc_interface[5414e3fbb5937d75]::interface::run_compiler<core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>, rustc_driver[152a76eda93436b1]::run_compiler::{closure#1}>::{closure#0}, core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>>::{closure#0}, core[cb5a01f974729455]::result::Result<(), rustc_errors[22fbc031f3f8978c]::ErrorReported>>::{closure#1} as core[cb5a01f974729455]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  34:     0x7fa575496e13 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h1911dc8c9e5caaa4
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/alloc/src/boxed.rs:1854:9
+  35:     0x7fa575496e13 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hfd19838d6df88d23
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/alloc/src/boxed.rs:1854:9
+  36:     0x7fa575496e13 - std::sys::unix::thread::Thread::new::thread_start::hf6059a4b62483d42
+                               at /rustc/a7e2e33960e95d2eb1a2a2aeec169dba5f73de05/library/std/src/sys/unix/thread.rs:108:17
+  37:     0x7fa57539b609 - start_thread
+                               at /build/glibc-eX1tMB/glibc-2.31/nptl/pthread_create.c:477:8
+  38:     0x7fa575171293 - clone
+  39:                0x0 - <unknown>
+
+Bug Labels:
+A-const-eval, A-miri, C-bug, I-ICE, T-compiler

@@ -1,0 +1,29 @@
+Mutation Operator: Modify Return Type with Const-Expr Sized Array
+
+Target: Method definitions within impl blocks whose return type is not ().
+
+Mutation Rule:
+1. Identify function definitions inside impl blocks whose return type is specified as a concrete type T, i.e., fn foo(...) -> T.
+2. Transform the return type to be a const-evaluated array of () values, where the array size is determined at compile-time using std::mem::size_of::<T>().
+3. This transformation preserves type safety but replaces the semantic return value with layout-driven constant expression evaluation, which can affect const propagation, codegen, and layout logic within the compiler.
+Example:
+Original:
+```rust
+impl MyStruct {
+    fn compute(&self) -> u32 {
+        //todo()!
+    }
+}
+```
+
+Mutation:
+```rust
+impl MyStruct {
+    fn compute(&self) -> [(); std::mem::size_of::<u32>()] {
+        //todo()!
+    }
+}
+```
+
+Explanation: 
+This mutation introduces a constant-sized array type dependent on the size of the original return type. Although this change compiles under safe Rust, it fundamentally alters the nature of the return type from a value-bearing type (like u32) to a type carrying only type-level size information.

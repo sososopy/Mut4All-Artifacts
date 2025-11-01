@@ -1,0 +1,83 @@
+Issue Title:
+ICE (broken MIR) with GAT + tuple type inference  · Issue #93141 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+pub trait Fooey: Sized {
+    type Context<'c> where Self: 'c;
+    /* // workaround
+    type CallMe; */
+
+    // fn fail2(callback: impl for<'c> Fn(&mut Self::Context<'c>)) -> Box<dyn for<'c> Fn(&mut Self::Context<'c>)> {
+    //     Box::new(callback)
+    // }
+}
+
+/* // workaround
+pub struct Handle<E: Fooey>(Option<E::CallMe>); */
+pub struct Handle<E: Fooey>(Option<Box<dyn for<'c> Fn(&mut E::Context<'c>)>>);
+
+fn tuple<T>() -> (Option<T>,) { (Option::None,) }
+
+pub struct FooImpl {}
+impl Fooey for FooImpl {
+    type Context<'c> = &'c ();
+    /* // workaround
+    type CallMe = Box<dyn for<'c> Fn(&mut Self::Context<'c>)>; */
+}
+
+impl FooImpl {
+    pub fn fail1() -> Handle<Self> {
+        let (tx,) = tuple();
+        Handle(tx)
+    }
+}
+
+fn main() {}
+
+Bug Trace:
+stack backtrace:
+   0:     0x7ffd6e2f609f - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hee8a33be9cbca634
+   1:     0x7ffd6e32510a - core::fmt::write::hb90322eafe83ee3b
+   2:     0x7ffd6e2e7308 - <std::io::IoSliceMut as core::fmt::Debug>::fmt::h65fc8b4617290485
+   3:     0x7ffd6e2f9acb - std::panicking::take_hook::h0b31ee4140f1c0b3
+   4:     0x7ffd6e2f95c4 - std::panicking::take_hook::h0b31ee4140f1c0b3
+   5:     0x7ffd6e943c99 - <rustc_middle[10899ac215e07fa4]::ty::SymbolName as core[a132f262969784d3]::fmt::Debug>::fmt
+   6:     0x7ffd6e2fa1f6 - std::panicking::rust_panic_with_hook::h82a702bd362db81c
+   7:     0x7ffd6e2f9ffb - <std::panicking::begin_panic_handler::StrPanicPayload as core::panic::BoxMeUp>::get::h0345b9cc73fc451e
+   8:     0x7ffd6e2f69e7 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hee8a33be9cbca634
+   9:     0x7ffd6e2f9cf9 - rust_begin_unwind
+  10:     0x7ffd6e357a20 - core::panicking::panic_fmt::h45d28ddfb378495a
+  11:     0x7ffd730e00a7 - <rustc_errors[d623bed5aaf56acd]::ErrorReported as core[a132f262969784d3]::fmt::Debug>::fmt
+  12:     0x7ffd730dcd18 - <rustc_errors[d623bed5aaf56acd]::HandlerInner>::delay_as_bug
+  13:     0x7ffd730d8822 - <rustc_errors[d623bed5aaf56acd]::HandlerInner as core[a132f262969784d3]::ops::drop::Drop>::drop
+  14:     0x7ffd6e93d4e4 - <rustc_middle[10899ac215e07fa4]::ty::SymbolName as core[a132f262969784d3]::fmt::Debug>::fmt
+  15:     0x7ffd6e9405d7 - <rustc_middle[10899ac215e07fa4]::ty::SymbolName as core[a132f262969784d3]::fmt::Debug>::fmt
+  16:     0x7ffd6e8d0b3c - <rustc_target[25420bd4fd783bf8]::abi::call::Reg>::i32
+  17:     0x7ffd6e8d2600 - <rustc_target[25420bd4fd783bf8]::abi::call::Reg>::i32
+  18:     0x7ffd6e8f3131 - <rustc_target[25420bd4fd783bf8]::abi::call::Reg>::i32
+  19:     0x7ffd6e8d5ab7 - <rustc_target[25420bd4fd783bf8]::abi::call::Reg>::i32
+  20:     0x7ffd6e8d46fc - <rustc_target[25420bd4fd783bf8]::abi::call::Reg>::i32
+  21:     0x7ffd6e8f90a8 - <rustc_middle[10899ac215e07fa4]::ty::SymbolName as core[a132f262969784d3]::fmt::Debug>::fmt
+  22:     0x7ffd6e309bac - std::sys::windows::thread::Thread::new::heeee0f662b911fa1
+  23:     0x7ffde0d57034 - BaseThreadInitThunk
+  24:     0x7ffde2442651 - RtlUserThreadStart
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.60.0-nightly (1bd4fdc94 2022-01-12) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+A-GATs, A-incr-comp, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier

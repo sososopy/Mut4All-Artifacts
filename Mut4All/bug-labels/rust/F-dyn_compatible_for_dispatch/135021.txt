@@ -1,0 +1,143 @@
+Issue Title:
+ICE: dyn_compatible_for_dispatch: `Got a scalar pair where a scalar was expected` · Issue #135021 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(dyn_compatible_for_dispatch)]
+trait Qux {
+    fn bar() -> i32;
+}
+
+pub struct Lint {
+    pub desc: &'static dyn Qux,
+}
+
+static FOO: &Lint = &Lint { desc: "desc" };
+
+Version Information:
+Possibly related line of code:
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zcrate-attr=feature(dyn_compatible_for_dispatch)
+
+Bug Trace:
+error[E0601]: `main` function not found in crate `mvce`
+ --> /tmp/icemaker_global_tempdir.3Xvq1QHsjJ49/rustc_testrunner_tmpdir_reporting.uMkbQerGsL7I/mvce.rs:9:44
+  |
+9 | static FOO: &Lint = &Lint { desc: "desc" };
+  |                                            ^ consider adding a `main` function to `/tmp/icemaker_global_tempdir.3Xvq1QHsjJ49/rustc_testrunner_tmpdir_reporting.uMkbQerGsL7I/mvce.rs`
+
+error[E0277]: `(dyn Qux + 'static)` cannot be shared between threads safely
+ --> /tmp/icemaker_global_tempdir.3Xvq1QHsjJ49/rustc_testrunner_tmpdir_reporting.uMkbQerGsL7I/mvce.rs:9:13
+  |
+9 | static FOO: &Lint = &Lint { desc: "desc" };
+  |             ^^^^^ `(dyn Qux + 'static)` cannot be shared between threads safely
+  |
+  = help: within `&'static Lint`, the trait `Sync` is not implemented for `(dyn Qux + 'static)`
+  = note: required because it appears within the type `&'static (dyn Qux + 'static)`
+note: required because it appears within the type `Lint`
+ --> /tmp/icemaker_global_tempdir.3Xvq1QHsjJ49/rustc_testrunner_tmpdir_reporting.uMkbQerGsL7I/mvce.rs:5:12
+  |
+5 | pub struct Lint {
+  |            ^^^^
+  = note: required because it appears within the type `&'static Lint`
+  = note: shared static variables must have a type that implements `Sync`
+
+error[E0038]: the trait `Qux` cannot be made into an object
+ --> /tmp/icemaker_global_tempdir.3Xvq1QHsjJ49/rustc_testrunner_tmpdir_reporting.uMkbQerGsL7I/mvce.rs:9:35
+  |
+9 | static FOO: &Lint = &Lint { desc: "desc" };
+  |                                   ^^^^^^ `Qux` cannot be made into an object
+  |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+ --> /tmp/icemaker_global_tempdir.3Xvq1QHsjJ49/rustc_testrunner_tmpdir_reporting.uMkbQerGsL7I/mvce.rs:2:8
+  |
+1 | trait Qux {
+  |       --- this trait cannot be made into an object...
+2 |     fn bar() -> i32;
+  |        ^^^ ...because associated function `bar` has no `self` parameter
+  = note: required for the cast from `&'static str` to `&'static (dyn Qux + 'static)`
+help: consider turning `bar` into a method by giving it a `&self` argument
+  |
+2 |     fn bar(&self) -> i32;
+  |            +++++
+help: alternatively, consider constraining `bar` so it does not apply to trait objects
+  |
+2 |     fn bar() -> i32 where Self: Sized;
+  |                     +++++++++++++++++
+
+error: internal compiler error: compiler/rustc_const_eval/src/interpret/operand.rs:84:42: Got a scalar pair where a scalar was expected
+
+thread 'rustc' panicked at compiler/rustc_const_eval/src/interpret/operand.rs:84:42:
+Box<dyn Any>
+stack backtrace:
+   0:     0x7a0e616d51ba - <std::sys::backtrace::BacktraceLock::print::DisplayBacktrace as core::fmt::Display>::fmt::h2b8b9078b210113e
+   1:     0x7a0e61e13426 - core::fmt::write::hdcc55b58dc0c6e20
+   2:     0x7a0e62d33551 - std::io::Write::write_fmt::h7c213661509c402d
+   3:     0x7a0e616d5012 - std::sys::backtrace::BacktraceLock::print::hdb143750fa5d59cd
+   4:     0x7a0e616d7519 - std::panicking::default_hook::{{closure}}::hf2cb20f74db395d1
+   5:     0x7a0e616d7362 - std::panicking::default_hook::h86d0bfbfd5bce384
+   6:     0x7a0e60846708 - std[ee56002db93e12e2]::panicking::update_hook::<alloc[b23fc7866e8473ce]::boxed::Box<rustc_driver_impl[18d794ab20952b7]::install_ice_hook::{closure#1}>>::{closure#0}
+   7:     0x7a0e616d7cd3 - std::panicking::rust_panic_with_hook::h34871acc4888ae97
+   8:     0x7a0e6087ea21 - std[ee56002db93e12e2]::panicking::begin_panic::<rustc_errors[d3d60be57c523ca2]::ExplicitBug>::{closure#0}
+   9:     0x7a0e60873c06 - std[ee56002db93e12e2]::sys::backtrace::__rust_end_short_backtrace::<std[ee56002db93e12e2]::panicking::begin_panic<rustc_errors[d3d60be57c523ca2]::ExplicitBug>::{closure#0}, !>
+  10:     0x7a0e60873bef - std[ee56002db93e12e2]::panicking::begin_panic::<rustc_errors[d3d60be57c523ca2]::ExplicitBug>
+  11:     0x7a0e60888981 - <rustc_errors[d3d60be57c523ca2]::diagnostic::BugAbort as rustc_errors[d3d60be57c523ca2]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  12:     0x7a0e60e67dc3 - rustc_middle[afd76c1e2fa1f4aa]::util::bug::opt_span_bug_fmt::<rustc_span[192a0d4408a1863b]::span_encoding::Span>::{closure#0}
+  13:     0x7a0e60e4ce6a - rustc_middle[afd76c1e2fa1f4aa]::ty::context::tls::with_opt::<rustc_middle[afd76c1e2fa1f4aa]::util::bug::opt_span_bug_fmt<rustc_span[192a0d4408a1863b]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+  14:     0x7a0e60e4ccfb - rustc_middle[afd76c1e2fa1f4aa]::ty::context::tls::with_context_opt::<rustc_middle[afd76c1e2fa1f4aa]::ty::context::tls::with_opt<rustc_middle[afd76c1e2fa1f4aa]::util::bug::opt_span_bug_fmt<rustc_span[192a0d4408a1863b]::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+  15:     0x7a0e5f1afd80 - rustc_middle[afd76c1e2fa1f4aa]::util::bug::bug_fmt
+  16:     0x7a0e6335fda7 - <rustc_const_eval[de8e8d1f69cd5ad7]::interpret::eval_context::InterpCx<rustc_const_eval[de8e8d1f69cd5ad7]::const_eval::machine::CompileTimeMachine>>::read_pointer::<rustc_const_eval[de8e8d1f69cd5ad7]::interpret::operand::OpTy>.cold
+  17:     0x7a0e61ef2876 - <rustc_const_eval[de8e8d1f69cd5ad7]::interpret::eval_context::InterpCx<rustc_const_eval[de8e8d1f69cd5ad7]::const_eval::machine::CompileTimeMachine>>::unsize_into_ptr
+  18:     0x7a0e62990c72 - <rustc_const_eval[de8e8d1f69cd5ad7]::interpret::eval_context::InterpCx<rustc_const_eval[de8e8d1f69cd5ad7]::const_eval::machine::CompileTimeMachine>>::eval_rvalue_into_place
+  19:     0x7a0e5fc6f4bd - rustc_const_eval[de8e8d1f69cd5ad7]::const_eval::eval_queries::eval_to_allocation_raw_provider
+  20:     0x7a0e625cd3be - rustc_query_impl[8926239a3dc5fb5d]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[8926239a3dc5fb5d]::query_impl::eval_to_allocation_raw::dynamic_query::{closure#2}::{closure#0}, rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 24usize]>>
+  21:     0x7a0e625cccec - rustc_query_system[8fc0a43a0b6251a8]::query::plumbing::try_execute_query::<rustc_query_impl[8926239a3dc5fb5d]::DynamicConfig<rustc_query_system[8fc0a43a0b6251a8]::query::caches::DefaultCache<rustc_middle[afd76c1e2fa1f4aa]::ty::PseudoCanonicalInput<rustc_middle[afd76c1e2fa1f4aa]::mir::interpret::GlobalId>, rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 24usize]>>, false, false, false>, rustc_query_impl[8926239a3dc5fb5d]::plumbing::QueryCtxt, false>
+  22:     0x7a0e625cc84d - rustc_query_impl[8926239a3dc5fb5d]::query_impl::eval_to_allocation_raw::get_query_non_incr::__rust_end_short_backtrace
+  23:     0x7a0e625ca3f7 - rustc_const_eval[de8e8d1f69cd5ad7]::const_eval::eval_queries::eval_to_const_value_raw_provider
+  24:     0x7a0e625ca200 - rustc_query_impl[8926239a3dc5fb5d]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[8926239a3dc5fb5d]::query_impl::eval_to_const_value_raw::dynamic_query::{closure#2}::{closure#0}, rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 24usize]>>
+  25:     0x7a0e625ccca3 - rustc_query_system[8fc0a43a0b6251a8]::query::plumbing::try_execute_query::<rustc_query_impl[8926239a3dc5fb5d]::DynamicConfig<rustc_query_system[8fc0a43a0b6251a8]::query::caches::DefaultCache<rustc_middle[afd76c1e2fa1f4aa]::ty::PseudoCanonicalInput<rustc_middle[afd76c1e2fa1f4aa]::mir::interpret::GlobalId>, rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 24usize]>>, false, false, false>, rustc_query_impl[8926239a3dc5fb5d]::plumbing::QueryCtxt, false>
+  26:     0x7a0e625cc755 - rustc_query_impl[8926239a3dc5fb5d]::query_impl::eval_to_const_value_raw::get_query_non_incr::__rust_end_short_backtrace
+  27:     0x7a0e61ef9da6 - <rustc_middle[afd76c1e2fa1f4aa]::ty::context::TyCtxt>::const_eval_resolve
+  28:     0x7a0e631513d4 - rustc_const_eval[de8e8d1f69cd5ad7]::const_eval::eval_queries::eval_body_using_ecx::<rustc_middle[afd76c1e2fa1f4aa]::mir::interpret::allocation::ConstAllocation>
+  29:     0x7a0e6314bd3d - rustc_const_eval[de8e8d1f69cd5ad7]::const_eval::eval_queries::eval_static_initializer_provider
+  30:     0x7a0e6314bae7 - rustc_query_impl[8926239a3dc5fb5d]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[8926239a3dc5fb5d]::query_impl::eval_static_initializer::dynamic_query::{closure#2}::{closure#0}, rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 16usize]>>
+  31:     0x7a0e6314bac9 - <rustc_query_impl[8926239a3dc5fb5d]::query_impl::eval_static_initializer::dynamic_query::{closure#2} as core[d5539697cc88e8d8]::ops::function::FnOnce<(rustc_middle[afd76c1e2fa1f4aa]::ty::context::TyCtxt, rustc_span[192a0d4408a1863b]::def_id::DefId)>>::call_once
+  32:     0x7a0e6203f78a - rustc_query_system[8fc0a43a0b6251a8]::query::plumbing::try_execute_query::<rustc_query_impl[8926239a3dc5fb5d]::DynamicConfig<rustc_query_system[8fc0a43a0b6251a8]::query::caches::DefIdCache<rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 16usize]>>, false, false, false>, rustc_query_impl[8926239a3dc5fb5d]::plumbing::QueryCtxt, false>
+  33:     0x7a0e62d8d6b8 - rustc_query_impl[8926239a3dc5fb5d]::query_impl::eval_static_initializer::get_query_non_incr::__rust_end_short_backtrace
+  34:     0x7a0e620fbf4d - <rustc_middle[afd76c1e2fa1f4aa]::hir::map::Map>::par_body_owners::<rustc_hir_analysis[8a14451cc762fcb8]::check_crate::{closure#3}>::{closure#0}
+  35:     0x7a0e620f98a5 - rustc_hir_analysis[8a14451cc762fcb8]::check_crate
+  36:     0x7a0e622700e8 - rustc_interface[b9625d7f43db6951]::passes::run_required_analyses
+  37:     0x7a0e62d472de - rustc_interface[b9625d7f43db6951]::passes::analysis
+  38:     0x7a0e62d472af - rustc_query_impl[8926239a3dc5fb5d]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[8926239a3dc5fb5d]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 0usize]>>
+  39:     0x7a0e62d92055 - rustc_query_system[8fc0a43a0b6251a8]::query::plumbing::try_execute_query::<rustc_query_impl[8926239a3dc5fb5d]::DynamicConfig<rustc_query_system[8fc0a43a0b6251a8]::query::caches::SingleCache<rustc_middle[afd76c1e2fa1f4aa]::query::erase::Erased<[u8; 0usize]>>, false, false, false>, rustc_query_impl[8926239a3dc5fb5d]::plumbing::QueryCtxt, false>
+  40:     0x7a0e62d91d8e - rustc_query_impl[8926239a3dc5fb5d]::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+  41:     0x7a0e62e0091e - rustc_interface[b9625d7f43db6951]::passes::create_and_enter_global_ctxt::<core[d5539697cc88e8d8]::option::Option<rustc_interface[b9625d7f43db6951]::queries::Linker>, rustc_driver_impl[18d794ab20952b7]::run_compiler::{closure#0}::{closure#2}>::{closure#2}::{closure#0}
+  42:     0x7a0e62dd5ca4 - rustc_interface[b9625d7f43db6951]::interface::run_compiler::<(), rustc_driver_impl[18d794ab20952b7]::run_compiler::{closure#0}>::{closure#1}
+  43:     0x7a0e62c65891 - std[ee56002db93e12e2]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[b9625d7f43db6951]::util::run_in_thread_with_globals<rustc_interface[b9625d7f43db6951]::util::run_in_thread_pool_with_globals<rustc_interface[b9625d7f43db6951]::interface::run_compiler<(), rustc_driver_impl[18d794ab20952b7]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>
+  44:     0x7a0e62c65d48 - <<std[ee56002db93e12e2]::thread::Builder>::spawn_unchecked_<rustc_interface[b9625d7f43db6951]::util::run_in_thread_with_globals<rustc_interface[b9625d7f43db6951]::util::run_in_thread_pool_with_globals<rustc_interface[b9625d7f43db6951]::interface::run_compiler<(), rustc_driver_impl[18d794ab20952b7]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>::{closure#1} as core[d5539697cc88e8d8]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  45:     0x7a0e62c67301 - std::sys::pal::unix::thread::Thread::new::thread_start::h8be4dfe5558d2b77
+  46:     0x7a0e5d0a339d - <unknown>
+  47:     0x7a0e5d12849c - <unknown>
+  48:                0x0 - <unknown>
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.85.0-nightly (c528b8c67 2025-01-02) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z crate-attr=feature(dyn_compatible_for_dispatch) -Z dump-mir-dir=dir
+
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `FOO::promoted[0]`
+#1 [eval_to_const_value_raw] simplifying constant for the type system `FOO::promoted[0]`
+#2 [eval_static_initializer] evaluating initializer of static `FOO`
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0038, E0277, E0601.
+For more information about an error, try `rustc --explain E0038`.
+
+Bug Labels:
+C-bug, F-dyn_compatible_for_dispatch, I-ICE, T-compiler

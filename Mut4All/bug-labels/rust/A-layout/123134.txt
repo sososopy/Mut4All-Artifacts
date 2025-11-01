@@ -1,0 +1,142 @@
+Issue Title:
+univariant: field #2 comes after unsized field · Issue #123134 · rust-lang/rust · GitHub
+
+Rust Code:
+trait Api: Sized {
+    type Device: ?Sized;
+}
+
+struct OpenDevice<A: Api>
+where
+    A::Device: Sized,
+{
+    device: A::Device,
+    queue: (),
+}
+
+trait Adapter {
+    type A: Api;
+
+    fn open() -> OpenDevice<Self::A>
+    where
+        <Self::A as Api>::Device: Sized;
+}
+
+struct ApiS;
+
+impl Api for ApiS {
+    type Device = [u8];
+}
+
+impl<T> Adapter for T {
+    type A = ApiS;
+
+    fn open() -> OpenDevice<Self::A>
+    where
+        <Self::A as Api>::Device: Sized,
+    {
+        unreachable!()
+    }
+}
+
+Bug Trace:
+error: internal compiler error: no errors encountered even though `span_delayed_bug` issued
+error: internal compiler error: univariant: field #2 comes after unsized field
+|
+= note: delayed at compiler/rustc_middle/src/ty/layout.rs:286:23
+           0: std::backtrace::Backtrace::create
+           1: <rustc_errors::DiagCtxtInner>::emit_diagnostic_without_consuming
+           2: <rustc_errors::DiagCtxtInner>::emit_diagnostic
+           3: <rustc_errors::DiagCtxt>::span_delayed_bug::<rustc_span::span_encoding::Span, alloc::string::String>
+           4: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_abi::layout::LayoutCalculator>::delayed_bug
+           5: rustc_abi::layout::univariant::<rustc_target::abi::FieldIdx, rustc_target::abi::VariantIdx, rustc_target::abi::Layout, rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>>
+           6: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_abi::layout::LayoutCalculator>::univariant::<rustc_target::abi::FieldIdx, rustc_target::abi::VariantIdx, rustc_target::abi::Layout>
+           7: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_abi::layout::LayoutCalculator>::layout_of_struct_or_enum::<rustc_target::abi::FieldIdx, rustc_target::abi::VariantIdx, rustc_target::abi::Layout, rustc_ty_utils::layout::layout_of_uncached::{closure#10}, core::iter::adapters::flatten::Flatten<core::option::IntoIter<core::iter::adapters::map::Map<core::iter::adapters::map::Map<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::VariantDef>>, <rustc_index::slice::IndexSlice<rustc_target::abi::VariantIdx, rustc_middle::ty::VariantDef>>::iter_enumerated::{closure#0}>, <rustc_middle::ty::adt::AdtDef>::discriminants::{closure#0}>, rustc_ty_utils::layout::layout_of_uncached::{closure#11}::{closure#0}::{closure#0}>>>>
+           8: rustc_ty_utils::layout::layout_of_uncached
+           9: rustc_ty_utils::layout::layout_of
+          10: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::layout_of::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 16]>>
+          11: <rustc_query_impl::query_impl::layout_of::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>)>>::call_once
+          12: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 16]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+          13: rustc_query_impl::query_impl::layout_of::get_query_incr::__rust_end_short_backtrace
+          14: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_middle::ty::layout::LayoutOf>::spanned_layout_of
+          15: core::iter::adapters::try_process::<core::iter::adapters::by_ref_sized::ByRefSized<core::iter::adapters::map::Map<core::slice::iter::Iter<rustc_middle::ty::FieldDef>, rustc_ty_utils::layout::layout_of_uncached::{closure#8}::{closure#0}>>, rustc_target::abi::Layout, core::result::Result<core::convert::Infallible, &rustc_middle::ty::layout::LayoutError>, <core::iter::adapters::map::Map<core::slice::iter::Iter<rustc_middle::ty::FieldDef>, rustc_ty_utils::layout::layout_of_uncached::{closure#8}::{closure#0}> as core::iter::traits::iterator::Iterator>::try_collect<rustc_index::vec::IndexVec<rustc_target::abi::FieldIdx, rustc_target::abi::Layout>>::{closure#0}, rustc_index::vec::IndexVec<rustc_target::abi::FieldIdx, rustc_target::abi::Layout>>
+          16: core::iter::adapters::try_process::<core::iter::adapters::by_ref_sized::ByRefSized<core::iter::adapters::map::Map<core::slice::iter::Iter<rustc_middle::ty::VariantDef>, rustc_ty_utils::layout::layout_of_uncached::{closure#8}>>, rustc_index::vec::IndexVec<rustc_target::abi::FieldIdx, rustc_target::abi::Layout>, core::result::Result<core::convert::Infallible, &rustc_middle::ty::layout::LayoutError>, <core::iter::adapters::map::Map<core::slice::iter::Iter<rustc_middle::ty::VariantDef>, rustc_ty_utils::layout::layout_of_uncached::{closure#8}> as core::iter::traits::iterator::Iterator>::try_collect<rustc_index::vec::IndexVec<rustc_target::abi::VariantIdx, rustc_index::vec::IndexVec<rustc_target::abi::FieldIdx, rustc_target::abi::Layout>>>::{closure#0}, rustc_index::vec::IndexVec<rustc_target::abi::VariantIdx, rustc_index::vec::IndexVec<rustc_target::abi::FieldIdx, rustc_target::abi::Layout>>>
+          17: rustc_ty_utils::layout::layout_of_uncached
+          18: rustc_ty_utils::layout::layout_of
+          19: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::layout_of::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 16]>>
+          20: <rustc_query_impl::query_impl::layout_of::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>)>>::call_once
+          21: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 16]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+          22: rustc_query_impl::query_impl::layout_of::get_query_incr::__rust_end_short_backtrace
+          23: rustc_middle::query::plumbing::query_get_at::<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 16]>>>
+          24: <rustc_mir_transform::const_prop::CanConstProp>::check
+          25: <rustc_mir_transform::const_prop_lint::ConstPropLint as rustc_mir_transform::pass_manager::MirLint>::run_lint
+          26: rustc_mir_transform::pass_manager::run_passes_inner
+          27: rustc_mir_transform::run_analysis_to_runtime_passes
+          28: rustc_mir_transform::mir_drops_elaborated_and_const_checked
+          29: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::mir_drops_elaborated_and_const_checked::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+          30: <rustc_query_impl::query_impl::mir_drops_elaborated_and_const_checked::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+          31: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+          32: rustc_query_impl::query_impl::mir_drops_elaborated_and_const_checked::get_query_incr::__rust_end_short_backtrace
+          33: rustc_mir_transform::optimized_mir
+          34: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::optimized_mir::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+          35: <rustc_query_impl::query_impl::optimized_mir::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId)>>::call_once
+          36: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::DefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+          37: rustc_query_impl::query_impl::optimized_mir::get_query_incr::__rust_end_short_backtrace
+          38: rustc_middle::query::plumbing::query_get_at::<rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::DefId, rustc_middle::query::erase::Erased<[u8; 8]>>>
+          39: <clippy_lints::redundant_clone::RedundantClone as rustc_lint::passes::LateLintPass>::check_fn
+          40: rustc_hir::intravisit::walk_impl_item::<rustc_lint::late::LateContextAndPass<rustc_lint::late::RuntimeCombinedLateLintPass>>
+          41: <rustc_lint::late::LateContextAndPass<rustc_lint::late::RuntimeCombinedLateLintPass> as rustc_hir::intravisit::Visitor>::visit_nested_impl_item
+          42: rustc_hir::intravisit::walk_item::<rustc_lint::late::LateContextAndPass<rustc_lint::late::RuntimeCombinedLateLintPass>>
+          43: <rustc_lint::late::LateContextAndPass<rustc_lint::late::RuntimeCombinedLateLintPass> as rustc_hir::intravisit::Visitor>::visit_nested_item
+          44: rustc_hir::intravisit::walk_item::<rustc_lint::late::LateContextAndPass<rustc_lint::late::RuntimeCombinedLateLintPass>>
+          45: <rustc_lint::late::LateContextAndPass<rustc_lint::late::RuntimeCombinedLateLintPass> as rustc_hir::intravisit::Visitor>::visit_nested_item
+          46: rustc_lint::late::late_lint_crate
+          47: <rustc_session::session::Session>::time::<(), rustc_lint::late::check_crate::{closure#0}::{closure#0}>
+          48: <rustc_data_structures::sync::parallel::ParallelGuard>::run::<(), rustc_lint::late::check_crate::{closure#0}>
+          49: rustc_data_structures::sync::parallel::disabled::join::<rustc_lint::late::check_crate::{closure#0}, rustc_lint::late::check_crate::{closure#1}, (), ()>
+          50: rustc_lint::late::check_crate
+          51: <rustc_session::session::Session>::time::<(), rustc_interface::passes::analysis::{closure#6}::{closure#1}::{closure#0}::{closure#0}::{closure#2}::{closure#0}>
+          52: <rustc_data_structures::sync::parallel::ParallelGuard>::run::<(), rustc_interface::passes::analysis::{closure#6}::{closure#1}::{closure#0}::{closure#0}::{closure#2}>
+          53: std::panicking::try::<(), core::panic::unwind_safe::AssertUnwindSafe<rustc_interface::passes::analysis::{closure#6}::{closure#1}::{closure#0}>>
+          54: <rustc_data_structures::sync::parallel::ParallelGuard>::run::<(), rustc_interface::passes::analysis::{closure#6}::{closure#1}::{closure#0}>
+          55: <rustc_session::session::Session>::time::<(), rustc_interface::passes::analysis::{closure#6}>
+          56: rustc_interface::passes::analysis
+          57: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 1]>>
+          58: <rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, ())>>::call_once
+          59: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+          60: rustc_query_impl::query_impl::analysis::get_query_incr::__rust_end_short_backtrace
+          61: <rustc_middle::ty::context::GlobalCtxt>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#0}::{closure#3}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+          62: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#0}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+          63: rustc_span::create_session_globals_then::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}>
+          64: std::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+          65: <<std::thread::Builder>::spawn_unchecked_<rustc_interface::util::run_in_thread_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#1} as core::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+          66: std::sys::unix::thread::Thread::new::thread_start
+          67: __pthread_joiner_wake
+        
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml
+
+note: rustc 1.76.0 (07dca489a 2024-02-04) running on aarch64-apple-darwin
+
+note: compiler flags: --crate-type lib -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+note: Clippy version: clippy 0.1.76 (07dca489 2024-02-04)
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml
+
+note: rustc 1.76.0 (07dca489a 2024-02-04) running on aarch64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+note: Clippy version: clippy 0.1.76 (07dca489 2024-02-04)
+
+Bug Labels:
+A-layout, C-bug, I-ICE, S-bug-has-test, S-has-mcve, T-compiler

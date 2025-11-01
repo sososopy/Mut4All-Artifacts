@@ -1,0 +1,114 @@
+Issue Title:
+Existential type ICE · Issue #52985 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(existential_type)]
+
+existential type Foo: Copy;
+
+// make compiler happy about using 'Foo'
+fn bar(x: Foo) -> Foo { x }
+
+fn main() {
+    
+    // make compiler happy about the types??
+    let _: Foo = unsafe { std::mem::transmute(0u8) };
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (file:///playground)
+error: internal compiler error: librustc/traits/query/normalize.rs:124: infinite recursion generic_ty: Foo, substs: [], concrete_ty: Foo, ty: Foo
+
+thread 'main' panicked at 'Box<Any>', librustc_errors/lib.rs:578:9
+stack backtrace:
+   0: std::sys::unix::backtrace::tracing::imp::unwind_backtrace
+             at libstd/sys/unix/backtrace/tracing/gcc_s.rs:49
+   1: std::sys_common::backtrace::print
+             at libstd/sys_common/backtrace.rs:71
+             at libstd/sys_common/backtrace.rs:59
+   2: std::panicking::default_hook::{{closure}}
+             at libstd/panicking.rs:211
+   3: std::panicking::default_hook
+             at libstd/panicking.rs:227
+   4: rustc::util::common::panic_hook
+   5: std::panicking::rust_panic_with_hook
+             at libstd/panicking.rs:479
+   6: std::panicking::begin_panic
+   7: rustc_errors::Handler::bug
+   8: rustc::session::opt_span_bug_fmt::{{closure}}
+   9: rustc::ty::context::tls::with_opt::{{closure}}
+  10: rustc::ty::context::tls::with_context_opt
+  11: rustc::ty::context::tls::with_opt
+  12: rustc::session::opt_span_bug_fmt
+  13: rustc::session::bug_fmt
+  14: <rustc::traits::query::normalize::QueryNormalizer<'cx, 'gcx, 'tcx> as rustc::ty::fold::TypeFolder<'gcx, 'tcx>>::fold_ty
+  15: rustc::traits::query::normalize::<impl rustc::infer::at::At<'cx, 'gcx, 'tcx>>::normalize
+  16: rustc::ty::context::tls::with_related_context
+  17: rustc::infer::InferCtxtBuilder::enter
+  18: rustc_traits::normalize_erasing_regions::normalize_ty_after_erasing_regions
+  19: rustc::ty::query::__query_compute::normalize_ty_after_erasing_regions
+  20: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors<'tcx> for rustc::ty::query::queries::normalize_ty_after_erasing_regions<'tcx>>::compute
+  21: rustc::dep_graph::graph::DepGraph::with_task_impl
+  22: rustc::ty::context::tls::with_related_context
+  23: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::force_query_with_job
+  24: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt<'a, 'gcx, 'tcx>>::get_query
+  25: <rustc::ty::layout::LayoutCx<'tcx, rustc::ty::context::TyCtxt<'a, 'tcx, 'tcx>> as rustc_target::abi::LayoutOf>::layout_of
+  26: rustc::ty::layout::SizeSkeleton::compute
+  27: <rustc::middle::intrinsicck::ExprVisitor<'a, 'tcx> as rustc::hir::intravisit::Visitor<'tcx>>::visit_expr
+  28: rustc::hir::intravisit::walk_expr
+  29: <rustc::middle::intrinsicck::ExprVisitor<'a, 'tcx> as rustc::hir::intravisit::Visitor<'tcx>>::visit_expr
+  30: <rustc::middle::intrinsicck::ExprVisitor<'a, 'tcx> as rustc::hir::intravisit::Visitor<'tcx>>::visit_expr
+  31: rustc::hir::intravisit::walk_block
+  32: <rustc::middle::intrinsicck::ExprVisitor<'a, 'tcx> as rustc::hir::intravisit::Visitor<'tcx>>::visit_expr
+  33: <rustc::middle::intrinsicck::ItemVisitor<'a, 'tcx> as rustc::hir::intravisit::Visitor<'tcx>>::visit_nested_body
+  34: rustc::hir::Crate::visit_all_item_likes
+  35: rustc::middle::intrinsicck::check_crate
+  36: rustc::util::common::time
+  37: rustc::ty::context::tls::enter_context
+  38: <std::thread::local::LocalKey<T>>::with
+  39: rustc::ty::context::TyCtxt::create_and_enter
+  40: rustc_driver::driver::compile_input
+  41: rustc_driver::run_compiler_with_pool
+  42: <scoped_tls::ScopedKey<T>>::set
+  43: <scoped_tls::ScopedKey<T>>::set
+  44: syntax::with_globals
+  45: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+  46: __rust_maybe_catch_panic
+             at libpanic_unwind/lib.rs:105
+  47: rustc_driver::run
+  48: rustc_driver::main
+  49: std::rt::lang_start::{{closure}}
+  50: std::panicking::try::do_call
+             at libstd/rt.rs:59
+             at libstd/panicking.rs:310
+  51: __rust_maybe_catch_panic
+             at libpanic_unwind/lib.rs:105
+  52: std::rt::lang_start_internal
+             at libstd/panicking.rs:289
+             at libstd/panic.rs:392
+             at libstd/rt.rs:58
+  53: main
+  54: __libc_start_main
+  55: <unknown>
+query stack during panic:
+#0 [normalize_ty_after_erasing_regions] normalizing `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All }, value: Foo }`
+end of query stack
+error: aborting due to previous error
+
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.29.0-nightly (97085f9fb 2018-08-01) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C opt-level=3 -C codegen-units=1 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+error: Could not compile `playground`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-impl-trait, E-mentor, I-ICE

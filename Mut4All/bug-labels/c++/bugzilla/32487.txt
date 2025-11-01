@@ -1,0 +1,31 @@
+Issue Title:
+Assertion failed: Result.isUninit() && "temporary created multiple times", file ExprConstant.cpp, line 1107
+
+Source Code & Bug Trace:
+struct S {
+  constexpr S(const int &a = 0) {}
+};
+void foo(void) {
+  S s[2] = {};
+}
+
+Remove Sema::CheckForIntOverflow, and instead check all full-expressions.
+
+CheckForIntOverflow used to implement a whitelist of top-level expressions to
+send to the constant expression evaluator, which handled many more expressions
+than the CheckForIntOverflow whitelist did.
+
+
+git-svn-id: https://llvm.org/svn/llvm-project/cfe/trunk@301742 91177308-0d34-0410-b5e6-96231b3b80d8
+
+
+bool bar(float const &f = 0);
+bool foo() { return bar() && bar(); }
+
+The constant expression evaluator should examine function arguments for non-constexpr function calls unless the EvalInfo says to stop.
+
+git-svn-id: https://llvm.org/svn/llvm-project/cfe/trunk@303317 91177308-0d34-0410-b5e6-96231b3b80d8
+
+
+Bug Labels:
+bugzilla, c++, clang:frontend, crash

@@ -1,0 +1,66 @@
+Issue Title:
+[Clang] Alias  std::format_string  CTAD cause ICE
+
+Source Code & Bug Trace:
+#include <format>
+
+constexpr std::format_string fs = "";
+
+<source>:3:30: error: alias template 'format_string' requires template arguments; argument deduction only allowed for class templates
+    3 | constexpr std::format_string fs = "";
+      |                              ^
+/opt/compiler-explorer/gcc-13.2.0/lib/gcc/x86_64-linux-gnu/13.2.0/../../../../include/c++/13.2.0/format:128:5: note: template is declared here
+  128 |     using format_string = basic_format_string<char, type_identity_t<_Args>...>;
+      |     ^
+1 error generated.
+
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk-20240514/bin/clang-19 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -dumpdir /app/output.s- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name example.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/app -fcoverage-compilation-dir=/app -resource-dir /opt/compiler-explorer/clang-trunk-20240514/lib/clang/19 -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../include/c++/15.0.0 -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../include/c++/15.0.0/x86_64-linux-gnu -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../include/c++/15.0.0/backward -internal-isystem /opt/compiler-explorer/clang-trunk-20240514/lib/clang/19/include -internal-isystem /usr/local/include -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++26 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/example-638e27.o -x c++ <source>
+1.	<source>:3:37: current parser token ';'
+ #0 0x0000000003705f38 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x3705f38)
+ #1 0x00000000037038ac SignalHandler(int) Signals.cpp:0:0
+ #2 0x00007943a3242520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #3 0x00000000070dc3fa clang::StmtVisitorBase<llvm::make_const_ptr, (anonymous namespace)::IntExprEvaluator, bool>::Visit(clang::Stmt const*) ExprConstant.cpp:0:0
+ #4 0x00000000070af47e Evaluate(clang::APValue&, (anonymous namespace)::EvalInfo&, clang::Expr const*) ExprConstant.cpp:0:0
+ #5 0x00000000070c2436 EvaluateInPlace(clang::APValue&, (anonymous namespace)::EvalInfo&, (anonymous namespace)::LValue const&, clang::Expr const*, bool) (.constprop.0) ExprConstant.cpp:0:0
+ #6 0x00000000070e6baa clang::Expr::EvaluateAsConstantExpr(clang::Expr::EvalResult&, clang::ASTContext const&, clang::Expr::ConstantExprKind) const (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x70e6baa)
+ #7 0x000000000614666d clang::ActionResult<clang::Expr*, true> calculateConstraintSatisfaction<calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::'lambda'(clang::Expr const*)>(clang::Sema&, clang::Expr const*, clang::ConstraintSatisfaction&, calculateConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, clang::SourceLocation, clang::MultiLevelTemplateArgumentList const&, clang::Expr const*, clang::ConstraintSatisfaction&)::'lambda'(clang::Expr const*)&&) SemaConcept.cpp:0:0
+ #8 0x0000000006146c58 CheckConstraintSatisfaction(clang::Sema&, clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) SemaConcept.cpp:0:0
+ #9 0x00000000061471f8 clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x61471f8)
+#10 0x0000000006147e67 clang::Sema::CheckInstantiatedFunctionTemplateConstraints(clang::SourceLocation, clang::FunctionDecl*, llvm::ArrayRef<clang::TemplateArgument>, clang::ConstraintSatisfaction&) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x6147e67)
+#11 0x00000000069f7b4a clang::Sema::FinishTemplateArgumentDeduction(clang::FunctionTemplateDecl*, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg> const*, bool, llvm::function_ref<bool ()>) (.constprop.0) SemaTemplateDeduction.cpp:0:0
+#12 0x00000000069f866a void llvm::function_ref<void ()>::callback_fn<clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>)::'lambda1'()>(long) SemaTemplateDeduction.cpp:0:0
+#13 0x0000000005fd78f1 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5fd78f1)
+#14 0x0000000006a0f2ef clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x6a0f2ef)
+#15 0x00000000067e27cd clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind, clang::OverloadCandidateParamOrder, bool) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x67e27cd)
+#16 0x000000000661fabb clang::Sema::DeduceTemplateSpecializationFromInitializer(clang::TypeSourceInfo*, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>)::'lambda0'(bool)::operator()(bool) const SemaInit.cpp:0:0
+#17 0x0000000006620415 clang::Sema::DeduceTemplateSpecializationFromInitializer(clang::TypeSourceInfo*, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x6620415)
+#18 0x00000000061bd128 clang::Sema::deduceVarTypeFromInitializer(clang::VarDecl*, clang::DeclarationName, clang::QualType, clang::TypeSourceInfo*, clang::SourceRange, bool, clang::Expr*) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x61bd128)
+#19 0x00000000061d681b clang::Sema::DeduceVariableDeclarationType(clang::VarDecl*, bool, clang::Expr*) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x61d681b)
+#20 0x0000000006202194 clang::Sema::AddInitializerToDecl(clang::Decl*, clang::Expr*, bool) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x6202194)
+#21 0x0000000005e9bba5 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5e9bba5)
+#22 0x0000000005eb0214 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5eb0214)
+#23 0x0000000005e62e27 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5e62e27)
+#24 0x0000000005e63d13 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5e63d13)
+#25 0x0000000005e6c3b2 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5e6c3b2)
+#26 0x0000000005e6e167 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5e6e167)
+#27 0x0000000005e5d15a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x5e5d15a)
+#28 0x0000000003f82fd5 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x3f82fd5)
+#29 0x000000000421e0e1 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x421e0e1)
+#30 0x00000000041a3fcb clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x41a3fcb)
+#31 0x0000000004302843 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0x4302843)
+#32 0x0000000000c5d9ac cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0xc5d9ac)
+#33 0x0000000000c57aad ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#34 0x0000000000c5accf clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0xc5accf)
+#35 0x0000000000b3cb74 main (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0xb3cb74)
+#36 0x00007943a3229d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#37 0x00007943a3229e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#38 0x0000000000c5754e _start (/opt/compiler-explorer/clang-trunk-20240514/bin/clang-19+0xc5754e)
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+
+
+Bug Labels:
+clang:frontend, crash

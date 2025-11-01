@@ -1,0 +1,160 @@
+Issue Title:
+ICE: `polymorphization does not support coroutines from async closures` · Issue #124020 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_closure, noop_waker, async_fn_traits)]
+
+use std::future::Future;
+use std::pin::pin;
+use std::task::*;
+
+pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
+    let mut fut = pin!(fut);
+    let ctx = &mut Context::from_waker(Waker::noop());
+
+    loop {
+        match fut.as_mut().poll(ctx) {
+            Poll::Pending => {}
+            Poll::Ready(t) => break t,
+        }
+    }
+}
+
+async fn call_once(f: impl async FnOnce(DropMe)) {
+    f(DropMe("world")).await;
+}
+
+struct DropMe(&'static str);
+
+pub fn future() {
+    block_on(async {
+        let async_closure = async move |a: DropMe| {};
+        call_once(async_closure).await;
+    });
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zpolymorphize=on --edition=2018 --crate-type=lib
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zpolymorphize=on --edition=2018 --crate-type=lib
+
+Bug Trace:
+warning: unused variable: `a`
+  --> /tmp/icemaker_global_tempdir.QzD0Jl0Ydl5n/rustc_testrunner_tmpdir_reporting.WyC59e3kD9rD/mvce.rs:27:41
+   |
+27 |         let async_closure = async move |a: DropMe| {};
+   |                                         ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: field `0` is never read
+  --> /tmp/icemaker_global_tempdir.QzD0Jl0Ydl5n/rustc_testrunner_tmpdir_reporting.WyC59e3kD9rD/mvce.rs:23:15
+   |
+23 | struct DropMe(&'static str);
+   |        ------ ^^^^^^^^^^^^
+   |        |
+   |        field in this struct
+   |
+   = note: `#[warn(dead_code)]` on by default
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+   |
+23 | struct DropMe(());
+   |               ~~
+
+thread 'rustc' panicked at compiler/rustc_middle/src/ty/instance.rs:828:13:
+assertion `left == right` failed: polymorphization does not support coroutines from async closures
+  left: i32
+ right: ()
+stack backtrace:
+   0:     0x74ce26e32cd5 - std::backtrace_rs::backtrace::libunwind::trace::hdd748c7838285883
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/../../backtrace/src/backtrace/libunwind.rs:105:5
+   1:     0x74ce26e32cd5 - std::backtrace_rs::backtrace::trace_unsynchronized::ha1462979ee6a2e4a
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x74ce26e32cd5 - std::sys_common::backtrace::_print_fmt::h423f6c0147b1e726
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x74ce26e32cd5 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h8781c340849a7502
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x74ce26e81f9b - core::fmt::rt::Argument::fmt::he5b1af0e8d850256
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/core/src/fmt/rt.rs:165:63
+   5:     0x74ce26e81f9b - core::fmt::write::hcd3c5ccee382395a
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/core/src/fmt/mod.rs:1157:21
+   6:     0x74ce26e2785f - std::io::Write::write_fmt::h7d1e4c46a9034f24
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/io/mod.rs:1832:15
+   7:     0x74ce26e32aae - std::sys_common::backtrace::_print::he7fe8e3f6f78aca7
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x74ce26e32aae - std::sys_common::backtrace::print::h3ca58da6c9bbfe9e
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x74ce26e35429 - std::panicking::default_hook::{{closure}}::h04ae4afc91fb7ed6
+  10:     0x74ce26e3516d - std::panicking::default_hook::hb7ac4e3868494960
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/panicking.rs:291:9
+  11:     0x74ce2367b1cb - std[cc9b189ccd9d9748]::panicking::update_hook::<alloc[cf0b8628080ef300]::boxed::Box<rustc_driver_impl[e492dcc29030f304]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x74ce26e35b2c - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h1bda734d4b3a4644
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/alloc/src/boxed.rs:2032:9
+  13:     0x74ce26e35b2c - std::panicking::rust_panic_with_hook::hd0146bfa2503919c
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/panicking.rs:792:13
+  14:     0x74ce26e358d6 - std::panicking::begin_panic_handler::{{closure}}::hd32f7e647243a109
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/panicking.rs:657:13
+  15:     0x74ce26e33199 - std::sys_common::backtrace::__rust_end_short_backtrace::h14d8021dc65165b8
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/sys_common/backtrace.rs:171:18
+  16:     0x74ce26e35607 - rust_begin_unwind
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/panicking.rs:645:5
+  17:     0x74ce26e7e446 - core::panicking::panic_fmt::h787b219e21ce34f0
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/core/src/panicking.rs:72:14
+  18:     0x74ce26e7ea0f - core::panicking::assert_failed_inner::h8c6b5f6736a358ad
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/core/src/panicking.rs:397:23
+  19:     0x74ce23ac7c43 - core[8ca2cc90ba3a0179]::panicking::assert_failed::<rustc_middle[11164a6ce117b708]::ty::Ty, rustc_middle[11164a6ce117b708]::ty::Ty>
+  20:     0x74ce23b4b8d0 - rustc_middle[11164a6ce117b708]::ty::instance::polymorphize
+  21:     0x74ce2228d3cb - rustc_monomorphize[1cf83bd9d05aea12]::collector::collect_items_rec::{closure#0}
+  22:     0x74ce2584a2f9 - rustc_monomorphize[1cf83bd9d05aea12]::collector::collect_items_rec
+  23:     0x74ce2584aca6 - rustc_monomorphize[1cf83bd9d05aea12]::collector::collect_items_rec
+  24:     0x74ce2584aca6 - rustc_monomorphize[1cf83bd9d05aea12]::collector::collect_items_rec
+  25:     0x74ce2584aca6 - rustc_monomorphize[1cf83bd9d05aea12]::collector::collect_items_rec
+  26:     0x74ce25844dec - rustc_monomorphize[1cf83bd9d05aea12]::partitioning::collect_and_partition_mono_items
+  27:     0x74ce258443e8 - rustc_query_impl[2063281436f076b]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[2063281436f076b]::query_impl::collect_and_partition_mono_items::dynamic_query::{closure#2}::{closure#0}, rustc_middle[11164a6ce117b708]::query::erase::Erased<[u8; 24usize]>>
+  28:     0x74ce258443cd - <rustc_query_impl[2063281436f076b]::query_impl::collect_and_partition_mono_items::dynamic_query::{closure#2} as core[8ca2cc90ba3a0179]::ops::function::FnOnce<(rustc_middle[11164a6ce117b708]::ty::context::TyCtxt, ())>>::call_once
+  29:     0x74ce25840f54 - rustc_query_system[8bdce35ed35c4821]::query::plumbing::try_execute_query::<rustc_query_impl[2063281436f076b]::DynamicConfig<rustc_query_system[8bdce35ed35c4821]::query::caches::SingleCache<rustc_middle[11164a6ce117b708]::query::erase::Erased<[u8; 24usize]>>, false, false, false>, rustc_query_impl[2063281436f076b]::plumbing::QueryCtxt, false>
+  30:     0x74ce25840c4b - rustc_query_impl[2063281436f076b]::query_impl::collect_and_partition_mono_items::get_query_non_incr::__rust_end_short_backtrace
+  31:     0x74ce254df8cd - rustc_codegen_ssa[c0308cd1d1075584]::back::symbol_export::exported_symbols_provider_local
+  32:     0x74ce24c72f25 - rustc_query_impl[2063281436f076b]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[2063281436f076b]::query_impl::exported_symbols::dynamic_query::{closure#2}::{closure#0}, rustc_middle[11164a6ce117b708]::query::erase::Erased<[u8; 16usize]>>
+  33:     0x74ce24c72ef5 - <rustc_query_impl[2063281436f076b]::query_impl::exported_symbols::dynamic_query::{closure#2} as core[8ca2cc90ba3a0179]::ops::function::FnOnce<(rustc_middle[11164a6ce117b708]::ty::context::TyCtxt, rustc_span[1f43cfd63a717c3a]::def_id::CrateNum)>>::call_once
+  34:     0x74ce25707bd0 - rustc_query_system[8bdce35ed35c4821]::query::plumbing::try_execute_query::<rustc_query_impl[2063281436f076b]::DynamicConfig<rustc_query_system[8bdce35ed35c4821]::query::caches::VecCache<rustc_span[1f43cfd63a717c3a]::def_id::CrateNum, rustc_middle[11164a6ce117b708]::query::erase::Erased<[u8; 16usize]>>, false, false, false>, rustc_query_impl[2063281436f076b]::plumbing::QueryCtxt, false>
+  35:     0x74ce257077a5 - rustc_query_impl[2063281436f076b]::query_impl::exported_symbols::get_query_non_incr::__rust_end_short_backtrace
+  36:     0x74ce257075ec - rustc_middle[11164a6ce117b708]::query::plumbing::query_get_at::<rustc_query_system[8bdce35ed35c4821]::query::caches::VecCache<rustc_span[1f43cfd63a717c3a]::def_id::CrateNum, rustc_middle[11164a6ce117b708]::query::erase::Erased<[u8; 16usize]>>>
+  37:     0x74ce2512f54f - <rustc_metadata[5a02b8786d893b0b]::rmeta::encoder::EncodeContext>::encode_crate_root
+  38:     0x74ce258e6ff3 - rustc_metadata[5a02b8786d893b0b]::rmeta::encoder::encode_metadata
+  39:     0x74ce258f0a36 - rustc_metadata[5a02b8786d893b0b]::fs::encode_and_write_metadata
+  40:     0x74ce258efc18 - rustc_interface[757df98036431907]::passes::start_codegen
+  41:     0x74ce258ef358 - <rustc_interface[757df98036431907]::queries::Queries>::codegen_and_build_linker
+  42:     0x74ce25609845 - rustc_interface[757df98036431907]::interface::run_compiler::<core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>, rustc_driver_impl[e492dcc29030f304]::run_compiler::{closure#0}>::{closure#0}
+  43:     0x74ce257c391d - std[cc9b189ccd9d9748]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[757df98036431907]::util::run_in_thread_with_globals<rustc_interface[757df98036431907]::util::run_in_thread_pool_with_globals<rustc_interface[757df98036431907]::interface::run_compiler<core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>, rustc_driver_impl[e492dcc29030f304]::run_compiler::{closure#0}>::{closure#0}, core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>>::{closure#0}, core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>>
+  44:     0x74ce257c372a - <<std[cc9b189ccd9d9748]::thread::Builder>::spawn_unchecked_<rustc_interface[757df98036431907]::util::run_in_thread_with_globals<rustc_interface[757df98036431907]::util::run_in_thread_pool_with_globals<rustc_interface[757df98036431907]::interface::run_compiler<core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>, rustc_driver_impl[e492dcc29030f304]::run_compiler::{closure#0}>::{closure#0}, core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>>::{closure#0}, core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[8ca2cc90ba3a0179]::result::Result<(), rustc_span[1f43cfd63a717c3a]::ErrorGuaranteed>>::{closure#2} as core[8ca2cc90ba3a0179]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  45:     0x74ce26e3fa1b - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hf04c15b7e1b40818
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/alloc/src/boxed.rs:2018:9
+  46:     0x74ce26e3fa1b - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h6efe135dbcc64c78
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/alloc/src/boxed.rs:2018:9
+  47:     0x74ce26e3fa1b - std::sys::pal::unix::thread::Thread::new::thread_start::h767b00cfb36de6f0
+                               at /rustc/63f70b3d104e20289a1a0df82747066c3d85b9a1/library/std/src/sys/pal/unix/thread.rs:108:17
+  48:     0x74ce26bdd55a - <unknown>
+  49:     0x74ce26c5aa3c - <unknown>
+  50:                0x0 - <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.79.0-nightly (63f70b3d1 2024-04-16) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z polymorphize=on --crate-type lib -Z dump-mir-dir=dir
+
+query stack during panic:
+#0 [collect_and_partition_mono_items] collect_and_partition_mono_items
+#1 [exported_symbols] collecting exported symbols for crate `0`
+end of query stack
+warning: 2 warnings emitted
+
+Bug Labels:
+-Zpolymorphize, C-bug, F-async_closure, F-async_fn_traits, I-ICE, S-bug-has-test, T-compiler

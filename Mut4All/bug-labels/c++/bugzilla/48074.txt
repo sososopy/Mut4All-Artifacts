@@ -1,0 +1,115 @@
+Issue Title:
+ICE with invalid static member function and this
+
+Source Code & Bug Trace:
+template <int>
+struct S {
+  [[gnu::used]] static void bar() noexcept(noexcept(this->foo()));
+  void foo();
+};
+
+void
+g ()
+{
+  S<1> s;
+}
+
+xclang++: /home/mpolacek/src/llvm-project/clang/include/clang/AST/Type.h:677: const clang::ExtQualsTypeCommonBase* clang::QualType::getCommonPtr() const: Assertion `!isNull() && "Cannot retrieve a NULL type pointer"' failed.
+PLEASE submit a bug report to https://bugs.llvm.org/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: xclang++ -c q.C
+1.	q.C:10:9: current parser token ';'
+2.	q.C:9:1: parsing function body 'g'
+3.	q.C:9:1: in compound statement ('{}')
+4.	q.C:2:8: instantiating class definition 'S<1>'
+ #0 0x00000000038ea9cf llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /home/mpolacek/src/llvm-project/llvm/lib/Support/Unix/Signals.inc:563:22
+ #1 0x00000000038eaa86 PrintStackTraceSignalHandler(void*) /home/mpolacek/src/llvm-project/llvm/lib/Support/Unix/Signals.inc:630:1
+ #2 0x00000000038e8aa2 llvm::sys::RunSignalHandlers() /home/mpolacek/src/llvm-project/llvm/lib/Support/Signals.cpp:71:20
+ #3 0x00000000038ea34f llvm::sys::CleanupOnSignal(unsigned long) /home/mpolacek/src/llvm-project/llvm/lib/Support/Unix/Signals.inc:361:31
+ #4 0x000000000382dac0 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) /home/mpolacek/src/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:75:5
+ #5 0x000000000382df5e CrashRecoverySignalHandler(int) /home/mpolacek/src/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:389:1
+ #6 0x00007fdb91e9f1e0 __restore_rt (/lib64/libpthread.so.0+0x141e0)
+ #7 0x00007fdb919579d5 raise /usr/src/debug/glibc-2.32-20-g5c36293f06/signal/../sysdeps/unix/sysv/linux/raise.c:50:1
+ #8 0x00007fdb919408a4 abort /usr/src/debug/glibc-2.32-20-g5c36293f06/stdlib/abort.c:81:7
+ #9 0x00007fdb91940789 get_sysdep_segment_value /usr/src/debug/glibc-2.32-20-g5c36293f06/intl/loadmsgcat.c:509:8
+#10 0x00007fdb91940789 _nl_load_domain.cold /usr/src/debug/glibc-2.32-20-g5c36293f06/intl/loadmsgcat.c:970:34
+#11 0x00007fdb91950026 (/lib64/libc.so.6+0x36026)
+#12 0x0000000003c25306 clang::QualType::getCommonPtr() const /home/mpolacek/src/llvm-project/clang/include/clang/AST/Type.h:677:5
+#13 0x0000000003c2691a clang::QualType::getTypePtr() const /home/mpolacek/src/llvm-project/clang/include/clang/AST/Type.h:6411:26
+#14 0x0000000003c25436 clang::QualType::operator->() const /home/mpolacek/src/llvm-project/clang/include/clang/AST/Type.h:720:3
+#15 0x0000000007b31fcb clang::computeDependence(clang::CXXThisExpr*) /home/mpolacek/src/llvm-project/clang/lib/AST/ComputeDependence.cpp:293:56
+#16 0x0000000006f2b6f9 clang::CXXThisExpr::CXXThisExpr(clang::SourceLocation, clang::QualType, bool) /home/mpolacek/src/llvm-project/clang/include/clang/AST/ExprCXX.h:1138:18
+#17 0x0000000006e2bf31 clang::Sema::BuildCXXThisExpr(clang::SourceLocation, clang::QualType, bool) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaExprCXX.cpp:1358:63
+#18 0x00000000073fbf69 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::RebuildCXXThisExpr(clang::SourceLocation, clang::QualType, bool) /home/mpolacek/src/llvm-project/clang/lib/Sema/TreeTransform.h:2950:68
+#19 0x00000000073df117 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXThisExpr(clang::CXXThisExpr*) /home/mpolacek/src/llvm-project/clang/lib/Sema/TreeTransform.h:11405:78
+#20 0x00000000073d16da clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/mpolacek/src/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:783:1
+#21 0x00000000073dc617 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXDependentScopeMemberExpr(clang::CXXDependentScopeMemberExpr*) /home/mpolacek/src/llvm-project/clang/lib/Sema/TreeTransform.h:12781:38
+#22 0x00000000073d152c clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/mpolacek/src/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:723:1
+#23 0x00000000073df9ba clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) /home/mpolacek/src/llvm-project/clang/lib/Sema/TreeTransform.h:10477:49
+#24 0x00000000073d17b1 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/mpolacek/src/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:813:1
+#25 0x00000000073de49a clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXNoexceptExpr(clang::CXXNoexceptExpr*) /home/mpolacek/src/llvm-project/clang/lib/Sema/TreeTransform.h:12952:50
+#26 0x00000000073d15d8 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/mpolacek/src/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:747:1
+#27 0x00000000073d4948 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExceptionSpec(clang::SourceLocation, clang::FunctionProtoType::ExceptionSpecInfo&, llvm::SmallVectorImpl<clang::QualType>&, bool&) /home/mpolacek/src/llvm-project/clang/lib/Sema/TreeTransform.h:5835:57
+#28 0x00000000073c9c3f clang::Sema::SubstExceptionSpec(clang::SourceLocation, clang::FunctionProtoType::ExceptionSpecInfo&, llvm::SmallVectorImpl<clang::QualType>&, clang::MultiLevelTemplateArgumentList const&) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:2203:45
+#29 0x00000000073c9d2c clang::Sema::SubstExceptionSpec(clang::FunctionDecl*, clang::FunctionProtoType const*, clang::MultiLevelTemplateArgumentList const&) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:2213:3
+#30 0x000000000742ca8d clang::Sema::InstantiateExceptionSpec(clang::SourceLocation, clang::FunctionDecl*) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:4452:21
+#31 0x0000000006c4d4db clang::Sema::ResolveExceptionSpec(clang::SourceLocation, clang::FunctionProtoType const*) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaExceptionSpec.cpp:227:25
+#32 0x0000000006ca00d5 clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaExpr.cpp:16958:37
+#33 0x00000000074251f0 clang::TemplateDeclInstantiator::VisitCXXMethodDecl(clang::CXXMethodDecl*, clang::TemplateParameterList*, llvm::Optional<clang::ASTTemplateArgumentListInfo const*>, clang::TemplateDeclInstantiator::RewriteKind) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:2591:10
+#34 0x00000000074291cc clang::TemplateDeclInstantiator::VisitCXXMethodDecl(clang::CXXMethodDecl*) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:3499:1
+#35 0x000000000740f642 clang::declvisitor::Base<std::add_pointer, clang::TemplateDeclInstantiator, clang::Decl*>::Visit(clang::Decl*) /home/mpolacek/src/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:411:1
+#36 0x00000000073cb83a clang::Sema::InstantiateClass(clang::SourceLocation, clang::CXXRecordDecl*, clang::CXXRecordDecl*, clang::MultiLevelTemplateArgumentList const&, clang::TemplateSpecializationKind, bool) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:2731:41
+#37 0x00000000073cd2d3 clang::Sema::InstantiateClassTemplateSpecialization(clang::SourceLocation, clang::ClassTemplateSpecializationDecl*, clang::TemplateSpecializationKind, bool) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:3203:26
+#38 0x00000000074c6b7f clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*)::'lambda'()::operator()() const /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaType.cpp:8593:21
+#39 0x00000000074cccc8 void llvm::function_ref<void ()>::callback_fn<clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*)::'lambda'()>(long) /home/mpolacek/src/llvm-project/llvm/include/llvm/ADT/STLExtras.h:186:40
+#40 0x00000000038225d8 llvm::function_ref<void ()>::operator()() const /home/mpolacek/src/llvm-project/llvm/include/llvm/ADT/STLExtras.h:209:62
+#41 0x0000000006846207 clang::runWithSufficientStackSpace(llvm::function_ref<void ()>, llvm::function_ref<void ()>) /home/mpolacek/src/llvm-project/clang/include/clang/Basic/Stack.h:52:3
+#42 0x00000000068374c2 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) /home/mpolacek/src/llvm-project/clang/lib/Sema/Sema.cpp:450:1
+#43 0x00000000074c7330 clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*) (.localalias) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaType.cpp:8597:22
+#44 0x00000000074c6326 clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser&) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaType.cpp:8340:3
+#45 0x00000000074c7749 clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, unsigned int) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaType.cpp:8662:29
+#46 0x0000000006845c3a clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, unsigned int) /home/mpolacek/src/llvm-project/clang/include/clang/Sema/Sema.h:2126:3
+#47 0x0000000006a047f1 clang::Sema::ActOnUninitializedDecl(clang::Decl*) /home/mpolacek/src/llvm-project/clang/lib/Sema/SemaDecl.cpp:12672:7
+#48 0x000000000672020c clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseDecl.cpp:2407:5
+#49 0x000000000671e856 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseDecl.cpp:2039:35
+#50 0x000000000671d9e4 clang::Parser::ParseSimpleDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::Parser::ParsedAttributesWithRange&, bool, clang::Parser::ForRangeInit*, clang::SourceLocation*) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseDecl.cpp:1754:51
+#51 0x000000000671d6be clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::Parser::ParsedAttributesWithRange&, clang::SourceLocation*) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseDecl.cpp:1688:48
+#52 0x00000000067d2101 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::Parser::ParsedAttributesWithRange&) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseStmt.cpp:221:73
+#53 0x00000000067d19c0 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseStmt.cpp:107:45
+#54 0x00000000067d5527 clang::Parser::ParseCompoundStatementBody(bool) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseStmt.cpp:1099:56
+#55 0x00000000067d9b07 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseStmt.cpp:2260:48
+#56 0x00000000067011e7 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) /home/mpolacek/src/llvm-project/clang/lib/Parse/Parser.cpp:1374:36
+#57 0x000000000671e482 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseDecl.cpp:1976:50
+#58 0x0000000006700218 clang::Parser::ParseDeclOrFunctionDefInternal(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) /home/mpolacek/src/llvm-project/clang/lib/Parse/Parser.cpp:1135:1
+#59 0x00000000067002d2 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) /home/mpolacek/src/llvm-project/clang/lib/Parse/Parser.cpp:1150:57
+#60 0x00000000066ff7a9 clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (.localalias) /home/mpolacek/src/llvm-project/clang/lib/Parse/Parser.cpp:970:58
+#61 0x00000000066fe7ad clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) /home/mpolacek/src/llvm-project/clang/lib/Parse/Parser.cpp:716:42
+#62 0x00000000066f9eca clang::ParseAST(clang::Sema&, bool, bool) /home/mpolacek/src/llvm-project/clang/lib/Parse/ParseAST.cpp:158:37
+#63 0x00000000044e0227 clang::ASTFrontendAction::ExecuteAction() /home/mpolacek/src/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1056:11
+#64 0x0000000004e055ef clang::CodeGenAction::ExecuteAction() /home/mpolacek/src/llvm-project/clang/lib/CodeGen/CodeGenAction.cpp:1083:5
+#65 0x00000000044dfb57 clang::FrontendAction::Execute() /home/mpolacek/src/llvm-project/clang/lib/Frontend/FrontendAction.cpp:953:38
+#66 0x00000000044410f5 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /home/mpolacek/src/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:957:42
+#67 0x000000000465e73f clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /home/mpolacek/src/llvm-project/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:278:38
+#68 0x0000000000b7603e cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /home/mpolacek/src/llvm-project/clang/tools/driver/cc1_main.cpp:240:40
+#69 0x0000000000b6b029 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) /home/mpolacek/src/llvm-project/clang/tools/driver/driver.cpp:330:20
+#70 0x00000000043370f9 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()::operator()() const /home/mpolacek/src/llvm-project/clang/lib/Driver/Job.cpp:404:32
+#71 0x00000000043378c6 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()>(long) /home/mpolacek/src/llvm-project/llvm/include/llvm/ADT/STLExtras.h:186:40
+#72 0x00000000038225d8 llvm::function_ref<void ()>::operator()() const /home/mpolacek/src/llvm-project/llvm/include/llvm/ADT/STLExtras.h:209:62
+#73 0x000000000382e11a llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /home/mpolacek/src/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:425:10
+#74 0x00000000043372e4 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const /home/mpolacek/src/llvm-project/clang/lib/Driver/Job.cpp:404:7
+#75 0x00000000042ef596 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const /home/mpolacek/src/llvm-project/clang/lib/Driver/Compilation.cpp:195:22
+#76 0x00000000042ef8c9 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const /home/mpolacek/src/llvm-project/clang/lib/Driver/Compilation.cpp:248:53
+#77 0x00000000042fe52d clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) /home/mpolacek/src/llvm-project/clang/lib/Driver/Driver.cpp:1517:28
+#78 0x0000000000b6bf61 main /home/mpolacek/src/llvm-project/clang/tools/driver/driver.cpp:502:39
+#79 0x00007fdb919421e2 __libc_start_main /usr/src/debug/glibc-2.32-20-g5c36293f06/csu/../csu/libc-start.c:314:16
+#80 0x0000000000b698ce _start (/home/mpolacek/src/llvm-project/build/bin/clang-12+0xb698ce)
+clang-12: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 12.0.0 (https://github.com/llvm/llvm-project.git 311b247c9fb58ee476184a7eb8044b8f54f95035)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /home/mpolacek/bin
+clang-12: note: diagnostic msg:
+
+
+Bug Labels:
+bugzilla, c++11, clang:frontend, confirmed, crash

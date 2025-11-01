@@ -1,0 +1,225 @@
+Issue Title:
+Compiler Error: 'rustc' panicked at 'Box<Any>' (w/ async closures) · Issue #72426 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_closure)]
+
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+    future::Future,
+};
+
+use async_std::prelude::*;
+
+#[async_std::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let s = from_afn(async || Some("foo".to_string()));
+    // let s = from_afn(foo);
+    while let Some(x) = s.next().await {
+        println!("{:?}", x);
+    }
+    Ok(())
+}
+
+async fn foo() -> String {
+    "foo".to_string()
+}
+
+fn from_afn<F, Fut, Item>(f: F) -> FromAFn<F, Fut>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Item> + Unpin,
+{
+    FromAFn::new(f)
+}
+
+struct FromAFn<F, Fut> {
+    f: F,
+    fut: Pin<Box<Fut>>,
+}
+
+impl<F, Fut, Item> FromAFn<F, Fut>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Item> + Unpin,
+{
+    fn new(f: F) -> Self {
+        Self {f, fut: Box::pin((f)())}
+    }
+}
+
+impl<F, Fut, Item> Stream for FromAFn<F, Fut>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Item> + Unpin,
+{
+    type Item = Item;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match self.fut.as_mut().poll(cx) {
+            Poll::Ready(v) => {
+                self.fut = Box::pin((self.f)());
+                Poll::Ready(Some(v))
+            },
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+Bug Trace:
+Compiling statusbar v0.1.0 (/home/gcoakes/src/statusbar)
+error: internal compiler error: src/librustc_middle/ich/impls_ty.rs:170: ty::TyKind::hash_stable() - can't hash a TyVid _#30t.
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:907:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1069
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1537
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: <alloc::boxed::Box<F> as core::ops::function::Fn<A>>::call
+             at /rustc/0aa6751c19d3ba80df5b0b02c00bf44e13c97e80/src/liballoc/boxed.rs:1071
+  12: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter::{{closure}}::{{closure}}
+             at /rustc/0aa6751c19d3ba80df5b0b02c00bf44e13c97e80/src/libproc_macro/bridge/client.rs:318
+  13: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:490
+  14: std::panicking::begin_panic
+  15: rustc_errors::HandlerInner::bug
+  16: rustc_errors::Handler::bug
+  17: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  18: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  19: rustc_middle::ty::context::tls::with_opt
+  20: rustc_middle::util::bug::opt_span_bug_fmt
+  21: rustc_middle::util::bug::bug_fmt
+  22: rustc_middle::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::TyVid>::hash_stable
+  23: rustc_middle::ty::sty::_DERIVE_rustc_data_structures_stable_hasher_HashStable_rustc_middle_ich_StableHashingContext_ctx_FOR_InferTy::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::InferTy>::hash_stable
+  24: rustc_middle::ty::sty::_DERIVE_rustc_data_structures_stable_hasher_HashStable_rustc_middle_ich_StableHashingContext_ctx_FOR_TyKind::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::TyKind>::hash_stable
+  25: rustc_middle::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for &rustc_middle::ty::list::List<T>>::hash_stable
+  26: rustc_middle::ty::sty::_DERIVE_rustc_data_structures_stable_hasher_HashStable_rustc_middle_ich_StableHashingContext_ctx_FOR_TyKind::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::TyKind>::hash_stable
+  27: rustc_middle::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for &rustc_middle::ty::list::List<T>>::hash_stable
+  28: rustc_middle::ty::sty::_DERIVE_rustc_data_structures_stable_hasher_HashStable_rustc_middle_ich_StableHashingContext_ctx_FOR_TyKind::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::TyKind>::hash_stable
+  29: <T as rustc_query_system::dep_graph::dep_node::DepNodeParams<Ctxt>>::to_fingerprint
+  30: rustc_query_system::query::plumbing::get_query_impl
+  31: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt>::suggest_await_before_try
+  32: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::error_reporting::InferCtxtExt>::report_selection_error
+  33: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::error_reporting::InferCtxtExt>::report_fulfillment_errors
+  34: rustc_typeck::check::FnCtxt::resolve_vars_with_obligations
+  35: rustc_typeck::check::demand::<impl rustc_typeck::check::FnCtxt>::demand_coerce_diag
+  36: rustc_typeck::check::FnCtxt::check_argument_types
+  37: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::confirm_builtin_call
+  38: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::check_call
+  39: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  40: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  41: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_coercable_to_type
+  42: rustc_typeck::check::FnCtxt::check_decl_local
+  43: rustc_typeck::check::FnCtxt::check_stmt
+  44: rustc_typeck::check::FnCtxt::check_block_with_expected
+  45: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  46: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  47: rustc_typeck::check::FnCtxt::check_block_with_expected
+  48: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  49: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  50: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  51: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  52: rustc_typeck::check::FnCtxt::check_block_with_expected
+  53: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  54: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  55: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_return_expr
+  56: rustc_typeck::check::check_fn
+  57: rustc_typeck::check::closure::<impl rustc_typeck::check::FnCtxt>::check_expr_closure
+  58: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  59: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  60: rustc_typeck::check::FnCtxt::check_argument_types
+  61: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::confirm_builtin_call
+  62: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::check_call
+  63: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+  64: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+  65: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_return_expr
+  66: rustc_typeck::check::check_fn
+  67: rustc_middle::ty::context::GlobalCtxt::enter_local
+  68: rustc_typeck::check::typeck_tables_of
+  69: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck_tables_of>::compute
+  70: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  71: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  72: rustc_data_structures::stack::ensure_sufficient_stack
+  73: rustc_query_system::query::plumbing::get_query_impl
+  74: rustc_mir_build::hair::cx::Cx::new
+  75: rustc_middle::ty::context::GlobalCtxt::enter_local
+  76: rustc_mir_build::build::mir_built
+  77: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_built>::compute
+  78: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  79: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  80: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+  81: rustc_query_system::query::plumbing::get_query_impl
+  82: rustc_mir::transform::check_unsafety::unsafety_check_result
+  83: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::unsafety_check_result>::compute
+  84: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  85: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  86: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+  87: rustc_query_system::query::plumbing::get_query_impl
+  88: rustc_mir::transform::mir_const
+  89: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_const>::compute
+  90: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  91: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  92: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+  93: rustc_query_system::query::plumbing::get_query_impl
+  94: rustc_mir::transform::mir_validated
+  95: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_validated>::compute
+  96: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  97: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  98: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+  99: rustc_query_system::query::plumbing::get_query_impl
+ 100: rustc_mir::borrow_check::mir_borrowck
+ 101: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck>::compute
+ 102: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+ 103: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+ 104: rustc_query_system::query::plumbing::get_query_impl
+ 105: rustc_typeck::collect::type_of::type_of
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.45.0-nightly (0aa6751c1 2020-05-20) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck_tables_of] type-checking `main::main`
+#1 [mir_built] building MIR for
+#2 [unsafety_check_result] unsafety-checking `main::main`
+#3 [mir_const] processing `main::main`
+#4 [mir_validated] processing `main::main`
+#5 [mir_borrowck] borrow-checking `main::main`
+#6 [type_of] processing `main::main::{{opaque}}#0`
+#7 [check_mod_item_types] checking item types in top-level module
+#8 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `statusbar`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-async-await, A-closures, C-bug, E-needs-mcve, F-async_closure, I-ICE, T-compiler, requires-nightly

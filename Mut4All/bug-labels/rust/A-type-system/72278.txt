@@ -1,0 +1,85 @@
+Issue Title:
+ICE when using lifetime arguments explicitly in late bound lifetime parameters  · Issue #72278 · rust-lang/rust · GitHub
+
+Rust Code:
+pub struct RefAny { }
+
+impl RefAny {
+    pub fn downcast_mut<'a, U: 'static>(&'a mut self) -> Option<&'a mut U> {
+        unsafe { self.downcast_mut_unchecked::<'a, U>() } // <- panic here in lifetime resolution
+    }
+
+    unsafe fn downcast_mut_unchecked<'a, U>(&'a mut self) -> Option<&'a mut U> {
+        None
+    }
+}
+
+Bug Trace:
+error: internal compiler error: src/librustc_typeck/check/mod.rs:3314: no type for node HirId { owner: DefIndex(31), local_id: 5 }: type U (hir_id=HirId { owner: DefIndex(31), local_id: 5 }) in fcx 0x7fe1f35f06e0
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:875:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1063
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1426
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:204
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:224
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:474
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc::ty::context::tls::with_opt::{{closure}}
+  17: rustc::ty::context::tls::with_opt
+  18: rustc::util::bug::opt_span_bug_fmt
+  19: rustc::util::bug::bug_fmt
+  20: rustc_typeck::check::FnCtxt::node_ty
+  21: <rustc_typeck::check::writeback::WritebackCx as rustc_hir::intravisit::Visitor>::visit_ty
+  22: rustc_hir::intravisit::walk_generic_args
+  23: rustc_hir::intravisit::walk_expr
+  24: <rustc_typeck::check::writeback::WritebackCx as rustc_hir::intravisit::Visitor>::visit_expr
+  25: <rustc_typeck::check::writeback::WritebackCx as rustc_hir::intravisit::Visitor>::visit_expr
+  26: <rustc_typeck::check::writeback::WritebackCx as rustc_hir::intravisit::Visitor>::visit_expr
+  27: rustc_hir::intravisit::walk_expr
+  28: <rustc_typeck::check::writeback::WritebackCx as rustc_hir::intravisit::Visitor>::visit_expr
+  29: <rustc_typeck::check::writeback::WritebackCx as rustc_hir::intravisit::Visitor>::visit_expr
+  30: rustc_typeck::check::writeback::<impl rustc_typeck::check::FnCtxt>::resolve_type_vars_in_body
+  31: rustc::ty::context::GlobalCtxt::enter_local
+  32: rustc_typeck::check::typeck_tables_of
+  33: rustc::ty::query::__query_compute::typeck_tables_of
+  34: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_tables_of>::compute
+  35: rustc::dep_graph::graph::DepGraph::with_task_impl
+  36: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  37: rustc::ty::<impl rustc::ty::context::TyCtxt>::par_body_owners
+  38: rustc_typeck::check::typeck_item_bodies
+  39: rustc::ty::query::__query_compute::typeck_item_bodies
+  40: rustc::dep_graph::graph::DepGraph::with_task_impl
+  41: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  42: rustc_typeck::check_crate
+  43: rustc_interface::passes::analysis
+  44: rustc::ty::query::__query_compute::analysis
+  45: rustc::dep_graph::graph::DepGraph::with_task_impl
+  46: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  47: rustc::ty::context::tls::enter_global
+  48: rustc_interface::interface::run_compiler_in_existing_thread_pool
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+A-type-system, C-bug, I-ICE, P-medium, T-compiler, glacier, regression-from-stable-to-stable

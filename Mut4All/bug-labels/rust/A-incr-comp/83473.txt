@@ -1,0 +1,670 @@
+Issue Title:
+Internal Compiler Error: found unstable fingerprints for predicates_of(Send/From/Eq/etc.) · Issue #83473 · rust-lang/rust · GitHub
+
+Rust Code:
+use cpal::{
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+    BufferSize, Device, OutputCallbackInfo, SampleRate, Stream, StreamConfig,
+};
+use std::ops::Range;
+
+pub struct AudioDriver {
+    _device: Device,
+    _stream: Stream,
+}
+
+impl AudioDriver {
+    pub fn new<Handler>(channel_count: u16, sample_rate: u32, mut handler: Handler) -> Option<Self>
+    where
+        Handler: FnMut(&[*const f32], &[*mut f32], Range<usize>) + Send + 'static,
+    {
+        let host = cpal::default_host();
+
+        let device = host
+            .default_output_device()
+            .expect("failed to find a default output device");
+
+        println!("Using default output device: '{}'", device.name().ok()?);
+
+        let mut config: StreamConfig = device.default_output_config().ok()?.into();
+        let block_size = 512;
+
+        config.sample_rate = SampleRate(sample_rate);
+        config.channels = channel_count;
+        config.buffer_size = BufferSize::Fixed(block_size);
+        println!("Using default output stream config: {:?}", config);
+
+        let buffer = DeinterleavedBuffer::new(channel_count as usize, block_size as usize);
+        let stream = device
+            .build_output_stream(
+                &config,
+                move |data: &mut [f32], _: &OutputCallbackInfo| {
+                    handler(&[], &buffer.ptrs, 0..data.len() / channel_count as usize);
+                    buffer.interleave(data);
+                },
+                move |err| {
+                    eprintln!("an error occurred on stream: {}", err);
+                },
+            )
+            .ok()?;
+
+        stream.play().ok()?;
+
+        Some(Self {
+            _device: device,
+            _stream: stream,
+        })
+    }
+}
+
+struct DeinterleavedBuffer {
+    data: Vec<f32>,
+    pub ptrs: Vec<*mut f32>,
+    channels: usize,
+    block_size: usize,
+}
+
+impl DeinterleavedBuffer {
+    pub fn new(channels: usize, block_size: usize) -> Self {
+        let mut data = Vec::new();
+        data.resize(channels * block_size, 0.0);
+
+        let mut ptrs = Vec::with_capacity(channels);
+        ptrs.resize(channels, std::ptr::null_mut());
+
+        let ptr = data.as_mut_ptr();
+        for c in 0..channels {
+            let address = unsafe { ptr.offset((c * block_size) as isize) };
+            ptrs[c] = address;
+        }
+
+        Self {
+            data,
+            ptrs,
+            channels,
+            block_size,
+        }
+    }
+
+    pub fn interleave(&self, out: &mut [f32]) {
+        assert!(out.len() <= self.data.len());
+
+        let block_size = out.len() / self.channels;
+
+        for f in 0..block_size {
+            for c in 0..self.channels {
+                out[f * self.channels + c] = self.data[c * self.block_size + f];
+            }
+        }
+    }
+}
+
+unsafe impl Send for DeinterleavedBuffer {}
+
+Bug Trace:
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::marker::Send): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::marker::Send>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/marker.rs:38:1: 38:27 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::marker::Send`
+#1 [check_item_well_formed] checking that `audio_driver::<impl at jpt/src/audio_driver.rs:98:1: 98:44>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::convert::From): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::marker::Sized>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/convert/mod.rs:365:20: 365:25 (#0)), (Binder(TraitPredicate(<T as std::marker::Sized>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/convert/mod.rs:365:16: 365:17 (#0)), (Binder(TraitPredicate(<Self as std::convert::From<T>>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/convert/mod.rs:365:1: 365:25 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::convert::From`
+#1 [check_item_well_formed] checking that `chord_exercise::<impl at jpt/src/chord_exercise.rs:108:1: 115:2>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::marker::StructuralEq): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::marker::StructuralEq>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/marker.rs:205:1: 205:23 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::marker::StructuralEq`
+#1 [check_item_well_formed] checking that `chord::<impl at jpt/src/chord.rs:4:41: 4:43>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::cmp::Eq): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::cmp::PartialEq>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/cmp.rs:268:15: 268:30 (#0)), (Binder(TraitPredicate(<Self as std::cmp::Eq>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/cmp.rs:268:1: 268:30 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::cmp::Eq`
+#1 [check_item_well_formed] checking that `chord::<impl at jpt/src/chord.rs:4:41: 4:43>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::marker::StructuralPartialEq): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::marker::StructuralPartialEq>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/marker.rs:152:1: 152:30 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::marker::StructuralPartialEq`
+#1 [check_item_well_formed] checking that `chord::<impl at jpt/src/chord.rs:4:30: 4:39>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::cmp::PartialEq): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::cmp::PartialEq<Rhs>>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/cmp.rs:202:1: 202:40 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::cmp::PartialEq`
+#1 [check_item_well_formed] checking that `chord::<impl at jpt/src/chord.rs:4:30: 4:39>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::clone::Clone): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::marker::Sized>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/clone.rs:108:18: 108:23 (#0)), (Binder(TraitPredicate(<Self as std::clone::Clone>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/clone.rs:108:1: 108:23 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::clone::Clone`
+#1 [check_item_well_formed] checking that `chord::<impl at jpt/src/chord.rs:4:23: 4:28>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::marker::Copy): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::clone::Clone>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/marker.rs:385:17: 385:22 (#0)), (Binder(TraitPredicate(<Self as std::marker::Copy>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/marker.rs:385:1: 385:22 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::marker::Copy`
+#1 [check_item_well_formed] checking that `chord::<impl at jpt/src/chord.rs:4:17: 4:21>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::fmt::Debug): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::fmt::Debug>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:550:1: 550:16 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::trait_obligations
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+  11: rustc_typeck::check::wfcheck::check_item_well_formed
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::force_query_with_job
+  16: rustc_query_system::query::plumbing::get_query_impl
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_item_well_formed
+  18: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  19: rustc_data_structures::sync::par_for_each_in
+  20: rustc_hir::hir::Crate::par_visit_all_item_likes
+  21: rustc_session::session::Session::track_errors
+  22: rustc_typeck::check_crate
+  23: rustc_interface::passes::analysis
+  24: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::force_query_with_job
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  30: rustc_interface::passes::QueryContext::enter
+  31: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  32: rustc_span::with_source_map
+  33: rustc_interface::interface::create_compiler_and_run
+  34: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::fmt::Debug`
+#1 [check_item_well_formed] checking that `chord::<impl at jpt/src/chord.rs:4:10: 4:15>` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+thread 'rustc' panicked at 'found unstable fingerprints for predicates_of(core[40e9]::marker::Sized): GenericPredicates { parent: None, predicates: [(Binder(TraitPredicate(<Self as std::marker::Sized>)), /Users/stijn/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/library/core/src/marker.rs:92:1: 92:16 (#0))] }', /rustc/673d0db5e393e9c64897005b470bfeb6d5aec61b/compiler/rustc_query_system/src/query/plumbing.rs:593:5
+stack backtrace:
+   0: _rust_begin_unwind
+   1: std::panicking::begin_panic_fmt
+   2: rustc_query_system::query::plumbing::incremental_verify_ich
+   3: rustc_query_system::query::plumbing::load_from_disk_and_cache_in_memory
+   4: rustc_data_structures::stack::ensure_sufficient_stack
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+   7: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+   8: rustc_trait_selection::traits::wf::WfPredicates::compute_trait_ref
+   9: rustc_trait_selection::traits::wf::predicate_obligations
+  10: rustc_typeck::check::wfcheck::check_where_clauses
+  11: rustc_typeck::check::wfcheck::check_fn_or_method
+  12: rustc_infer::infer::InferCtxtBuilder::enter
+  13: rustc_typeck::check::wfcheck::check_associated_item
+  14: rustc_typeck::check::check::check_impl_item_well_formed
+  15: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  16: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  17: rustc_data_structures::stack::ensure_sufficient_stack
+  18: rustc_query_system::query::plumbing::force_query_with_job
+  19: rustc_query_system::query::plumbing::get_query_impl
+  20: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_impl_item_well_formed
+  21: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_impl_item
+  22: rustc_data_structures::sync::par_for_each_in
+  23: rustc_hir::hir::Crate::par_visit_all_item_likes
+  24: rustc_session::session::Session::track_errors
+  25: rustc_typeck::check_crate
+  26: rustc_interface::passes::analysis
+  27: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  28: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  29: rustc_data_structures::stack::ensure_sufficient_stack
+  30: rustc_query_system::query::plumbing::force_query_with_job
+  31: rustc_query_system::query::plumbing::get_query_impl
+  32: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  33: rustc_interface::passes::QueryContext::enter
+  34: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  35: rustc_span::with_source_map
+  36: rustc_interface::interface::create_compiler_and_run
+  37: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (673d0db5e 2021-03-23) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [predicates_of] computing predicates of `std::marker::Sized`
+#1 [check_impl_item_well_formed] checking that `audio_driver::<impl at jpt/src/audio_driver.rs:12:1: 54:2>::new` is well-formed
+#2 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-incr-comp, C-bug, I-ICE, T-compiler

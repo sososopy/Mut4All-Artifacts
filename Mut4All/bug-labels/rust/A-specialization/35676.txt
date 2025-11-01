@@ -1,0 +1,92 @@
+Issue Title:
+Specialization ICE - unwrap in  · Issue #35676 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(specialization)]
+
+fn main() {}
+
+pub trait Alpha<T> { }
+
+pub trait Beta {
+    type Event;
+}
+
+pub trait Delta {
+    type Handle;
+    fn process(&self);
+}
+
+pub struct Parent<A, T>(A, T);
+
+impl<A, T> Delta for Parent<A, T>
+where A: Alpha<T::Handle>,
+      T: Delta,
+      T::Handle: Beta<Event = <Handle as Beta>::Event> {
+    type Handle = Handle;
+    default fn process(&self) {
+        unimplemented!()
+    }
+}
+
+impl<A, T> Delta for Parent<A, T>
+where A: Alpha<T::Handle> + Alpha<Handle>,
+      T: Delta,
+      T::Handle: Beta<Event = <Handle as Beta>::Event> {
+      fn process(&self) {
+        unimplemented!()
+      }
+}
+
+pub struct Handle;
+
+impl Beta for Handle {
+    type Event = ();
+}
+Bug Trace:
+thread 'rustc' panicked at 'called `Option::unwrap()` on a `None` value', ../src/libcore/option.rs:326
+stack backtrace:
+   1:     0x7fc4e559dcdd - std::sys::backtrace::tracing::imp::write::h29f5fdb9fc0a7395
+   2:     0x7fc4e55aea71 - std::panicking::default_hook::_{{closure}}::h17d8437f66223ab1
+   3:     0x7fc4e55aced8 - std::panicking::default_hook::hbbe7fa36a995aca0
+   4:     0x7fc4e55ad6b8 - std::panicking::rust_panic_with_hook::h105c3d42fcd2fb5e
+   5:     0x7fc4e55ad552 - std::panicking::begin_panic::hbf62ea4a5ff3f9de
+   6:     0x7fc4e55ad480 - std::panicking::begin_panic_fmt::h20f5943904e5791d
+   7:     0x7fc4e55ad401 - rust_begin_unwind
+   8:     0x7fc4e5618c2c - core::panicking::panic_fmt::h19323e466869c656
+   9:     0x7fc4e5618b5b - core::panicking::panic::hbfac80217e56ecbe
+  10:     0x7fc4e1db2955 - _<rustc..traits..specialize..specialization_graph..Ancestors<'a, 'tcx> as core..iter..iterator..Iterator>::next::ha4b603294de54f87
+  11:     0x7fc4e1c07c9e - _<core..iter..FlatMap<I, U, F> as core..iter..iterator..Iterator>::next::hd671a17475304ea4
+  12:     0x7fc4e1d9ebbf - rustc::traits::project::assoc_ty_def::hd2c32c511f927ac7
+  13:     0x7fc4e1d9bb0f - rustc::traits::project::opt_normalize_projection_type::hac8607daffaabac5
+  14:     0x7fc4e1d99776 - rustc::traits::project::normalize_projection_type::hc8d921334194224d
+  15:     0x7fc4e1d9948a - _<rustc..traits..project..AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> as rustc..ty..fold..TypeFolder<'gcx, 'tcx>>::fold_ty::he80336df5fe7f90c
+  16:     0x7fc4e1e0bb5a - rustc::ty::structural_impls::_<impl rustc..ty..fold..TypeFoldable<'tcx> for rustc..ty..Predicate<'tcx>>::super_fold_with::h02a2f90a72fe499e
+  17:     0x7fc4e1bfe801 - _<collections..vec..Vec<T> as core..iter..traits..FromIterator<T>>::from_iter::ha48c52bee1e74668
+  18:     0x7fc4e1d97a95 - rustc::traits::project::normalize_with_depth::h31c4e05e4c5432fb
+  19:     0x7fc4e1dbc38f - rustc::traits::fully_normalize::hab6692619a95ed52
+  20:     0x7fc4e1e4284d - rustc::infer::InferCtxtBuilder::enter::_{{closure}}::h14a7e5fe5b1e8e90
+  21:     0x7fc4e1b730c9 - _<std..thread..local..LocalKey<T>>::with::h18b62112a5b30cb7
+  22:     0x7fc4e1dfed1b - rustc::ty::context::GlobalCtxt::enter_local::hce46ccddc38b6c66
+  23:     0x7fc4e1dbbbcc - rustc::traits::normalize_param_env_or_error::hb6194ed5c833924b
+  24:     0x7fc4e1e2e88c - rustc::ty::_<impl rustc..ty..context..TyCtxt<'a, 'gcx, 'tcx>>::construct_parameter_environment::h358f05100bbd5e3b
+  25:     0x7fc4e1db3081 - rustc::traits::specialize::specializes::h14f0f43092eacdc1
+  26:     0x7fc4e1db099b - rustc::traits::specialize::specialization_graph::Graph::insert::hd0f3feb4c7004213
+  27:     0x7fc4e1ded4ca - rustc::ty::trait_def::TraitDef::add_impl_for_specialization::ha3c0fa5ee23a0807
+  28:     0x7fc4e3a121ed - _<rustc_typeck..coherence..overlap..OverlapChecker<'cx, 'tcx> as rustc..hir..intravisit..Visitor<'v>>::visit_item::h9e259f38cb9c748b
+  29:     0x7fc4e3a18ddd - rustc_typeck::coherence::check_coherence::h22ce515e0e650788
+  30:     0x7fc4e3a214b3 - rustc_typeck::check_crate::h3586447e34ddb139
+  31:     0x7fc4e5b5c833 - rustc_driver::driver::phase_3_run_analysis_passes::_{{closure}}::h7f2cec505064b4bf
+  32:     0x7fc4e5abee9e - rustc::ty::context::TyCtxt::create_and_enter::he5dca3f2a7a0810a
+  33:     0x7fc4e5b234f8 - rustc_driver::driver::compile_input::hb4cc34cf85dc1edf
+  34:     0x7fc4e5b4d602 - rustc_driver::run_compiler::h50f95674bd902ab5
+  35:     0x7fc4e5a94ddd - std::panicking::try::call::h31fc30b58c55d6c3
+  36:     0x7fc4e55bcf16 - __rust_maybe_catch_panic
+  37:     0x7fc4e5aadac0 - _<F as alloc..boxed..FnBox<A>>::call_box::h24f3eb0b42327962
+  38:     0x7fc4e55ab202 - std::sys::thread::Thread::new::thread_start::h8f3bd45211e9f5ea
+  39:     0x7fc4dca60483 - start_thread
+  40:     0x7fc4e51f66dc - clone
+  41:                0x0 - <unknown>
+
+Bug Labels:
+A-specialization, C-bug, E-needs-test, I-ICE

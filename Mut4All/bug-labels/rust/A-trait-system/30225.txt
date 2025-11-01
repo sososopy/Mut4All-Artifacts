@@ -1,0 +1,38 @@
+Issue Title:
+Trait selection caching does not handle subtyping properly · Issue #30225 · rust-lang/rust · GitHub
+
+Rust Code:
+trait Foo<U,V> : Sized {
+    fn foo(self, u: Option<U>, v: Option<V>) {}
+}
+
+struct A;
+struct B;
+
+impl Foo<A, B> for () {}      // impl A
+
+fn toxic() {
+    // cache the resolution <() as Foo<$0,$1>> = impl A
+    let u = None;
+    let v = None;
+    Foo::foo((), u, v);
+}
+
+fn bomb() {
+    let mut u = None; // type is Option<$0>
+    let mut v = None; // type is Option<$1>
+    let mut x = None; // type is Option<$2>
+
+    Foo::foo(x.unwrap(),u,v); // register <$2 as Foo<$0, $1>>
+    u = v; // mark $0 and $1 in a subtype relationship
+    x = Some(()); // set $2 = (), allowing impl selection
+                  // to proceed for <() as Foo<$0, $1>> = impl A.
+                  // kaboom
+                  // NOTE: the obligation's resolution must be delayed for the
+                  // ICE to occur to prevent coercions from interfering.
+}
+
+fn main() {}
+
+Bug Labels:
+A-trait-system, E-mentor, I-ICE, P-medium, T-compiler

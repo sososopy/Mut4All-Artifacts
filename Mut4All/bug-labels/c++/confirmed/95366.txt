@@ -1,0 +1,128 @@
+Issue Title:
+Clang-19 crash:/lib/AST/ExprConstant.cpp:1633: void {anonymous}::LValue::setFrom(clang::ASTContext&, const clang::APValue&): Assertion `V.isLValue() && "Setting LValue from a non-LValue?"' failed.
+
+Source Code & Bug Trace:
+# uname -a
+Linux ubuntu 4.15.0-213-generic #224-Ubuntu SMP Mon Jun 19 13:30:12 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
+
+# clang -v
+Ubuntu clang version 19.0.0 (++20240301064251+dd426fa5f931-1~exp1~20240301184412.1845)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/7
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/7.5.0
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/8
+Selected GCC installation: /usr/lib/gcc/x86_64-linux-gnu/7
+Candidate multilib: .;@m64
+Selected multilib: .;@m64
+
+
+# cat code_2.c
+
+x() { &&e - &&b < x; }
+
+
+
+# clang code_2.c -O3 -fsanitize=undefined -Wall -Wextra -pedantic -Werror -std=c11 
+code_2.c:1:1: error: type specifier missing, defaults to 'int'; ISO C99 and later do not support implicit int [-Wimplicit-int]
+    1 | x() { &&e - &&b < x; }
+      | ^
+      | int
+code_2.c:1:2: error: a function declaration without a prototype is deprecated in all versions of C [-Werror,-Wstrict-prototypes]
+    1 | x() { &&e - &&b < x; }
+      |  ^
+      |   void
+code_2.c:1:7: error: use of GNU address-of-label extension [-Werror,-Wgnu-label-as-value]
+    1 | x() { &&e - &&b < x; }
+      |       ^
+code_2.c:1:13: error: use of GNU address-of-label extension [-Werror,-Wgnu-label-as-value]
+    1 | x() { &&e - &&b < x; }
+      |             ^
+code_2.c:1:11: error: arithmetic on pointers to void is a GNU extension [-Werror,-Wgnu-pointer-arith]
+    1 | x() { &&e - &&b < x; }
+      |       ~~~ ^ ~~~
+code_2.c:1:17: error: ordered comparison between pointer and integer ('long' and 'int (*)()') [-Werror]
+    1 | x() { &&e - &&b < x; }
+      |       ~~~~~~~~~ ^ ~
+code_2.c:1:17: error: relational comparison result unused [-Werror,-Wunused-comparison]
+    1 | x() { &&e - &&b < x; }
+      |       ~~~~~~~~~~^~~
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/lib/llvm-19/bin/clang -cc1 -triple x86_64-pc-linux-gnu -emit-obj -dumpdir a- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name code_2.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=none -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/root/gdbtest/gcctest/gcc_llvm/llvm/log/closed/HasCode/50323 -fcoverage-compilation-dir=/root/gdbtest/gcctest/gcc_llvm/llvm/log/closed/HasCode/50323 -resource-dir /usr/lib/llvm-19/lib/clang/19 -internal-isystem /usr/lib/llvm-19/lib/clang/19/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/7/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -O3 -Wall -Wextra -Werror -pedantic -std=c11 -ferror-limit 19 -fsanitize=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,function,integer-divide-by-zero,nonnull-attribute,null,object-size,pointer-overflow,return,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,unreachable,vla-bound,vptr -fsanitize-recover=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,function,integer-divide-by-zero,nonnull-attribute,null,object-size,pointer-overflow,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,vla-bound,vptr -fno-sanitize-memory-param-retval -fno-sanitize-address-use-odr-indicator -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fcolor-diagnostics -vectorize-loops -vectorize-slp -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/code_2-15394c.o -x c code_2.c
+1.      code_2.c:1:22: current parser token '}'
+2.      code_2.c:1:5: parsing function body 'x'
+3.      code_2.c:1:5: in compound statement ('{}')
+ #0 0x00007fa6de8c5216 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-19/bin/../lib/libLLVM.so.19.0+0xdc1216)
+ #1 0x00007fa6de8c2ec0 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-19/bin/../lib/libLLVM.so.19.0+0xdbeec0)
+ #2 0x00007fa6de8c58f0 (/usr/lib/llvm-19/bin/../lib/libLLVM.so.19.0+0xdc18f0)
+ #3 0x00007fa6e92b4980 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x12980)
+ #4 0x00007fa6e609b05e clang::Decl::getASTContext() const (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xe3e05e)
+ #5 0x00007fa6e608ae4f clang::NamedDecl::printName(llvm::raw_ostream&) const (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xe2de4f)
+ #6 0x00007fa6e5ee32d6 clang::APValue::printPretty(llvm::raw_ostream&, clang::PrintingPolicy const&, clang::QualType, clang::ASTContext const*) const (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc862d6)
+ #7 0x00007fa6e5ee3bd6 clang::APValue::getAsString[abi:cxx11](clang::ASTContext const&, clang::QualType) const (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc86bd6)
+ #8 0x00007fa6e6178f6d (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xf1bf6d)
+ #9 0x00007fa6e6171fe6 (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xf14fe6)
+#10 0x00007fa6e611bb07 (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xebeb07)
+#11 0x00007fa6e6119420 (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xebc420)
+#12 0x00007fa6e611984e clang::Expr::EvaluateForOverflow(clang::ASTContext const&) const (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xebc84e)
+#13 0x00007fa6e674c8ec clang::Sema::CheckForIntOverflow(clang::Expr const*) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0x14ef8ec)
+#14 0x00007fa6e674d1f5 clang::Sema::CheckCompletedExpr(clang::Expr*, clang::SourceLocation, bool) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0x14f01f5)
+#15 0x00007fa6e6abaca6 clang::Sema::ActOnFinishFullExpr(clang::Expr*, clang::SourceLocation, bool, bool, bool) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0x185dca6)
+#16 0x00007fa6e6ca233a clang::Sema::ActOnExprStmt(clang::ActionResult<clang::Expr*, true>, bool) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0x1a4533a)
+#17 0x00007fa6e5eb58f6 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc588f6)
+#18 0x00007fa6e5eb52cb clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc582cb)
+#19 0x00007fa6e5ebdc80 clang::Parser::ParseCompoundStatementBody(bool) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc60c80)
+#20 0x00007fa6e5ebedef clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc61def)
+#21 0x00007fa6e5ed8c36 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc7bc36)
+#22 0x00007fa6e5e233a7 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xbc63a7)
+#23 0x00007fa6e5ed7cb4 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc7acb4)
+#24 0x00007fa6e5ed769b clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc7a69b)
+#25 0x00007fa6e5ed68ed clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc798ed)
+#26 0x00007fa6e5ed4d3c clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc77d3c)
+#27 0x00007fa6e5ed469f clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xc7769f)
+#28 0x00007fa6e5e0d006 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0xbb0006)
+#29 0x00007fa6e7d0a825 clang::FrontendAction::Execute() (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0x2aad825)
+#30 0x00007fa6e7c860d4 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0x2a290d4)
+#31 0x00007fa6e7d83f7e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/llvm-19/bin/../lib/libclang-cpp.so.19.0+0x2b26f7e)
+#32 0x000055c9cda4afad cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/lib/llvm-19/bin/clang+0x12fad)
+#33 0x000055c9cda48075 (/usr/lib/llvm-19/bin/clang+0x10075)
+#34 0x000055c9cda47213 clang_main(int, char**, llvm::ToolContext const&) (/usr/lib/llvm-19/bin/clang+0xf213)
+#35 0x000055c9cda55556 main (/usr/lib/llvm-19/bin/clang+0x1d556)
+#36 0x00007fa6dcdf5c87 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x21c87)
+#37 0x000055c9cda44bfa _start (/usr/lib/llvm-19/bin/clang+0xcbfa)
+clang: error: unable to execute command: Segmentation fault (core dumped)
+clang: error: clang frontend command failed due to signal (use -v to see invocation)
+Ubuntu clang version 19.0.0 (++20240301064251+dd426fa5f931-1~exp1~20240301184412.1845)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+clang: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang: note: diagnostic msg: /tmp/code_2-af78db.c
+clang: note: diagnostic msg: /tmp/code_2-af78db.sh
+clang: note: diagnostic msg: 
+
+********************
+
+# cat /tmp/code_2-af78db.c
+# 1 "<built-in>"
+# 1 "code_2.c"
+x() { &&e - &&b < x; }
+
+
+
+# cat /tmp/code_2-af78db.sh
+# Crash reproducer for Ubuntu clang version 19.0.0 (++20240301064251+dd426fa5f931-1~exp1~20240301184412.1845)
+# Driver args: "code_2.c" "-O3" "-fsanitize=undefined" "-Wall" "-Wextra" "-pedantic" "-Werror" "-std=c11"
+# Original command:  "/usr/lib/llvm-19/bin/clang" "-cc1" "-triple" "x86_64-pc-linux-gnu" "-emit-obj" "-dumpdir" "a-" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "code_2.c" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=none" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-debugger-tuning=gdb" "-fdebug-compilation-dir=/root/gdbtest/gcctest/gcc_llvm/llvm/log/closed/HasCode/50323" "-fcoverage-compilation-dir=/root/gdbtest/gcctest/gcc_llvm/llvm/log/closed/HasCode/50323" "-resource-dir" "/usr/lib/llvm-19/lib/clang/19" "-internal-isystem" "/usr/lib/llvm-19/lib/clang/19/include" "-internal-isystem" "/usr/local/include" "-internal-isystem" "/usr/lib/gcc/x86_64-linux-gnu/7/../../../../x86_64-linux-gnu/include" "-internal-externc-isystem" "/usr/include/x86_64-linux-gnu" "-internal-externc-isystem" "/include" "-internal-externc-isystem" "/usr/include" "-O3" "-Wall" "-Wextra" "-Werror" "-pedantic" "-std=c11" "-ferror-limit" "19" "-fsanitize=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,function,integer-divide-by-zero,nonnull-attribute,null,object-size,pointer-overflow,return,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,unreachable,vla-bound,vptr" "-fsanitize-recover=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,function,integer-divide-by-zero,nonnull-attribute,null,object-size,pointer-overflow,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,vla-bound,vptr" "-fno-sanitize-memory-param-retval" "-fno-sanitize-address-use-odr-indicator" "-fgnuc-version=4.2.1" "-fskip-odr-check-in-gmf" "-fcolor-diagnostics" "-vectorize-loops" "-vectorize-slp" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-o" "/tmp/code_2-15394c.o" "-x" "c" "code_2.c"
+ "/usr/lib/llvm-19/bin/clang" "-cc1" "-triple" "x86_64-pc-linux-gnu" "-emit-obj" "-dumpdir" "a-" "-disable-free" "-clear-ast-before-backend" "-disable-llvm-verifier" "-discard-value-names" "-main-file-name" "code_2.c" "-mrelocation-model" "pic" "-pic-level" "2" "-pic-is-pie" "-mframe-pointer=none" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-debugger-tuning=gdb" "-fdebug-compilation-dir=/root/gdbtest/gcctest/gcc_llvm/llvm/log/closed/HasCode/50323" "-fcoverage-compilation-dir=/root/gdbtest/gcctest/gcc_llvm/llvm/log/closed/HasCode/50323" "-O3" "-Wall" "-Wextra" "-Werror" "-pedantic" "-std=c11" "-ferror-limit" "19" "-fsanitize=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,function,integer-divide-by-zero,nonnull-attribute,null,object-size,pointer-overflow,return,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,unreachable,vla-bound,vptr" "-fsanitize-recover=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,function,integer-divide-by-zero,nonnull-attribute,null,object-size,pointer-overflow,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,vla-bound,vptr" "-fno-sanitize-memory-param-retval" "-fno-sanitize-address-use-odr-indicator" "-fgnuc-version=4.2.1" "-fskip-odr-check-in-gmf" "-fcolor-diagnostics" "-vectorize-loops" "-vectorize-slp" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-x" "c" "code_2-af78db.c"
+
+
+
+Bug Labels:
+clang:frontend, confirmed, constexpr, crash-on-valid, good first issue

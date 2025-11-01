@@ -1,0 +1,72 @@
+Issue Title:
+ICE on wrong generator yield/return type when using type_alias_impl_trait · Issue #94429 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(type_alias_impl_trait, generator_trait, generators)]
+use std::ops::Generator;
+
+trait Runnable {
+    type Gen: Generator<Yield = (), Return = ()>;
+
+    fn run(&mut self) -> Self::Gen;
+}
+
+struct Implementor {}
+
+impl Runnable for Implementor {
+    type Gen = impl Generator<Yield = (), Return = ()>;
+
+    fn run(&mut self) -> Self::Gen {
+        move || {
+            // This line causes the ICE;
+            // the same error occurs if the return type is wrong (e.g. `return 1`)
+            yield 1;
+        }
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/10cc7a6d031fd607f594f4c7af113bfaa9a879e9/compiler/rustc_errors/src/lib.rs:1102:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::span_bug::<rustc_span::span_encoding::Span>
+   3: <rustc_errors::Handler>::span_bug::<rustc_span::span_encoding::Span>
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>
+   5: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+   6: rustc_middle::util::bug::span_bug_fmt::<rustc_span::span_encoding::Span>
+   7: <rustc_borrowck::universal_regions::UniversalRegions>::new
+   8: rustc_borrowck::do_mir_borrowck
+   9: <rustc_borrowck::provide::{closure#0} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+  10: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId, &rustc_middle::mir::query::BorrowCheckResult>
+  11: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, &rustc_middle::mir::query::BorrowCheckResult>>
+  12: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_borrowck
+  13: <rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator>::check
+  14: <rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator as rustc_hir::intravisit::Visitor>::visit_expr
+  15: <rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator as rustc_hir::intravisit::Visitor>::visit_nested_body
+  16: rustc_hir::intravisit::walk_impl_item::<rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator>
+  17: <rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator as rustc_hir::intravisit::Visitor>::visit_nested_impl_item
+  18: rustc_hir::intravisit::walk_item::<rustc_typeck::collect::type_of::find_opaque_ty_constraints::ConstraintLocator>
+  19: rustc_typeck::collect::type_of::find_opaque_ty_constraints
+  20: rustc_typeck::collect::type_of::type_of
+  21: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId, rustc_middle::ty::Ty>
+  22: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::type_of, rustc_query_impl::plumbing::QueryCtxt>
+  23: rustc_typeck::check::check::check_item_type
+  24: <rustc_middle::hir::map::Map>::visit_item_likes_in_module::<rustc_typeck::check::CheckItemTypesVisitor>
+  25: rustc_typeck::check::check::check_mod_item_types
+  26: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId, ()>
+  27: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, ()>>
+  28: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::check_mod_item_types, rustc_query_impl::plumbing::QueryCtxt>
+  29: <rustc_middle::hir::map::Map>::for_each_module::<rustc_typeck::check_crate::{closure#6}::{closure#0}>
+  30: rustc_typeck::check_crate
+  31: rustc_interface::passes::analysis
+  32: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, (), core::result::Result<(), rustc_errors::ErrorReported>>
+  33: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), core::result::Result<(), rustc_errors::ErrorReported>>>
+  34: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  35: <rustc_interface::passes::QueryContext>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}::{closure#3}, core::result::Result<(), rustc_errors::ErrorReported>>
+  36: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorReported>>
+  37: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorReported>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  38: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorReported>>
+
+Bug Labels:
+A-impl-trait, C-bug, E-needs-test, F-type_alias_impl_trait, I-ICE, T-compiler, glacier

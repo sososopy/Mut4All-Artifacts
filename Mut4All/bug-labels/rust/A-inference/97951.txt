@@ -1,0 +1,131 @@
+Issue Title:
+Bug connected with probably ambiguous data type when parsing string into i32 from &str from clap · Issue #97951 · rust-lang/rust · GitHub
+
+Rust Code:
+use datafusion::error::Result;
+use clap::{Arg, Command};
+
+
+#[derive(Clone)]
+pub struct KafkaConfig {
+    pub partitions: i32,
+}
+
+impl KafkaConfig {
+    pub fn new() -> KafkaConfig {
+        KafkaConfig {
+            partitions: 1,
+        }
+    }
+    /// Set number of kafka partitions - currently round robin
+    pub fn with_partitions(&mut self, partitions: impl Into<i32>) -> &mut KafkaConfig {
+        self.partitions = partitions.into();
+        self
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+
+    let matches = Command::new("Kafka publisher")
+        .version(option_env!("CARGO_PKG_VERSION").unwrap_or(""))
+        .about("Datafusion kafka publisher")
+        .arg(
+            Arg::new("partitions")
+                .short('p')
+                .long("partitions")
+                .help("Number of partitions")
+                .takes_value(true)
+                .default_value("1"),
+        )
+        .get_matches();
+    
+    let partition = matches.value_of("partitions").unwrap();
+    // BUG:
+    let conf = KafkaConfig::new()
+        .with_partitions(partition.parse().unwrap());
+    
+    Ok(())
+}
+
+Bug Trace:
+RUST_BACKTRACE=1  cargo build --release --example bug                                                                                                                                                                                                (master+) 16:22:27
+   Compiling kafka_writer v0.1.0 (/opt/workspace/df_to_kafka)
+error: internal compiler error: compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs:856:33: unexpected path: def=clap::App substs=['_#1r] path=Path { span: examples/bug.rs:26:19: 26:26 (#0), res: Def(TyAlias, DefId(154:881 ~ clap[cfd3]::build::command::Command)), segments: [PathSegment { ident: Command#0, hir_id: Some(HirId { owner: DefId(0:21 ~ bug[6e6c]::main), local_id: 11 }), res: Some(Err), args: Some(GenericArgs { args: [Lifetime(Lifetime { hir_id: HirId { owner: DefId(0:21 ~ bug[6e6c]::main), local_id: 10 }, span: examples/bug.rs:26:19: 26:26 (#0), name: Implicit })], bindings: [], parenthesized: false, span_ext: examples/bug.rs:26:31: 26:31 (#0) }), infer_args: true }] }
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/5435ed6916a59e8d5acba2149316a841c3905cbd/compiler/rustc_errors/src/lib.rs:1334:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::bug::<&alloc::string::String>
+   3: <rustc_errors::Handler>::bug::<&alloc::string::String>
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>
+   5: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>::path_inferred_subst_iter
+   8: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+   9: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  10: rustc_hir::intravisit::walk_expr::<rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>
+  11: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  12: rustc_hir::intravisit::walk_expr::<rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>
+  13: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  14: rustc_hir::intravisit::walk_expr::<rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>
+  15: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  16: rustc_hir::intravisit::walk_expr::<rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>
+  17: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  18: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_local
+  19: rustc_hir::intravisit::walk_expr::<rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>
+  20: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  21: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_body
+  22: rustc_hir::intravisit::walk_expr::<rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>
+  23: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  24: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  25: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_local
+  26: rustc_hir::intravisit::walk_expr::<rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor>
+  27: <rustc_infer::infer::error_reporting::need_type_info::FindInferSourceVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  28: <rustc_infer::infer::InferCtxt>::emit_inference_failure_err
+  29: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::error_reporting::InferCtxtPrivExt>::maybe_report_ambiguity
+  30: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::error_reporting::InferCtxtExt>::report_fulfillment_errors
+  31: <rustc_typeck::check::fn_ctxt::FnCtxt>::select_all_obligations_or_error
+  32: <rustc_infer::infer::InferCtxtBuilder>::enter::<&rustc_middle::ty::context::TypeckResults, <rustc_typeck::check::inherited::InheritedBuilder>::enter<rustc_typeck::check::typeck_with_fallback<rustc_typeck::check::typeck::{closure#0}>::{closure#1}, &rustc_middle::ty::context::TypeckResults>::{closure#0}>
+  33: rustc_typeck::check::typeck
+  34: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, &rustc_middle::ty::context::TypeckResults>>
+  35: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::typeck, rustc_query_impl::plumbing::QueryCtxt>
+  36: rustc_typeck::check::typeck
+  37: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, &rustc_middle::ty::context::TypeckResults>>
+  38: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::typeck, rustc_query_impl::plumbing::QueryCtxt>
+  39: <rustc_middle::hir::map::Map>::par_body_owners::<rustc_typeck::check::typeck_item_bodies::{closure#0}>
+  40: rustc_typeck::check::typeck_item_bodies
+  41: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), ()>>
+  42: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::typeck_item_bodies, rustc_query_impl::plumbing::QueryCtxt>
+  43: <rustc_session::session::Session>::time::<(), rustc_typeck::check_crate::{closure#7}>
+  44: rustc_typeck::check_crate
+  45: rustc_interface::passes::analysis
+  46: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), core::result::Result<(), rustc_errors::ErrorGuaranteed>>>
+  47: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  48: <rustc_interface::passes::QueryContext>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}::{closure#3}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+  49: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorGuaranteed>>
+  50: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  51: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.63.0-nightly (5435ed691 2022-06-07) running on x86_64-apple-darwin
+
+note: compiler flags: --crate-type bin -C opt-level=3 -C embed-bitcode=no
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck] type-checking `main`
+#1 [typeck] type-checking `main::{closure#0}`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `kafka_writer`
+
+Bug Labels:
+A-inference, C-bug, I-ICE, T-compiler, requires-nightly

@@ -1,0 +1,72 @@
+Issue Title:
+ICE upcasting or calling a supertrait method, for trait object with unfulfilled bound on generic argument · Issue #136492 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(trait_upcasting)]
+
+trait Supertrait<T> {
+    fn method(&self) {}
+}
+impl<T> Supertrait<T> for () {}
+
+trait WithAssoc {
+    type Assoc;
+}
+trait Trait<P: WithAssoc>: Supertrait<P::Assoc> + Supertrait<()> {}
+
+fn upcast<P>(x: &dyn Trait<P>) -> &dyn Supertrait<()> {
+    x
+}
+
+fn main() {
+    println!("{:p}", upcast::<()> as *const ());
+}
+
+Bug Trace:
+thread 'rustc' panicked at compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:169:13:
+Box<dyn Any>
+stack backtrace:
+   0:     0x7aac496307e0 - <std::sys::backtrace::BacktraceLock::print::DisplayBacktrace as core::fmt::Display>::fmt::ha7a887e7d71c6e16
+   1:     0x7aac49e147e6 - core::fmt::write::h8bce7c34d32c16d5
+   2:     0x7aac4b0f8491 - std::io::Write::write_fmt::h61588d2e153c1fe1
+   3:     0x7aac49630642 - std::sys::backtrace::BacktraceLock::print::h5e897e4367a4390b
+   4:     0x7aac49632ac2 - std::panicking::default_hook::{{closure}}::hfb627b30254cb12b
+   5:     0x7aac4963294a - std::panicking::default_hook::hc4630489198bafcd
+   6:     0x7aac4878cf89 - std[a1eb87e154533a0e]::panicking::update_hook::<alloc[ad594d350f83b1d5]::boxed::Box<rustc_driver_impl[a791c9c5bd8cfc65]::install_ice_hook::{closure#1}>>::{closure#0}
+   7:     0x7aac49633603 - std::panicking::rust_panic_with_hook::h5ee98a90e6655b2f
+   8:     0x7aac487c7c71 - std[a1eb87e154533a0e]::panicking::begin_panic::<rustc_errors[4c730af126acd4ca]::ExplicitBug>::{closure#0}
+   9:     0x7aac487bcbe6 - std[a1eb87e154533a0e]::sys::backtrace::__rust_end_short_backtrace::<std[a1eb87e154533a0e]::panicking::begin_panic<rustc_errors[4c730af126acd4ca]::ExplicitBug>::{closure#0}, !>
+  10:     0x7aac487bc99f - std[a1eb87e154533a0e]::panicking::begin_panic::<rustc_errors[4c730af126acd4ca]::ExplicitBug>
+  11:     0x7aac487d1c11 - <rustc_errors[4c730af126acd4ca]::diagnostic::BugAbort as rustc_errors[4c730af126acd4ca]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  12:     0x7aac48daf9a3 - rustc_middle[99a44bd93e00f3c6]::util::bug::opt_span_bug_fmt::<rustc_span[a22240cbbe35b408]::span_encoding::Span>::{closure#0}
+  13:     0x7aac48d9859a - rustc_middle[99a44bd93e00f3c6]::ty::context::tls::with_opt::<rustc_middle[99a44bd93e00f3c6]::util::bug::opt_span_bug_fmt<rustc_span[a22240cbbe35b408]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+  14:     0x7aac48d9842b - rustc_middle[99a44bd93e00f3c6]::ty::context::tls::with_context_opt::<rustc_middle[99a44bd93e00f3c6]::ty::context::tls::with_opt<rustc_middle[99a44bd93e00f3c6]::util::bug::opt_span_bug_fmt<rustc_span[a22240cbbe35b408]::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+  15:     0x7aac46f522b0 - rustc_middle[99a44bd93e00f3c6]::util::bug::bug_fmt
+  16:     0x7aac4a3cdbb4 - <rustc_middle[99a44bd93e00f3c6]::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_type_ir[5dd542ab83ff2458]::fold::TypeFolder<rustc_middle[99a44bd93e00f3c6]::ty::context::TyCtxt>>::fold_ty
+  17:     0x7aac493c5164 - <&rustc_middle[99a44bd93e00f3c6]::ty::list::RawList<(), rustc_middle[99a44bd93e00f3c6]::ty::generic_args::GenericArg> as rustc_type_ir[5dd542ab83ff2458]::fold::TypeFoldable<rustc_middle[99a44bd93e00f3c6]::ty::context::TyCtxt>>::try_fold_with::<rustc_middle[99a44bd93e00f3c6]::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder>
+  18:     0x7aac4b9569af - <rustc_middle[99a44bd93e00f3c6]::ty::context::TyCtxt>::normalize_erasing_late_bound_regions::<rustc_type_ir[5dd542ab83ff2458]::predicate::TraitPredicate<rustc_middle[99a44bd93e00f3c6]::ty::context::TyCtxt>>.cold
+  19:     0x7aac494d09dd - rustc_trait_selection[326587cd639b8c1b]::traits::vtable::supertrait_vtable_slot
+  20:     0x7aac4917d766 - rustc_query_impl[7662b9ec157989e2]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[7662b9ec157989e2]::query_impl::supertrait_vtable_slot::dynamic_query::{closure#2}::{closure#0}, rustc_middle[99a44bd93e00f3c6]::query::erase::Erased<[u8; 16usize]>>
+  21:     0x7aac49161dc9 - <rustc_query_impl[7662b9ec157989e2]::query_impl::supertrait_vtable_slot::dynamic_query::{closure#2} as core[4442fbc2d924c325]::ops::function::FnOnce<(rustc_middle[99a44bd93e00f3c6]::ty::context::TyCtxt, (rustc_middle[99a44bd93e00f3c6]::ty::Ty, rustc_middle[99a44bd93e00f3c6]::ty::Ty))>>::call_once
+  22:     0x7aac490d0ce0 - rustc_query_system[68979f2bdbd6f64a]::query::plumbing::try_execute_query::<rustc_query_impl[7662b9ec157989e2]::DynamicConfig<rustc_query_system[68979f2bdbd6f64a]::query::caches::DefaultCache<(rustc_middle[99a44bd93e00f3c6]::ty::Ty, rustc_middle[99a44bd93e00f3c6]::ty::Ty), rustc_middle[99a44bd93e00f3c6]::query::erase::Erased<[u8; 16usize]>>, false, false, false>, rustc_query_impl[7662b9ec157989e2]::plumbing::QueryCtxt, false>
+  23:     0x7aac4919c291 - rustc_query_impl[7662b9ec157989e2]::query_impl::supertrait_vtable_slot::get_query_non_incr::__rust_end_short_backtrace
+  24:     0x7aac4a328991 - rustc_codegen_ssa[eabe536e63931777]::base::unsized_info::<rustc_codegen_llvm[a131874fd9aa18eb]::builder::GenericBuilder<rustc_codegen_llvm[a131874fd9aa18eb]::context::CodegenCx>>
+  25:     0x7aac4a327d18 - rustc_codegen_ssa[eabe536e63931777]::base::unsize_ptr::<rustc_codegen_llvm[a131874fd9aa18eb]::builder::GenericBuilder<rustc_codegen_llvm[a131874fd9aa18eb]::context::CodegenCx>>
+  26:     0x7aac4a3029c6 - <rustc_codegen_ssa[eabe536e63931777]::mir::FunctionCx<rustc_codegen_llvm[a131874fd9aa18eb]::builder::GenericBuilder<rustc_codegen_llvm[a131874fd9aa18eb]::context::CodegenCx>>>::codegen_rvalue_operand
+  27:     0x7aac4a95d8c1 - rustc_codegen_ssa[eabe536e63931777]::mir::codegen_mir::<rustc_codegen_llvm[a131874fd9aa18eb]::builder::GenericBuilder<rustc_codegen_llvm[a131874fd9aa18eb]::context::CodegenCx>>
+  28:     0x7aac4a9080bf - rustc_codegen_llvm[a131874fd9aa18eb]::base::compile_codegen_unit::module_codegen
+  29:     0x7aac4adf3588 - <rustc_codegen_llvm[a131874fd9aa18eb]::LlvmCodegenBackend as rustc_codegen_ssa[eabe536e63931777]::traits::backend::ExtraBackendMethods>::compile_codegen_unit
+  30:     0x7aac4adef817 - rustc_codegen_ssa[eabe536e63931777]::base::codegen_crate::<rustc_codegen_llvm[a131874fd9aa18eb]::LlvmCodegenBackend>
+  31:     0x7aac4adeebaf - <rustc_codegen_llvm[a131874fd9aa18eb]::LlvmCodegenBackend as rustc_codegen_ssa[eabe536e63931777]::traits::backend::CodegenBackend>::codegen_crate
+  32:     0x7aac4adf65f4 - <rustc_interface[71b698d67f628f7f]::queries::Linker>::codegen_and_build_linker
+  33:     0x7aac4ad9c69f - rustc_interface[71b698d67f628f7f]::passes::create_and_enter_global_ctxt::<core[4442fbc2d924c325]::option::Option<rustc_interface[71b698d67f628f7f]::queries::Linker>, rustc_driver_impl[a791c9c5bd8cfc65]::run_compiler::{closure#0}::{closure#2}>::{closure#2}::{closure#0}
+  34:     0x7aac4ad7bcb3 - rustc_interface[71b698d67f628f7f]::interface::run_compiler::<(), rustc_driver_impl[a791c9c5bd8cfc65]::run_compiler::{closure#0}>::{closure#1}
+  35:     0x7aac4ace8bb5 - std[a1eb87e154533a0e]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[71b698d67f628f7f]::util::run_in_thread_with_globals<rustc_interface[71b698d67f628f7f]::util::run_in_thread_pool_with_globals<rustc_interface[71b698d67f628f7f]::interface::run_compiler<(), rustc_driver_impl[a791c9c5bd8cfc65]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>
+  36:     0x7aac4ace8899 - <<std[a1eb87e154533a0e]::thread::Builder>::spawn_unchecked_<rustc_interface[71b698d67f628f7f]::util::run_in_thread_with_globals<rustc_interface[71b698d67f628f7f]::util::run_in_thread_pool_with_globals<rustc_interface[71b698d67f628f7f]::interface::run_compiler<(), rustc_driver_impl[a791c9c5bd8cfc65]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>::{closure#1} as core[4442fbc2d924c325]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  37:     0x7aac4ace802b - std::sys::pal::unix::thread::Thread::new::thread_start::h83cea321e92f80f9
+  38:     0x7aac4c5a0a94 - <unknown>
+  39:     0x7aac4c62da34 - clone
+  40:                0x0 - <unknown>
+
+Bug Labels:
+A-trait-objects, C-bug, F-trait_upcasting, I-ICE, P-low, T-compiler, regression-from-stable-to-nightly

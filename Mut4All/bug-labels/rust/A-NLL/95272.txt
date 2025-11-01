@@ -1,0 +1,116 @@
+Issue Title:
+ICE in NLL diagnostics · Issue #95272 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(nll)]
+
+use std::cell::Cell;
+
+fn check<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>)
+where
+    'a: 'b,
+{
+}
+
+fn test<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>) {
+    let f = check;
+    f(x, y);
+}
+
+fn main() {}
+
+Bug Trace:
+rustc +rust-0-stage1 ~/tmp/foo.rs -Zdump-mir=nll
+warning: unused variable: `x`
+ --> /home/nmatsakis/tmp/foo.rs:5:18
+  |
+5 | fn check<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>)
+  |                  ^ help: if this is intentional, prefix it with an underscore: `_x`
+  |
+  = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `y`
+ --> /home/nmatsakis/tmp/foo.rs:5:35
+  |
+5 | fn check<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>)
+  |                                   ^ help: if this is intentional, prefix it with an underscore: `_y`
+
+thread 'rustc' panicked at 'Unexpected type fn(std::cell::Cell<&()>, std::cell::Cell<&()>) {check::<'_, '_>}', compiler/rustc_borrowck/src/diagnostics/region_errors.rs:364:26
+stack backtrace:
+   0:     0x7fdd56fc0283 - std::backtrace_rs::backtrace::libunwind::trace::ha72ce0757bf6cf5a
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7fdd56fc0283 - std::backtrace_rs::backtrace::trace_unsynchronized::h7012f94e87ea8e66
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fdd56fc0283 - std::sys_common::backtrace::_print_fmt::h30c744787c0c0db7
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/sys_common/backtrace.rs:66:5
+   3:     0x7fdd56fc0283 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9a0e43f4dd414b43
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/sys_common/backtrace.rs:45:22
+   4:     0x7fdd57062b9e - core::fmt::write::hbcfe50f71a1a1b80
+                               at /home/nmatsakis/versioned/rust-0/library/core/src/fmt/mod.rs:1190:17
+   5:     0x7fdd57006228 - std::io::Write::write_fmt::hf4a8d009f8750a24
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/io/mod.rs:1657:15
+   6:     0x7fdd56fc00cb - std::sys_common::backtrace::_print::h2956c3f1f1b05868
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/sys_common/backtrace.rs:48:5
+   7:     0x7fdd56fc00cb - std::sys_common::backtrace::print::hb65a2a629d85896e
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/sys_common/backtrace.rs:35:9
+   8:     0x7fdd56feb7c7 - std::panicking::default_hook::{{closure}}::hbb8e8b8458e3bfba
+   9:     0x7fdd56feb599 - std::panicking::default_hook::hc03a0ebc558c9816
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/panicking.rs:314:9
+  10:     0x7fdd57b15471 - <alloc[d8f47e5d83958188]::boxed::Box<dyn for<'a, 'b> core[a823d6af0ead454a]::ops::function::Fn<(&'a core[a823d6af0ead454a]::panic::panic_info::PanicInfo<'b>,), Output = ()> + core[a823d6af0ead454a]::marker::Sync + core[a823d6af0ead454a]::marker::Send> as core[a823d6af0ead454a]::ops::function::Fn<(&core[a823d6af0ead454a]::panic::panic_info::PanicInfo,)>>::call
+                               at /home/nmatsakis/versioned/rust-0/library/alloc/src/boxed.rs:1868:9
+  11:     0x7fdd57b15471 - rustc_driver[a445f1d6331b0c64]::DEFAULT_HOOK::{closure#0}::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_driver/src/lib.rs:1153:13
+  12:     0x7fdd56febdc5 - std::panicking::rust_panic_with_hook::ha3794e48b8a1bbf1
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/panicking.rs:702:17
+  13:     0x7fdd56fbd0e7 - std::panicking::begin_panic_handler::{{closure}}::h74913918af0ea5b9
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/panicking.rs:588:13
+  14:     0x7fdd56fbd024 - std::sys_common::backtrace::__rust_end_short_backtrace::h87995ff2f9985af4
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/sys_common/backtrace.rs:138:18
+  15:     0x7fdd56feb892 - rust_begin_unwind
+                               at /home/nmatsakis/versioned/rust-0/library/std/src/panicking.rs:584:5
+  16:     0x7fdd56fab8c3 - core::panicking::panic_fmt::h14eb3bf140598c3f
+                               at /home/nmatsakis/versioned/rust-0/library/core/src/panicking.rs:142:14
+  17:     0x7fdd58a641f1 - <rustc_borrowck[cdfa95f78a7a45d6]::MirBorrowckCtxt>::report_region_error
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_borrowck/src/diagnostics/region_errors.rs:364:26
+  18:     0x7fdd58a641f1 - <rustc_borrowck[cdfa95f78a7a45d6]::MirBorrowckCtxt>::report_region_errors
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_borrowck/src/diagnostics/region_errors.rs:229:25
+  19:     0x7fdd58a641f1 - rustc_borrowck[cdfa95f78a7a45d6]::do_mir_borrowck
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_borrowck/src/lib.rs:362:5
+  20:     0x7fdd58b05cfe - rustc_borrowck[cdfa95f78a7a45d6]::mir_borrowck::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_borrowck/src/lib.rs:131:9
+  21:     0x7fdd58b05cfe - <rustc_infer[651bfcc87b4e5fb3]::infer::InferCtxtBuilder>::enter::<rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_borrowck[cdfa95f78a7a45d6]::mir_borrowck::{closure#0}>
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_infer/src/infer/mod.rs:634:9
+  22:     0x7fdd58a55eb6 - rustc_borrowck[cdfa95f78a7a45d6]::mir_borrowck
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_borrowck/src/lib.rs:128:27
+  23:     0x7fdd58a26ca1 - rustc_borrowck[cdfa95f78a7a45d6]::provide::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_borrowck/src/lib.rs:111:17
+  24:     0x7fdd58a26ca1 - <rustc_borrowck[cdfa95f78a7a45d6]::provide::{closure#0} as core[a823d6af0ead454a]::ops::function::FnOnce<(rustc_middle[fc1ba572f5551dcc]::ty::context::TyCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId)>>::call_once
+                               at /home/nmatsakis/versioned/rust-0/library/core/src/ops/function.rs:227:5
+  25:     0x7fdd590f2fe6 - <rustc_query_system[1aba1128788b9c09]::query::config::QueryVtable<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>>::compute
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_query_system/src/query/config.rs:43:9
+  26:     0x7fdd590f2fe6 - rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job::<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_query_system/src/query/plumbing.rs:415:55
+  27:     0x7fdd590f2fe6 - stacker[41c326c672d48531]::maybe_grow::<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>
+                               at /home/nmatsakis/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.14/src/lib.rs:55:9
+  28:     0x7fdd590f2fe6 - rustc_data_structures[cf5f8d8e43caa4c3]::stack::ensure_sufficient_stack::<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_data_structures/src/stack.rs:17:5
+  29:     0x7fdd590f2fe6 - <rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query::<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_query_impl/src/plumbing.rs:113:17
+  30:     0x7fdd590f2fe6 - rustc_middle[fc1ba572f5551dcc]::ty::context::tls::enter_context::<<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_middle/src/ty/context.rs:1817:50
+  31:     0x7fdd590f2fe6 - rustc_middle[fc1ba572f5551dcc]::ty::context::tls::set_tlv::<rustc_middle[fc1ba572f5551dcc]::ty::context::tls::enter_context<<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_middle/src/ty/context.rs:1801:9
+  32:     0x7fdd590f2fe6 - rustc_middle[fc1ba572f5551dcc]::ty::context::tls::enter_context::<<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_middle/src/ty/context.rs:1817:9
+  33:     0x7fdd590f2fe6 - <rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query::<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_query_impl/src/plumbing.rs:112:13
+  34:     0x7fdd590f2fe6 - rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_related_context::<<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_middle/src/ty/context.rs:1861:13
+  35:     0x7fdd590f2fe6 - rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_context::<rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_related_context<<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_middle/src/ty/context.rs:1845:40
+  36:     0x7fdd590f2fe6 - rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_context_opt::<rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_context<rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_related_context<<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>
+                               at /home/nmatsakis/versioned/rust-0/compiler/rustc_middle/src/ty/context.rs:1834:22
+  37:     0x7fdd590f2fe6 - rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_context::<rustc_middle[fc1ba572f5551dcc]::ty::context::tls::with_related_context<<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt as rustc_query_system[1aba1128788b9c09]::query::QueryContext>::start_query<&rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult, rustc_query_system[1aba1128788b9c09]::query::plumbing::execute_job<rustc_query_impl[7e83fcf6a6074153]::plumbing::QueryCtxt, rustc_span[dc3942bad1d4feab]::def_id::LocalDefId, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>::{closure#0}, &rustc_middle[fc1ba572f5551dcc]::mir::query::BorrowCheckResult>
+
+Bug Labels:
+A-NLL, C-bug, I-ICE, T-compiler, glacier

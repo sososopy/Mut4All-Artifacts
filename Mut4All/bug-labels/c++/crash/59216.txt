@@ -1,0 +1,32 @@
+Issue Title:
+ICE in explicit return type from lambda inside recursive function template
+
+Source Code & Bug Trace:
+#include <functional>
+
+namespace d {
+template <typename g, typename c, typename e>
+auto compose(std::true_type, g, c f, e) -> decltype(f(0));
+}
+
+
+template <typename c>
+auto compose(c) -> c;
+
+template <typename c, typename... i>
+auto compose(c f, i... fs) {
+  return
+      [](auto... h)
+          -> decltype(d::compose(
+              std::is_invocable<decltype(compose(fs...)), decltype(h)...>{},
+              std::bool_constant<(
+                  std::is_invocable_v<decltype(compose(fs...), h)> && ...)>{},
+              f, compose(fs...))) {};
+}
+
+auto j(int k) { return [k](auto l) { return l > k;}; }
+auto m = compose(j(2), std::plus{});
+static_assert(std::is_same<bool, decltype(m(1, 2))>{});
+
+Bug Labels:
+clang:frontend, confirmed, crash

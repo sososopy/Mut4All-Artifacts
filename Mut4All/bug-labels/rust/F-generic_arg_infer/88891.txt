@@ -1,0 +1,102 @@
+Issue Title:
+Bugs when trying to infer type of const generic · Issue #88891 · rust-lang/rust · GitHub
+
+Rust Code:
+pub struct ICMCommon<InterfaceThing: ?Sized, E> {
+    phantom: PhantomData<InterfaceThing>,
+    sleep_bit: BitStruct<dyn Interface<Error = InterfaceError<E>>, _,_,_>,
+}
+
+Bug Trace:
+[will@localhost icm20948-rs]$ RUST_BACKTRACE=1 cargo build --target=x86_64-unknown-linux-gnu
+
+
+   Compiling icm20948 v0.1.0 (/home/will/projects/rust/embedded/bluepill/icm20948-rs)
+error: internal compiler error: compiler/rustc_middle/src/ty/subst.rs:560:17: expected const for `ADDRESS/#1` (Const { ty: u8, val: Param(ADDRESS/#1) }/1) but found Type([type error]) when substituting substs=[(dyn bit_byte_structs::bus::Interface<Error = bit_byte_structs::bus::InterfaceError<E>> + 'static), [type error], [type error], [type error]]
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/8c2b6ea37d7719a0370bd404030eef9702c1752c/compiler/rustc_errors/src/lib.rs:1092:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::span_bug
+   3: rustc_errors::Handler::span_bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::span_bug_fmt
+   7: <rustc_middle::ty::subst::SubstFolder as rustc_middle::ty::fold::TypeFolder>::fold_const
+   8: <smallvec::SmallVec<A> as core::iter::traits::collect::Extend<<A as smallvec::Array>::Item>>::extend
+   9: rustc_middle::ty::fold::TypeFoldable::fold_with
+  10: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+  11: <dyn rustc_typeck::astconv::AstConv>::ast_path_to_ty
+  12: <dyn rustc_typeck::astconv::AstConv>::ast_ty_to_ty_inner
+  13: rustc_typeck::collect::type_of::type_of
+  14: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  15: rustc_data_structures::stack::ensure_sufficient_stack
+  16: rustc_query_system::query::plumbing::try_execute_query
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_of
+  18: <rustc_typeck::outlives::implicit_infer::InferVisitor as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_item
+  19: rustc_typeck::outlives::inferred_outlives_crate
+  20: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  21: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  22: rustc_data_structures::stack::ensure_sufficient_stack
+  23: rustc_query_system::query::plumbing::try_execute_query
+  24: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::inferred_outlives_crate
+  25: rustc_typeck::outlives::inferred_outlives_of
+  26: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  27: rustc_data_structures::stack::ensure_sufficient_stack
+  28: rustc_query_system::query::plumbing::try_execute_query
+  29: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::inferred_outlives_of
+  30: rustc_typeck::collect::predicates_defined_on
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::try_execute_query
+  34: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_defined_on
+  35: rustc_typeck::collect::predicates_of
+  36: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  37: rustc_data_structures::stack::ensure_sufficient_stack
+  38: rustc_query_system::query::plumbing::try_execute_query
+  39: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::predicates_of
+  40: rustc_typeck::collect::convert_item
+  41: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_item
+  42: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  43: rustc_typeck::collect::collect_mod_item_types
+  44: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  45: rustc_data_structures::stack::ensure_sufficient_stack
+  46: rustc_query_system::query::plumbing::try_execute_query
+  47: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::collect_mod_item_types
+  48: rustc_session::session::Session::track_errors
+  49: rustc_typeck::check_crate
+  50: rustc_interface::passes::analysis
+  51: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  52: rustc_data_structures::stack::ensure_sufficient_stack
+  53: rustc_query_system::query::plumbing::try_execute_query
+  54: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  55: rustc_interface::passes::QueryContext::enter
+  56: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  57: rustc_span::with_source_map
+  58: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.57.0-nightly (8c2b6ea37 2021-09-11) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [type_of] computing type of `ICMCommon::sleep_bit`
+#1 [inferred_outlives_crate] computing the inferred outlives predicates for items in this crate
+#2 [inferred_outlives_of] computing inferred outlives predicates of `AccelRangeOptions`
+#3 [predicates_defined_on] computing predicates of `AccelRangeOptions`
+#4 [predicates_of] computing predicates of `AccelRangeOptions`
+#5 [collect_mod_item_types] collecting item types in top-level module
+#6 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `icm20948`
+
+Bug Labels:
+C-bug, E-needs-mcve, F-generic_arg_infer, I-ICE, T-compiler, requires-nightly

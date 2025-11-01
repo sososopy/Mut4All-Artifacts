@@ -1,0 +1,34 @@
+Issue Title:
+ICE: Generic type alias to invalid type crashes during type check on latest stable · Issue #62742 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::marker::PhantomData;
+
+fn _alias_check() {
+    WrongImpl::foo(0i32);       // crash
+    WrongImpl::<()>::foo(0i32); // fine
+    CorrectImpl::foo(0i32);     // fine
+}
+
+pub trait Raw<T: ?Sized> {
+    type Value;
+}
+
+pub type WrongImpl<T> = SafeImpl<T, RawImpl<T>>;
+
+pub type CorrectImpl<T> = SafeImpl<[T], RawImpl<T>>;
+
+pub struct RawImpl<T>(PhantomData<T>);
+
+impl<T> Raw<[T]> for RawImpl<T> {
+    type Value = T;
+}
+
+pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
+
+impl<T: ?Sized, A: Raw<T>> SafeImpl<T, A> {
+    pub fn foo(value: A::Value) {}
+}
+
+Bug Labels:
+A-trait-system, C-bug, I-ICE, P-high, T-compiler, WG-traits, glacier, regression-from-stable-to-stable

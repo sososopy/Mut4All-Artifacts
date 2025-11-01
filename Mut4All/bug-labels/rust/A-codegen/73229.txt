@@ -1,0 +1,101 @@
+Issue Title:
+GitHub · Where software is built
+
+Rust Code:
+fn any<T>() -> T { loop {} }
+
+trait Foo { type V; }
+
+trait Callback<T: Foo>: Fn(&T, &T::V) {}
+impl<T: Foo, F: Fn(&T, &T::V)> Callback<T> for F {}
+
+struct Bar<T: Foo> {
+    callback: Box<dyn Callback<T>>,
+}
+
+impl<T: Foo> Bar<T> {
+    fn event(&self) {
+        (self.callback)(any(), any());
+    }
+}
+
+struct A;
+struct B;
+impl Foo for A { type V = B; }
+
+fn main() {
+    let foo = Bar::<A> {
+        callback: Box::new(|_: &A, _: &B| ()),
+    };
+    foo.event();
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:907:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1076
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1537
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:481
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  17: rustc_middle::ty::context::tls::with_opt
+  18: rustc_middle::util::bug::opt_span_bug_fmt
+  19: rustc_middle::util::bug::bug_fmt
+  20: rustc_trait_selection::traits::codegen::drain_fulfillment_cx_or_panic
+  21: rustc_middle::ty::context::GlobalCtxt::enter_local
+  22: rustc_trait_selection::traits::codegen::codegen_fulfill_obligation
+  23: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::codegen_fulfill_obligation>::compute
+  24: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  25: rustc_data_structures::stack::ensure_sufficient_stack
+  26: rustc_query_system::query::plumbing::get_query_impl
+  27: rustc_ty::instance::resolve_instance
+  28: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::resolve_instance>::compute
+  29: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  30: rustc_data_structures::stack::ensure_sufficient_stack
+  31: rustc_query_system::query::plumbing::get_query_impl
+  32: rustc_middle::ty::instance::Instance::resolve
+  33: <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_terminator_kind
+  34: rustc_mir::monomorphize::collector::collect_neighbours
+  35: rustc_data_structures::stack::ensure_sufficient_stack
+  36: rustc_mir::monomorphize::collector::collect_items_rec
+  37: rustc_mir::monomorphize::collector::collect_items_rec
+  38: rustc_mir::monomorphize::collector::collect_crate_mono_items
+  39: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+  40: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::collect_and_partition_mono_items>::compute
+  41: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  42: rustc_query_system::query::plumbing::get_query_impl
+  43: rustc_codegen_ssa::base::codegen_crate
+  44: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  45: rustc_interface::passes::start_codegen
+  46: rustc_middle::ty::context::tls::enter_global
+  47: rustc_interface::queries::Queries::ongoing_codegen
+  48: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  49: rustc_span::with_source_map
+  50: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  51: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-codegen, C-bug, E-needs-test, I-ICE, T-compiler, glacier

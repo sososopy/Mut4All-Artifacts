@@ -1,0 +1,122 @@
+Issue Title:
+2021 edition ICE when destructuring enum in async block · Issue #97378 · rust-lang/rust · GitHub
+
+Rust Code:
+pub enum Request {
+    Resolve {
+        url: String,
+    },
+}
+
+pub async fn handle_event(
+    event: Request,
+)  {
+    async move {
+        let Request::Resolve { url } = event;
+    }.await;
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+warning: unused variable: `url`
+  --> src/lib.rs:11:32
+   |
+11 |         let Request::Resolve { url } = event;
+   |                                ^^^ help: try ignoring the field: `url: _`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+
+error: internal compiler error: broken MIR in DefId(0:8 ~ playground[f439]::handle_event::{closure#0}) ((_3.0: std::string::String)): can't project out of PlaceTy { ty: Request, variant_index: None }
+  --> src/lib.rs:10:16
+   |
+10 |       async move {
+   |  ________________^
+11 | |         let Request::Resolve { url } = event;
+12 | |     }.await;
+   | |_____^
+   |
+   = note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:860:31
+
+error: internal compiler error: TyKind::Error constructed but no error reported
+  |
+  = note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:795:20
+
+error: internal compiler error: TyKind::Error constructed but no error reported
+  |
+  = note: delayed at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/compiler/rustc_middle/src/ty/relate.rs:414:59
+
+error: internal compiler error: broken MIR in DefId(0:9 ~ playground[f439]::handle_event::{closure#0}::{closure#0}) (((_1.0: std::string::String).0: std::string::String)): bad field access (std::vec::Vec<u8>: std::string::String): NoSolution
+  --> src/lib.rs:11:32
+   |
+11 |         let Request::Resolve { url } = event;
+   |                                ^^^
+   |
+   = note: delayed at compiler/rustc_borrowck/src/type_check/mod.rs:770:29
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1309:13
+stack backtrace:
+   0:     0x7fa0ef29d1cd - std::backtrace_rs::backtrace::libunwind::trace::h22893a5306c091b4
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7fa0ef29d1cd - std::backtrace_rs::backtrace::trace_unsynchronized::h29c3bc6f9e91819d
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fa0ef29d1cd - std::sys_common::backtrace::_print_fmt::he497d8a0ec903793
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/sys_common/backtrace.rs:66:5
+   3:     0x7fa0ef29d1cd - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9c2a9d2774d81873
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/sys_common/backtrace.rs:45:22
+   4:     0x7fa0ef2f701c - core::fmt::write::hba4337c43d992f49
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/core/src/fmt/mod.rs:1194:17
+   5:     0x7fa0ef28e7c1 - std::io::Write::write_fmt::heb73de6e02cfabed
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/io/mod.rs:1655:15
+   6:     0x7fa0ef2a02b5 - std::sys_common::backtrace::_print::h63c8b24acdd8e8ce
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/sys_common/backtrace.rs:48:5
+   7:     0x7fa0ef2a02b5 - std::sys_common::backtrace::print::h426700d6240cdcc2
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/sys_common/backtrace.rs:35:9
+   8:     0x7fa0ef2a02b5 - std::panicking::default_hook::{{closure}}::hc9a76eed0b18f82b
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/panicking.rs:295:22
+   9:     0x7fa0ef29ff69 - std::panicking::default_hook::h2e88d02087fae196
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/panicking.rs:314:9
+  10:     0x7fa0efa1d1d1 - rustc_driver[413d55b6344850e3]::DEFAULT_HOOK::{closure#0}::{closure#0}
+  11:     0x7fa0ef2a0a00 - std::panicking::rust_panic_with_hook::habfdcc2e90f9fd4c
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/panicking.rs:702:17
+  12:     0x7fa0f0aed141 - std[3b302b3c9093c22]::panicking::begin_panic::<rustc_errors[a7dbbf867eaca825]::ExplicitBug>::{closure#0}
+  13:     0x7fa0f0aece96 - std[3b302b3c9093c22]::sys_common::backtrace::__rust_end_short_backtrace::<std[3b302b3c9093c22]::panicking::begin_panic<rustc_errors[a7dbbf867eaca825]::ExplicitBug>::{closure#0}, !>
+  14:     0x7fa0f0af4406 - std[3b302b3c9093c22]::panicking::begin_panic::<rustc_errors[a7dbbf867eaca825]::ExplicitBug>
+  15:     0x7fa0f0b00ec6 - std[3b302b3c9093c22]::panic::panic_any::<rustc_errors[a7dbbf867eaca825]::ExplicitBug>
+  16:     0x7fa0f21df13a - <rustc_errors[a7dbbf867eaca825]::HandlerInner as core[a3420257622cd381]::ops::drop::Drop>::drop
+  17:     0x7fa0f18fbf38 - core[a3420257622cd381]::ptr::drop_in_place::<rustc_session[8df92abe178df33c]::parse::ParseSess>
+  18:     0x7fa0f18ff3f3 - <alloc[59b4cdf2bf51ef42]::rc::Rc<rustc_session[8df92abe178df33c]::session::Session> as core[a3420257622cd381]::ops::drop::Drop>::drop
+  19:     0x7fa0f18e5b9d - core[a3420257622cd381]::ptr::drop_in_place::<rustc_interface[550884b2b179878f]::interface::Compiler>
+  20:     0x7fa0f18e5215 - rustc_span[7238ca7210ca999e]::with_source_map::<core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>, rustc_interface[550884b2b179878f]::interface::create_compiler_and_run<core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>, rustc_driver[413d55b6344850e3]::run_compiler::{closure#1}>::{closure#1}>
+  21:     0x7fa0f19010a4 - rustc_interface[550884b2b179878f]::interface::create_compiler_and_run::<core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>, rustc_driver[413d55b6344850e3]::run_compiler::{closure#1}>
+  22:     0x7fa0f18e37c2 - <scoped_tls[7ed3ce20ede545d8]::ScopedKey<rustc_span[7238ca7210ca999e]::SessionGlobals>>::set::<rustc_interface[550884b2b179878f]::interface::run_compiler<core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>, rustc_driver[413d55b6344850e3]::run_compiler::{closure#1}>::{closure#0}, core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>>
+  23:     0x7fa0f18f938f - std[3b302b3c9093c22]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[550884b2b179878f]::util::run_in_thread_pool_with_globals<rustc_interface[550884b2b179878f]::interface::run_compiler<core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>, rustc_driver[413d55b6344850e3]::run_compiler::{closure#1}>::{closure#0}, core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>>::{closure#0}, core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>>
+  24:     0x7fa0f18e4af9 - <<std[3b302b3c9093c22]::thread::Builder>::spawn_unchecked_<rustc_interface[550884b2b179878f]::util::run_in_thread_pool_with_globals<rustc_interface[550884b2b179878f]::interface::run_compiler<core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>, rustc_driver[413d55b6344850e3]::run_compiler::{closure#1}>::{closure#0}, core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>>::{closure#0}, core[a3420257622cd381]::result::Result<(), rustc_errors[a7dbbf867eaca825]::ErrorGuaranteed>>::{closure#1} as core[a3420257622cd381]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  25:     0x7fa0ef2aabf3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::ha99802c2c52ada61
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/alloc/src/boxed.rs:1861:9
+  26:     0x7fa0ef2aabf3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::ha39aea1c57e28a15
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/alloc/src/boxed.rs:1861:9
+  27:     0x7fa0ef2aabf3 - std::sys::unix::thread::Thread::new::thread_start::h9f8e3d72b1f7662f
+                               at /rustc/fe5b13d681f25ee6474be29d748c65adcd91f69e/library/std/src/sys/unix/thread.rs:108:17
+  28:     0x7fa0ef1da609 - start_thread
+  29:     0x7fa0ef0f3133 - clone
+  30:                0x0 - <unknown>
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.61.0 (fe5b13d68 2022-05-18) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type lib -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+warning: `playground` (lib) generated 1 warning
+error: could not compile `playground`; 1 warning emitted
+
+Bug Labels:
+A-closures, A-edition-2021, C-bug, I-ICE, T-compiler, glacier

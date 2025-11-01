@@ -1,0 +1,67 @@
+Issue Title:
+Invalid frame assertion with the new constant expression interpreter
+
+Source Code & Bug Trace:
+consteval int counter() { static int i = 0; return i++; }
+
+struct S {
+  consteval S() {
+    (void)(1 / (1 - counter()));
+  }
+};
+
+constinit S s;
+
+clang++: /root/llvm-project/clang/lib/AST/Interp/Interp.h:186: bool clang::interp::RetVoid(clang::interp::InterpState&, clang::interp::CodePtr&, clang::APValue&) [with bool Builtin = false]: Assertion `S.Current->getFrameOffset() == S.Stk.size() && "Invalid frame"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++2b -fexperimental-new-constant-interpreter <source>
+1.	<eof> parser at end of file
+2.	<source>:3:1: parsing struct/union/class body 'S'
+3.	<source>:4:15: parsing function body 'S::S'
+ #0 0x00005562c109b83f llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3c6283f)
+ #1 0x00005562c109957c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3c6057c)
+ #2 0x00005562c0fe68c8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fb9bb1fd420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x00007fb9bacca00b raise (/lib/x86_64-linux-gnu/libc.so.6+0x4300b)
+ #5 0x00007fb9baca9859 abort (/lib/x86_64-linux-gnu/libc.so.6+0x22859)
+ #6 0x00007fb9baca9729 (/lib/x86_64-linux-gnu/libc.so.6+0x22729)
+ #7 0x00007fb9bacbafd6 (/lib/x86_64-linux-gnu/libc.so.6+0x33fd6)
+ #8 0x00005562c49b3add clang::interp::Interpret(clang::interp::InterpState&, clang::APValue&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x757aadd)
+ #9 0x00005562c49212cc clang::interp::Context::Run(clang::interp::State&, clang::interp::Function*, clang::APValue&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x74e82cc)
+#10 0x00005562c492178a clang::interp::Context::isPotentialConstantExpr(clang::interp::State&, clang::FunctionDecl const*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x74e878a)
+#11 0x00005562c490aef9 clang::Expr::isPotentialConstantExpr(clang::FunctionDecl const*, llvm::SmallVectorImpl<std::pair<clang::SourceLocation, clang::PartialDiagnostic>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x74d1ef9)
+#12 0x00005562c3ba0b0e clang::Sema::CheckConstexprFunctionDefinition(clang::FunctionDecl const*, clang::Sema::CheckConstexprKind) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6767b0e)
+#13 0x00005562c3af91b0 clang::Sema::ActOnFinishFunctionBody(clang::Decl*, clang::Stmt*, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x66c01b0)
+#14 0x00005562c387785d clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x643e85d)
+#15 0x00005562c37a59fa clang::Parser::ParseLexedMethodDef(clang::Parser::LexedMethod&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x636c9fa)
+#16 0x00005562c37a56dd clang::Parser::ParseLexedMethodDefs(clang::Parser::ParsingClass&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x636c6dd)
+#17 0x00005562c37f0d7c clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributes&, unsigned int, clang::Decl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63b7d7c)
+#18 0x00005562c37f2db3 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63b9db3)
+#19 0x00005562c37c2f20 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6389f20)
+#20 0x00005562c379750b clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x635e50b)
+#21 0x00005562c3797e3f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.0) Parser.cpp:0:0
+#22 0x00005562c379e7f9 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63657f9)
+#23 0x00005562c379f15d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x636615d)
+#24 0x00005562c379313a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x635a13a)
+#25 0x00005562c22c5138 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4e8c138)
+#26 0x00005562c1b26119 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x46ed119)
+#27 0x00005562c1aaa716 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4671716)
+#28 0x00005562c1c0aba7 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x47d1ba7)
+#29 0x00005562be611c26 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x11d8c26)
+#30 0x00005562be60da4a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#31 0x00005562c1911e6d void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#32 0x00005562c0fe6db0 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3baddb0)
+#33 0x00005562c191272f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#34 0x00005562c18da16c clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x44a116c)
+#35 0x00005562c18dac0d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x44a1c0d)
+#36 0x00005562c18e2add clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x44a9add)
+#37 0x00005562be6100d0 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x11d70d0)
+#38 0x00005562be51b615 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x10e2615)
+#39 0x00007fb9bacab083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#40 0x00005562be60875e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x11cf75e)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Compiler returned: 134
+
+Bug Labels:
+c++23, clang:frontend, consteval, crash-on-invalid

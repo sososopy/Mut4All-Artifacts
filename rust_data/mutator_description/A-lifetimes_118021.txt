@@ -1,0 +1,46 @@
+Mutation Operator: Modify Lifetime Annotations
+
+Target Code Construct: Structs and Implementations
+
+Description:
+This mutation operator targets structs and their corresponding implementations by altering the lifetime annotations. Specifically, it introduces and modifies lifetime parameters in such a way that they become inconsistent or invalid, potentially uncovering compiler bugs related to lifetime handling.
+
+Mutation Rule:
+1. Identify a struct definition with a lifetime parameter, such as `struct StructName<'a>`.
+2. Introduce a mismatch or invalid lifetime: 
+   - Replace the existing correct lifetime with the reserved lifetime `'static`, which is known to cause issues as it is a reserved name.
+   - Alternatively, introduce a new undeclared lifetime, like `'b`, that is not defined anywhere in the struct or its implementation.
+3. Apply this mismatch in related implementations, ensuring the struct's implementation does not correctly use the declared lifetimes.
+
+Example:
+Original Code:
+```rust
+struct Container<'a> {
+    item: &'a i32,
+}
+
+impl<'a> Container<'a> {
+    fn new(item: &'a i32) -> Container<'a> {
+        Container { item }
+    }
+}
+```
+
+Mutated Code:
+```rust
+struct Container<'static> {
+    item: &'b i32,
+}
+
+impl<'b> Container<'b> {
+    fn new(item: &'b i32) -> Container<'b> {
+        Container { item }
+    }
+}
+```
+
+Explanation:
+In this mutation, the struct `Container` was originally using the lifetime `'a`. We applied two changes: 
+- Changed `'a` to `'static` in the struct definition, which is invalid as `'static` is a reserved keyword.
+- Replaced `'a` with undeclared `'b` as a lifetime in the struct field and implementation to introduce an inconsistency.
+These changes can potentially lead to issues in the Rust compiler's lifetime resolution and checking mechanisms, increasing the likelihood of triggering related bugs.

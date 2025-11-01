@@ -1,0 +1,65 @@
+Issue Title:
+ICE: `begin <= end (12 <= 11) when slicing 'Self::Assoc<'_>'` · Issue #123414 · rust-lang/rust · GitHub
+
+Rust Code:
+trait MemoryUnit {
+    extern "C" fn read_word(&mut self) -> u8;
+    extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
+}
+
+struct ROM {}
+
+impl MemoryUnit for ROM {
+    extern "C" fn read_dword(&'_ self) -> u16 {
+        let a16 = self.read_word() as u16;
+        let b16 = self.read_word() as u16;
+
+        (b16 << 8) | a16
+    }
+}
+
+pub fn main() {}
+
+Bug Trace:
+thread 'rustc' panicked at compiler/rustc_borrowck/src/diagnostics/mutability_errors.rs:1366:48:
+begin <= end (12 <= 11) when slicing `Self::Assoc<'_>`
+stack backtrace:
+   0: _rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::str::slice_error_fail_rt
+   3: core::str::slice_error_fail
+   4: rustc_borrowck::diagnostics::mutability_errors::suggest_ampmut_self
+   5: <rustc_borrowck::MirBorrowckCtxt>::suggest_make_local_mut
+   6: <rustc_borrowck::MirBorrowckCtxt>::report_mutability_error
+   7: <rustc_borrowck::MirBorrowckCtxt>::access_place
+   8: <rustc_borrowck::MirBorrowckCtxt>::consume_rvalue
+   9: rustc_borrowck::do_mir_borrowck
+  10: rustc_borrowck::mir_borrowck
+      [... omitted 1 frame ...]
+  11: <rustc_middle::hir::map::Map>::par_body_owners::<rustc_interface::passes::analysis::{closure#1}::{closure#0}>::{closure#0}
+  12: rustc_interface::passes::analysis
+      [... omitted 1 frame ...]
+  13: <rustc_interface::queries::QueryResult<&rustc_middle::ty::context::GlobalCtxt>>::enter::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure#3}>
+  14: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: it seems that this compiler `1.79.0-nightly (88c2f4f5f 2024-04-02)` is outdated, a newer nightly should have been released in the mean time
+  |
+  = note: please consider running `rustup update nightly` to update the nightly channel and check if this problem still persists
+  = note: if the problem still persists, we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please attach the file at `/Volumes/T7/workspace/placeholder_rustexec/0403/rustc-ice-2024-04-03T14_18_05-88650.txt` to your bug report
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `<impl at reduced_87933A3C2BEEFEEAFED61025DEE0BD738BBBDEBB1F116B588A791E327AE11916.rs:8:1: 8:24>::read_dword`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0046, E0185, E0220.
+For more information about an error, try `rustc --explain E0046`.
+
+Bug Labels:
+A-borrow-checker, A-diagnostics, C-bug, I-ICE, S-has-mcve, T-compiler

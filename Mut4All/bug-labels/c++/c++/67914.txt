@@ -1,0 +1,166 @@
+Issue Title:
+Assertion in  clang::InitializationSequence::Perform
+
+Source Code & Bug Trace:
+template < typename, int >
+struct Mask;
+
+template < int, class >
+struct conditional {
+  using type = Mask< int, 16 >;
+};
+
+template < class _Then >
+struct conditional< 0, _Then > {
+  using type = _Then;
+};
+
+template < int _Bp, class, class _Then >
+using conditional_t = typename conditional< _Bp, _Then >::type;
+
+template < typename, int >
+struct Array;
+
+template < typename, int, bool, typename >
+struct StaticArrayImpl;
+
+template < typename Value_, int Size_ >
+struct Mask : StaticArrayImpl< Value_, Size_, 1, Mask< Value_, Size_ > > {
+  template < typename T1 >
+  Mask(T1) {}
+};
+
+template < typename T >
+void load(typename T::MaskType mask) {
+  T::load_(mask);
+}
+
+template < typename Value_, int IsMask_, typename Derived_ >
+struct StaticArrayImpl< Value_, 32, IsMask_, Derived_ > {
+  using Array1 = conditional_t< IsMask_, void, Array< Value_, 16 > >;
+  
+  template < typename Mask >
+  static Derived_ load_(Mask mask) {
+    return Derived_{load< Array1 >(mask.a1), Mask{}};
+  }
+
+  Array1 a1;
+};
+
+template < typename Derived_ >
+struct KMaskBase;
+
+template < typename Derived_ >
+struct StaticArrayImpl< float, 16, 0, Derived_ > {
+  template < typename Mask >
+  static Derived_ load_(Mask mask);
+};
+
+template < typename Derived_ >
+struct StaticArrayImpl< float, 16, 1, Mask< float, 16 > > : KMaskBase< Derived_ > {};
+
+template < typename Derived_ >
+struct StaticArrayImpl< int, 16, 1, Derived_ > {};
+
+template < typename Value_, int Size_ >
+struct Array : StaticArrayImpl< Value_, Size_, 0, Array< Value_, Size_ > > {
+  using MaskType = Mask< Value_, Size_ >;
+};
+
+void test11_load_masked() {
+  load< Array< float, 32 > >{} == 0;
+}
+
+<source>:56:8: error: partial specialization of 'StaticArrayImpl' does not use any of its template parameters
+   56 | struct StaticArrayImpl< float, 16, 1, Mask< float, 16 > > : KMaskBase< Derived_ > {};
+      |        ^
+<source>:67:29: error: expected ';' after expression
+   67 |   load< Array< float, 32 > >{} == 0;
+      |                             ^
+      |                             ;
+<source>:67:32: error: expected expression
+   67 |   load< Array< float, 32 > >{} == 0;
+      |                                ^
+<source>:67:3: warning: expression result unused [-Wunused-value]
+   67 |   load< Array< float, 32 > >{} == 0;
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~
+<source>:40:46: error: no matching constructor for initialization of 'Mask<float, 32>'
+   40 |     return Derived_{load< Array1 >(mask.a1), Mask{}};
+      |                                              ^   ~~
+<source>:31:6: note: in instantiation of function template specialization 'StaticArrayImpl<float, 32, false, Array<float, 32>>::load_<Mask<float, 32>>' requested here
+   31 |   T::load_(mask);
+      |      ^
+<source>:67:3: note: in instantiation of function template specialization 'load<Array<float, 32>>' requested here
+   67 |   load< Array< float, 32 > >{} == 0;
+      |   ^
+<source>:26:3: note: candidate constructor template not viable: requires 1 argument, but 0 were provided
+   26 |   Mask(T1) {}
+      |   ^    ~~
+<source>:24:8: note: candidate constructor (the implicit copy constructor) not viable: requires 1 argument, but 0 were provided
+   24 | struct Mask : StaticArrayImpl< Value_, Size_, 1, Mask< Value_, Size_ > > {
+      |        ^~~~
+<source>:24:8: note: candidate constructor (the implicit move constructor) not viable: requires 1 argument, but 0 were provided
+   24 | struct Mask : StaticArrayImpl< Value_, Size_, 1, Mask< Value_, Size_ > > {
+      |        ^~~~
+
+clang++: /root/llvm-project/clang/lib/Sema/SemaInit.cpp:8617:
+clang::ExprResult clang::InitializationSequence::Perform(clang::Sema&, const clang::InitializedEntity&, const clang::InitializationKind&, clang::MultiExprArg, clang::QualType*):
+Assertion `Kind.getKind() == InitializationKind::IK_Copy || Kind.isExplicitCast() || Kind.getKind() == InitializationKind::IK_DirectList' failed.
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics <source>
+1.	<eof> parser at end of file
+2.	<source>:30:6: instantiating function definition 'load<Array<float, 32>>'
+3.	<source>:39:19: instantiating function definition 'StaticArrayImpl<float, 32, false, Array<float, 32>>::load_<Mask<float, 32>>'
+4.	<source>:26:3: instantiating function definition 'Mask<float, 16>::Mask<Mask<int, 16>>'
+ #0 0x000000000370a448 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x370a448)
+ #1 0x000000000370810c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x370810c)
+ #2 0x0000000003650d78 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f6a4322d420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x00007f6a42cf000b raise (/lib/x86_64-linux-gnu/libc.so.6+0x4300b)
+ #5 0x00007f6a42ccf859 abort (/lib/x86_64-linux-gnu/libc.so.6+0x22859)
+ #6 0x00007f6a42ccf729 (/lib/x86_64-linux-gnu/libc.so.6+0x22729)
+ #7 0x00007f6a42ce0fd6 (/lib/x86_64-linux-gnu/libc.so.6+0x33fd6)
+ #8 0x00000000065b43d2 clang::InitializationSequence::Perform(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::QualType*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x65b43d2)
+ #9 0x00000000062527c4 BuildImplicitBaseInitializer(clang::Sema&, clang::CXXConstructorDecl*, ImplicitInitializerKind, clang::CXXBaseSpecifier*, bool, clang::CXXCtorInitializer*&) SemaDeclCXX.cpp:0:0
+#10 0x000000000629fe84 clang::Sema::SetCtorInitializers(clang::CXXConstructorDecl*, bool, llvm::ArrayRef<clang::CXXCtorInitializer*>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x629fe84)
+#11 0x00000000062f06f7 clang::Sema::DefineImplicitDefaultConstructor(clang::SourceLocation, clang::CXXConstructorDecl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x62f06f7)
+#12 0x0000000005fb30a1 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5fb30a1)
+#13 0x000000000659f845 PerformConstructorInitialization(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::InitializationSequence::Step const&, bool&, bool, bool, clang::SourceLocation, clang::SourceLocation) SemaInit.cpp:0:0
+#14 0x00000000065b344c clang::InitializationSequence::Perform(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::QualType*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x65b344c)
+#15 0x00000000062527c4 BuildImplicitBaseInitializer(clang::Sema&, clang::CXXConstructorDecl*, ImplicitInitializerKind, clang::CXXBaseSpecifier*, bool, clang::CXXCtorInitializer*&) SemaDeclCXX.cpp:0:0
+#16 0x000000000629fe84 clang::Sema::SetCtorInitializers(clang::CXXConstructorDecl*, bool, llvm::ArrayRef<clang::CXXCtorInitializer*>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x629fe84)
+#17 0x00000000062a65ce clang::Sema::ActOnMemInitializers(clang::Decl*, clang::SourceLocation, llvm::ArrayRef<clang::CXXCtorInitializer*>, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x62a65ce)
+#18 0x00000000069f7792 clang::Sema::InstantiateMemInitializers(clang::CXXConstructorDecl*, clang::CXXConstructorDecl const*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69f7792)
+#19 0x00000000069fd8de clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69fd8de)
+#20 0x00000000069fbd4f clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69fbd4f)
+#21 0x00000000069fdbce clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69fdbce)
+#22 0x00000000069fbd4f clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69fbd4f)
+#23 0x00000000069fdbce clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69fdbce)
+#24 0x00000000069fbd4f clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x69fbd4f)
+#25 0x0000000005fd6b69 clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) (.part.0) Sema.cpp:0:0
+#26 0x0000000005fd7342 clang::Sema::ActOnEndOfTranslationUnit() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5fd7342)
+#27 0x0000000005e6dae3 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5e6dae3)
+#28 0x0000000005e61cca clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x5e61cca)
+#29 0x0000000004964be8 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4964be8)
+#30 0x00000000041ca839 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x41ca839)
+#31 0x000000000414be7e clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x414be7e)
+#32 0x00000000042a97ce clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x42a97ce)
+#33 0x0000000000bde956 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbde956)
+#34 0x0000000000bd621a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#35 0x0000000003fa9a49 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#36 0x0000000003651224 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3651224)
+#37 0x0000000003faa03f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#38 0x0000000003f72385 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3f72385)
+#39 0x0000000003f72ded clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3f72ded)
+#40 0x0000000003f7ad15 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3f7ad15)
+#41 0x0000000000bdbdfc clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbdbdfc)
+#42 0x0000000000ad6491 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xad6491)
+#43 0x00007f6a42cd1083 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24083)
+#44 0x0000000000bd5cfe _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xbd5cfe)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+
+
+Bug Labels:
+c++, clang:frontend, crash-on-invalid

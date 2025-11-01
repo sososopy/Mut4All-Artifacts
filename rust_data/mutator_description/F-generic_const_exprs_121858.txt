@@ -1,0 +1,38 @@
+Mutation Operator
+
+Target: Structs and Their Implementations
+
+Mutation Rule:
+1. Identify a struct declaration that uses constant generic parameters.
+2. If the struct and its implementation use different types for the constants, ensure they use the same type.
+3. Modify the arithmetic operation involving the const parameters in the where clause to use mixed constant types (e.g., mixing `usize` and `i64` in operations).
+4. Specifically, replace any consistent type arithmetic operation with an asymmetric operation that involves mismatched types, which likely confuses the type checker.
+5. Introduce a dummy arithmetic operation involving the constants in the struct's implementation, ensuring it triggers evaluation within the `where` clause.
+
+Example:
+
+Before Mutation:
+```rust
+struct Container<const X: i64, const Y: usize>();
+impl<const X: i64, const Y: usize> Container<X, Y>
+where
+    [(); (X + Y) as usize]:,
+{
+    fn new() {}
+}
+```
+
+After Mutation:
+```rust
+struct Container<const X: i64, const Y: usize>();
+impl<const X: usize, const Y: usize> Container<X, Y>
+where
+    [(); X + (Y * 2)]:,
+{
+    fn new() {
+        let _ = X + (Y * 2) as i64; // Intentional type mix that causes evaluation
+    }
+}
+```
+
+Note: This operator utilizes the same constants from the seed program and modifies their operations to create scenarios that are prone to evaluation issues, potentially triggering compile-time errors.

@@ -1,0 +1,93 @@
+Issue Title:
+ICE on invalid `rustc_layout_scalar_valid_range_start` attribute · Issue #82981 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(rustc_attrs)]
+use std::num::NonZeroU8;
+#[rustc_layout_scalar_valid_range_start(C)]
+union MaybeUninit<T: Copy> {
+    uninit: (),
+    init: T,
+}
+const UNINIT: NonZeroU8 = MaybeUninit { uninit: () }.init;
+
+Bug Trace:
+thread 'rustc' panicked at 'attribute takes lit', compiler/rustc_middle/src/ty/context.rs:1095:38
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/3a5d45f68cadc8fff4fbb557780f92b403b19c19/library/std/src/panicking.rs:493:5
+   1: core::panicking::panic_fmt
+             at /rustc/3a5d45f68cadc8fff4fbb557780f92b403b19c19/library/core/src/panicking.rs:92:14
+   2: core::option::expect_failed
+             at /rustc/3a5d45f68cadc8fff4fbb557780f92b403b19c19/library/core/src/option.rs:1293:5
+   3: rustc_middle::ty::context::TyCtxt::layout_scalar_valid_range::{{closure}}
+   4: rustc_middle::ty::context::TyCtxt::layout_scalar_valid_range
+   5: <rustc_mir::transform::check_unsafety::UnsafetyChecker as rustc_middle::mir::visit::Visitor>::visit_rvalue
+   6: rustc_mir::transform::check_unsafety::unsafety_check_result
+   7: core::ops::function::FnOnce::call_once
+   8: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+   9: rustc_data_structures::stack::ensure_sufficient_stack
+  10: rustc_query_system::query::plumbing::force_query_with_job
+  11: rustc_query_system::query::plumbing::get_query_impl
+  12: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::unsafety_check_result
+  13: rustc_mir::transform::mir_const
+  14: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  15: rustc_data_structures::stack::ensure_sufficient_stack
+  16: rustc_query_system::query::plumbing::force_query_with_job
+  17: rustc_query_system::query::plumbing::get_query_impl
+  18: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_const
+  19: rustc_mir::transform::mir_const_qualif
+  20: core::ops::function::FnOnce::call_once
+  21: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  22: rustc_data_structures::stack::ensure_sufficient_stack
+  23: rustc_query_system::query::plumbing::force_query_with_job
+  24: rustc_query_system::query::plumbing::get_query_impl
+  25: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_const_qualif
+  26: rustc_mir::transform::mir_promoted
+  27: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  28: rustc_data_structures::stack::ensure_sufficient_stack
+  29: rustc_query_system::query::plumbing::force_query_with_job
+  30: rustc_query_system::query::plumbing::get_query_impl
+  31: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_promoted
+  32: rustc_mir::borrow_check::mir_borrowck
+  33: core::ops::function::FnOnce::call_once
+  34: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  35: rustc_data_structures::stack::ensure_sufficient_stack
+  36: rustc_query_system::query::plumbing::force_query_with_job
+  37: rustc_query_system::query::plumbing::get_query_impl
+  38: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_borrowck
+  39: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  40: rustc_interface::passes::analysis
+  41: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  42: rustc_data_structures::stack::ensure_sufficient_stack
+  43: rustc_query_system::query::plumbing::force_query_with_job
+  44: rustc_query_system::query::plumbing::get_query_impl
+  45: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  46: rustc_interface::passes::QueryContext::enter
+  47: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  48: rustc_span::with_source_map
+  49: rustc_interface::interface::create_compiler_and_run
+  50: rustc_span::with_session_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-nightly (3a5d45f68 2021-03-09) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type staticlib
+
+query stack during panic:
+#0 [unsafety_check_result] unsafety-checking `UNINIT`
+#1 [mir_const] processing MIR for `UNINIT`
+#2 [mir_const_qualif] const checking `UNINIT`
+#3 [mir_promoted] processing `UNINIT`
+#4 [mir_borrowck] borrow-checking `UNINIT`
+#5 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-contributor-roadblock, A-diagnostics, I-ICE, T-compiler, glacier

@@ -1,0 +1,54 @@
+Issue Title:
+ICE: `upvar_tys called before capture types are inferred` in `rustc_type_ir/src/ty_kind/closure.rs` · Issue #125881 · rust-lang/rust · GitHub
+
+Rust Code:
+#![crate_type = "lib"]
+#![feature(transmutability)]
+#![feature(unboxed_closures)]
+
+const fn test() -> impl std::mem::BikeshedIntrinsicFrom() {
+    || {}
+}
+
+Command:
+rustc -Zcrate-attr="feature(effects)"
+
+Bug Trace:
+#![feature(transmutability)]
+
+pub fn is_maybe_transmutable<Dst>()
+where
+    Dst: std::mem::BikeshedIntrinsicFrom<(), ()>,
+{
+}
+
+fn should_pad_explicitly_aligned_field() {
+    #[repr(packed, align(0x100))]
+    #[repr(u8)]
+    enum V0u8 {
+        V,
+    }
+
+    is_maybe_transmutable::<V0u8>();
+}
+
+fn main() {}
+
+
+#![feature(const_trait_impl)]
+
+const fn test() -> impl ~const std::mem::BikeshedIntrinsicFrom() {
+    const move || {
+        let sl: &[u8] = b"foo";
+
+        match sl {
+            [first, remainder @ ..] => {
+                assert_eq!(first, &b'f');
+            }
+            [] => panic!(),
+        }
+    }
+}
+
+Bug Labels:
+A-closures, C-bug, F-const_trait_impl, F-effects, F-transmutability, F-unboxed_closures, I-ICE, S-bug-has-test, T-compiler, requires-nightly

@@ -1,0 +1,88 @@
+Issue Title:
+Segfault from constraining partial specialization on nested template type
+
+Source Code & Bug Trace:
+template <template <template <class> class> class>
+struct void_t
+{};
+
+template <class T>
+concept C1 = requires
+{
+  typename void_t<T::template value_types>;
+};
+
+template <class T>
+concept C2 = requires (T& t)
+{
+  requires sizeof(t) > 4;
+};
+
+template <class T>
+  requires C1<T>
+struct A
+{
+};
+
+template <class T>
+  requires C1<T> && C2<T>
+struct A<T>
+{};
+
+int main() {}
+
+PLEASE submit a bug report to https://bugs.llvm.org/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-12.0.1/bin/clang++ -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-11.1.0 -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 <source>
+1.	<source>:27:1: current parser token '{'
+ #0 0x000056190ae0b61c llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x300b61c)
+ #1 0x000056190ae093c4 llvm::sys::RunSignalHandlers() (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x30093c4)
+ #2 0x000056190ae09645 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x3009645)
+ #3 0x000056190ad71f18 CrashRecoverySignalHandler(int) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x2f71f18)
+ #4 0x00007f8e1bfde3c0 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x153c0)
+ #5 0x000056190d174cb8 (anonymous namespace)::MarkUsedTemplateParameterVisitor::TraverseTemplateName(clang::TemplateName) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x5374cb8)
+ #6 0x000056190d174fa5 clang::RecursiveASTVisitor<(anonymous namespace)::MarkUsedTemplateParameterVisitor>::TraverseTemplateArgumentLoc(clang::TemplateArgumentLoc const&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x5374fa5)
+ #7 0x000056190d175499 clang::RecursiveASTVisitor<(anonymous namespace)::MarkUsedTemplateParameterVisitor>::TraverseTypeLoc(clang::TypeLoc) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x5375499)
+ #8 0x000056190d1750c8 clang::RecursiveASTVisitor<(anonymous namespace)::MarkUsedTemplateParameterVisitor>::TraverseTypeLoc(clang::TypeLoc) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x53750c8)
+ #9 0x000056190d180afd clang::RecursiveASTVisitor<(anonymous namespace)::MarkUsedTemplateParameterVisitor>::TraverseRequiresExpr(clang::RequiresExpr*, llvm::SmallVectorImpl<llvm::PointerIntPair<clang::Stmt*, 1u, bool, llvm::PointerLikeTypeTraits<clang::Stmt*>, llvm::PointerIntPairInfo<clang::Stmt*, 1u, llvm::PointerLikeTypeTraits<clang::Stmt*> > > >*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x5380afd)
+#10 0x000056190d16a902 clang::RecursiveASTVisitor<(anonymous namespace)::MarkUsedTemplateParameterVisitor>::dataTraverseNode(clang::Stmt*, llvm::SmallVectorImpl<llvm::PointerIntPair<clang::Stmt*, 1u, bool, llvm::PointerLikeTypeTraits<clang::Stmt*>, llvm::PointerIntPairInfo<clang::Stmt*, 1u, llvm::PointerLikeTypeTraits<clang::Stmt*> > > >*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x536a902)
+#11 0x000056190d16bd99 clang::RecursiveASTVisitor<(anonymous namespace)::MarkUsedTemplateParameterVisitor>::TraverseStmt(clang::Stmt*, llvm::SmallVectorImpl<llvm::PointerIntPair<clang::Stmt*, 1u, bool, llvm::PointerLikeTypeTraits<clang::Stmt*>, llvm::PointerIntPairInfo<clang::Stmt*, 1u, llvm::PointerLikeTypeTraits<clang::Stmt*> > > >*) (.part.5146) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x536bd99)
+#12 0x000056190d1811aa clang::Sema::MarkUsedTemplateParameters(clang::Expr const*, bool, unsigned int, llvm::SmallBitVector&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x53811aa)
+#13 0x000056190cc1778e substituteParameterMappings(clang::Sema&, clang::NormalizedConstraint&, clang::ConceptDecl*, llvm::ArrayRef<clang::TemplateArgument>, clang::ASTTemplateArgumentListInfo const*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4e1778e)
+#14 0x000056190cc1cc05 clang::NormalizedConstraint::fromConstraintExpr(clang::Sema&, clang::NamedDecl*, clang::Expr const*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4e1cc05)
+#15 0x000056190cc1cc64 clang::NormalizedConstraint::fromConstraintExpr(clang::Sema&, clang::NamedDecl*, clang::Expr const*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4e1cc64)
+#16 0x000056190cc1cf9a clang::NormalizedConstraint::fromConstraintExprs(clang::Sema&, clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4e1cf9a)
+#17 0x000056190cc1c1f7 clang::Sema::getNormalizedAssociatedConstraints(clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4e1c1f7)
+#18 0x000056190cc1ed5a bool subsumes<clang::Sema::IsAtLeastAsConstrained(clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, bool&)::'lambda'(clang::AtomicConstraint const&, clang::AtomicConstraint const&)>(clang::Sema&, clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, bool&, clang::Sema::IsAtLeastAsConstrained(clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, bool&)::'lambda'(clang::AtomicConstraint const&, clang::AtomicConstraint const&)) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4e1ed5a)
+#19 0x000056190cc20cf2 clang::Sema::IsAtLeastAsConstrained(clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, clang::NamedDecl*, llvm::ArrayRef<clang::Expr const*>, bool&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4e20cf2)
+#20 0x000056190d15f3f4 clang::Sema::isMoreSpecializedThanPrimary(clang::ClassTemplatePartialSpecializationDecl*, clang::sema::TemplateDeductionInfo&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x535f3f4)
+#21 0x000056190d0b0e22 clang::Sema::CheckTemplatePartialSpecialization(clang::ClassTemplatePartialSpecializationDecl*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x52b0e22)
+#22 0x000056190d10f106 clang::Sema::ActOnClassTemplateSpecialization(clang::Scope*, unsigned int, clang::Sema::TagUseKind, clang::SourceLocation, clang::SourceLocation, clang::CXXScopeSpec&, clang::TemplateIdAnnotation&, clang::ParsedAttributesView const&, llvm::MutableArrayRef<clang::TemplateParameterList*>, clang::Sema::SkipBodyInfo*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x530f106)
+#23 0x000056190ca64ea8 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::Parser::ParsedAttributesWithRange&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4c64ea8)
+#24 0x000056190ca463e1 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4c463e1)
+#25 0x000056190cae85f0 clang::Parser::ParseSingleDeclarationAfterTemplate(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::ParsingDeclRAIIObject&, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4ce85f0)
+#26 0x000056190caec973 clang::Parser::ParseTemplateDeclarationOrSpecialization(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4cec973)
+#27 0x000056190caecee4 clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4cecee4)
+#28 0x000056190ca4c355 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::Parser::ParsedAttributesWithRange&, clang::SourceLocation*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4c4c355)
+#29 0x000056190ca24b2b clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4c24b2b)
+#30 0x000056190ca26089 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4c26089)
+#31 0x000056190ca192e9 clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x4c192e9)
+#32 0x000056190bc590b2 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x3e590b2)
+#33 0x000056190b65fee1 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x385fee1)
+#34 0x000056190b6062e3 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x38062e3)
+#35 0x000056190b7280b3 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x39280b3)
+#36 0x0000561908dd171c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0xfd171c)
+#37 0x0000561908dcdc9d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0xfcdc9d)
+#38 0x000056190b4c7f65 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()>(long) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x36c7f65)
+#39 0x000056190ad71ff3 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x2f71ff3)
+#40 0x000056190b4c8ab8 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const (.part.174) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x36c8ab8)
+#41 0x000056190b4a160a clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x36a160a)
+#42 0x000056190b4a215f clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x36a215f)
+#43 0x000056190b4aaf65 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0x36aaf65)
+#44 0x0000561908cfa1cc main (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0xefa1cc)
+#45 0x00007f8e1ba8e0b3 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x270b3)
+#46 0x0000561908dcd81a _start (/opt/compiler-explorer/clang-12.0.1/bin/clang+++0xfcd81a)
+
+
+Bug Labels:
+c++, c++20, clang:frontend, concepts, crash-on-valid, regression

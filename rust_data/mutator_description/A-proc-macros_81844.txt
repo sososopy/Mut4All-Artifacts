@@ -1,0 +1,49 @@
+Mutation Operator: Introduce Nested Local Struct Derivation
+
+Target Code Construct: Struct declaration within function bodies, specifically inside `impl` blocks that utilize procedural macros such as `#[derive(...)]`.
+
+Mutation Rule:
+1. Identify a struct definition within a function body that is located inside an `impl` block.
+2. Check if the struct uses `#[derive(...)]` with procedural macros like `serde::Deserialize`.
+3. Modify the code by introducing an additional nested struct within the identified struct and apply the same derive attribute.
+
+Steps:
+- Locate any function within an `impl` block that contains a struct definition using `#[derive(...)]`.
+- Inside this struct, define a new nested struct, ensuring it is valid within the Rust syntax.
+- Apply the same `#[derive(...)]` attribute to this new nested struct.
+
+Example:
+Original Code:
+```rust
+impl<'de> serde::Deserialize<'de> for AB {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize)]
+        struct A2 {}
+        
+        return Ok(AB{})
+    }
+}
+```
+
+Mutated Code:
+```rust
+impl<'de> serde::Deserialize<'de> for AB {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize)]
+        struct A2 {
+            #[derive(serde::Deserialize)]
+            struct A3 {}
+        }
+        
+        return Ok(AB{})
+    }
+}
+```
+
+This mutation operator potentially triggers stack overflow issues by increasing the complexity of the procedural macro evaluation due to recursive derive handling within nested structures.

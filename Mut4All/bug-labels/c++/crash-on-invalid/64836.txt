@@ -1,0 +1,77 @@
+Issue Title:
+Crash on simple invalid C++ code, when parsed in objective-c++ mode
+
+Source Code & Bug Trace:
+template <typename, typename U>
+class C {};
+
+class B {
+  p   // syntax error
+ private:
+  static void foo() {}
+  C<int, decltype(foo)> c;
+};
+
+clang: clang/include/clang/Lex/Token.h:190: clang::IdentifierInfo *clang::Token::getIdentifierInfo() const: Assertion `!isAnnotation() && "getIdentifierInfo() on an annotation token!"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: build/bin/clang -c -xobjective-c++-header test.h
+1.      test.h:8:10: at annotation token
+2.      test.h:4:1: parsing struct/union/class body 'B'
+ #0 0x00007f6b99b8746d llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) llvm/lib/Support/Unix/Signals.inc:602:11
+ #1 0x00007f6b99b8790b PrintStackTraceSignalHandler(void*) llvm/lib/Support/Unix/Signals.inc:675:1
+ #2 0x00007f6b99b85be6 llvm::sys::RunSignalHandlers() llvm/lib/Support/Signals.cpp:104:5
+ #3 0x00007f6b99b86cfe llvm::sys::CleanupOnSignal(unsigned long) llvm/lib/Support/Unix/Signals.inc:368:1
+ #4 0x00007f6b99a464d4 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) llvm/lib/Support/CrashRecoveryContext.cpp:0:7
+ #5 0x00007f6b99a46872 CrashRecoverySignalHandler(int) llvm/lib/Support/CrashRecoveryContext.cpp:391:1
+ #6 0x00007f6ba1dda730 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x12730)
+ #7 0x00007f6b98eb48eb raise /build/glibc-6iIyft/glibc-2.28/signal/../sysdeps/unix/sysv/linux/raise.c:51:1
+ #8 0x00007f6b98e9f535 abort /build/glibc-6iIyft/glibc-2.28/stdlib/abort.c:81:7
+ #9 0x00007f6b98e9f40f _nl_load_domain /build/glibc-6iIyft/glibc-2.28/intl/loadmsgcat.c:1177:9
+#10 0x00007f6b98ead1a2 (/lib/x86_64-linux-gnu/libc.so.6+0x301a2)
+#11 0x00007f6b93612568 clang::Token::getIdentifierInfo() const clang/include/clang/Lex/Token.h:0:5
+#12 0x00007f6b9360b454 clang::Parser::ParseDirectDeclarator(clang::Declarator&) clang/lib/Parse/ParseDecl.cpp:6592:11
+#13 0x00007f6b93609930 clang::Parser::ParseDeclaratorInternal(clang::Declarator&, void (clang::Parser::*)(clang::Declarator&)) clang/lib/Parse/ParseDecl.cpp:6221:5
+#14 0x00007f6b93610997 clang::Parser::ParseDeclarator(clang::Declarator&)::$_3::operator()() const clang/lib/Parse/ParseDecl.cpp:6080:3
+#15 0x00007f6b93610955 void llvm::function_ref<void ()>::callback_fn<clang::Parser::ParseDeclarator(clang::Declarator&)::$_3>(long) llvm/include/llvm/ADT/STLFunctionalExtras.h:45:5
+#16 0x00007f6b91eca1e9 llvm::function_ref<void ()>::operator()() const llvm/include/llvm/ADT/STLFunctionalExtras.h:68:5
+#17 0x00007f6b91eb0f6d clang::runWithSufficientStackSpace(llvm::function_ref<void ()>, llvm::function_ref<void ()>) clang/include/clang/Basic/Stack.h:52:3
+#18 0x00007f6b91e9d210 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) clang/lib/Sema/Sema.cpp:513:1
+#19 0x00007f6b935ef6d6 clang::Parser::ParseDeclarator(clang::Declarator&) clang/lib/Parse/ParseDecl.cpp:6081:1
+#20 0x00007f6b93638c35 clang::Parser::ParseCXXMemberDeclaratorBeforeInitializer(clang::Declarator&, clang::VirtSpecifiers&, clang::ActionResult<clang::Expr*, true>&, clang::Parser::LateParsedAttrList&) clang/lib/Parse/ParseDeclCXX.cpp:2502:5
+#21 0x00007f6b9363bd29 clang::Parser::ParseCXXClassMemberDeclaration(clang::AccessSpecifier, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo const&, clang::ParsingDeclRAIIObject*) clang/lib/Parse/ParseDeclCXX.cpp:3173:9
+#22 0x00007f6b9363cd46 clang::Parser::ParseCXXClassMemberDeclarationWithPragmas(clang::AccessSpecifier&, clang::ParsedAttributes&, clang::TypeSpecifierType, clang::Decl*) clang/lib/Parse/ParseDeclCXX.cpp:3413:12
+#23 0x00007f6b93637b65 clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributes&, unsigned int, clang::Decl*) clang/lib/Parse/ParseDeclCXX.cpp:3617:7
+#24 0x00007f6b93635f11 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) clang/lib/Parse/ParseDeclCXX.cpp:2126:7
+#25 0x00007f6b936018bf clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) clang/lib/Parse/ParseDecl.cpp:4323:23
+#26 0x00007f6b936154a2 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*) clang/include/clang/Parse/Parser.h:2433:5
+#27 0x00007f6b93730b36 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) clang/lib/Parse/Parser.cpp:1123:7
+#28 0x00007f6b9373065f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) clang/lib/Parse/Parser.cpp:1225:12
+#29 0x00007f6b9372ff33 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) clang/lib/Parse/Parser.cpp:1040:14
+#30 0x00007f6b9372ddfc clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) clang/lib/Parse/Parser.cpp:742:12
+#31 0x00007f6b935d8957 clang::ParseAST(clang::Sema&, bool, bool) clang/lib/Parse/ParseAST.cpp:163:16
+#32 0x00007f6b9e3d1576 clang::ASTFrontendAction::ExecuteAction() clang/lib/Frontend/FrontendAction.cpp:1170:1
+#33 0x00007f6b9e3d0f9c clang::FrontendAction::Execute() clang/lib/Frontend/FrontendAction.cpp:1062:7
+#34 0x00007f6b9e2e42b8 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) clang/lib/Frontend/CompilerInstance.cpp:1053:23
+#35 0x00007f6ba1dadf27 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:272:8
+#36 0x00005640051f5333 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) clang/tools/driver/cc1_main.cpp:249:13
+#37 0x00005640051e5af2 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) clang/tools/driver/driver.cpp:366:5
+#38 0x00005640051e746d clang_main(int, char**, llvm::ToolContext const&)::$_0::operator()(llvm::SmallVectorImpl<char const*>&) const clang/tools/driver/driver.cpp:506:7
+#39 0x00005640051e743d int llvm::function_ref<int (llvm::SmallVectorImpl<char const*>&)>::callback_fn<clang_main(int, char**, llvm::ToolContext const&)::$_0>(long, llvm::SmallVectorImpl<char const*>&) llvm/include/llvm/ADT/STLFunctionalExtras.h:45:5
+#40 0x00007f6b9dcc2ea1 llvm::function_ref<int (llvm::SmallVectorImpl<char const*>&)>::operator()(llvm::SmallVectorImpl<char const*>&) const llvm/include/llvm/ADT/STLFunctionalExtras.h:68:5
+#41 0x00007f6b9dcbce08 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_1::operator()() const clang/lib/Driver/Job.cpp:440:34
+#42 0x00007f6b9dcbcdd5 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_1>(long) llvm/include/llvm/ADT/STLFunctionalExtras.h:45:5
+#43 0x00007f6b99a32c19 llvm::function_ref<void ()>::operator()() const llvm/include/llvm/ADT/STLFunctionalExtras.h:68:5
+#44 0x00007f6b99a462ea llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) llvm/lib/Support/CrashRecoveryContext.cpp:427:3
+#45 0x00007f6b9dcbc76b clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const clang/lib/Driver/Job.cpp:440:7
+#46 0x00007f6b9dc3ffef clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const clang/lib/Driver/Compilation.cpp:199:15
+#47 0x00007f6b9dc401f7 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const clang/lib/Driver/Compilation.cpp:253:13
+#48 0x00007f6b9dc61118 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) clang/lib/Driver/Driver.cpp:1906:7
+#49 0x00005640051e55bc clang_main(int, char**, llvm::ToolContext const&) clang/tools/driver/driver.cpp:542:9
+#50 0x00005640052170ed main build/tools/clang/tools/driver/clang-driver.cpp:15:3
+#51 0x00007f6b98ea109b __libc_start_main /build/glibc-6iIyft/glibc-2.28/csu/../csu/libc-start.c:342:3
+#52 0x00005640051e428a _start (build/bin/clang+0x3c28a)
+
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid, objective-c++

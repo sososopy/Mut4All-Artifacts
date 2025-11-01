@@ -1,0 +1,34 @@
+Issue Title:
+error: failed to parse bitcode for LTO module: Invalid cast · Issue #110707 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(portable_simd)]
+use std::simd::*;
+use std::arch::x86_64::*;
+
+#[target_feature(enable = "sse4.1")]
+pub unsafe fn fast_round_sse(i: f32x8) -> f32x8 {
+    let a = i.to_array();
+    let [low, high]: [[f32; 4]; 2] =
+        unsafe { std::mem::transmute::<[f32; 8], [[f32; 4]; 2]>(a) };
+        
+    let low = f32x4::from(_mm_round_ps::<{_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC}>(f32x4::from_array(low).into()));
+    let high = f32x4::from(_mm_round_ps::<{_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC}>(f32x4::from_array(high).into()));
+
+    let a: [f32; 8] =
+        unsafe { std::mem::transmute::<[[f32; 4]; 2], [f32; 8]>([low.to_array(), high.to_array()]) };
+    f32x8::from_array(a)
+}
+
+//#[target_feature(enable = "sse4.1")]
+//pub unsafe fn round_many(b: &mut [f32x8]) {
+//    for a in b {
+//        *a = fast_round_sse(*a);
+//    }
+//}
+
+Bug Trace:
+cargo bisect-rustc -- build --release
+
+Bug Labels:
+A-SIMD, C-bug, E-needs-test, I-ICE, PG-portable-simd, T-compiler

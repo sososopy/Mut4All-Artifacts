@@ -1,0 +1,405 @@
+Issue Title:
+ICE: broken MIR: equate_inputs_and_outputs: NoSolution · Issue #112604 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(decl_macro)]
+#![feature(lazy_cell)]
+#![feature(never_type)]
+
+// Stand-in for the `higher-kinded-types` crate:
+mod higher_kinded_types {
+    use with_lifetime::WithLifetime;
+    mod with_lifetime {
+        pub trait WithLifetime<'lt> : Send + Sync + Unpin {
+            type T;
+        }
+
+        impl<'lt, T : ?Sized + WithLifetime<'lt>>
+            WithLifetime<'lt>
+        for
+            crate::higher_kinded_types::__private::HKT<T>
+        {
+            type T = T::T;
+        }
+    }
+
+    pub trait HKT : Send + Sync + Unpin + seal::Sealed {
+        type __<'lt>;
+    }
+
+    mod seal {
+        pub trait Sealed {}
+        impl<T : ?Sized> Sealed for super::__private::HKT<T> {}
+    }
+
+    impl<T : ?Sized> HKT for T
+    where
+        Self : for<'any> WithLifetime<'any> + seal::Sealed,
+    {
+        type __<'lt> = <Self as WithLifetime<'lt>>::T;
+    }
+
+    mod __private {
+        pub use {::core, super::with_lifetime::WithLifetime};
+        pub struct HKT<T : ?Sized>(::core::marker::PhantomData<T>, !);
+    }
+
+    pub macro HKT(<$lt:lifetime> = $T:ty $(,)?) {
+        __private::HKT<dyn for<$lt> WithLifetime<$lt, T = $T>>
+    }
+}
+
+// Stand-in for the `once-cell` crate.
+mod once_cell {
+    pub mod unsync {
+        pub use std::cell::LazyCell as Lazy;
+    }
+}
+
+use std::str::CharIndices;
+
+use higher_kinded_types::HKT;
+
+pub trait DynParser {
+    type Output: HKT;
+
+    fn dyn_parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, <Self::Output as HKT>::__<'a>>;
+}
+
+impl<T> DynParser for T
+where
+    T: Parser,
+{
+    type Output = HKT!(<'a> = T::Output<'a>);
+
+    fn dyn_parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, <Self::Output as HKT>::__<'a>> {
+        self.parse(input, chars, state)
+    }
+}
+
+pub trait Parser {
+    type Output<'a>;
+    
+    fn parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, Self::Output<'a>>;
+}
+
+impl<Output: HKT> Parser for dyn '_ + DynParser<Output = Output> {
+    type Output<'a> = Output::__<'a>;
+
+    fn parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, Self::Output<'a>> {
+        self.dyn_parse(input, chars, state)
+    }
+}
+
+impl<T> Parser for Box<T>
+where
+    T: ?Sized + Parser,
+{
+    type Output<'a> = T::Output<'a>;
+
+    fn parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, Self::Output<'a>> {
+        <T as Parser>::parse(self, input, chars, state)
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ParserState { }
+
+pub type Result<'a, T, E = ()> = ::std::result::Result<(CharIndices<'a>, T), E>;
+
+pub const fn always<T>(value: T) -> impl for<'a> Parser<Output<'a> = T>
+where
+    T: Clone,
+{
+    #[derive(Clone)]
+    struct Always<T> { value: T }
+
+    impl<T> Parser for Always<T>
+    where
+        T: Clone,
+    {
+        type Output<'a> = T;
+
+        fn parse<'a>(
+            &self,
+            _: &'a str,
+            chars: CharIndices<'a>,
+            _: &mut ParserState,
+        ) -> Result<'a, Self::Output<'a>> {
+            Ok((chars, self.value.clone()))
+        }
+    }
+
+    Always { value }
+}
+
+pub const fn lazy<T, F>(init: F) -> impl for<'a> Parser<Output<'a> = T::Output<'a>>
+where
+    F: FnOnce() -> T,
+    T: Parser,
+{
+    struct Lazy<F, T> { inner: once_cell::unsync::Lazy<T, F> }
+
+    impl<F, T> Parser for Lazy<F, T>
+    where
+        F: FnOnce() -> T,
+        T: Parser,
+    {
+        type Output<'a> = T::Output<'a>;
+
+        fn parse<'a>(
+            &self,
+            input: &'a str,
+            chars: CharIndices<'a>,
+            state: &mut ParserState,
+        ) -> Result<'a, Self::Output<'a>> {
+            self.inner.parse(input, chars, state)
+        }
+    }
+
+    Lazy { inner: once_cell::unsync::Lazy::new(init) }
+}
+
+pub fn uncycle<'a, T>(parser: T) -> Box<dyn 'a + DynParser<Output = HKT!(<'b> = T::Output<'b>)>>
+where
+    T: Parser + 'a,
+{
+    Box::new(parser)
+}
+
+/// vvv HERE vvv
+pub fn foo() -> impl for<'a> Parser<Output<'a> = ()> {
+    lazy(|| uncycle(always(())))
+}
+
+fn main() {
+    println!("Hello, world!");
+}
+
+Bug Trace:
+#![feature(decl_macro)]
+#![feature(lazy_cell)]
+#![feature(never_type)]
+
+// Stand-in for the `higher-kinded-types` crate:
+mod higher_kinded_types {
+    use with_lifetime::WithLifetime;
+    mod with_lifetime {
+        pub trait WithLifetime<'lt> : Send + Sync + Unpin {
+            type T;
+        }
+
+        impl<'lt, T : ?Sized + WithLifetime<'lt>>
+            WithLifetime<'lt>
+        for
+            crate::higher_kinded_types::__private::HKT<T>
+        {
+            type T = T::T;
+        }
+    }
+
+    pub trait HKT : Send + Sync + Unpin + seal::Sealed {
+        type __<'lt>;
+    }
+
+    mod seal {
+        pub trait Sealed {}
+        impl<T : ?Sized> Sealed for super::__private::HKT<T> {}
+    }
+
+    impl<T : ?Sized> HKT for T
+    where
+        Self : for<'any> WithLifetime<'any> + seal::Sealed,
+    {
+        type __<'lt> = <Self as WithLifetime<'lt>>::T;
+    }
+
+    mod __private {
+        pub use {::core, super::with_lifetime::WithLifetime};
+        pub struct HKT<T : ?Sized>(::core::marker::PhantomData<T>, !);
+    }
+
+    pub macro HKT(<$lt:lifetime> = $T:ty $(,)?) {
+        __private::HKT<dyn for<$lt> WithLifetime<$lt, T = $T>>
+    }
+}
+
+// Stand-in for the `once-cell` crate.
+mod once_cell {
+    pub mod unsync {
+        pub use std::cell::LazyCell as Lazy;
+    }
+}
+
+use std::str::CharIndices;
+
+use higher_kinded_types::HKT;
+
+pub trait DynParser {
+    type Output: HKT;
+
+    fn dyn_parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, <Self::Output as HKT>::__<'a>>;
+}
+
+impl<T> DynParser for T
+where
+    T: Parser,
+{
+    type Output = HKT!(<'a> = T::Output<'a>);
+
+    fn dyn_parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, <Self::Output as HKT>::__<'a>> {
+        self.parse(input, chars, state)
+    }
+}
+
+pub trait Parser {
+    type Output<'a>;
+    
+    fn parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, Self::Output<'a>>;
+}
+
+impl<Output: HKT> Parser for dyn '_ + DynParser<Output = Output> {
+    type Output<'a> = Output::__<'a>;
+
+    fn parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, Self::Output<'a>> {
+        self.dyn_parse(input, chars, state)
+    }
+}
+
+impl<T> Parser for Box<T>
+where
+    T: ?Sized + Parser,
+{
+    type Output<'a> = T::Output<'a>;
+
+    fn parse<'a>(
+        &self,
+        input: &'a str,
+        chars: CharIndices<'a>,
+        state: &mut ParserState,
+    ) -> Result<'a, Self::Output<'a>> {
+        <T as Parser>::parse(self, input, chars, state)
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ParserState { }
+
+pub type Result<'a, T, E = ()> = ::std::result::Result<(CharIndices<'a>, T), E>;
+
+pub const fn always<T>(value: T) -> impl for<'a> Parser<Output<'a> = T>
+where
+    T: Clone,
+{
+    #[derive(Clone)]
+    struct Always<T> { value: T }
+
+    impl<T> Parser for Always<T>
+    where
+        T: Clone,
+    {
+        type Output<'a> = T;
+
+        fn parse<'a>(
+            &self,
+            _: &'a str,
+            chars: CharIndices<'a>,
+            _: &mut ParserState,
+        ) -> Result<'a, Self::Output<'a>> {
+            Ok((chars, self.value.clone()))
+        }
+    }
+
+    Always { value }
+}
+
+pub const fn lazy<T, F>(init: F) -> impl for<'a> Parser<Output<'a> = T::Output<'a>>
+where
+    F: FnOnce() -> T,
+    T: Parser,
+{
+    struct Lazy<F, T> { inner: once_cell::unsync::Lazy<T, F> }
+
+    impl<F, T> Parser for Lazy<F, T>
+    where
+        F: FnOnce() -> T,
+        T: Parser,
+    {
+        type Output<'a> = T::Output<'a>;
+
+        fn parse<'a>(
+            &self,
+            input: &'a str,
+            chars: CharIndices<'a>,
+            state: &mut ParserState,
+        ) -> Result<'a, Self::Output<'a>> {
+            self.inner.parse(input, chars, state)
+        }
+    }
+
+    Lazy { inner: once_cell::unsync::Lazy::new(init) }
+}
+
+pub fn uncycle<'a, T>(parser: T) -> Box<dyn 'a + DynParser<Output = HKT!(<'b> = T::Output<'b>)>>
+where
+    T: Parser + 'a,
+{
+    Box::new(parser)
+}
+
+/// vvv HERE vvv
+pub fn foo() -> impl for<'a> Parser<Output<'a> = ()> {
+    lazy(|| uncycle(always(())))
+}
+
+fn main() {
+    println!("Hello, world!");
+}
+
+Bug Labels:
+A-borrow-checker, C-bug, I-ICE, T-compiler

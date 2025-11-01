@@ -1,0 +1,129 @@
+Issue Title:
+Numeric lifetimes cause ICE when using TokenStream · Issue #70787 · rust-lang/rust · GitHub
+
+Rust Code:
+// in a proc macro crate
+#[proc_macro]
+pub fn tokenize(tokens: TokenStream) -> TokenStream {
+    tokens.into_iter().next();
+    TokenStream::new()
+}
+
+// in a consumer crate
+tokenize!('0);
+
+Bug Trace:
+stack backtrace:
+   0:     0x7ff9d9ba94bf - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h779698db67537385
+   1:     0x7ff9d9bd632b - core::fmt::write::h9751025c9f212734
+   2:     0x7ff9d9b99cfc - <std::io::IoSliceMut as core::fmt::Debug>::fmt::h8f30423961abb6a0
+   3:     0x7ff9d9bae68c - std::panicking::take_hook::h8a8930136c945459
+   4:     0x7ff9d9bae2cf - std::panicking::take_hook::h8a8930136c945459
+   5:     0x7ff99645598a - rustc_driver::report_ice::h4745a7dfc2ef3e2f
+   6:     0x7ff9d9baef28 - std::panicking::rust_panic_with_hook::h093b962f3520b82e
+   7:     0x7ff9d9baea7f - rust_begin_unwind
+   8:     0x7ff9d9bae9ec - std::panicking::begin_panic_fmt::hbc5a091d21727a24
+   9:     0x7ff9995cb161 - rustc_expand::expand::AstFragment::make_variants::h15bb1976e4124715
+  10:     0x7ff99958b354 - ZN648_$LT$proc_macro..bridge..TokenTree$LT$rustc_expand..proc_macro_server..Group$C$rustc_expand..proc_macro_server..Punct$C$rustc_expand..proc_macro_server..Ident$C$rustc_expand..proc_macro_server..Literal$GT$$u20$as$u20$rustc_expand..proc_macro_server..
+  11:     0x7ff9995cb7ce - <rustc_expand::proc_macro_server::Rustc as proc_macro::bridge::server::TokenStreamIter>::next::hd13f330994ddbe56
+  12:     0x7ff9995eb2cf - <rustc_expand::mbe::transcribe::Frame as core::iter::traits::iterator::Iterator>::next::hdedbd7ebf33c0adb
+  13:     0x7ff999632ccf - <rustc_expand::mbe::TokenTree as core::fmt::Debug>::fmt::h9c519a0e27b3b766
+  14:     0x7ff999631ad4 - <rustc_expand::mbe::TokenTree as core::fmt::Debug>::fmt::h9c519a0e27b3b766
+  15:     0x7ffa0f021554 - proc_macro::bridge::scoped_cell::ScopedCell::replace
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libproc_macro\bridge\scoped_cell.rs:74
+  16:     0x7ffa0f021554 - proc_macro::bridge::client::{{impl}}::with::{{closure}}
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libproc_macro\bridge\client.rs:284
+  17:     0x7ffa0f021554 - std::thread::local::LocalKey::try_with
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\src\libstd\thread\local.rs:262
+  18:     0x7ffa0f021554 - std::thread::local::LocalKey::with
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\src\libstd\thread\local.rs:239
+  19:     0x7ffa0f021554 - proc_macro::bridge::client::BridgeState::with
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libproc_macro\bridge\client.rs:283
+  20:     0x7ffa0f021554 - proc_macro::bridge::Bridge::with
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libproc_macro\bridge\client.rs:314
+  21:     0x7ffa0f021554 - proc_macro::bridge::client::TokenStreamIter::next
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libproc_macro\bridge\client.rs:230
+  22:     0x7ffa0f021554 - proc_macro::token_stream::{{impl}}::next
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libproc_macro\lib.rs:211
+  23:     0x7ffa0f01f2e0 - core::fmt::builders::DebugList::entries
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\src\libcore\fmt\builders.rs:661
+  24:     0x7ffa0f01f2e0 - proc_macro::{{impl}}::fmt
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libproc_macro\lib.rs:140
+  25:     0x7ffa0f03ec3b - core::fmt::run
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libcore\fmt\mod.rs:1103
+  26:     0x7ffa0f03ec3b - core::fmt::write
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libcore\fmt\mod.rs:1078
+  27:     0x7ffa0f0339f1 - core::fmt::Write::write_fmt
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\src\libcore\fmt\mod.rs:193
+  28:     0x7ffa0f0339f1 - std::panicking::begin_panic_handler::{{impl}}::fill::{{closure}}
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libstd\panicking.rs:397
+  29:     0x7ffa0f0339f1 - core::option::Option::get_or_insert_with
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\src\libcore\option.rs:856
+  30:     0x7ffa0f0339f1 - std::panicking::begin_panic_handler::PanicPayload::fill
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libstd\panicking.rs:395
+  31:     0x7ffa0f0339f1 - std::panicking::begin_panic_handler::{{impl}}::get
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libstd\panicking.rs:413
+  32:     0x7ffa0f033c83 - std::panicking::rust_panic_with_hook
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libstd\panicking.rs:514
+  33:     0x7ffa0f0337ef - std::panicking::begin_panic_handler
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libstd\panicking.rs:419
+  34:     0x7ffa0f03375c - std::panicking::begin_panic_fmt
+                               at /rustc/74bd074eefcf4915c73d1ab91bc90859664729e6\/src\libstd\panicking.rs:373
+  35:     0x7ffa0f0163d7 - playground_macros::tokenize
+                               at D:\repos\cad97\playground\macro\src\lib.rs:5
+  36:     0x7ffa0f018148 - core::ops::function::FnOnce::call_once<fn(proc_macro::TokenStream) -> proc_macro::TokenStream,(proc_macro::TokenStream)>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libcore\ops\function.rs:232
+  37:     0x7ffa0f013576 - proc_macro::bridge::client::{{impl}}::expand1::run::{{closure}}<fn(proc_macro::TokenStream) -> proc_macro::TokenStream>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\client.rs:394
+  38:     0x7ffa0f012c10 - proc_macro::bridge::client::run_client::{{closure}}::{{closure}}<proc_macro::bridge::client::TokenStream,proc_macro::bridge::client::TokenStream,closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\client.rs:362
+  39:     0x7ffa0f016a08 - proc_macro::bridge::scoped_cell::{{impl}}::set::{{closure}}<proc_macro::bridge::client::BridgeStateL,(),closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\scoped_cell.rs:79
+  40:     0x7ffa0f017362 - proc_macro::bridge::scoped_cell::ScopedCell<proc_macro::bridge::client::BridgeStateL>::replace<proc_macro::bridge::client::BridgeStateL,(),closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\scoped_cell.rs:74
+  41:     0x7ffa0f0169e5 - proc_macro::bridge::scoped_cell::ScopedCell<proc_macro::bridge::client::BridgeStateL>::set<proc_macro::bridge::client::BridgeStateL,(),closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\scoped_cell.rs:79
+  42:     0x7ffa0f01341c - proc_macro::bridge::client::{{impl}}::enter::{{closure}}<(),closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\client.rs:310
+  43:     0x7ffa0f01254c - std::thread::local::LocalKey<proc_macro::bridge::scoped_cell::ScopedCell<proc_macro::bridge::client::BridgeStateL>>::try_with<proc_macro::bridge::scoped_cell::ScopedCell<proc_macro::bridge::client::BridgeStateL>,closure-1,()>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libstd\thread\local.rs:262
+  44:     0x7ffa0f01229e - std::thread::local::LocalKey<proc_macro::bridge::scoped_cell::ScopedCell<proc_macro::bridge::client::BridgeStateL>>::with<proc_macro::bridge::scoped_cell::ScopedCell<proc_macro::bridge::client::BridgeStateL>,closure-1,()>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libstd\thread\local.rs:239
+  45:     0x7ffa0f013708 - proc_macro::bridge::Bridge::enter<(),closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\client.rs:310
+  46:     0x7ffa0f012b35 - proc_macro::bridge::client::run_client::{{closure}}<proc_macro::bridge::client::TokenStream,proc_macro::bridge::client::TokenStream,closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\client.rs:355
+  47:     0x7ffa0f0164e6 - std::panic::{{impl}}::call_once<(),closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libstd\panic.rs:318
+  48:     0x7ffa0f017d20 - std::panicking::try::do_call<std::panic::AssertUnwindSafe<closure-0>,()>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libstd\panicking.rs:331
+  49:     0x7ffa0f017fa7 - std::panicking::begin_panic::{{impl}}::take_box<str*>
+  50:     0x7ffa0f017c4a - std::panicking::try<(),std::panic::AssertUnwindSafe<closure-0>>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libstd\panicking.rs:274
+  51:     0x7ffa0f016526 - std::panic::catch_unwind<std::panic::AssertUnwindSafe<closure-0>,()>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libstd\panic.rs:394
+  52:     0x7ffa0f01295c - proc_macro::bridge::client::run_client<proc_macro::bridge::client::TokenStream,proc_macro::bridge::client::TokenStream,closure-0>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\client.rs:354
+  53:     0x7ffa0f01352d - proc_macro::bridge::client::{{impl}}::expand1::run<fn(proc_macro::TokenStream) -> proc_macro::TokenStream>
+                               at D:\.rust\rustup\toolchains\nightly-x86_64-pc-windows-msvc\lib\rustlib\src\rust\src\libproc_macro\bridge\client.rs:394
+  54:     0x7ff999630f8c - <rustc_expand::mbe::TokenTree as core::fmt::Debug>::fmt::h9c519a0e27b3b766
+  55:     0x7ff9995e5817 - <rustc_expand::proc_macro::BangProcMacro as rustc_expand::base::ProcMacro>::expand::h896d4994d5441440
+  56:     0x7ff9995a2f96 - rustc_expand::expand::MacroExpander::fully_expand_fragment::hfdb46473e3a8aae0
+  57:     0x7ff99959fb82 - rustc_expand::expand::MacroExpander::expand_crate::hf00b94d98a5dc89b
+  58:     0x7ff99672134b - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::compile::h940e978096703e06
+  59:     0x7ff9966dfd2f - rustc_interface::passes::BoxedResolver::to_resolver_outputs::hf6a12703f0445441
+  60:     0x7ff9967a9e5a - <rustc_interface::util::ReplaceBodyWithLoop as rustc_ast::mut_visit::MutVisitor>::visit_mac::h92018f56d84eb33b
+  61:     0x7ff996798214 - <rustc_interface::util::ReplaceBodyWithLoop as rustc_ast::mut_visit::MutVisitor>::visit_mac::h92018f56d84eb33b
+  62:     0x7ff9966e78a0 - rustc_interface::queries::Queries::expansion::h78cd08899556a870
+  63:     0x7ff9965d230a - rustc_driver::pretty::print_after_hir_lowering::h193fa1dba446f989
+  64:     0x7ff99645b76e - <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt::hdbb7b100c2357441
+  65:     0x7ff9964589e9 - <rustc_span::symbol::SymbolStr as core::fmt::Display>::fmt::hdbb7b100c2357441
+  66:     0x7ff99646931c - <rustc_ast_passes::node_count::NodeCounter as rustc_ast::visit::Visitor>::visit_attribute::h9147d6f3c4264b92
+  67:     0x7ff9965d6fb3 - rustc_driver::pretty::print_after_hir_lowering::h193fa1dba446f989
+  68:     0x7ff9d9b88477 - ZN244_$LT$std..error..$LT$impl$u20$core..convert..From$LT$alloc..string..String$GT$$u20$for$u20$alloc..boxed..Box$LT$dyn$u20$std..error..Error$u2b$core..marker..Send$u2b$core..marker..Sync$GT$$GT$..from..StringError$u20$as$u20$core..fmt..Display$GT$3fmt17
+  69:     0x7ff9d9bbe3cc - std::sys::windows::thread::Thread::new::h811b8ca1a594e092
+  70:     0x7ffa25247bd4 - BaseThreadInitThunk
+  71:     0x7ffa25fcced1 - RtlUserThreadStart
+
+Bug Labels:
+A-macros, C-bug, I-ICE, T-compiler

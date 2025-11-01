@@ -1,0 +1,39 @@
+Mutation Operator: Modify Const Generic Expressions in Structs
+
+Target: Struct definitions and implementations involving const generics, particularly those using expressions in const parameters.
+
+Mutation Rule:
+1. Identify struct definitions that use const generics with expressions (e.g., `struct SomeStruct<const N: usize>`).
+2. For each such struct, locate the implementation blocks or type definitions where the const generic is involved in an expression.
+3. Modify the const expression involving the generic parameter by introducing arithmetic operations with undefined or mismatched types.
+4. If a const expression is used directly (e.g., `type Mapping<const I: usize> = Store<{ O + I }>`), add an additional arithmetic operation involving a non-const generic type or a variable not defined as const. For example, change `Store<{ O + I }>` to `Store<{ O + I + undefined_var }>` where `undefined_var` is a non-existing variable or one incorrectly typed.
+5. Ensure to only apply changes when direct arithmetic operations are present in the const generic expressions in the struct or its associated types.
+
+Example (Pseudocode):
+Before Mutation:
+```rust
+struct Example<const A: usize>;
+
+impl<const A: usize> Example<A> {
+    type Result<const B: usize> = Store<{ A * B }>
+    where
+        [(); A * B]:;
+}
+
+struct Store<const X: usize>;
+```
+
+After Mutation:
+```rust
+struct Example<const A: usize>;
+
+impl<const A: usize> Example<A> {
+    type Result<const B: usize> = Store<{ A * B + undefined_var }>
+    where
+        [(); A * B]:;
+}
+
+struct Store<const X: usize>;
+```
+
+This mutation operator strategically introduces a scenario where the Rust compiler will encounter difficulties handling the const expression due to the presence of an undefined or mismatched type, thereby increasing the likelihood of triggering a compiler bug.

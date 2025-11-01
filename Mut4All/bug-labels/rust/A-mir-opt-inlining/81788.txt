@@ -1,0 +1,480 @@
+Issue Title:
+ICE in src/test/ui/issues/issue-74614.rs if MIR inlining is enabled · Issue #81788 · rust-lang/rust · GitHub
+
+Rust Code:
+// compile-flags:-Zpolymorphize=on
+// build-pass
+
+fn test<T>() {
+    std::mem::size_of::<T>();
+}
+
+pub fn foo<T>(_: T) -> &'static fn() {
+    &(test::<T> as fn())
+}
+
+fn outer<T>() {
+    foo(|| ());
+}
+
+fn main() {
+    outer::<u8>();
+}
+
+Bug Trace:
+stack backtrace:
+   0: rust_begin_unwind
+             at ./library/std/src/panicking.rs:493:5
+   1: core::panicking::panic_fmt
+             at ./library/core/src/panicking.rs:92:14
+   2: core::panicking::panic
+             at ./library/core/src/panicking.rs:50:5
+   3: <rustc_mir::interpret::util::ensure_monomorphic_enough::UsedParamsNeedSubstVisitor as rustc_middle::ty::fold::TypeVisitor>::visit_ty
+             at ./compiler/rustc_mir/src/interpret/util.rs:62:37
+   4: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::visit_with
+             at ./compiler/rustc_middle/src/ty/structural_impls.rs:939:9
+   5: rustc_mir::interpret::util::ensure_monomorphic_enough
+             at ./compiler/rustc_mir/src/interpret/util.rs:80:17
+   6: rustc_mir::interpret::cast::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::cast
+             at ./compiler/rustc_mir/src/interpret/cast.rs:50:25
+   7: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+             at ./compiler/rustc_mir/src/interpret/step.rs:281:17
+   8: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::statement
+             at ./compiler/rustc_mir/src/interpret/step.rs:89:44
+   9: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::step
+             at ./compiler/rustc_mir/src/interpret/step.rs:65:13
+  10: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+             at ./compiler/rustc_mir/src/interpret/step.rs:34:15
+  11: rustc_mir::const_eval::eval_queries::eval_body_using_ecx
+             at ./compiler/rustc_mir/src/const_eval/eval_queries.rs:64:5
+  12: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider::{{closure}}
+             at ./compiler/rustc_mir/src/const_eval/eval_queries.rs:307:31
+  13: core::result::Result<T,E>::and_then
+             at ./library/core/src/result.rs:704:22
+  14: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+             at ./compiler/rustc_mir/src/const_eval/eval_queries.rs:307:11
+  15: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_allocation_raw>::compute
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:377:17
+  16: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:363:14
+  17: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:246:9
+  18: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:608:17
+  19: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:74
+  20: stacker::maybe_grow
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  21: rustc_data_structures::stack::ensure_sufficient_stack
+             at ./compiler/rustc_data_structures/src/stack.rs:16:5
+  22: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:17
+  23: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:50
+  24: rustc_middle::ty::context::tls::set_tlv
+             at ./compiler/rustc_middle/src/ty/context.rs:1696:9
+  25: rustc_middle::ty::context::tls::enter_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:9
+  26: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:72:13
+  27: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1756:13
+  28: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:40
+  29: rustc_middle::ty::context::tls::with_context_opt
+             at ./compiler/rustc_middle/src/ty/context.rs:1729:22
+  30: rustc_middle::ty::context::tls::with_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:9
+  31: rustc_middle::ty::context::tls::with_related_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1753:9
+  32: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:61:9
+  33: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:598:9
+  34: rustc_query_system::query::plumbing::with_diagnostics
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:303:18
+  35: rustc_query_system::query::plumbing::force_query_with_job
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:597:51
+  36: rustc_query_system::query::plumbing::try_execute_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:427:16
+  37: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:645:23
+  38: <rustc_query_system::query::caches::DefaultCache<K,V> as rustc_query_system::query::caches::QueryCache>::lookup
+             at ./compiler/rustc_query_system/src/query/caches.rs:114:79
+  39: rustc_query_system::query::plumbing::try_get_cached
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:380:5
+  40: rustc_query_system::query::plumbing::get_query_impl
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:637:5
+  41: rustc_query_system::query::plumbing::get_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:739:5
+  42: rustc_middle::ty::query::TyCtxtAt::eval_to_allocation_raw
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:487:17
+  43: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::eval_to_allocation_raw
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:448:17
+  44: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+             at ./compiler/rustc_mir/src/const_eval/eval_queries.rs:238:5
+  45: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_const_value_raw>::compute
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:377:17
+  46: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:363:14
+  47: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:246:9
+  48: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:608:17
+  49: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:74
+  50: stacker::maybe_grow
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  51: rustc_data_structures::stack::ensure_sufficient_stack
+             at ./compiler/rustc_data_structures/src/stack.rs:16:5
+  52: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:17
+  53: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:50
+  54: rustc_middle::ty::context::tls::set_tlv
+             at ./compiler/rustc_middle/src/ty/context.rs:1696:9
+  55: rustc_middle::ty::context::tls::enter_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:9
+  56: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:72:13
+  57: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1756:13
+  58: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:40
+  59: rustc_middle::ty::context::tls::with_context_opt
+             at ./compiler/rustc_middle/src/ty/context.rs:1729:22
+  60: rustc_middle::ty::context::tls::with_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:9
+  61: rustc_middle::ty::context::tls::with_related_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1753:9
+  62: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:61:9
+  63: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:598:9
+  64: rustc_query_system::query::plumbing::with_diagnostics
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:303:18
+  65: rustc_query_system::query::plumbing::force_query_with_job
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:597:51
+  66: rustc_query_system::query::plumbing::try_execute_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:427:16
+  67: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:645:23
+  68: <rustc_query_system::query::caches::DefaultCache<K,V> as rustc_query_system::query::caches::QueryCache>::lookup
+             at ./compiler/rustc_query_system/src/query/caches.rs:114:79
+  69: rustc_query_system::query::plumbing::try_get_cached
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:380:5
+  70: rustc_query_system::query::plumbing::get_query_impl
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:637:5
+  71: rustc_query_system::query::plumbing::get_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:739:5
+  72: rustc_middle::ty::query::TyCtxtAt::eval_to_const_value_raw
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:487:17
+  73: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::eval_to_const_value_raw
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:448:17
+  74: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+             at ./compiler/rustc_mir/src/const_eval/eval_queries.rs:215:15
+  75: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_const_value_raw>::compute
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:377:17
+  76: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:363:14
+  77: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:246:9
+  78: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:608:17
+  79: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:74
+  80: stacker::maybe_grow
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  81: rustc_data_structures::stack::ensure_sufficient_stack
+             at ./compiler/rustc_data_structures/src/stack.rs:16:5
+  82: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:17
+  83: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:50
+  84: rustc_middle::ty::context::tls::set_tlv
+             at ./compiler/rustc_middle/src/ty/context.rs:1696:9
+  85: rustc_middle::ty::context::tls::enter_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:9
+  86: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:72:13
+  87: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1756:13
+  88: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:40
+  89: rustc_middle::ty::context::tls::with_context_opt
+             at ./compiler/rustc_middle/src/ty/context.rs:1729:22
+  90: rustc_middle::ty::context::tls::with_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:9
+  91: rustc_middle::ty::context::tls::with_related_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1753:9
+  92: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:61:9
+  93: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:598:9
+  94: rustc_query_system::query::plumbing::with_diagnostics
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:303:18
+  95: rustc_query_system::query::plumbing::force_query_with_job
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:597:51
+  96: rustc_query_system::query::plumbing::try_execute_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:427:16
+  97: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:645:23
+  98: <rustc_query_system::query::caches::DefaultCache<K,V> as rustc_query_system::query::caches::QueryCache>::lookup
+             at ./compiler/rustc_query_system/src/query/caches.rs:114:79
+  99: rustc_query_system::query::plumbing::try_get_cached
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:380:5
+ 100: rustc_query_system::query::plumbing::get_query_impl
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:637:5
+ 101: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+ 102: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+             at ./compiler/rustc_middle/src/mir/interpret/queries.rs:45:17
+ 103: rustc_middle::ty::consts::kind::ConstKind::try_eval
+             at ./compiler/rustc_middle/src/ty/consts/kind.rs:126:19
+ 104: rustc_middle::ty::consts::Const::eval
+             at ./compiler/rustc_middle/src/ty/consts.rs:179:28
+ 105: <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const
+             at ./compiler/rustc_trait_selection/src/traits/query/normalize.rs:215:9
+ 106: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::consts::Const>::fold_with
+             at ./compiler/rustc_middle/src/ty/structural_impls.rs:1016:9
+ 107: <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::fold::TypeFoldable>::super_fold_with
+             at ./compiler/rustc_middle/src/ty/subst.rs:159:42
+ 108: rustc_middle::ty::fold::TypeFoldable::fold_with
+             at ./compiler/rustc_middle/src/ty/fold.rs:49:9
+ 109: <rustc_infer::infer::at::At as rustc_trait_selection::traits::query::normalize::AtExt>::normalize
+             at ./compiler/rustc_trait_selection/src/traits/query/normalize.rs:65:22
+ 110: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions::{{closure}}
+             at ./compiler/rustc_traits/src/normalize_erasing_regions.rs:24:15
+ 111: rustc_infer::infer::InferCtxtBuilder::enter
+             at ./compiler/rustc_infer/src/infer/mod.rs:583:9
+ 112: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions
+             at ./compiler/rustc_traits/src/normalize_erasing_regions.rs:22:5
+ 113: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:363:14
+ 114: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+ 115: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:74
+ 116: stacker::maybe_grow
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 117: rustc_data_structures::stack::ensure_sufficient_stack
+             at ./compiler/rustc_data_structures/src/stack.rs:16:5
+ 118: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:17
+ 119: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:50
+ 120: rustc_middle::ty::context::tls::set_tlv
+             at ./compiler/rustc_middle/src/ty/context.rs:1696:9
+ 121: rustc_middle::ty::context::tls::enter_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:9
+ 122: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:72:13
+ 123: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1756:13
+ 124: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:40
+ 125: rustc_middle::ty::context::tls::with_context_opt
+             at ./compiler/rustc_middle/src/ty/context.rs:1729:22
+ 126: rustc_middle::ty::context::tls::with_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:9
+ 127: rustc_middle::ty::context::tls::with_related_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1753:9
+ 128: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:61:9
+ 129: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:598:9
+ 130: rustc_query_system::query::plumbing::with_diagnostics
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:303:18
+ 131: rustc_query_system::query::plumbing::force_query_with_job
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:597:51
+ 132: rustc_query_system::query::plumbing::try_execute_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:427:16
+ 133: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:645:23
+ 134: <rustc_query_system::query::caches::DefaultCache<K,V> as rustc_query_system::query::caches::QueryCache>::lookup
+             at ./compiler/rustc_query_system/src/query/caches.rs:114:79
+ 135: rustc_query_system::query::plumbing::try_get_cached
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:380:5
+ 136: rustc_query_system::query::plumbing::get_query_impl
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:637:5
+ 137: rustc_query_system::query::plumbing::get_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:739:5
+ 138: rustc_middle::ty::query::TyCtxtAt::normalize_generic_arg_after_erasing_regions
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:487:17
+ 139: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::normalize_generic_arg_after_erasing_regions
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:448:17
+ 140: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_const
+             at ./compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:102:9
+ 141: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::consts::Const>::fold_with
+             at ./compiler/rustc_middle/src/ty/structural_impls.rs:1016:9
+ 142: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::normalize_erasing_regions
+             at ./compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:37:13
+ 143: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::subst_and_normalize_erasing_regions
+             at ./compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:81:9
+ 144: rustc_middle::ty::instance::Instance::subst_mir_and_normalize_erasing_regions
+             at ./compiler/rustc_middle/src/ty/instance.rs:494:13
+ 145: rustc_mir::monomorphize::collector::MirNeighborCollector::monomorphize
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:546:9
+ 146: <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_const
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:644:36
+ 147: <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_rvalue
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:638:9
+ 148: rustc_middle::mir::visit::Visitor::super_assign
+             at ./compiler/rustc_middle/src/mir/visit.rs:450:17
+ 149: rustc_middle::mir::visit::Visitor::visit_assign
+             at ./compiler/rustc_middle/src/mir/visit.rs:102:17
+ 150: rustc_middle::mir::visit::Visitor::super_statement
+             at ./compiler/rustc_middle/src/mir/visit.rs:379:25
+ 151: rustc_middle::mir::visit::Visitor::visit_statement
+             at ./compiler/rustc_middle/src/mir/visit.rs:95:17
+ 152: rustc_middle::mir::visit::Visitor::super_basic_block_data
+             at ./compiler/rustc_middle/src/mir/visit.rs:310:21
+ 153: rustc_middle::mir::visit::Visitor::visit_basic_block_data
+             at ./compiler/rustc_middle/src/mir/visit.rs:84:17
+ 154: rustc_middle::mir::visit::Visitor::super_body
+             at ./compiler/rustc_middle/src/mir/visit.rs:259:21
+ 155: rustc_middle::mir::visit::Visitor::visit_body
+             at ./compiler/rustc_middle/src/mir/visit.rs:78:17
+ 156: rustc_mir::monomorphize::collector::collect_neighbours
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:1244:5
+ 157: rustc_mir::monomorphize::collector::collect_items_rec::{{closure}}
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:384:17
+ 158: stacker::maybe_grow
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 159: rustc_data_structures::stack::ensure_sufficient_stack
+             at ./compiler/rustc_data_structures/src/stack.rs:16:5
+ 160: rustc_mir::monomorphize::collector::collect_items_rec
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:383:13
+ 161: rustc_mir::monomorphize::collector::collect_items_rec
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:395:9
+ 162: rustc_mir::monomorphize::collector::collect_items_rec
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:395:9
+ 163: rustc_mir::monomorphize::collector::collect_crate_mono_items::{{closure}}::{{closure}}
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:298:17
+ 164: core::iter::traits::iterator::Iterator::for_each::call::{{closure}}
+             at ./library/core/src/iter/traits/iterator.rs:773:29
+ 165: core::iter::traits::iterator::Iterator::fold
+             at ./library/core/src/iter/traits/iterator.rs:2118:21
+ 166: core::iter::traits::iterator::Iterator::for_each
+             at ./library/core/src/iter/traits/iterator.rs:776:9
+ 167: rustc_mir::monomorphize::collector::collect_crate_mono_items::{{closure}}
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:296:13
+ 168: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at ./compiler/rustc_data_structures/src/profiling.rs:570:9
+ 169: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at ./compiler/rustc_session/src/utils.rs:10:9
+ 170: rustc_mir::monomorphize::collector::collect_crate_mono_items
+             at ./compiler/rustc_mir/src/monomorphize/collector.rs:295:9
+ 171: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+             at ./compiler/rustc_mir/src/monomorphize/partitioning/mod.rs:337:33
+ 172: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::collect_and_partition_mono_items>::compute
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:377:17
+ 173: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at ./compiler/rustc_query_system/src/dep_graph/graph.rs:363:14
+ 174: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+ 175: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:74
+ 176: stacker::maybe_grow
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 177: rustc_data_structures::stack::ensure_sufficient_stack
+             at ./compiler/rustc_data_structures/src/stack.rs:16:5
+ 178: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:73:17
+ 179: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:50
+ 180: rustc_middle::ty::context::tls::set_tlv
+             at ./compiler/rustc_middle/src/ty/context.rs:1696:9
+ 181: rustc_middle::ty::context::tls::enter_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:9
+ 182: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:72:13
+ 183: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1756:13
+ 184: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:40
+ 185: rustc_middle::ty::context::tls::with_context_opt
+             at ./compiler/rustc_middle/src/ty/context.rs:1729:22
+ 186: rustc_middle::ty::context::tls::with_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1740:9
+ 187: rustc_middle::ty::context::tls::with_related_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1753:9
+ 188: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:61:9
+ 189: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:598:9
+ 190: rustc_query_system::query::plumbing::with_diagnostics
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:303:18
+ 191: rustc_query_system::query::plumbing::force_query_with_job
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:597:51
+ 192: rustc_query_system::query::plumbing::try_execute_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:427:16
+ 193: rustc_query_system::query::plumbing::get_query_impl::{{closure}}
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:645:23
+ 194: <rustc_query_system::query::caches::DefaultCache<K,V> as rustc_query_system::query::caches::QueryCache>::lookup
+             at ./compiler/rustc_query_system/src/query/caches.rs:114:79
+ 195: rustc_query_system::query::plumbing::try_get_cached
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:380:5
+ 196: rustc_query_system::query::plumbing::get_query_impl
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:637:5
+ 197: rustc_query_system::query::plumbing::get_query
+             at ./compiler/rustc_query_system/src/query/plumbing.rs:739:5
+ 198: rustc_middle::ty::query::TyCtxtAt::collect_and_partition_mono_items
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:487:17
+ 199: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::collect_and_partition_mono_items
+             at ./compiler/rustc_middle/src/ty/query/plumbing.rs:448:17
+ 200: rustc_codegen_ssa::base::codegen_crate
+             at ./compiler/rustc_codegen_ssa/src/base.rs:481:25
+ 201: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+             at ./compiler/rustc_codegen_llvm/src/lib.rs:268:18
+ 202: rustc_interface::passes::start_codegen::{{closure}}
+             at ./compiler/rustc_interface/src/passes.rs:1014:9
+ 203: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at ./compiler/rustc_data_structures/src/profiling.rs:570:9
+ 204: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at ./compiler/rustc_session/src/utils.rs:10:9
+ 205: rustc_interface::passes::start_codegen
+             at ./compiler/rustc_interface/src/passes.rs:1013:19
+ 206: rustc_interface::queries::Queries::ongoing_codegen::{{closure}}::{{closure}}
+             at ./compiler/rustc_interface/src/queries.rs:286:20
+ 207: rustc_interface::passes::QueryContext::enter::{{closure}}
+             at ./compiler/rustc_interface/src/passes.rs:749:42
+ 208: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:50
+ 209: rustc_middle::ty::context::tls::set_tlv
+             at ./compiler/rustc_middle/src/ty/context.rs:1696:9
+ 210: rustc_middle::ty::context::tls::enter_context
+             at ./compiler/rustc_middle/src/ty/context.rs:1712:9
+ 211: rustc_interface::passes::QueryContext::enter
+             at ./compiler/rustc_interface/src/passes.rs:749:9
+ 212: rustc_interface::queries::Queries::ongoing_codegen::{{closure}}
+             at ./compiler/rustc_interface/src/queries.rs:277:13
+ 213: rustc_interface::queries::Query<T>::compute
+             at ./compiler/rustc_interface/src/queries.rs:39:28
+ 214: rustc_interface::queries::Queries::ongoing_codegen
+             at ./compiler/rustc_interface/src/queries.rs:275:9
+ 215: rustc_driver::run_compiler::{{closure}}::{{closure}}
+             at ./compiler/rustc_driver/src/lib.rs:446:13
+ 216: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+             at ./compiler/rustc_interface/src/queries.rs:418:19
+ 217: rustc_driver::run_compiler::{{closure}}
+             at ./compiler/rustc_driver/src/lib.rs:341:22
+ 218: rustc_interface::interface::create_compiler_and_run::{{closure}}
+             at ./compiler/rustc_interface/src/interface.rs:197:13
+ 219: rustc_span::with_source_map
+             at ./compiler/rustc_span/src/lib.rs:788:5
+ 220: rustc_interface::interface::create_compiler_and_run
+             at ./compiler/rustc_interface/src/interface.rs:191:5
+ 221: rustc_interface::interface::run_compiler::{{closure}}
+             at ./compiler/rustc_interface/src/interface.rs:213:12
+ 222: rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}::{{closure}}
+             at ./compiler/rustc_interface/src/util.rs:152:13
+ 223: scoped_tls::ScopedKey<T>::set
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+ 224: rustc_span::with_session_globals
+             at ./compiler/rustc_span/src/lib.rs:104:5
+ 225: rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}
+             at ./compiler/rustc_interface/src/util.rs:150:9
+ 226: rustc_interface::util::scoped_thread::{{closure}}
+             at ./compiler/rustc_interface/src/util.rs:125:24
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+-Zpolymorphize, A-mir-opt-inlining, C-bug, I-ICE, T-compiler, requires-nightly

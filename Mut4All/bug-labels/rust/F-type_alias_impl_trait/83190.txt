@@ -1,0 +1,117 @@
+Issue Title:
+ICE: unexpected concrete region in borrowck: ReEarlyBound(0, 'a) · Issue #83190 · rust-lang/rust · GitHub
+
+Rust Code:
+// failure-status: 101
+// rustc-env:RUST_BACKTRACE=0
+// normalize-stderr-test "note: .*\n\n" -> ""
+// normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+
+// compile-flags: --crate-type=rlib
+
+// Regression test for https://github.com/rust-lang/rust/issues/78450
+
+#![feature(min_type_alias_impl_trait)]
+#![no_std]
+
+pub trait AssociatedImpl {
+    type ImplTrait;
+
+    fn f() -> Self::ImplTrait;
+}
+
+struct S<T>(T);
+
+trait Associated {
+    type A;
+}
+
+// ICE
+impl<'a, T: Associated<A = &'a ()>> AssociatedImpl for S<T> {
+    type ImplTrait = impl core::fmt::Debug;
+
+    fn f() -> Self::ImplTrait {
+    //~^ ERROR unexpected concrete region in borrowck: ReEarlyBound(0, 'a)
+        ()
+    }
+}
+
+Bug Trace:
+error: internal compiler error: unexpected concrete region in borrowck: ReEarlyBound(0, 'a)
+  --> ./src/test/ui/type-alias-impl-trait/associated-type-lifetime-ice.rs:29:5
+   |
+29 | /     fn f() -> Self::ImplTrait {
+30 | |     //~^ ERROR unexpected concrete region in borrowck: ReEarlyBound(0, 'a)
+31 | |         ()
+32 | |     }
+   | |_____^
+   |
+   = note: delayed at compiler/rustc_mir/src/borrow_check/region_infer/opaque_types.rs:83:44
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', compiler/rustc_errors/src/lib.rs:1012:13
+stack backtrace:
+   0:     0x7fc856475a10 - std::backtrace_rs::backtrace::libunwind::trace::hfe3b1cace85e87d8
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/../../backtrace/src/backtrace/libunwind.rs:90:5
+   1:     0x7fc856475a10 - std::backtrace_rs::backtrace::trace_unsynchronized::h542330af06479043
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fc856475a10 - std::sys_common::backtrace::_print_fmt::h6b88726367858985
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/sys_common/backtrace.rs:67:5
+   3:     0x7fc856475a10 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hcd76ce6b485adbea
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/sys_common/backtrace.rs:46:22
+   4:     0x7fc8564e3f8f - core::fmt::write::h127419eb46f2ecc9
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/core/src/fmt/mod.rs:1092:17
+   5:     0x7fc856469b22 - std::io::Write::write_fmt::h0facb64ef2e7f5d8
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/io/mod.rs:1567:15
+   6:     0x7fc856479745 - std::sys_common::backtrace::_print::h7bf1633ea5421f7b
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/sys_common/backtrace.rs:49:5
+   7:     0x7fc856479745 - std::sys_common::backtrace::print::h5cc4d09049928ba5
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/sys_common/backtrace.rs:36:9
+   8:     0x7fc856479745 - std::panicking::default_hook::{{closure}}::h9e84dc005bfc9fc7
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/panicking.rs:208:50
+   9:     0x7fc8564791f3 - std::panicking::default_hook::h123278a03b1f796b
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/panicking.rs:225:9
+  10:     0x7fc856c4c9fb - rustc_driver::report_ice::h0dd0a80bb463fc7e
+  11:     0x7fc856479eb0 - std::panicking::rust_panic_with_hook::h4040631aa6c7bc27
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/panicking.rs:595:17
+  12:     0x7fc856479a27 - std::panicking::begin_panic_handler::{{closure}}::h02a17b22ac092d08
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/panicking.rs:497:13
+  13:     0x7fc856475ecc - std::sys_common::backtrace::__rust_end_short_backtrace::h6063b024443b5852
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/sys_common/backtrace.rs:141:18
+  14:     0x7fc856479989 - rust_begin_unwind
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/panicking.rs:493:5
+  15:     0x7fc85643e14b - std::panicking::begin_panic_fmt::h10b51f96d6207ff1
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/panicking.rs:435:5
+  16:     0x7fc85936c92e - rustc_errors::HandlerInner::flush_delayed::h7cdd6b7640e6949e
+  17:     0x7fc85936b23b - <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop::h1ea17cd328582115
+  18:     0x7fc858998d56 - core::ptr::drop_in_place<rustc_session::parse::ParseSess>::hc4ec048ba9ccb468
+  19:     0x7fc85899b320 - <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop::h38e1b78997ab5d18
+  20:     0x7fc858997f3d - core::ptr::drop_in_place<rustc_interface::interface::Compiler>::ha1358694e6ae6d6a
+  21:     0x7fc8589977aa - rustc_span::with_source_map::h19c02e2b8cd97d79
+  22:     0x7fc85899c856 - scoped_tls::ScopedKey<T>::set::ha910f4dd75d3f2b6
+  23:     0x7fc85899e084 - std::sys_common::backtrace::__rust_begin_short_backtrace::h9028e0cefdffcecf
+  24:     0x7fc8589b91e5 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h88ad06dc90d5e88d
+  25:     0x7fc856489728 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hd8ea7ada17dfa868
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/alloc/src/boxed.rs:1546:9
+  26:     0x7fc856489728 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h91ce3a636c58b978
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/alloc/src/boxed.rs:1546:9
+  27:     0x7fc856489728 - std::sys::unix::thread::Thread::new::thread_start::h2e193c2e23720fdf
+                               at /rustc/195ad4830e11a544391abe296b146450dea8411b/library/std/src/sys/unix/thread.rs:71:17
+  28:     0x7fc856392299 - start_thread
+  29:     0x7fc8562a7053 - clone
+  30:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-nightly (195ad4830 2021-03-16) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type lib
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+C-bug, E-needs-test, F-type_alias_impl_trait, I-ICE, ICEBreaker-Cleanup-Crew, T-compiler, glacier, regression-from-stable-to-beta

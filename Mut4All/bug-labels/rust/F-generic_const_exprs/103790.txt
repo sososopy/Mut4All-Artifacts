@@ -1,0 +1,146 @@
+Issue Title:
+ICE: const parameter out of range · Issue #103790 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
+
+struct S<const S: (), const S: S = {S}>;
+
+fn main() {}
+
+Bug Trace:
+error[E0403]: the name `S` is already used for a generic parameter in this item's generic parameters
+ --> ncc.rs:4:29
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  |                -            ^ already used
+  |                |
+  |                first use of `S`
+
+error[E0107]: missing generics for struct `S`
+ --> ncc.rs:4:32
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  |                                ^ expected at least 1 generic argument
+  |
+note: struct defined here, with at least 1 generic parameter: `S`
+ --> ncc.rs:4:8
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  |        ^ -----------
+help: add missing generic argument
+  |
+4 | struct S<const S: (), const S: S<S> = {S}>;
+  |                                ~~~~
+
+error[E0391]: cycle detected when computing type of `S::S`
+ --> ncc.rs:4:32
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  |                                ^
+  |
+  = note: ...which immediately requires computing type of `S::S` again
+note: cycle used when computing type of `S`
+ --> ncc.rs:4:1
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0391]: cycle detected when computing type of `S::S`
+ --> ncc.rs:4:23
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  |                       ^^^^^^^^^^^^^^^^
+  |
+note: ...which requires computing const default for a given parameter `S::S`...
+ --> ncc.rs:4:23
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  |                       ^^^^^^^^^^^^^^^^
+note: ...which requires computing type of `S::{constant#0}`...
+ --> ncc.rs:4:36
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  |                                    ^^^
+  = note: ...which again requires computing type of `S::S`, completing the cycle
+note: cycle used when computing type of `S`
+ --> ncc.rs:4:1
+  |
+4 | struct S<const S: (), const S: S = {S}>;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: compiler/rustc_middle/src/ty/subst.rs:768:9: const parameter `S/#1` (Const { ty: [type error], kind: Param(S/#1) }/1) out of range when substituting substs=[Const { ty: (), kind: Error(DelaySpanBugEmitted { reported: ErrorGuaranteed(()), _priv: () }) }]
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/0da281b6068a7d889ae89a9bd8991284cc9b7535/compiler/rustc_errors/src/lib.rs:1519:9
+stack backtrace:
+   0:        0x10c9778a2 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h98e7719cdb057d8f
+   1:        0x10c9cf74a - core::fmt::write::he324e6f3a7ef7ed0
+   2:        0x10c96997c - std::io::Write::write_fmt::h295c914c323e508a
+   3:        0x10c97766a - std::sys_common::backtrace::print::hb2f2bd76d0a1d9b2
+   4:        0x10c97aa76 - std::panicking::default_hook::{{closure}}::h7f2a23a911934152
+   5:        0x10c97a7c7 - std::panicking::default_hook::h576cf5867894044c
+   6:        0x11569c62d - rustc_driver[ba5c792b9438c2b]::DEFAULT_HOOK::{closure#0}::{closure#0}
+   7:        0x10c97b271 - std::panicking::rust_panic_with_hook::hf0781b554a936fbf
+   8:        0x119d88427 - std[8878bd7dd366d71b]::panicking::begin_panic::<rustc_errors[b0e16a209d58ca7d]::ExplicitBug>::{closure#0}
+   9:        0x119d87d09 - std[8878bd7dd366d71b]::sys_common::backtrace::__rust_end_short_backtrace::<std[8878bd7dd366d71b]::panicking::begin_panic<rustc_errors[b0e16a209d58ca7d]::ExplicitBug>::{closure#0}, !>
+  10:        0x11a42f929 - std[8878bd7dd366d71b]::panicking::begin_panic::<rustc_errors[b0e16a209d58ca7d]::ExplicitBug>
+  11:        0x119d87cf9 - std[8878bd7dd366d71b]::panic::panic_any::<rustc_errors[b0e16a209d58ca7d]::ExplicitBug>
+  12:        0x119d85f4c - <rustc_errors[b0e16a209d58ca7d]::HandlerInner>::bug::<&alloc[b73bea5876e24fb]::string::String>
+  13:        0x119d856d7 - <rustc_errors[b0e16a209d58ca7d]::Handler>::bug::<&alloc[b73bea5876e24fb]::string::String>
+  14:        0x119ec5a72 - rustc_middle[298407787cc28eff]::ty::context::tls::with_context_opt::<rustc_middle[298407787cc28eff]::ty::context::tls::with_opt<rustc_middle[298407787cc28eff]::util::bug::opt_span_bug_fmt<rustc_span[73e074df7cba0abf]::span_encoding::Span>::{closure#0}, ()>::{closure#0}, ()>
+  15:        0x119ec7b71 - rustc_middle[298407787cc28eff]::util::bug::opt_span_bug_fmt::<rustc_span[73e074df7cba0abf]::span_encoding::Span>
+  16:        0x11a43123e - rustc_middle[298407787cc28eff]::util::bug::bug_fmt
+  17:        0x11a4311e8 - <rustc_middle[298407787cc28eff]::ty::subst::SubstFolder>::const_param_out_of_range
+  18:        0x119ec500e - <rustc_middle[298407787cc28eff]::ty::subst::SubstFolder as rustc_middle[298407787cc28eff]::ty::fold::TypeFolder>::fold_const
+  19:        0x1181f99e7 - <<dyn rustc_hir_analysis[3f5a3f8b91adb05]::astconv::AstConv>::create_substs_for_ast_path::{closure#0}::SubstsForAstPathCtxt as rustc_hir_analysis[3f5a3f8b91adb05]::astconv::CreateSubstsForGenericArgsCtxt>::inferred_kind
+  20:        0x1181f88af - <dyn rustc_hir_analysis[3f5a3f8b91adb05]::astconv::AstConv>::create_substs_for_ast_path::{closure#0}
+  21:        0x1181e2706 - <dyn rustc_hir_analysis[3f5a3f8b91adb05]::astconv::AstConv>::ast_path_substs_for_ty
+  22:        0x1181e5d46 - <dyn rustc_hir_analysis[3f5a3f8b91adb05]::astconv::AstConv>::ast_path_to_ty
+  23:        0x1181f3868 - <dyn rustc_hir_analysis[3f5a3f8b91adb05]::astconv::AstConv>::res_to_ty
+  24:        0x118208e72 - <dyn rustc_hir_analysis[3f5a3f8b91adb05]::astconv::AstConv>::ast_ty_to_ty_inner::{closure#0}
+  25:        0x11812e5ad - rustc_hir_analysis[3f5a3f8b91adb05]::collect::type_of::type_of
+  26:        0x118ea7af5 - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<rustc_span[73e074df7cba0abf]::def_id::DefId, rustc_middle[298407787cc28eff]::ty::Ty>>
+  27:        0x118f872e4 - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::type_of, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  28:        0x119e95354 - <rustc_middle[298407787cc28eff]::ty::context::TyCtxt>::mk_param_from_def
+  29:        0x119ec18e0 - <rustc_middle[298407787cc28eff]::ty::list::List<rustc_middle[298407787cc28eff]::ty::subst::GenericArg>>::fill_item::<<rustc_middle[298407787cc28eff]::ty::list::List<rustc_middle[298407787cc28eff]::ty::subst::GenericArg>>::identity_for_item::{closure#0}>
+  30:        0x119ec0e24 - <rustc_middle[298407787cc28eff]::ty::list::List<rustc_middle[298407787cc28eff]::ty::subst::GenericArg>>::identity_for_item
+  31:        0x11812e4ed - rustc_hir_analysis[3f5a3f8b91adb05]::collect::type_of::type_of
+  32:        0x118ea7af5 - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<rustc_span[73e074df7cba0abf]::def_id::DefId, rustc_middle[298407787cc28eff]::ty::Ty>>
+  33:        0x118f872e4 - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::type_of, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  34:        0x11816db56 - rustc_hir_analysis[3f5a3f8b91adb05]::collect::convert_item
+  35:        0x1181668dc - <rustc_hir_analysis[3f5a3f8b91adb05]::collect::CollectItemTypesVisitor as rustc_hir[7dceeafd8b0a3ae3]::intravisit::Visitor>::visit_item
+  36:        0x11810ebb9 - <rustc_middle[298407787cc28eff]::hir::map::Map>::visit_item_likes_in_module::<rustc_hir_analysis[3f5a3f8b91adb05]::collect::CollectItemTypesVisitor>
+  37:        0x118165ee5 - rustc_hir_analysis[3f5a3f8b91adb05]::collect::collect_mod_item_types
+  38:        0x118e8a855 - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<rustc_span[73e074df7cba0abf]::def_id::LocalDefId, ()>>
+  39:        0x118f7f515 - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::collect_mod_item_types, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  40:        0x11810e348 - <rustc_middle[298407787cc28eff]::hir::map::Map>::for_each_module::<rustc_hir_analysis[3f5a3f8b91adb05]::check_crate::{closure#0}::{closure#0}::{closure#0}>
+  41:        0x1180ff5c1 - <rustc_session[43d2d941ace548e5]::session::Session>::track_errors::<rustc_hir_analysis[3f5a3f8b91adb05]::check_crate::{closure#0}, ()>
+  42:        0x1180af2b8 - rustc_hir_analysis[3f5a3f8b91adb05]::check_crate
+  43:        0x115774fda - rustc_interface[a666f6d755ed9279]::passes::analysis
+  44:        0x118f0d26c - rustc_query_system[fd3d689380a50de4]::query::plumbing::try_execute_query::<rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt, rustc_query_system[fd3d689380a50de4]::query::caches::DefaultCache<(), core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>>
+  45:        0x118f873f9 - rustc_query_system[fd3d689380a50de4]::query::plumbing::get_query::<rustc_query_impl[f77634870212a75e]::queries::analysis, rustc_query_impl[f77634870212a75e]::plumbing::QueryCtxt>
+  46:        0x11562b296 - <rustc_interface[a666f6d755ed9279]::passes::QueryContext>::enter::<rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}::{closure#2}::{closure#3}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>
+  47:        0x11566fa4d - rustc_span[73e074df7cba0abf]::with_source_map::<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}::{closure#1}>
+  48:        0x11565f34c - <scoped_tls[c17fceff1b2b43d8]::ScopedKey<rustc_span[73e074df7cba0abf]::SessionGlobals>>::set::<rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>
+  49:        0x11562ee5a - std[8878bd7dd366d71b]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[a666f6d755ed9279]::util::run_in_thread_pool_with_globals<rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>
+  50:        0x115614f7b - <<std[8878bd7dd366d71b]::thread::Builder>::spawn_unchecked_<rustc_interface[a666f6d755ed9279]::util::run_in_thread_pool_with_globals<rustc_interface[a666f6d755ed9279]::interface::run_compiler<core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>, rustc_driver[ba5c792b9438c2b]::run_compiler::{closure#1}>::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[13371b8ce97f01bb]::result::Result<(), rustc_errors[b0e16a209d58ca7d]::ErrorGuaranteed>>::{closure#1} as core[13371b8ce97f01bb]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  51:        0x10c984387 - std::sys::unix::thread::Thread::new::thread_start::hfd54df40dd14130e
+  52:     0x7ff814d514e1 - __pthread_start
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.66.0-nightly (0da281b60 2022-10-27) running on x86_64-apple-darwin
+
+query stack during panic:
+#0 [type_of] computing type of `S::S`
+#1 [type_of] computing type of `S`
+#2 [collect_mod_item_types] collecting item types in top-level module
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 5 previous errors
+
+Bug Labels:
+A-const-generics, C-bug, F-generic_const_exprs, I-ICE, T-compiler

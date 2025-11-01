@@ -1,0 +1,118 @@
+Issue Title:
+ICE; glacier fixed/27925.rs  -Zmir-opt-level=2  -Zinstrument-coverage: add_counter called with duplicate id · Issue #80060 · rust-lang/rust · GitHub
+
+Rust Code:
+struct Sched {
+    i: i32,
+}
+impl Sched {
+    extern "C" fn get(self) -> i32 { self.i }
+}
+
+fn main() {
+    let s = Sched { i: 4 };
+    let f = || -> i32 {
+        s.get()
+    };
+    println!("f: {}", f());
+}
+
+Bug Trace:
+warning: `-Z mir-opt-level=2` (any level > 1) enables function inlining, which limits the effectiveness of `-Z instrument-coverage`.
+
+warning: `extern` fn uses type `Sched`, which is not FFI-safe
+ --> ./27925.rs:5:23
+  |
+5 |     extern "C" fn get(self) -> i32 { self.i }
+  |                       ^^^^ not FFI-safe
+  |
+  = note: `#[warn(improper_ctypes_definitions)]` on by default
+  = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+  = note: this struct has unspecified layout
+note: the type is defined here
+ --> ./27925.rs:1:1
+  |
+1 | / struct Sched {
+2 | |     i: i32,
+3 | | }
+  | |_^
+
+thread 'rustc' panicked at 'add_counter called with duplicate `id`: ./27925.rs:10:23 - 12:6', compiler/rustc_codegen_ssa/src/coverageinfo/map.rs:67:43
+stack backtrace:
+   0:     0x7ffb551d4527 - std::backtrace_rs::backtrace::libunwind::trace::h746c3e9529d524bc
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/../../backtrace/src/backtrace/libunwind.rs:90:5
+   1:     0x7ffb551d4527 - std::backtrace_rs::backtrace::trace_unsynchronized::h84373278bfb39e0c
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7ffb551d4527 - std::sys_common::backtrace::_print_fmt::h517324efde750597
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/sys_common/backtrace.rs:67:5
+   3:     0x7ffb551d4527 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::hf594ab77fac89284
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/sys_common/backtrace.rs:46:22
+   4:     0x7ffb552450ec - core::fmt::write::h3868db8542c90941
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/core/src/fmt/mod.rs:1078:17
+   5:     0x7ffb551c63f2 - std::io::Write::write_fmt::h3f6656f045fa877f
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/io/mod.rs:1519:15
+   6:     0x7ffb551d8215 - std::sys_common::backtrace::_print::hda7655c057c24dcc
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/sys_common/backtrace.rs:49:5
+   7:     0x7ffb551d8215 - std::sys_common::backtrace::print::h546a6c8431d46287
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/sys_common/backtrace.rs:36:9
+   8:     0x7ffb551d8215 - std::panicking::default_hook::{{closure}}::h006dd083853faf51
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/panicking.rs:208:50
+   9:     0x7ffb551d7d6a - std::panicking::default_hook::hf0f9afb1017317fc
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/panicking.rs:225:9
+  10:     0x7ffb55a8dcd8 - rustc_driver::report_ice::h745efc047fa5f80b
+  11:     0x7ffb551d8b16 - std::panicking::rust_panic_with_hook::hb7a19826c029b1d6
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/panicking.rs:595:17
+  12:     0x7ffb551d8637 - std::panicking::begin_panic_handler::{{closure}}::hde71edcd925d0c5e
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/panicking.rs:497:13
+  13:     0x7ffb551d49ec - std::sys_common::backtrace::__rust_end_short_backtrace::h8a3c7d6cea578919
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/sys_common/backtrace.rs:141:18
+  14:     0x7ffb551d8599 - rust_begin_unwind
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/panicking.rs:493:5
+  15:     0x7ffb55241501 - core::panicking::panic_fmt::h20225113c4a2f8fd
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/core/src/panicking.rs:92:14
+  16:     0x7ffb55241173 - core::option::expect_none_failed::hc6d6d4cea4fdc285
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/core/src/option.rs:1268:5
+  17:     0x7ffb575f9d23 - rustc_codegen_ssa::coverageinfo::map::FunctionCoverage::add_counter::hb4039e3f6766f5da
+  18:     0x7ffb55f6b3d7 - rustc_codegen_llvm::coverageinfo::<impl rustc_codegen_ssa::traits::coverageinfo::CoverageInfoBuilderMethods for rustc_codegen_llvm::builder::Builder>::add_coverage_counter::h1afe28760e2dbef7
+  19:     0x7ffb55e10314 - rustc_codegen_ssa::mir::codegen_mir::h501aa7b1ee566cc0
+  20:     0x7ffb55f11a78 - rustc_codegen_ssa::base::codegen_instance::h935688a1fdb8eb35
+  21:     0x7ffb55f4ca94 - <rustc_middle::mir::mono::MonoItem as rustc_codegen_ssa::mono_item::MonoItemExt>::define::h65ea57b56f684b39
+  22:     0x7ffb55df4cca - rustc_codegen_llvm::base::compile_codegen_unit::module_codegen::h3032d91af75b30d7
+  23:     0x7ffb55e61119 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task::hbc6915181651cc52
+  24:     0x7ffb55df4807 - rustc_codegen_llvm::base::compile_codegen_unit::h7ba4d5e5fa948ccd
+  25:     0x7ffb55f2a6dd - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::h84729c6a9074acd9
+  26:     0x7ffb55caf84e - rustc_session::utils::<impl rustc_session::session::Session>::time::he9da96abd57eec9b
+  27:     0x7ffb55cf10bc - rustc_interface::passes::QueryContext::enter::hf96a740ef8e4de64
+  28:     0x7ffb55d4b383 - rustc_interface::queries::Queries::ongoing_codegen::h8469c6700fd7a0f4
+  29:     0x7ffb55a36ae9 - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::hed31e089d4b6eb55
+  30:     0x7ffb55ab7557 - rustc_span::with_source_map::h179240a3f032f8c8
+  31:     0x7ffb55a381fb - rustc_interface::interface::create_compiler_and_run::hb67b5170c4ead91b
+  32:     0x7ffb55ae4650 - scoped_tls::ScopedKey<T>::set::h3794ca08c112be1c
+  33:     0x7ffb55aeb516 - std::sys_common::backtrace::__rust_begin_short_backtrace::he3bd2885a25fc3ec
+  34:     0x7ffb55a3f7ca - core::ops::function::FnOnce::call_once{{vtable.shim}}::he39fdb958d398dc2
+  35:     0x7ffb551e861a - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hea1090dbdcecbf5a
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/alloc/src/boxed.rs:1328:9
+  36:     0x7ffb551e861a - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h8d5723d3912bd325
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/alloc/src/boxed.rs:1328:9
+  37:     0x7ffb551e861a - std::sys::unix::thread::Thread::new::thread_start::hc17a425ca2995724
+                               at /rustc/e15ec667cee92d47c64fc903227b2fdb81f9e530/library/std/src/sys/unix/thread.rs:71:17
+  38:     0x7ffb550d93e9 - start_thread
+  39:     0x7ffb54ff6293 - __GI___clone
+  40:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.50.0-nightly (e15ec667c 2020-12-15) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z mir-opt-level=2 -Z instrument-coverage
+
+query stack during panic:
+end of query stack
+warning: 1 warning emitted
+
+Bug Labels:
+A-code-coverage, A-mir-opt, C-bug, I-ICE, T-compiler, glacier, requires-nightly

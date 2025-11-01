@@ -1,0 +1,44 @@
+Issue Title:
+[c++20][concepts][clangd][AST] Crash in clangd due to assertion failure in ASTWriter.cpp:5814
+
+Source Code & Bug Trace:
+namespace fixed_containers
+{
+template <class StorageType>
+concept IsFixedIndexBasedStorage = requires(const StorageType& a,
+                                            StorageType& b,
+                                            const std::size_t i)
+{
+    ...
+};
+
+
+#29 0x0000557f32382b09 in clang::ASTRecordWriter::AddASTTemplateArgumentListInfo (this=0x7fb376018400, ASTTemplArgList=0x0) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Serialization/ASTWriter.cpp:5814
+#30 0x0000557f323d4421 in clang::ASTStmtWriter::VisitConceptSpecializationExpr (this=0x7fb3760183f8, E=0x7fb33ae871a0) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Serialization/ASTWriterStmt.cpp:442
+#31 0x0000557f323df69e in clang::StmtVisitorBase<std::add_pointer, clang::ASTStmtWriter, void>::Visit (this=0x7fb3760183f8, S=0x7fb33ae871a0) at tools/clang/include/clang/AST/StmtNodes.inc:1077
+#32 0x0000557f323de51b in clang::ASTWriter::WriteSubStmt (this=0x7fb338095520, S=0x7fb33ae871a0) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Serialization/ASTWriterStmt.cpp:2756
+#33 0x0000557f323dfd1b in clang::ASTRecordWriter::FlushStmts (this=0x7fb3760188b8) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Serialization/ASTWriterStmt.cpp:2771
+#34 0x0000557f32368d43 in clang::ASTRecordWriter::Emit (this=0x7fb3760188b8, Code=112, Abbrev=0) at /tools/build-llvmorg-16.0.0-rc4/source/clang/include/clang/Serialization/ASTRecordWriter.h:96
+#35 0x0000557f323ce966 in clang::ASTDeclWriter::Emit (this=0x7fb3760188a8, D=0x7fb33ae87090) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Serialization/ASTWriterDecl.cpp:53
+#36 0x0000557f323ce6ac in clang::ASTWriter::WriteDecl (this=0x7fb338095520, Context=..., D=0x7fb33ae87090) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Serialization/ASTWriterDecl.cpp:2471
+
+#0  clang::ConceptSpecializationExpr::ConceptSpecializationExpr (this=0x7feea2e86920, C=..., NamedConcept=0x7fee31395a38, SpecDecl=0x7feea2e868e0, Satisfaction=0x0, Dependent=true, ContainsUnexpandedParameterPack=false)
+    at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ExprConcepts.cpp:88
+#1  0x000055f2719ba0df in clang::ConceptSpecializationExpr::Create (C=..., NamedConcept=0x7fee31395a38, SpecDecl=0x7feea2e868e0, Satisfaction=0x0, Dependent=true, ContainsUnexpandedParameterPack=false)
+    at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ExprConcepts.cpp:103
+#2  0x000055f2716ebc86 in canonicalizeImmediatelyDeclaredConstraint (C=..., IDC=0x7feea2e863f0, ConstrainedType=...) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ASTContext.cpp:767
+#3  0x000055f2716eb0e1 in clang::ASTContext::getCanonicalTemplateTemplateParmDecl (this=0x7feea007e200, TTP=0x7feea2e86530) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ASTContext.cpp:808
+#4  0x000055f27171561a in clang::ASTContext::getCanonicalTemplateName (this=0x7feea007e200, Name=...) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ASTContext.cpp:6227
+#5  0x000055f271714310 in clang::ASTContext::getCanonicalTemplateArgument (this=0x7feea007e200, Arg=...) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ASTContext.cpp:6750
+#6  0x000055f271715840 in getCanonicalTemplateArguments (C=..., Args=..., AnyNonCanonArgs=@0x7feed0a2a78f: true) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ASTContext.cpp:3020
+#7  0x000055f2717153f9 in clang::ASTContext::getCanonicalTemplateSpecializationType (this=0x7feea007e200, Template=..., Args=...) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ASTContext.cpp:5001
+#8  0x000055f2717150fb in clang::ASTContext::getTemplateSpecializationType (this=0x7feea007e200, Template=..., Args=..., Underlying=...) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/ASTContext.cpp:4970
+#9  0x000055f27191cfb3 in clang::ClassTemplateDecl::getInjectedClassNameSpecialization (this=0x7feea2e86678) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/AST/DeclTemplate.cpp:631
+#10 0x000055f272c6ef71 in clang::Sema::CheckClassTemplate (this=0x7feea00f5a70, S=0x7feea027e1c0, TagSpec=26, TUK=clang::Sema::TUK_Definition, KWLoc=..., SS=..., Name=0x7fee313ec9c0, NameLoc=..., Attr=..., TemplateParams=0x7feea2e86588, 
+    AS=clang::AS_none, ModulePrivateLoc=..., FriendLoc=..., NumOuterTemplateParamLists=0, OuterTemplateParamLists=0x7feed0a2fdd8, SkipBody=0x7feed0a2d2c8) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Sema/SemaTemplate.cpp:2106
+#11 0x000055f2723c050a in clang::Sema::ActOnTag (this=0x7feea00f5a70, S=0x7feea027e1c0, TagSpec=26, TUK=clang::Sema::TUK_Definition, KWLoc=..., SS=..., Name=0x7fee313ec9c0, NameLoc=..., Attrs=..., AS=clang::AS_none, ModulePrivateLoc=..., 
+    TemplateParameterLists=..., OwnedDecl=@0x7feed0a2d59b: false, IsDependent=@0x7feed0a2d59c: false, ScopedEnumKWLoc=..., ScopedEnumUsesClassTag=false, UnderlyingType=..., IsTypeSpecifier=false, IsTemplateParamOrArg=false, 
+    OOK=clang::Sema::OOK_Outside, SkipBody=0x7feed0a2d2c8) at /tools/build-llvmorg-16.0.0-rc4/source/clang/lib/Sema/SemaDecl.cpp:16658
+
+Bug Labels:
+c++20, clang:frontend, concepts, crash

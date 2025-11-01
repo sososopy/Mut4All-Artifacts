@@ -1,0 +1,52 @@
+Issue Title:
+Immovable generator issue · Issue #47736 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generators, generator_trait, conservative_impl_trait)]
+
+extern crate futures;
+
+use std::ops::{ Generator };
+use futures::{ Future, Async };
+
+fn tmp() -> impl Future<Item = u32, Error = ()> {
+    futures::future::ok(123)
+}
+
+fn gen() -> impl Generator<Yield = Async<u32>, Return = ()> {
+    unsafe {static move || {
+        let dist = {
+            let mut future = tmp();
+
+            loop  {
+                match Future::poll(&mut future) {
+                    Ok(Async::Ready(e)) => {
+                        break Ok(e)
+                    }
+
+                    Ok(Async::NotReady) => {}
+
+                    Err(e) => {
+                        break Err(e)
+                    }
+                }
+
+                yield Async::NotReady
+            }
+        }.unwrap();
+        
+        match (&dist,) {
+            (tmp,) => (),
+        }
+    }}
+}
+
+fn main() {
+    let mut g = gen();
+    
+    println!("{:?}", g.resume());
+    
+}
+
+Bug Labels:
+A-coroutines, C-bug, I-ICE, T-compiler

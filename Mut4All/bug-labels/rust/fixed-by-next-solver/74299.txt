@@ -1,0 +1,167 @@
+Issue Title:
+Incoherent impls are allowed on default associated types  · Issue #74299 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(specialization)]
+
+trait X {
+    type U;
+    fn f(&self) -> Self::U { loop {} }
+}
+
+impl<T> X for T {
+    default type U = ();
+}
+
+trait Y {
+    fn g(&self) {}
+}
+
+impl Y for <() as X>::U {}
+impl Y for <i32 as X>::U {}
+
+fn main() {
+    ().f().g();
+}
+
+Bug Trace:
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> .\tmp\defaults-incoherent.rs:1:12
+  |
+1 | #![feature(specialization)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
+thread 'rustc' panicked at 'called `Result::unwrap()` on an `Err` value: ErrorReported', src\librustc_mir\monomorphize\collector.rs:721:84
+stack backtrace:
+   0: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+   1: core::fmt::write
+   2: <std::io::IoSliceMut as core::fmt::Debug>::fmt
+   3: std::panicking::take_hook
+   4: std::panicking::take_hook
+   5: rustc_driver::report_ice
+   6: std::panicking::rust_panic_with_hook
+   7: rust_begin_unwind
+   8: core::panicking::panic_fmt
+   9: core::result::unwrap_failed
+  10: <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_terminator
+  11: <rustc_mir::monomorphize::collector::RootCollector as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_impl_item
+  12: rustc_mir::monomorphize::collector::collect_crate_mono_items
+  13: <rustc_mir::dataflow::impls::borrows::BorrowIndex as core::fmt::Debug>::fmt
+  14: rustc_mir::monomorphize::collector::collect_crate_mono_items
+  15: rustc_mir::monomorphize::partitioning::compute_codegen_unit_name
+  16: <rustc_target::abi::TyAndLayout<&rustc_middle::ty::TyS> as rustc_codegen_llvm::type_of::LayoutLlvmExt>::pointee_info_at
+  17: <rustc_codegen_llvm::llvm_::ffi::debuginfo::DISPFlags as core::fmt::Debug>::fmt
+  18: rustc_codegen_llvm::type_::<impl rustc_codegen_ssa::traits::type_::LayoutTypeMethods for rustc_codegen_llvm::context::CodegenCx>::reg_backend_type
+  19: rustc_codegen_llvm::type_::<impl rustc_codegen_ssa::traits::type_::LayoutTypeMethods for rustc_codegen_llvm::context::CodegenCx>::reg_backend_type
+  20: <rustc_target::abi::TyAndLayout<&rustc_middle::ty::TyS> as rustc_codegen_llvm::type_of::LayoutLlvmExt>::pointee_info_at
+  21: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  22: rustc_interface::passes::QueryContext::print_stats
+  23: rustc_interface::passes::BoxedResolver::complete
+  24: rustc_interface::queries::Queries::ongoing_codegen
+  25: <rustc_codegen_ssa::back::linker::MsvcLinker as rustc_codegen_ssa::back::linker::Linker>::partial_relro
+  26: <env_logger::filter::inner::Filter as core::fmt::Display>::fmt
+  27: <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref
+  28: <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref
+  29: <(&rustc_middle::ty::sty::Const,rustc_middle::mir::Field) as rustc_middle::ty::query::keys::Key>::default_span
+  30: std::sys::windows::thread::Thread::new
+  31: BaseThreadInitThunk
+  32: RtlUserThreadStart
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.46.0-nightly (346aec9b0 2020-07-11) running on x86_64-pc-windows-msvc
+
+query stack during panic:
+#0 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+warning: 1 warning emitted
+
+error: internal compiler error: encountered ambiguity selecting `Binder(<() as Y>)` during codegen, presuming due to overflow or prior type error
+  |
+  = note: delayed at /rustc/346aec9b02f3c74f3fce97fd6bda24709d220e49\src\librustc_session\session.rs:436:27
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', src\librustc_errors\lib.rs:367:17
+stack backtrace:
+   0:     0x7ffcfbfa9a2e - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h9fa330dd7e3de9bd
+   1:     0x7ffcfbfd740c - core::fmt::write::he569a1ab62a01108
+   2:     0x7ffcfbf9b1a3 - <std::io::IoSliceMut as core::fmt::Debug>::fmt::h41603fb87d485071
+   3:     0x7ffcfbfaf18b - std::panicking::take_hook::h755d174ec3438590
+   4:     0x7ffcfbfaedd8 - std::panicking::take_hook::h755d174ec3438590
+   5:     0x7ffcfc41610a - rustc_driver::report_ice::h5bc4860b8312dea9
+   6:     0x7ffcfbfafb10 - std::panicking::rust_panic_with_hook::hbd7d7a2973bcd31a
+   7:     0x7ffd004d281d - <rustc_errors::styled_buffer::StyledBuffer as core::fmt::Debug>::fmt::h7062ab9734834e2d
+   8:     0x7ffd00500352 - <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop::hde691b6f5e350660
+   9:     0x7ffcfc450057 - <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref::hca40fb8fa09ef5ca
+  10:     0x7ffcfc45c17a - <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref::hca40fb8fa09ef5ca
+  11:     0x7ffcfc3e3ffc - <(&rustc_middle::ty::sty::Const,rustc_middle::mir::Field) as rustc_middle::ty::query::keys::Key>::default_span::h4115a0798415ecc2
+  12:     0x7ffcfc3d7a21 - <rustc_codegen_ssa::back::linker::MsvcLinker as rustc_codegen_ssa::back::linker::Linker>::partial_relro::h84f5664230855038
+  13:     0x7ffd00722630 - _rust_alloc_zeroed
+  14:     0x7ffd00721e8b - _rust_alloc_zeroed
+  15:     0x7ffd0071fbb4 - _rust_alloc_zeroed
+  16:     0x7ffd007219ce - _rust_alloc_zeroed
+  17:     0x7ffd00720065 - _rust_alloc_zeroed
+  18:     0x7ffd656b016f - _chkstk
+  19:     0x7ffd65631c56 - RtlUnwindEx
+  20:     0x7ffd0071fef5 - _rust_alloc_zeroed
+  21:     0x7ffd007210c0 - _rust_alloc_zeroed
+  22:     0x7ffd007213b7 - _rust_alloc_zeroed
+  23:     0x7ffd00721ad4 - _rust_alloc_zeroed
+  24:     0x7ffd00720065 - _rust_alloc_zeroed
+  25:     0x7ffd656b00ef - _chkstk
+  26:     0x7ffd6565b474 - RtlRaiseException
+  27:     0x7ffd6565b1c5 - RtlRaiseException
+  28:     0x7ffd63073e49 - RaiseException
+  29:     0x7ffcfbffa5a5 - _umoddi3
+  30:     0x7ffcfbfc1d31 - _rust_start_panic
+  31:     0x7ffcfbfc1cb9 - _rust_start_panic
+  32:     0x7ffcfbfafcb8 - rust_panic
+  33:     0x7ffcfbfafb99 - std::panicking::rust_panic_with_hook::hbd7d7a2973bcd31a
+  34:     0x7ffcfbfaf65f - rust_begin_unwind
+  35:     0x7ffcfbfd3d50 - core::panicking::panic_fmt::h24891fb3d19f6dcf
+  36:     0x7ffcfbfd39e3 - core::result::unwrap_failed::h08663fa7314c6527
+  37:     0x7ffcff157bee - <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_terminator::he7c45c11d185f795
+  38:     0x7ffcff159eee - <rustc_mir::monomorphize::collector::RootCollector as rustc_hir::itemlikevisit::ItemLikeVisitor>::visit_impl_item::hd74b81843bceb49e
+  39:     0x7ffcff155017 - rustc_mir::monomorphize::collector::collect_crate_mono_items::h48c3630ce41bcfb2
+  40:     0x7ffcff17595c - <rustc_mir::dataflow::impls::borrows::BorrowIndex as core::fmt::Debug>::fmt::hcdfacfd9122b6ab6
+  41:     0x7ffcff1539ac - rustc_mir::monomorphize::collector::collect_crate_mono_items::h48c3630ce41bcfb2
+  42:     0x7ffcff375f69 - rustc_mir::monomorphize::partitioning::compute_codegen_unit_name::hb80b3e3600310ae3
+  43:     0x7ffcfc8809c7 - <rustc_target::abi::TyAndLayout<&rustc_middle::ty::TyS> as rustc_codegen_llvm::type_of::LayoutLlvmExt>::pointee_info_at::h88328364fbfe1b75
+  44:     0x7ffcfc789334 - <rustc_codegen_llvm::llvm_::ffi::debuginfo::DISPFlags as core::fmt::Debug>::fmt::h0d6f3453cdb67586
+  45:     0x7ffcfc7a7f90 - rustc_codegen_llvm::type_::<impl rustc_codegen_ssa::traits::type_::LayoutTypeMethods for rustc_codegen_llvm::context::CodegenCx>::reg_backend_type::h7f3163bb36afe4a6
+  46:     0x7ffcfc7f0a00 - rustc_codegen_llvm::type_::<impl rustc_codegen_ssa::traits::type_::LayoutTypeMethods for rustc_codegen_llvm::context::CodegenCx>::reg_backend_type::h7f3163bb36afe4a6
+  47:     0x7ffcfc882e7b - <rustc_target::abi::TyAndLayout<&rustc_middle::ty::TyS> as rustc_codegen_llvm::type_of::LayoutLlvmExt>::pointee_info_at::h88328364fbfe1b75
+  48:     0x7ffcfc82c8c9 - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::h2f177f92f53316ae
+  49:     0x7ffcfc58b54f - rustc_interface::passes::QueryContext::print_stats::he6b0204640bb6041
+  50:     0x7ffcfc5a351c - rustc_interface::passes::BoxedResolver::complete::h363c34fdc5dbd1ef
+  51:     0x7ffcfc597da1 - rustc_interface::queries::Queries::ongoing_codegen::h085a7f7dbbab46a2
+  52:     0x7ffcfc3d6a0a - <rustc_codegen_ssa::back::linker::MsvcLinker as rustc_codegen_ssa::back::linker::Linker>::partial_relro::h84f5664230855038
+  53:     0x7ffcfc400ace - <env_logger::filter::inner::Filter as core::fmt::Display>::fmt::ha8cb8d62fcfb1df4
+  54:     0x7ffcfc4206e9 - <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref::hca40fb8fa09ef5ca
+  55:     0x7ffcfc422a15 - <rustc_driver::DEFAULT_HOOK as core::ops::deref::Deref>::deref::hca40fb8fa09ef5ca
+  56:     0x7ffcfc3df1f3 - <(&rustc_middle::ty::sty::Const,rustc_middle::mir::Field) as rustc_middle::ty::query::keys::Key>::default_span::h4115a0798415ecc2
+  57:     0x7ffcfbfbef7a - std::sys::windows::thread::Thread::new::h9c6ccf8206794202
+  58:     0x7ffd65156fd4 - BaseThreadInitThunk
+  59:     0x7ffd6565cec1 - RtlUserThreadStart
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.46.0-nightly (346aec9b0 2020-07-11) running on x86_64-pc-windows-msvc
+
+query stack during panic:
+end of query stack
+thread panicked while panicking. aborting.
+
+Bug Labels:
+A-specialization, C-bug, F-specialization, I-ICE, T-compiler, fixed-by-next-solver, glacier, requires-nightly

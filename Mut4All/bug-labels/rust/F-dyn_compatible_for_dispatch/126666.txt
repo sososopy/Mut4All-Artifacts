@@ -1,0 +1,72 @@
+Issue Title:
+ICE: `assertion left == right failed` in `rustc_const_eval/src/interpret/cast.rs` · Issue #126666 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_mut_refs)]
+#![feature(const_refs_to_static)]
+#![feature(object_safe_for_dispatch)]
+
+struct Meh {
+    x: &'static dyn UnsafeCell,
+}
+
+const MUH: Meh = Meh {
+    x: &mut *(&READONLY as *const _ as *mut _),
+};
+
+static READONLY: i32 = 0;
+
+trait UnsafeCell<'a> {}
+
+pub fn main() {}
+
+Command:
+rustc
+
+Bug Trace:
+#![feature(const_mut_refs)]
+#![feature(const_refs_to_static)]
+
+use std::cell::UnsafeCell;
+
+struct Meh {
+    x: &'static UnsafeCell<i32>,
+}
+
+const MUH: Meh = Meh {
+    x: &mut *(&READONLY as *const _ as *mut _),
+};
+
+static READONLY: i32 = 0;
+
+pub fn main() {}
+
+
+#![feature(type_alias_impl_trait)]
+
+struct call_me;
+
+type ReturnType<'a> = impl std::future::Future<Output = u32> + 'a;
+type FnType = impl Fn(&u32) -> ReturnType;
+
+impl std::ops::Deref for call_me {
+    type Target = FnType;
+    
+    fn deref(&self) -> &Self::Target {
+        fn inner(val: &u32) -> ReturnType {
+            async move {
+                *val * 2
+            }
+        }
+    
+        &inner
+    }
+}
+
+
+trait UnsafeCell<'a, 'b, T> {
+    async fn foo(&'a self) -> (Self::Target, &'BAR T);
+}
+
+Bug Labels:
+C-bug, F-const_mut_refs, F-const_refs_to_static, F-dyn_compatible_for_dispatch, I-ICE, S-bug-has-test, T-compiler

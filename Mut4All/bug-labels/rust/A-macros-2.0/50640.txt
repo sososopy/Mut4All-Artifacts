@@ -1,0 +1,87 @@
+Issue Title:
+ICE when proc-macro crate and non proc-macro crate share Cargo project · Issue #50640 · rust-lang/rust · GitHub
+
+Rust Code:
+[package]
+name = "demo"
+version = "0.0.1"
+
+[lib]
+name = "codegen"
+proc-macro = true
+path = "src/lib.rs"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+[dependencies]
+
+Bug Trace:
+❯ rustc --version --verbose
+rustc 1.27.0-nightly (e5f80f2a4 2018-05-09)
+binary: rustc
+commit-hash: e5f80f2a4f016bf724a1cfb580619d71c8fd39ec
+commit-date: 2018-05-09
+host: x86_64-apple-darwin
+release: 1.27.0-nightly
+LLVM version: 6.0
+❯ RUST_BACKTRACE=1  cargo check -v
+Checking demo v0.0.1 (file:///rustc-bug)
+Running rustc --crate-name main src/main.rs --crate-type bin --emit=dep-info,metadata -C debuginfo=2 -C metadata=411579df123c68f9 -C extra-filename=-411579df123c68f9 --out-dir /rustc-bug/target/debug/deps -C incremental=/rustc-bug/target/debug/incremental -L dependency=/rustc-bug/target/debug/deps --extern codegen=/rustc-bug/target/debug/deps/libcodegen-c52c60a16469d04d.rmeta
+thread 'main' panicked at 'librustc_metadata/creader.rs:520: proc-macro crate not dylib', librustc/session/mod.rs:1281:26
+stack backtrace:
+0: std::sys::unix::backtrace::tracing::imp::unwind_backtrace
+1: std::sys_common::backtrace::print
+2: std::panicking::default_hook::{{closure}}
+3: std::panicking::default_hook
+4: rustc::util::common::panic_hook
+5: std::panicking::rust_panic_with_hook
+6: std::panicking::begin_panic
+7: rustc::session::opt_span_bug_fmt::{{closure}}
+8: rustc::ty::context::tls::with_opt::{{closure}}
+9: rustc::ty::context::tls::with_context_opt
+10: rustc::ty::context::tls::with_opt
+11: rustc::session::opt_span_bug_fmt
+12: rustc::session::span_bug_fmt
+13: rustc_metadata::creader::CrateLoader::resolve_crate
+14: <rustc_metadata::creader::CrateLoader<'a> as rustc::middle::cstore::CrateLoader>::process_extern_crate
+15: rustc_resolve::build_reduced_graph::<impl rustc_resolve::Resolver<'a>>::build_reduced_graph_for_item
+16: <rustc_resolve::build_reduced_graph::BuildReducedGraphVisitor<'a, 'b> as syntax::visit::Visitor<'a>>::visit_item
+17: syntax::visit::walk_item
+18: <rustc_resolve::build_reduced_graph::BuildReducedGraphVisitor<'a, 'b> as syntax::visit::Visitor<'a>>::visit_item
+19: syntax::ext::expand::Expansion::visit_with
+20: rustc_resolve::macros::<impl syntax::ext::base::Resolver for rustc_resolve::Resolver<'a>>::visit_expansion
+21: syntax::ext::expand::MacroExpander::collect_invocations
+22: syntax::ext::expand::MacroExpander::expand
+23: syntax::ext::expand::MacroExpander::expand_crate
+24: rustc_driver::driver::phase_2_configure_and_expand_inner::{{closure}}
+25: rustc::util::common::time
+26: rustc_driver::driver::phase_2_configure_and_expand
+27: rustc_driver::driver::compile_input
+28: rustc_driver::run_compiler_impl
+29: <scoped_tls::ScopedKey>::set
+30: syntax::with_globals
+31: <std::panic::AssertUnwindSafe as core::ops::function::FnOnce<()>>::call_once
+32: __rust_maybe_catch_panic
+33: rustc_driver::run
+34: rustc_driver::main
+35: std::rt::lang_start::{{closure}}
+36: std::panicking::try::do_call
+37: __rust_maybe_catch_panic
+38: std::rt::lang_start_internal
+39: main
+query stack during panic:
+end of query stack
+error: internal compiler error: unexpected panic
+note: the compiler unexpectedly panicked. this is a bug.
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+note: rustc 1.27.0-nightly (e5f80f2a4 2018-05-09) running on x86_64-apple-darwin
+note: compiler flags: -C debuginfo=2 -C incremental --crate-type bin
+note: some of the compiler flags provided by cargo are hidden
+error: Could not compile demo.
+Caused by:
+process didn't exit successfully: rustc --crate-name main src/main.rs --crate-type bin --emit=dep-info,metadata -C debuginfo=2 -C metadata=411579df123c68f9 -C extra-filename=-411579df123c68f9 --out-dir /rustc-bug/target/debug/deps -C incremental=/rustc-bug/target/debug/incremental -L dependency=/rustc-bug/target/debug/deps --extern codegen=/rustc-bug/target/debug/deps/libcodegen-c52c60a16469d04d.rmeta (exit code: 101)
+
+Bug Labels:
+A-macros-2.0, C-bug, I-ICE, regression-from-stable-to-nightly

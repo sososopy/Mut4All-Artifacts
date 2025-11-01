@@ -1,0 +1,173 @@
+Issue Title:
+clangd crashes when including some standard library headers in the global module fragment
+
+Source Code & Bug Trace:
+// test.cpp
+module;
+
+// any one off these is enough to crash clangd
+// #include <iostream>
+#include <string>
+// #include <string_view>
+// #include <cmath>
+// #include <system_error>
+// #include <new>
+// #include <bit>
+// probably many more
+
+// only ok with libc++, not the system provided libstdc++ 13.2.1
+#include <iosfwd>
+
+// these are ok
+#include <cstddef>
+#include <cerrno>
+
+export module test;
+
+// compile_flags.txt
+-std=c++23
+-stdlib=libc++
+
+
+I[18:32:44.313] clangd version 19.0.0git (https://github.com/llvm/llvm-project.git d9850fe23cc69b784cf655405cdfae7defa44573)
+I[18:32:44.313] Features: linux+debug
+I[18:32:44.313] PID: 526801
+I[18:32:44.313] Working directory: /home/user/workspace
+I[18:32:44.313] argv[0]: /home/user/workspace/install/llvm/bin/clangd
+I[18:32:44.313] argv[1]: -query-driver=/usr/**/arm-none-eabi*
+I[18:32:44.313] argv[2]: --completion-style=detailed
+I[18:32:44.313] argv[3]: --malloc-trim
+I[18:32:44.313] argv[4]: --enable-config
+I[18:32:44.313] argv[5]: --use-dirty-headers
+I[18:32:44.313] Starting LSP over stdin/stdout
+I[18:32:44.314] <-- initialize(1)
+I[18:32:44.315] --> reply:initialize(1) 0 ms
+I[18:32:44.523] <-- initialized
+I[18:32:44.523] <-- textDocument/didOpen
+I[18:32:44.526] --> textDocument/publishDiagnostics
+I[18:32:44.526] Loaded compilation database from /home/user/workspace/compile_flags.txt
+I[18:32:44.526] ASTWorker building file /home/user/workspace/test.cpp version 0 with command [/home/user/workspace] /home/user/workspace/install/llvm/bin/clang-tool -std=c++23 -stdlib=libc++ -resource-dir=/home/user/workspace/install/llvm/lib/clang/19 -- /home/user/workspace/test.cpp
+I[18:32:44.528] <-- textDocument/documentSymbol(2)
+I[18:32:44.535] <-- textDocument/semanticTokens/full(3)
+I[18:32:44.855] <-- textDocument/documentSymbol(4)
+I[18:32:44.855] <-- textDocument/documentHighlight(5)
+I[18:32:52.632] Built preamble of size 7092296 for file /home/user/workspace/test.cpp version 0 in 8.10 seconds
+I[18:32:52.634] Indexing c++23 standard library in the context of /home/user/workspace/test.cpp
+I[18:32:52.634] --> workspace/semanticTokens/refresh(0)
+I[18:32:52.635] <-- $/cancelRequest
+I[18:32:52.635] <-- textDocument/semanticTokens/full(6)
+I[18:32:52.635] <-- reply(0)
+clangd: /home/user/workspace/llvm-project/llvm/include/llvm/ADT/SmallVector.h:304: reference llvm::SmallVectorTemplateCommon<unsigned long>::operator[](size_type) [T = unsigned long]: Assertion `idx < size()' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+ #0 0x000064685fd8b346 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /home/user/workspace/llvm-project/llvm/lib/Support/Unix/Signals.inc:723:11
+ #1 0x000064685fd8b8eb PrintStackTraceSignalHandler(void*) /home/user/workspace/llvm-project/llvm/lib/Support/Unix/Signals.inc:798:1
+ #2 0x000064685fd89803 llvm::sys::RunSignalHandlers() /home/user/workspace/llvm-project/llvm/lib/Support/Signals.cpp:105:5
+ #3 0x000064685fd8bfd1 SignalHandler(int) /home/user/workspace/llvm-project/llvm/lib/Support/Unix/Signals.inc:413:1
+ #4 0x000075ec9af2b710 (/usr/lib/libc.so.6+0x3e710)
+ #5 0x000075ec9af7b83c (/usr/lib/libc.so.6+0x8e83c)
+ #6 0x000075ec9af2b668 gsignal (/usr/lib/libc.so.6+0x3e668)
+ #7 0x000075ec9af134b8 abort (/usr/lib/libc.so.6+0x264b8)
+ #8 0x000075ec9af133dc (/usr/lib/libc.so.6+0x263dc)
+ #9 0x000075ec9af23d26 (/usr/lib/libc.so.6+0x36d26)
+#10 0x000064685ff15af9 llvm::SmallVectorTemplateCommon<unsigned long, void>::operator[](unsigned long) /home/user/workspace/llvm-project/llvm/include/llvm/ADT/SmallVector.h:0:5
+#11 0x0000646865f14dcb clang::ASTRecordReader::readInt() /home/user/workspace/llvm-project/clang/include/clang/Serialization/ASTRecordReader.h:74:31
+#12 0x0000646865fe535d clang::ASTDeclReader::ReadLocalOffset() /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:107:37
+#13 0x0000646865fad1c7 clang::ASTDeclReader::VisitDeclContext(clang::DeclContext*) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:2771:12
+#14 0x0000646865fda0f2 clang::ASTReader::ReadDeclRecord(unsigned int) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:4129:52
+#15 0x0000646865eec3b0 clang::ASTReader::GetDecl(unsigned int) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:7783:5
+#16 0x0000646865f19d42 clang::ASTReader::GetLocalDecl(clang::serialization::ModuleFile&, unsigned int) /home/user/workspace/llvm-project/clang/include/clang/Serialization/ASTReader.h:1920:5
+#17 0x0000646865fdcd7a clang::ASTReader::loadPendingDeclChain(clang::Decl*, unsigned long) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:4317:15
+#18 0x0000646865efc15c clang::ASTReader::finishPendingActions() /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:9585:57
+#19 0x0000646865eff156 clang::ASTReader::FinishedDeserializing() /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:0:5
+#20 0x000064686018993c clang::ExternalASTSource::Deserializing::~Deserializing() /home/user/workspace/llvm-project/clang/include/clang/AST/ExternalASTSource.h:87:5
+#21 0x0000646865ee2050 clang::ASTReader::ReadAST(llvm::StringRef, clang::serialization::ModuleKind, clang::SourceLocation, unsigned int, clang::serialization::ModuleFile**) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:4663:1
+#22 0x0000646865a18b1a clang::CompilerInstance::createPCHExternalASTSource(llvm::StringRef, llvm::StringRef, clang::DisableValidationForModuleKind, bool, clang::Preprocessor&, clang::InMemoryModuleCache&, clang::ASTContext&, clang::PCHContainerReader const&, llvm::ArrayRef<std::__1::shared_ptr<clang::ModuleFileExtension>>, llvm::ArrayRef<std::__1::shared_ptr<clang::DependencyCollector>>, void*, bool, bool, bool) /home/user/workspace/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:660:3
+#23 0x0000646865a1862b clang::CompilerInstance::createPCHExternalASTSource(llvm::StringRef, clang::DisableValidationForModuleKind, bool, void*, bool) /home/user/workspace/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:616:18
+#24 0x0000646865b0d6c4 clang::FrontendAction::BeginSourceFile(clang::CompilerInstance&, clang::FrontendInputFile const&) /home/user/workspace/llvm-project/clang/lib/Frontend/FrontendAction.cpp:990:14
+#25 0x0000646862c20f46 clang::clangd::ParsedAST::build(llvm::StringRef, clang::clangd::ParseInputs const&, std::__1::unique_ptr<clang::CompilerInvocation, std::__1::default_delete<clang::CompilerInvocation>>, llvm::ArrayRef<clang::clangd::Diag>, std::__1::shared_ptr<clang::clangd::PreambleData const>) /home/user/workspace/llvm-project/clang-tools-extra/clangd/ParsedAST.cpp:505:7
+#26 0x0000646862eb7daa clang::clangd::(anonymous namespace)::ASTWorker::generateDiagnostics(std::__1::unique_ptr<clang::CompilerInvocation, std::__1::default_delete<clang::CompilerInvocation>>, clang::clangd::ParseInputs, std::__1::vector<clang::clangd::Diag, std::__1::allocator<clang::clangd::Diag>>) /home/user/workspace/llvm-project/clang-tools-extra/clangd/TUScheduler.cpp:1210:39
+#27 0x0000646862eb7a10 clang::clangd::(anonymous namespace)::ASTWorker::updatePreamble(std::__1::unique_ptr<clang::CompilerInvocation, std::__1::default_delete<clang::CompilerInvocation>>, clang::clangd::ParseInputs, std::__1::shared_ptr<clang::clangd::PreambleData const>, std::__1::vector<clang::clangd::Diag, std::__1::allocator<clang::clangd::Diag>>, clang::clangd::WantDiagnostics)::$_0::operator()() /home/user/workspace/llvm-project/clang-tools-extra/clangd/TUScheduler.cpp:1144:5
+#28 0x0000646862ebaded void llvm::detail::UniqueFunctionBase<void>::CallImpl<clang::clangd::(anonymous namespace)::ASTWorker::updatePreamble(std::__1::unique_ptr<clang::CompilerInvocation, std::__1::default_delete<clang::CompilerInvocation>>, clang::clangd::ParseInputs, std::__1::shared_ptr<clang::clangd::PreambleData const>, std::__1::vector<clang::clangd::Diag, std::__1::allocator<clang::clangd::Diag>>, clang::clangd::WantDiagnostics)::$_0>(void*) /home/user/workspace/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:221:5
+#29 0x000064686279a5af llvm::unique_function<void ()>::operator()() /home/user/workspace/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:385:5
+#30 0x0000646862ec3225 void llvm::function_ref<void ()>::callback_fn<llvm::unique_function<void ()>>(long) /home/user/workspace/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:5
+#31 0x000064685fc8da39 llvm::function_ref<void ()>::operator()() const /home/user/workspace/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:68:5
+#32 0x0000646862eadd39 clang::clangd::(anonymous namespace)::ASTWorker::runTask(llvm::StringRef, llvm::function_ref<void ()>) /home/user/workspace/llvm-project/clang-tools-extra/clangd/TUScheduler.cpp:1324:3
+#33 0x0000646862ead2ed clang::clangd::(anonymous namespace)::ASTWorker::run() /home/user/workspace/llvm-project/clang-tools-extra/clangd/TUScheduler.cpp:1459:5
+#34 0x0000646862eacb4d clang::clangd::(anonymous namespace)::ASTWorker::create(llvm::StringRef, clang::clangd::GlobalCompilationDatabase const&, clang::clangd::TUScheduler::ASTCache&, clang::clangd::TUScheduler::HeaderIncluderCache&, clang::clangd::AsyncTaskRunner*, clang::clangd::Semaphore&, clang::clangd::TUScheduler::Options const&, clang::clangd::ParsingCallbacks&)::$_0::operator()() const /home/user/workspace/llvm-project/clang-tools-extra/clangd/TUScheduler.cpp:822:49
+#35 0x0000646862eacacd void llvm::detail::UniqueFunctionBase<void>::CallImpl<clang::clangd::(anonymous namespace)::ASTWorker::create(llvm::StringRef, clang::clangd::GlobalCompilationDatabase const&, clang::clangd::TUScheduler::ASTCache&, clang::clangd::TUScheduler::HeaderIncluderCache&, clang::clangd::AsyncTaskRunner*, clang::clangd::Semaphore&, clang::clangd::TUScheduler::Options const&, clang::clangd::ParsingCallbacks&)::$_0>(void*) /home/user/workspace/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:221:5
+#36 0x000064686279a5af llvm::unique_function<void ()>::operator()() /home/user/workspace/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:385:5
+#37 0x000064686334ad
+8b clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1::operator()() /home/user/workspace/llvm-project/clang-tools-extra/clangd/support/Threading.cpp:101:5
+#38 0x000064686334ad39 auto void llvm::thread::GenericThreadProxy<std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>>(void*)::'lambda'(auto&&, auto&&...)::operator()<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1&>(auto&&, auto&&...) const /home/user/workspace/llvm-project/llvm/include/llvm/Support/thread.h:44:9
+#39 0x000064686334aced decltype(std::declval<auto>()(std::declval<auto>()...)) std::__1::__invoke[abi:v160006]<void llvm::thread::GenericThreadProxy<std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>>(void*)::'lambda'(auto&&, auto&&...), clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1&>(auto&&, auto&&...) /usr/bin/../include/c++/v1/__functional/invoke.h:394:7
+#40 0x000064686334acbd decltype(auto) std::__1::__apply_tuple_impl[abi:v160006]<void llvm::thread::GenericThreadProxy<std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>>(void*)::'lambda'(auto&&, auto&&...), std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>&, 0ul>(auto&&, std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>&, std::__1::__tuple_indices<0ul>) /usr/bin/../include/c++/v1/tuple:1816:1
+#41 0x000064686334ac5d decltype(auto) std::__1::apply[abi:v160006]<void llvm::thread::GenericThreadProxy<std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>>(void*)::'lambda'(auto&&, auto&&...), std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>&>(auto&&, std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>&) /usr/bin/../include/c++/v1/tuple:1825:1
+#42 0x000064686334ac0f void llvm::thread::GenericThreadProxy<std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>>(void*) /home/user/workspace/llvm-project/llvm/include/llvm/Support/thread.h:41:5
+#43 0x000064686334aa15 void* llvm::thread::ThreadProxy<std::__1::tuple<clang::clangd::AsyncTaskRunner::runAsync(llvm::Twine const&, llvm::unique_function<void ()>)::$_1>>(void*) /home/user/workspace/llvm-project/llvm/include/llvm/Support/thread.h:56:5
+#44 0x000075ec9af799eb (/usr/lib/libc.so.6+0x8c9eb)
+#45 0x000075ec9affd7cc (/usr/lib/libc.so.6+0x1107cc)
+Signalled during AST worker action: Build AST
+  Filename: /home/user/workspace/test.cpp
+  Directory: /home/user/workspace
+  Command Line: /home/user/workspace/install/llvm/bin/clang-tool -std=c++23 -stdlib=libc++ -resource-dir=/home/user/workspace/install/llvm/lib/clang/19 -- /home/user/workspace/test.cpp
+  Version: 0
+
+
+I[19:03:47.944] clangd version 19.0.0git (https://github.com/llvm/llvm-project.git d9850fe23cc69b784cf655405cdfae7defa44573)
+I[19:03:47.944] Features: linux+debug
+I[19:03:47.944] PID: 535714
+I[19:03:47.945] Working directory: /home/user/workspace
+I[19:03:47.945] argv[0]: clangd
+I[19:03:47.945] argv[1]: --check=test.cpp
+I[19:03:47.945] Entering check mode (no LSP server)
+I[19:03:47.945] Testing on source file /home/user/workspace/test.cpp
+I[19:03:47.945] Loading compilation database...
+I[19:03:47.946] Loaded compilation database from /home/user/workspace/compile_flags.txt
+I[19:03:47.947] Compile command from CDB is: [/home/user/workspace] /home/user/workspace/llvm-project/builds/Debug/bin/clang-tool -std=c++23 -stdlib=libc++ -resource-dir=/home/user/workspace/llvm-project/builds/Debug/lib/clang/19 -- /home/user/workspace/test.cpp
+I[19:03:47.947] Parsing command...
+I[19:03:47.951] internal (cc1) args are: -cc1 -triple x86_64-unknown-linux-gnu -fsyntax-only -disable-free -clear-ast-before-backend -main-file-name test.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/home/user/workspace -fcoverage-compilation-dir=/home/user/workspace -resource-dir /home/user/workspace/llvm-project/builds/Debug/lib/clang/19 -internal-isystem /home/user/workspace/llvm-project/builds/Debug/bin/../include/x86_64-unknown-linux-gnu/c++/v1 -internal-isystem /home/user/workspace/llvm-project/builds/Debug/bin/../include/c++/v1 -internal-isystem /home/user/workspace/llvm-project/builds/Debug/lib/clang/19/include -internal-isystem /usr/local/include -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++23 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -no-round-trip-args -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -x c++ /home/user/workspace/test.cpp
+I[19:03:47.951] Building preamble...
+I[19:03:55.501] Built preamble of size 7128100 for file /home/user/workspace/test.cpp version null in 7.55 seconds
+I[19:03:55.501] Indexing headers...
+I[19:03:56.622] Building AST...
+clangd: /home/user/workspace/llvm-project/llvm/include/llvm/ADT/SmallVector.h:304: reference llvm::SmallVectorTemplateCommon<unsigned long>::operator[](size_type) [T = unsigned long]: Assertion `idx < size()' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+Stack dump:
+0.	Program arguments: clangd --check=test.cpp
+ #0 0x0000623f105b4346 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /home/user/workspace/llvm-project/llvm/lib/Support/Unix/Signals.inc:723:11
+ #1 0x0000623f105b48eb PrintStackTraceSignalHandler(void*) /home/user/workspace/llvm-project/llvm/lib/Support/Unix/Signals.inc:798:1
+ #2 0x0000623f105b2803 llvm::sys::RunSignalHandlers() /home/user/workspace/llvm-project/llvm/lib/Support/Signals.cpp:105:5
+ #3 0x0000623f105b4fd1 SignalHandler(int) /home/user/workspace/llvm-project/llvm/lib/Support/Unix/Signals.inc:413:1
+ #4 0x0000732eb8dfd710 (/usr/lib/libc.so.6+0x3e710)
+ #5 0x0000732eb8e4d83c (/usr/lib/libc.so.6+0x8e83c)
+ #6 0x0000732eb8dfd668 gsignal (/usr/lib/libc.so.6+0x3e668)
+ #7 0x0000732eb8de54b8 abort (/usr/lib/libc.so.6+0x264b8)
+ #8 0x0000732eb8de53dc (/usr/lib/libc.so.6+0x263dc)
+ #9 0x0000732eb8df5d26 (/usr/lib/libc.so.6+0x36d26)
+#10 0x0000623f1073eaf9 llvm::SmallVectorTemplateCommon<unsigned long, void>::operator[](unsigned long) /home/user/workspace/llvm-project/llvm/include/llvm/ADT/SmallVector.h:0:5
+#11 0x0000623f1673ddcb clang::ASTRecordReader::readInt() /home/user/workspace/llvm-project/clang/include/clang/Serialization/ASTRecordReader.h:74:31
+#12 0x0000623f1680e35d clang::ASTDeclReader::ReadLocalOffset() /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:107:37
+#13 0x0000623f167d61c7 clang::ASTDeclReader::VisitDeclContext(clang::DeclContext*) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:2771:12
+#14 0x0000623f168030f2 clang::ASTReader::ReadDeclRecord(unsigned int) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:4129:52
+#15 0x0000623f167153b0 clang::ASTReader::GetDecl(unsigned int) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:7783:5
+#16 0x0000623f16742d42 clang::ASTReader::GetLocalDecl(clang::serialization::ModuleFile&, unsigned int) /home/user/workspace/llvm-project/clang/include/clang/Serialization/ASTReader.h:1920:5
+#17 0x0000623f16805d7a clang::ASTReader::loadPendingDeclChain(clang::Decl*, unsigned long) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReaderDecl.cpp:4317:15
+#18 0x0000623f1672515c clang::ASTReader::finishPendingActions() /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:9585:57
+#19 0x0000623f16728156 clang::ASTReader::FinishedDeserializing() /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:0:5
+#20 0x0000623f109b293c clang::ExternalASTSource::Deserializing::~Deserializing() /home/user/workspace/llvm-project/clang/include/clang/AST/ExternalASTSource.h:87:5
+#21 0x0000623f1670b050 clang::ASTReader::ReadAST(llvm::StringRef, clang::serialization::ModuleKind, clang::SourceLocation, unsigned int, clang::serialization::ModuleFile**) /home/user/workspace/llvm-project/clang/lib/Serialization/ASTReader.cpp:4663:1
+#22 0x0000623f16241b1a clang::CompilerInstance::createPCHExternalASTSource(llvm::StringRef, llvm::StringRef, clang::DisableValidationForModuleKind, bool, clang::Preprocessor&, clang::InMemoryModuleCache&, clang::ASTContext&, clang::PCHContainerReader const&, llvm::ArrayRef<std::__1::shared_ptr<clang::ModuleFileExtension>>, llvm::ArrayRef<std::__1::shared_ptr<clang::DependencyCollector>>, void*, bool, bool, bool) /home/user/workspace/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:660:3
+#23 0x0000623f1624162b clang::CompilerInstance::createPCHExternalASTSource(llvm::StringRef, clang::DisableValidationForModuleKind, bool, void*, bool) /home/user/workspace/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:616:18
+#24 0x0000623f163366c4 clang::FrontendAction::BeginSourceFile(clang::CompilerInstance&, clang::FrontendInputFile const&) /home/user/workspace/llvm-project/clang/lib/Frontend/FrontendAction.cpp:990:14
+#25 0x0000623f13449f46 clang::clangd::ParsedAST::build(llvm::StringRef, clang::clangd::ParseInputs const&, std::__1::unique_ptr<clang::CompilerInvocation, std::__1::default_delete<clang::CompilerInvocation>>, llvm::ArrayRef<clang::clangd::Diag>, std::__1::shared_ptr<clang::clangd::PreambleData const>) /home/user/workspace/llvm-project/clang-tools-extra/clangd/ParsedAST.cpp:505:7
+#26 0x0000623f12d22ae6 clang::clangd::(anonymous namespace)::Checker::buildAST() /home/user/workspace/llvm-project/clang-tools-extra/clangd/tool/Check.cpp:254:11
+#27 0x0000623f12d21bf6 clang::clangd::check(llvm::StringRef, clang::clangd::ThreadsafeFS const&, clang::clangd::ClangdLSPServer::Options const&) /home/user/workspace/llvm-project/clang-tools-extra/clangd/tool/Check.cpp:508:7
+#28 0x0000623f12cd336d clang::clangd::clangdMain(int, char**) /home/user/workspace/llvm-project/clang-tools-extra/clangd/tool/ClangdMain.cpp:976:12
+#29 0x0000623f10479ee2 main /home/user/workspace/llvm-project/clang-tools-extra/clangd/tool/ClangdToolMain.cpp:12:3
+#30 0x0000732eb8de6cd0 (/usr/lib/libc.so.6+0x27cd0)
+#31 0x0000732eb8de6d8a __libc_start_main (/usr/lib/libc.so.6+0x27d8a)
+#32 0x0000623f1009ef35 _start (/home/user/workspace/llvm-project/builds/Debug/bin/clangd+0x36a8f35)
+
+
+Bug Labels:
+clang:frontend, crash

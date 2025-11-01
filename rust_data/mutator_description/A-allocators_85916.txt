@@ -1,0 +1,35 @@
+Mutation Operator: Modify Allocator API Usage
+
+Target: Function
+
+Description: This mutation operator aims to modify the usage of the Allocator API in function definitions, particularly focusing on the initialization and manipulation of `MaybeUninit` slices. The mutation involves altering the way the slice is initialized and utilized within the function. This can help in triggering edge cases related to memory initialization and handling that are prone to bugs in the Rust compiler, especially with custom allocators.
+
+Mutation Rule:
+1. Identify a function that initializes a slice with `MaybeUninit` elements, like `init_slice`.
+2. Change the order of initialization by introducing a conditional, altering the logic that determines the initialization sequence. This creates scenarios that may not be well-tested with the default sequence.
+3. Introduce a branch in the initialization logic that skips certain elements based on a condition. For example, skip every other element initialization or use a different initialization value.
+4. Ensure that at least one additional or alternative initialization is performed within the loop, potentially altering the expected behavior and triggering handling errors in the compiler's optimizer or code generation phases.
+
+Example:
+Original:
+```
+for (i, a) in s.iter_mut().enumerate() {
+    *a = MaybeUninit::new(f(i));
+    guard.len += 1;
+}
+```
+
+Mutated:
+```
+for (i, a) in s.iter_mut().enumerate() {
+    if i % 2 == 0 {
+        *a = MaybeUninit::new(f(i));
+    } else {
+        // Alternative initialization that may affect the behavior
+        *a = MaybeUninit::new(default_value());
+    }
+    guard.len += 1;
+}
+```
+
+In this mutation, the loop now conditionally initializes elements. This change could expose hidden assumptions in the compiler's handling of memory initialization sequences, especially in the presence of custom allocators or advanced allocation APIs. The `default_value()` function should be appropriately defined elsewhere in the code to provide an alternative initialization value.

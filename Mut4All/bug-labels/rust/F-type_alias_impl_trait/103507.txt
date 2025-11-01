@@ -1,0 +1,40 @@
+Issue Title:
+Const eval doesn't normalize opaques in FnDef correctly · Issue #103507 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(type_alias_impl_trait)]
+#![feature(const_trait_impl)]
+#![feature(const_refs_to_cell)]
+#![feature(inline_const)]
+
+use std::marker::Destruct;
+
+trait T {
+    type Item;
+}
+
+type Alias<'a> = impl T<Item = &'a ()>;
+
+struct S;
+impl<'a> T for &'a S {
+    type Item = &'a ();
+}
+
+const fn filter_positive<'a>() -> &'a Alias<'a> {
+    &&S
+}
+
+const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
+    fun(filter_positive());
+}
+
+const fn foo(_: &Alias<'_>) {}
+
+const BAR: () = {
+    with_positive(foo);
+};
+
+fn main() {}
+
+Bug Labels:
+C-bug, E-needs-test, F-type_alias_impl_trait, I-ICE, T-compiler, glacier, requires-nightly

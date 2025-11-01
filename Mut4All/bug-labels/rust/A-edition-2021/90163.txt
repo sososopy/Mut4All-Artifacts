@@ -1,0 +1,121 @@
+Issue Title:
+Compiler error on `cargo fix --edition` · Issue #90163 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::rc::Rc;
+
+pub fn ice<'a, T: 'a, Key, FKeyer>(
+    iterable: &'a [Vec<T>],
+    keyer: &FKeyer,
+)
+where
+    FKeyer: Fn(&T) -> Key,
+{
+    let mut tree = Tree::new();
+    iterable.iter().enumerate().for_each(|(index, item)| {
+        tree.add(index, item.iter().map(keyer))
+    });
+}
+
+pub struct Tree<K, E>
+{
+    pub(crate) _root: Rc<Node<K, E>>,
+}
+
+impl<K, E> Tree<K, E>
+{
+    pub fn new() -> Tree<K, E> {
+        let _root = Node::new();
+
+        Tree {
+            _root,
+        }
+    }
+
+    pub fn add<I>(&mut self, _: K, _: I)
+    where
+        I: Iterator<Item = E>,
+    {
+    }
+}
+
+pub struct Node<K, E>
+{
+    _k: std::marker::PhantomData<K>,
+    _e: std::marker::PhantomData<E>,
+}
+
+impl<K, E> Node<K, E>
+{
+    pub fn new() -> Rc<Node<K, E>> {
+        Rc::new(Node {
+            _k: std::marker::PhantomData::default(),
+            _e: std::marker::PhantomData::default(),
+        })
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/efd0483949496b067cd5f7569d1b28cd3d5d3c72/compiler/rustc_errors/src/lib.rs:1093:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::span_bug
+   3: rustc_errors::Handler::span_bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::span_bug_fmt
+   7: rustc_middle::ty::fold::TypeFoldable::fold_with
+   8: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::TyS>::super_fold_with
+   9: <rustc_ty_utils::needs_drop::NeedsDropTypes<F> as core::iter::traits::iterator::Iterator>::next
+  10: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  11: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  12: core::iter::adapters::process_results
+  13: rustc_ty_utils::needs_drop::adt_significant_drop_tys
+  14: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  15: rustc_data_structures::stack::ensure_sufficient_stack
+  16: rustc_query_system::query::plumbing::try_execute_query
+  17: rustc_query_system::query::plumbing::get_query
+  18: rustc_ty_utils::needs_drop::has_significant_drop_raw
+  19: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  20: rustc_data_structures::stack::ensure_sufficient_stack
+  21: rustc_query_system::query::plumbing::try_execute_query
+  22: rustc_query_system::query::plumbing::get_query
+  23: rustc_middle::ty::util::<impl rustc_middle::ty::TyS>::has_significant_drop
+  24: rustc_typeck::check::upvar::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::analyze_closure
+  25: <rustc_typeck::check::upvar::InferBorrowKindVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  26: rustc_hir::intravisit::walk_expr
+  27: rustc_hir::intravisit::walk_stmt
+  28: rustc_hir::intravisit::walk_block
+  29: rustc_hir::intravisit::walk_body
+  30: rustc_infer::infer::InferCtxtBuilder::enter
+  31: rustc_typeck::check::typeck
+  32: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  33: rustc_data_structures::stack::ensure_sufficient_stack
+  34: rustc_query_system::query::plumbing::try_execute_query
+  35: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  36: rustc_typeck::check::typeck
+  37: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  38: rustc_data_structures::stack::ensure_sufficient_stack
+  39: rustc_query_system::query::plumbing::try_execute_query
+  40: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  41: rustc_middle::hir::map::Map::par_body_owners
+  42: rustc_typeck::check::typeck_item_bodies
+  43: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  44: rustc_data_structures::stack::ensure_sufficient_stack
+  45: rustc_query_system::query::plumbing::try_execute_query
+  46: rustc_query_system::query::plumbing::get_query
+  47: rustc_session::utils::<impl rustc_session::session::Session>::time
+  48: rustc_typeck::check_crate
+  49: rustc_interface::passes::analysis
+  50: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  51: rustc_data_structures::stack::ensure_sufficient_stack
+  52: rustc_query_system::query::plumbing::try_execute_query
+  53: rustc_query_system::query::plumbing::get_query
+  54: rustc_interface::passes::QueryContext::enter
+  55: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  56: rustc_span::with_source_map
+  57: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-edition-2021, C-bug, I-ICE, T-compiler

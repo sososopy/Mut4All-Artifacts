@@ -1,0 +1,220 @@
+Issue Title:
+Clang frontend crash on constexpr libc++ vector::insert
+
+Source Code & Bug Trace:
+clang++ -std=c++20 -stdlib=libc++
+
+#include <vector>
+constexpr void ins(std::vector<std::size_t> &t, std::size_t i) {
+    t.insert(t.begin(), i);
+}
+constexpr bool test1() {
+  std::vector<std::size_t> t;
+  for (int i = 0; i < 57; ++i)
+    ins(t, 0);
+  return true;
+}
+int main() {
+  static_assert(test1());
+}
+
+clang++: /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:3438: void expandArray(clang::APValue&, unsigned int): Assertion `Index < Size' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /llvm-project-16.0.0/bin/clang++ -std=c++20 -stdlib=libc++ -c -o /tmp/q2.o q2.cpp
+1.      q2.cpp:17:1: current parser token '}'
+2.      q2.cpp:15:12: parsing function body 'main'
+3.      q2.cpp:15:12: in compound statement ('{}')
+ #0 0x00007f0d69f704e5 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /llvm-project-16.0.0.src/llvm/lib/Support/Unix/Signals.inc:567:22
+ #1 0x00007f0d69f6e71c llvm::sys::RunSignalHandlers() /llvm-project-16.0.0.src/llvm/lib/Support/Signals.cpp:104:20
+ #2 0x00007f0d69e8ab68 HandleCrash /llvm-project-16.0.0.src/llvm/lib/Support/CrashRecoveryContext.cpp:73:5
+ #3 0x00007f0d69e8ab68 CrashRecoverySignalHandler(int) /llvm-project-16.0.0.src/llvm/lib/Support/CrashRecoveryContext.cpp:390:62
+ #4 0x00007f0d6e0e01b0 __restore_rt (/lib64/libpthread.so.0+0x141b0)
+ #5 0x00007f0d698fa9e5 raise (/lib64/libc.so.6+0x3d9e5)
+ #6 0x00007f0d698e38a4 abort (/lib64/libc.so.6+0x268a4)
+ #7 0x00007f0d698e3789 _nl_load_domain.cold (/lib64/libc.so.6+0x26789)
+ #8 0x00007f0d698f3026 (/lib64/libc.so.6+0x36026)
+ #9 0x00007f0d68148af9 clang::APValue::getArrayFiller() /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:3438:3
+#10 0x00007f0d68148af9 expandArray(clang::APValue&, unsigned int) /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:3452:54
+#11 0x00007f0d6819b9af clang::APValue::getArrayInitializedElt(unsigned int) /llvm-project-16.0.0.src/clang/include/clang/AST/APValue.h:503:5
+#12 0x00007f0d6819b9af findSubobject<(anonymous namespace)::PointerExprEvaluator::VisitCXXNewExpr(const clang::CXXNewExpr*)::FindObjectHandler> /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:3736:39
+#13 0x00007f0d6819b9af (anonymous namespace)::PointerExprEvaluator::VisitCXXNewExpr(clang::CXXNewExpr const*) /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:9662:31
+#14 0x00007f0d6819edd5 EvaluatePointer(clang::Expr const*, (anonymous namespace)::LValue&, (anonymous namespace)::EvalInfo&, bool) /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:8826:1
+#15 0x00007f0d68177e0d Evaluate(clang::APValue&, (anonymous namespace)::EvalInfo&, clang::Expr const*) /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:14988:25
+#16 0x00007f0d6818f2d8 EvaluateStmt((anonymous namespace)::StmtResult&, (anonymous namespace)::EvalInfo&, clang::Stmt const*, clang::SwitchCase const*) /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:5235:9
+#17 0x00007f0d6818e950 EvaluateStmt((anonymous namespace)::StmtResult&, (anonymous namespace)::EvalInfo&, clang::Stmt const*, clang::SwitchCase const*) /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:5247:40
+#18 0x00007f0d681938bc HandleFunctionCall(clang::SourceLocation, clang::FunctionDecl const*, (anonymous namespace)::LValue const*, llvm::ArrayRef<clang::Expr const*>, (anonymous namespace)::CallRef, clang::Stmt const*, (anonymous namespace)::EvalInfo&, clang::APValue&, (anonymous namespace)::LValue const*) /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:6208:36
+#19 0x00007f0d681b7cae handleCallExpr /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:7800:78
+#20 0x00007f0d681b7cae VisitCallExpr /llvm-project-16.0.0.src/clang/lib/AST/ExprConstant.cpp:7615:24
+...
+
+
+namespace {
+template < bool, typename a = void > struct b {
+  typedef a p;
+};
+template < bool c > using d = b< c >;
+template < typename a, a e > struct f {
+  static const a g = e;
+};
+template < bool h > using j = f< bool, h >;
+template < typename a, typename m > struct n : j< __is_same(a, m) > {};
+template < typename a > using o = __remove_reference_t(a);
+template < typename a > struct aa {
+  using p = a;
+};
+template < typename a > struct q : f< bool, __is_final(a) > {};
+template < typename a > struct r : f< bool, __is_assignable(a, a) > {};
+template < typename a > struct ab {
+  using p = a;
+};
+template < typename ac > struct s {
+  constexpr bool operator()(ac ad, ac v) { return ad < v; }
+};
+template < typename a > using u = b< r< a >::g >::p;
+template < typename a > u< a > constexpr ae(a &ad, a v) { ad = v; }
+template < typename > struct x {
+  typedef long y;
+};
+}
+void *operator new(unsigned long, void *);
+namespace std {
+template < typename a > constexpr a *ag(a *ai) { return new (ai) a; }
+template < typename a, typename > struct aj {
+  using p = a *;
+};
+template < typename, typename ak > struct al : ab< ak > {};
+template < typename an, typename ao = an > struct ap {
+  using p = x< ao >::y;
+};
+template < typename an > struct aq {
+  using ar = an;
+  using as = ar::as;
+  using at = aj< as, ar >::p;
+  using y = ap< at >::p;
+  using au = al< ar, y >::p;
+  template < typename a > constexpr static void av(ar, a ah) { ag(ah); }
+};
+template < typename > struct allocator;
+struct aw {};
+template < typename a, bool = q< a >::g > struct ax {
+  using ay = a &;
+  using az = a;
+  constexpr ax(aw) {}
+  template < typename m, typename = d< n< ax, typename aa< m >::p >::g > >
+  constexpr ax(m bb) : bc(bb) {}
+  constexpr ay bd() { return bc; }
+  constexpr az bd() const { return bc; }
+  a bc;
+};
+template < typename ac, typename be > struct bf : ax< ac >, ax< be, 1 > {
+  using bg = ax< ac >;
+  using bh = ax< be, 1 >;
+  template < typename w, typename bi > constexpr bf(w bj, bi bk) : bg(bj), bh(bk) {}
+  constexpr bg::ay bl() { return static_cast< bg & >(*this).bd(); }
+  constexpr bg::az bl() const { return static_cast< bg const & >(*this).bd(); }
+  constexpr bh::ay bm() { return static_cast< bh & >(*this).bd(); }
+};
+template < typename a, typename bn > constexpr a bo(a bw, a bp, bn bq) {
+  return bq(bw, bp) ?: bw;
+}
+template < typename a > constexpr a bo(a bw, a bp) { return bo(bw, bp, s< a >()); }
+template < typename > struct br {
+  template < typename m > constexpr br(m) {}
+};
+template < typename a, typename = allocator< a > > struct bs;
+template < typename bt > struct bu {
+  bt bv;
+};
+template < typename an > constexpr bu< typename aq< an >::at > cg(an bx, unsigned long by) {
+  return {bx.allocate(by)};
+}
+template < typename a > struct allocator {
+  typedef a as;
+  constexpr a *allocate(unsigned long by) {
+            return static_cast< a * >(operator new(by * sizeof(a)));
+  }
+};
+template < typename a, typename bz > struct ca {
+  typedef a as;
+  typedef bz ar;
+  typedef o< ar > cb;
+  typedef aq< cb > cc;
+  typedef as az;
+  typedef cc::au au;
+  typedef cc::at at;
+  at cd;
+  at ce;
+  at cf;
+  bf< at, ar > z;
+  constexpr cb bx() { return z.bm(); }
+  constexpr at &cp() { return z.bl(); }
+  constexpr ca(au, au, cb &);
+  constexpr void ch(az);
+};
+}
+template < typename a, typename bz >
+constexpr std::ca< a, bz >::ca(au ci, au, cb &bw) : z(nullptr, bw) {
+  auto cj = cg(bx(), ci);
+  cd = cj.bv;
+  ce = cf = cd;
+  cp() = cd + ci;
+}
+template < typename a, typename bz > constexpr void std::ca< a, bz >::ch(az) {
+  cc::av(bx(), cf);
+}
+namespace std {
+template < typename a, typename bz > struct bs {
+  typedef a as;
+  typedef bz ar;
+  typedef aq< ar > cc;
+  typedef as az;
+  typedef cc::au au;
+  typedef cc::at at;
+  typedef at ck;
+  typedef br< a > cl;
+
+  constexpr au capacity() const { return cp() - ce; }
+  constexpr ck cv(cl, az);
+  at ce = nullptr;
+  bf< at, ar > z = bf< at, ar >(nullptr, aw());
+  constexpr au cm(au) const;
+  constexpr at cn(ca< as, ar & > &, at);
+  constexpr at &cp() { return z.bl(); }
+  constexpr at cp() const { return z.bl(); }
+};
+template < typename a, typename bz >
+constexpr bs< a, bz >::at bs< a, bz >::cn(ca< as, ar & > &e, at) {
+  at co = ce;
+  ae(ce, e.ce);
+  ae(cp(), e.cp());
+  return co;
+}
+template < typename a, typename bz >
+constexpr bs< a, bz >::au bs< a, bz >::cm(au da) const {
+  au ci = capacity();
+  return bo(2 * ci, da);
+}
+template < typename a, typename bz >
+constexpr bs< a, bz >::ck bs< a, bz >::cv(cl, az ad) {
+  at ah(cp());
+  ar bw;
+  ca< as, ar & > e(cm(1), ah - ce, bw);
+  e.ch(ad);
+  cn(e, ah);
+  return ah;
+}
+constexpr void db(bs< unsigned long > &t, unsigned long i) {
+  t.cv(t, i);
+}
+constexpr bool cq() {
+  bs< unsigned long > t;
+  for (int i = 0; i < 57; ++i)
+            db(t, 0);
+  return true;
+}
+static_assert(cq());
+}
+
+Bug Labels:
+clang:frontend, consteval, crash-on-valid

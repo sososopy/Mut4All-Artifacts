@@ -1,0 +1,175 @@
+Issue Title:
+Computing and checking generics of type which uses const generics · Issue #87674 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics, const_evaluatable_checked)]
+#![allow(incomplete_features)]
+
+trait Tensor<T, const X: usize>: Sized {
+    fn new(data: [T; X]) -> Self;
+    fn get_data(self) -> [T; X];
+    fn reshape<G: Tensor<T, X>>(self) -> G {
+        G::new(self.get_data())
+    }
+}
+
+struct Tensor1<T, const L: usize>([T; L]);
+impl<T, const L: usize> Tensor<T, L> for Tensor1<T, L> {
+    fn new(data: [T; L]) -> Self {
+        Tensor1(data)
+    }
+    fn get_data(self) -> [T; L] {
+        self.0
+    }
+}
+
+struct Tensor2<T, const R: usize, const C: usize>([T; R * C])
+where
+    [(); R * C]: ;
+impl<T, const R: usize, const C: usize> Tensor<T, { R * C }> for Tensor2<T, R, C>
+where
+    [(); R * C]: ,
+{
+    fn new(data: [T; R * C]) -> Self {
+        Tensor2(data)
+    }
+    fn get_data(self) -> [T; R * C] {
+        self.0
+    }
+}
+
+struct Tensor3<T, const R: usize, const C: usize, const D: usize>([T; R * C * D])
+where
+    [(); R * C * D]: ;
+impl<T, const R: usize, const C: usize, const D: usize> Tensor<T, { R * C * D }> for Tensor3<T, R, C, D>
+where
+    [(); R * C * D]: ,
+{
+    fn new(data: [T; R * C * D]) -> Self {
+        Tensor3(data)
+    }
+    fn get_data(self) -> [T; R * C * D] {
+        self.0
+    }
+}
+
+Bug Trace:
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/1f0a591b3a5963a0ab11a35dc525ad9d46f612e4\/library\std\src/panicking.rs:516:5
+   1: core::panicking::panic_fmt
+             at /rustc/1f0a591b3a5963a0ab11a35dc525ad9d46f612e4\/library\core\src/panicking.rs:93:14
+   2: core::panicking::panic
+             at /rustc/1f0a591b3a5963a0ab11a35dc525ad9d46f612e4\/library\core\src/panicking.rs:50:5
+   3: rustc_metadata::rmeta::decoder::<impl rustc_metadata::creader::CrateMetadataRef>::get_generics
+   4: rustc_metadata::rmeta::decoder::cstore_impl::provide_extern::generics_of
+   5: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+   6: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+   7: rustc_data_structures::stack::ensure_sufficient_stack
+   8: rustc_query_system::query::plumbing::force_query_with_job
+   9: rustc_query_system::query::plumbing::get_query_impl
+  10: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::generics_of
+  11: <rustc_middle::ty::print::pretty::FmtPrinter<F> as rustc_middle::ty::print::Printer>::print_def_path
+  12: <rustc_middle::ty::print::pretty::FmtPrinter<F> as rustc_middle::ty::print::Printer>::print_def_path
+  13: <rustc_middle::ty::instance::Instance as core::fmt::Display>::fmt
+  14: std::thread::local::LocalKey<T>::with
+  15: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+  16: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  17: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  18: rustc_data_structures::stack::ensure_sufficient_stack
+  19: rustc_query_system::query::plumbing::get_query_impl
+  20: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_allocation_raw
+  21: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  22: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  23: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  24: rustc_data_structures::stack::ensure_sufficient_stack
+  25: rustc_query_system::query::plumbing::get_query_impl
+  26: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_const_value_raw
+  27: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  28: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  29: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  30: rustc_data_structures::stack::ensure_sufficient_stack
+  31: rustc_query_system::query::plumbing::get_query_impl
+  32: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_const_value_raw
+  33: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  34: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  35: rustc_middle::ty::consts::kind::ConstKind::try_eval
+  36: rustc_middle::ty::inhabitedness::type_uninhabited_from
+  37: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  38: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  39: rustc_data_structures::stack::ensure_sufficient_stack
+  40: rustc_query_system::query::plumbing::get_query_impl
+  41: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_uninhabited_from
+  42: rustc_middle::ty::inhabitedness::<impl rustc_middle::ty::TyS>::uninhabited_from
+  43: rustc_middle::ty::inhabitedness::<impl rustc_middle::ty::FieldDef>::uninhabited_from
+  44: rustc_middle::ty::inhabitedness::def_id_forest::DefIdForest::union
+  45: rustc_middle::ty::inhabitedness::def_id_forest::DefIdForest::intersection
+  46: rustc_middle::ty::inhabitedness::type_uninhabited_from
+  47: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  48: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  49: rustc_data_structures::stack::ensure_sufficient_stack
+  50: rustc_query_system::query::plumbing::get_query_impl
+  51: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_uninhabited_from
+  52: rustc_middle::ty::inhabitedness::<impl rustc_middle::ty::TyS>::uninhabited_from
+  53: rustc_middle::ty::inhabitedness::<impl rustc_middle::ty::context::TyCtxt>::is_ty_uninhabited_from
+  54: rustc_passes::liveness::Liveness::propagate_through_expr
+  55: rustc_passes::liveness::Liveness::propagate_through_expr
+  56: <rustc_passes::liveness::IrMaps as rustc_hir::intravisit::Visitor>::visit_body
+  57: rustc_hir::intravisit::walk_fn
+  58: rustc_hir::intravisit::Visitor::visit_fn
+  59: rustc_hir::intravisit::walk_expr
+  60: <rustc_passes::liveness::IrMaps as rustc_hir::intravisit::Visitor>::visit_expr
+  61: rustc_hir::intravisit::walk_expr
+  62: rustc_hir::intravisit::walk_block
+  63: <rustc_passes::liveness::IrMaps as rustc_hir::intravisit::Visitor>::visit_body
+  64: rustc_hir::intravisit::walk_item
+  65: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  66: rustc_passes::liveness::check_mod_liveness
+  67: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  68: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  69: rustc_data_structures::stack::ensure_sufficient_stack
+  70: rustc_query_system::query::plumbing::force_query_with_job
+  71: rustc_query_system::query::plumbing::get_query_impl
+  72: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_mod_liveness
+  73: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+  74: rustc_session::utils::<impl rustc_session::session::Session>::time
+  75: rustc_interface::passes::analysis
+  76: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  77: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  78: rustc_data_structures::stack::ensure_sufficient_stack
+  79: rustc_query_system::query::plumbing::force_query_with_job
+  80: rustc_query_system::query::plumbing::get_query_impl
+  81: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  82: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  83: rustc_span::with_source_map
+  84: rustc_interface::interface::create_compiler_and_run
+  85: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.56.0-nightly (1f0a591b3 2021-07-30) running on x86_64-pc-windows-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [generics_of] computing generics of `tensor::Tensor3::0`
+#1 [eval_to_allocation_raw] const-evaluating + checking `tensor::Tensor3::0::{constant#0}`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `tensor::Tensor3::0::{constant#0}`
+#3 [eval_to_const_value_raw] simplifying constant for the type system `tensor::Tensor3::0::{constant#0}`
+#4 [type_uninhabited_from] computing the inhabitedness of `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [Binder(ConstEvaluatable(WithOptConstParam { 
+did: DefId(0:170 ~ onitama_alpha_zero[d450]::network::bp_convolution::{constant#2}), const_param_did: None }, [Const { ty: usize, val: Param(A/#0) }, Const { ty: usize, val: Param(B/#1) }]), []), Binder(ConstEvaluatable(WithOptConstParam { did: DefId(0:169 ~ onitama_alpha_zero[d450]::network::bp_convolution::{constant#1}), const_param_did: None }, [Const { ty: usize, val: Param(A/#0) }, Const { ty: usize, val: Param(B/#1) }]), []), Binder(ConstEvaluatable(WithOptConstParam { did: DefId(0:168 ~ onitama_alpha_zero[d450]::network::bp_convolution::{constant#0}), const_param_did: None }, [Const { ty: usize, val: Param(A/#0) }, Const { ty: usize, val: Param(B/#1) }]), []), Binder(OutlivesPredicate([(); _], ReEmpty(U0)), []), Binder(OutlivesPredicate([(); _], ReEmpty(U0)), []), Binder(OutlivesPredicate([(); _], ReEmpty(U0)), [])], reveal: UserFacing }, value: [f64; _] }`
+#5 [type_uninhabited_from] computing the inhabitedness of `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [Binder(ConstEvaluatable(WithOptConstParam { 
+did: DefId(0:170 ~ onitama_alpha_zero[d450]::network::bp_convolution::{constant#2}), const_param_did: None }, [Const { ty: usize, val: Param(A/#0) }, Const { ty: usize, val: Param(B/#1) }]), []), Binder(ConstEvaluatable(WithOptConstParam { did: DefId(0:169 ~ onitama_alpha_zero[d450]::network::bp_convolution::{constant#1}), const_param_did: None }, [Const { ty: usize, val: Param(A/#0) }, Const { ty: usize, val: Param(B/#1) }]), []), Binder(ConstEvaluatable(WithOptConstParam { did: DefId(0:168 ~ onitama_alpha_zero[d450]::network::bp_convolution::{constant#0}), const_param_did: None }, [Const { ty: usize, val: Param(A/#0) }, Const { ty: usize, val: Param(B/#1) }]), []), Binder(OutlivesPredicate([(); _], ReEmpty(U0)), []), Binder(OutlivesPredicate([(); _], ReEmpty(U0)), []), Binder(OutlivesPredicate([(); _], ReEmpty(U0)), [])], reveal: UserFacing }, value: tensor::Tensor3<f64, 3_usize, 3_usize, A> }`
+#6 [check_mod_liveness] checking liveness of variables in module `network`
+#7 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler

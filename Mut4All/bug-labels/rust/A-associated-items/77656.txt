@@ -1,0 +1,91 @@
+Issue Title:
+ICE: Projection bound ... was applicable to ... but now is not · Issue #77656 · rust-lang/rust · GitHub
+
+Rust Code:
+pub trait Value: PartialOrd {}
+
+impl<T: PartialOrd> Value for T {}
+
+pub trait Distance
+where
+    Self: PartialOrd<<Self as Distance>::Value>,
+    Self: PartialOrd,
+{
+    type Value: Value;
+}
+
+impl<T: Value> Distance for T {
+    type Value = T;
+}
+
+pub trait Proximity<T = Self> {
+    type Distance: Distance;
+}
+
+pub type DistanceValue<K, V = K> = <<K as Proximity<V>>::Distance as Distance>::Value;
+
+struct VpNode<T, R = DistanceValue<T>> {
+    item: T,
+    radius: R,
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_trait_selection/src/traits/select/confirmation.rs:158:25: Projection bound `Binder(<<Self as Proximity<T>>::Distance as std::cmp::PartialOrd<<<Self as Proximity<T>>::Distance as Distance>::Value>>)` was applicable to `Obligation(predicate=Binder(TraitPredicate(<<Self as Proximity<T>>::Distance as std::cmp::PartialOrd>)), depth=0)` but now is not
+
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:945:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::bug
+   2: rustc_errors::Handler::bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::bug_fmt
+   8: rustc_trait_selection::traits::select::confirmation::<impl rustc_trait_selection::traits::select::SelectionContext>::confirm_projection_candidate::{{closure}}::{{closure}}
+   9: rustc_infer::infer::InferCtxt::commit_unconditionally
+  10: rustc_trait_selection::traits::select::confirmation::<impl rustc_trait_selection::traits::select::SelectionContext>::confirm_candidate
+  11: rustc_trait_selection::traits::select::SelectionContext::select
+  12: rustc_trait_selection::traits::fulfill::FulfillProcessor::process_trait_obligation
+  13: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  14: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  15: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  16: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_all_or_error
+  17: rustc_typeck::check::fn_ctxt::FnCtxt::select_all_obligations_or_error
+  18: rustc_infer::infer::InferCtxtBuilder::enter
+  19: rustc_typeck::check::wfcheck::check_associated_item
+  20: rustc_typeck::check::wfcheck::check_trait_item
+  21: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_trait_item_well_formed>::compute
+  22: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  23: rustc_data_structures::stack::ensure_sufficient_stack
+  24: rustc_query_system::query::plumbing::get_query_impl
+  25: rustc_query_system::query::plumbing::ensure_query_impl
+  26: rustc_data_structures::sync::par_for_each_in
+  27: rustc_typeck::check::check::check_wf_new
+  28: rustc_typeck::check_crate
+  29: rustc_interface::passes::analysis
+  30: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: rustc_interface::passes::QueryContext::enter
+  35: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  36: rustc_span::with_source_map
+  37: rustc_interface::interface::create_compiler_and_run
+  38: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.49.0-nightly (98edd1fbf 2020-10-06) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [check_trait_item_well_formed] checking that `Proximity::Distance` is well-formed
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-associated-items, C-bug, I-ICE, P-critical, T-compiler, regression-from-stable-to-nightly

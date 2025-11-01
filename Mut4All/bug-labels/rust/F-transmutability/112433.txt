@@ -1,0 +1,641 @@
+Issue Title:
+debug ice: `alignment mismatch between ABI and layout in TyAndLayout` · Issue #112433 · rust-lang/rust · GitHub
+
+Rust Code:
+#![crate_type="lib"]
+#![feature(transmutability)]
+
+mod assert {
+    use std::mem::BikeshedIntrinsicFrom;
+
+    pub fn is_transmutable<Src, Dst, Context>()
+    where
+        Dst: BikeshedIntrinsicFrom<Src, Context>,
+    {
+    }
+}
+
+#[repr(C, packed(2))]
+enum V0usize {
+    V,
+}
+
+fn nsize() {
+    fn u_should_have_correct_length() {
+        type Current = V0usize;
+        type Analog = V0usize;
+        type Context = V0usize;
+
+        assert::is_transmutable::<Current, Analog, Context>();
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'assertion failed: `(left == right)`
+  left: `Align(2 bytes)`,
+ right: `Align(4 bytes)`: alignment mismatch between ABI and layout in TyAndLayout {
+    ty: V0usize,
+    layout: Layout {
+        size: Size(4 bytes),
+        align: AbiAndPrefAlign {
+            abi: Align(2 bytes),
+            pref: Align(8 bytes),
+        },
+        abi: Scalar(
+            Initialized {
+                value: Int(
+                    I32,
+                    false,
+                ),
+                valid_range: 0..=0,
+            },
+        ),
+        fields: Arbitrary {
+            offsets: [
+                Size(0 bytes),
+            ],
+            memory_index: [
+                0,
+            ],
+        },
+        largest_niche: Some(
+            Niche {
+                offset: Size(0 bytes),
+                value: Int(
+                    I32,
+                    false,
+                ),
+                valid_range: 0..=0,
+            },
+        ),
+        variants: Multiple {
+            tag: Initialized {
+                value: Int(
+                    I32,
+                    false,
+                ),
+                valid_range: 0..=0,
+            },
+            tag_encoding: Direct,
+            tag_field: 0,
+            variants: [
+                Layout {
+                    size: Size(4 bytes),
+                    align: AbiAndPrefAlign {
+                        abi: Align(2 bytes),
+                        pref: Align(2 bytes),
+                    },
+                    abi: Aggregate {
+                        sized: true,
+                    },
+                    fields: Arbitrary {
+                        offsets: [],
+                        memory_index: [],
+                    },
+                    largest_niche: None,
+                    variants: Single {
+                        index: 0,
+                    },
+                },
+            ],
+        },
+    },
+}', compiler/rustc_ty_utils/src/layout_sanity_check.rs:82:9
+stack backtrace:
+   0:     0x7f70adef1156 - trace
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7f70adef1156 - trace_unsynchronized<std::sys_common::backtrace::_print_fmt::{closure_env#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f70adef1156 - _print_fmt
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:65:5
+   3:     0x7f70adef1156 - fmt
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f70adf3d9f8 - fmt
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/rt.rs:138:9
+   5:     0x7f70adf3d9f8 - write
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/fmt/mod.rs:1094:21
+   6:     0x7f70adeaafbf - write_fmt<std::sys::unix::stdio::Stderr>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/io/mod.rs:1713:15
+   7:     0x7f70adef0f55 - _print
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7f70adef0f55 - print
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7f70adeca06c - {closure#1}
+  10:     0x7f70adec9d42 - default_hook
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:288:9
+  11:     0x7f70af87954b - call<(&core::panic::panic_info::PanicInfo), (dyn core::ops::function::Fn<(&core::panic::panic_info::PanicInfo), Output=()> + core::marker::Send + core::marker::Sync), alloc::alloc::Global>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1999:9
+  12:     0x7f70af87954b - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver_impl/src/lib.rs:1269:13
+  13:     0x7f70adeca855 - call<(&core::panic::panic_info::PanicInfo), (dyn core::ops::function::Fn<(&core::panic::panic_info::PanicInfo), Output=()> + core::marker::Send + core::marker::Sync), alloc::alloc::Global>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1999:9
+  14:     0x7f70adeca855 - rust_panic_with_hook
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:709:13
+  15:     0x7f70adef1467 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:597:13
+  16:     0x7f70adef1236 - __rust_end_short_backtrace<std::panicking::begin_panic_handler::{closure_env#0}, !>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:151:18
+  17:     0x7f70adeca3c2 - begin_panic_handler
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:593:5
+  18:     0x7f70ade7e133 - panic_fmt
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:67:14
+  19:     0x7f70ade7e6ab - assert_failed_inner
+  20:     0x7f70ae947fe9 - core[b962eb8751e8bda6]::panicking::assert_failed::<rustc_abi[f422070b94588b95]::Align, rustc_abi[f422070b94588b95]::Align>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panicking.rs:228:5
+  21:     0x7f70b1efd175 - check_layout_abi
+  22:     0x7f70b1efd175 - sanity_check_layout
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ty_utils/src/layout_sanity_check.rs:245:5
+  23:     0x7f70b1f44b75 - layout_of
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_ty_utils/src/layout.rs:64:5
+  24:     0x7f70b14e8870 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:577:33
+  25:     0x7f70b14e8870 - __rust_begin_short_backtrace<rustc_query_impl::query_impl::layout_of::dynamic_query::{closure#2}::{closure_env#0}, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:506:18
+  26:     0x7f70b156c886 - {closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:574:25
+  27:     0x7f70b156c886 - call_once<rustc_query_impl::query_impl::layout_of::dynamic_query::{closure_env#2}, (rustc_middle::ty::context::TyCtxt, rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>)>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+  28:     0x7f70b1280732 - compute<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/lib.rs:116:9
+  29:     0x7f70b1280732 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:72
+  30:     0x7f70b1280732 - {closure#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+  31:     0x7f70b1280732 - try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 24]>>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:270:16
+  32:     0x7f70b1280732 - with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 24]>>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:246:9
+  33:     0x7f70b1280732 - enter_context<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+  34:     0x7f70b1280732 - {closure#0}<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:149:13
+  35:     0x7f70b1280732 - {closure#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:133:9
+  36:     0x7f70b1280732 - {closure#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 24]>>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:36
+  37:     0x7f70b1280732 - with_context_opt<rustc_middle::ty::context::tls::with_context::{closure_env#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 24]>>, rustc_middle::query::erase::Erased<[u8; 24]>>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:100:18
+  38:     0x7f70b1280732 - with_context<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 24]>>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:5
+  39:     0x7f70b1280732 - with_related_context<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 24]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:124:5
+  40:     0x7f70b1280732 - start_query<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:134:9
+  41:     0x7f70b1280732 - execute_job_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:18
+  42:     0x7f70b1280732 - execute_job<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:413:9
+  43:     0x7f70b1280732 - try_execute_query<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:358:13
+  44:     0x7f70b13b4cb4 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:32
+  45:     0x7f70b13b4cb4 - maybe_grow<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  46:     0x7f70b13b4cb4 - ensure_sufficient_stack<rustc_middle::query::erase::Erased<[u8; 24]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  47:     0x7f70b13b4cb4 - get_query_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>, false, true, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:5
+  48:     0x7f70b13b4cb4 - __rust_end_short_backtrace
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:554:26
+  49:     0x7f70b1e973dc - query_get_at<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 24]>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:155:17
+  50:     0x7f70b1e985f7 - layout_of
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/mod.rs:2179:1
+  51:     0x7f70b1e985f7 - layout_of
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:376:35
+  52:     0x7f70b1e985f7 - from_ty
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_transmute/src/layout/tree.rs:230:50
+  53:     0x7f70b1eafde7 - from_ty
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_transmute/src/layout/tree.rs:309:42
+  54:     0x7f70b1e9e386 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_transmute/src/maybe_transmutable/mod.rs:74:27
+  55:     0x7f70b1e9e386 - map_layouts<rustc_middle::ty::Ty, rustc_middle::ty::context::TyCtxt, rustc_transmute::maybe_transmutable::rustc::{impl#0}::answer::{closure_env#0}, rustc_transmute::layout::tree::Tree<rustc_transmute::layout::rustc::Def, rustc_transmute::layout::rustc::Ref>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_transmute/src/maybe_transmutable/mod.rs:50:26
+  56:     0x7f70b1e9e386 - answer
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_transmute/src/maybe_transmutable/mod.rs:69:35
+  57:     0x7f70b1a63a12 - is_transmutable
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_transmute/src/lib.rs:98:13
+  58:     0x7f70b1a63a12 - confirm_transmutability_candidate
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/confirmation.rs:305:34
+  59:     0x7f70b1a63a12 - confirm_candidate
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/confirmation.rs:58:28
+  60:     0x7f70b1c25d2e - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1272:19
+  61:     0x7f70b1c25d2e - {closure#0}<rustc_trait_selection::traits::select::{impl#1}::evaluate_candidate::{closure#0}::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:565:26
+  62:     0x7f70b1c25d2e - probe<core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>, rustc_trait_selection::traits::select::{impl#1}::evaluation_probe::{closure_env#0}<rustc_trait_selection::traits::select::{impl#1}::evaluate_candidate::{closure#0}::{closure_env#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_infer/src/infer/mod.rs:825:17
+  63:     0x7f70b1a7758f - evaluation_probe<rustc_trait_selection::traits::select::{impl#1}::evaluate_candidate::{closure#0}::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:563:9
+  64:     0x7f70b1a7758f - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1270:31
+  65:     0x7f70b1a7758f - evaluate_candidate
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1269:50
+  66:     0x7f70b1a56cb7 - evaluate_stack
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1233:28
+  67:     0x7f70b1b709f5 - {closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1056:30
+  68:     0x7f70b1b709f5 - {closure#0}<rustc_trait_selection::traits::select::{impl#1}::evaluate_trait_predicate_recursively::{closure#0}::{closure_env#2}, core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1403:86
+  69:     0x7f70b1b26fd5 - with_anon_task<rustc_middle::dep_graph::dep_node::DepKind, rustc_middle::ty::context::TyCtxt, rustc_trait_selection::traits::select::{impl#1}::in_task::{closure_env#0}<rustc_trait_selection::traits::select::{impl#1}::evaluate_trait_predicate_recursively::{closure#0}::{closure_env#2}, core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>>, core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/dep_graph/graph.rs:303:22
+  70:     0x7f70b1a754d2 - in_task<rustc_trait_selection::traits::select::{impl#1}::evaluate_trait_predicate_recursively::{closure#0}::{closure_env#2}, core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1403:13
+  71:     0x7f70b1a754d2 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1055:34
+  72:     0x7f70b1a754d2 - evaluate_trait_predicate_recursively
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:1010:50
+  73:     0x7f70b1a72b42 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:661:21
+  74:     0x7f70b1a72b42 - maybe_grow<core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>, rustc_trait_selection::traits::select::{impl#1}::evaluate_predicate_recursively::{closure#0}::{closure_env#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  75:     0x7f70b1a72b42 - ensure_sufficient_stack<core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>, rustc_trait_selection::traits::select::{impl#1}::evaluate_predicate_recursively::{closure#0}::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+  76:     0x7f70b1a72b42 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:654:9
+  77:     0x7f70b1a72b42 - evaluate_predicate_recursively
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:644:50
+  78:     0x7f70b1c26a4f - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:545:17
+  79:     0x7f70b1c26a4f - {closure#0}<rustc_trait_selection::traits::select::{impl#1}::evaluate_root_obligation::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:565:26
+  80:     0x7f70b1c26a4f - probe<core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>, rustc_trait_selection::traits::select::{impl#1}::evaluation_probe::{closure_env#0}<rustc_trait_selection::traits::select::{impl#1}::evaluate_root_obligation::{closure_env#0}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_infer/src/infer/mod.rs:825:17
+  81:     0x7f70b1da0631 - evaluation_probe<rustc_trait_selection::traits::select::{impl#1}::evaluate_root_obligation::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:563:9
+  82:     0x7f70b1da0631 - evaluate_root_obligation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/select/mod.rs:539:14
+  83:     0x7f70b1da0631 - evaluate_obligation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_traits/src/evaluate_obligation.rs:33:5
+  84:     0x7f70b14e651f - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:577:33
+  85:     0x7f70b14e651f - __rust_begin_short_backtrace<rustc_query_impl::query_impl::evaluate_obligation::dynamic_query::{closure#2}::{closure_env#0}, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:506:18
+  86:     0x7f70b1562d2d - {closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:574:25
+  87:     0x7f70b1562d2d - call_once<rustc_query_impl::query_impl::evaluate_obligation::dynamic_query::{closure_env#2}, (rustc_middle::ty::context::TyCtxt, rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>)>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+  88:     0x7f70b12a36ca - compute<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/lib.rs:116:9
+  89:     0x7f70b12a36ca - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:72
+  90:     0x7f70b12a36ca - {closure#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+  91:     0x7f70b12a36ca - try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 2]>>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:270:16
+  92:     0x7f70b12a36ca - with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 2]>>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:246:9
+  93:     0x7f70b12a36ca - enter_context<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+  94:     0x7f70b12a36ca - {closure#0}<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:149:13
+  95:     0x7f70b12a36ca - {closure#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:133:9
+  96:     0x7f70b12a36ca - {closure#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 2]>>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:36
+  97:     0x7f70b12a36ca - with_context_opt<rustc_middle::ty::context::tls::with_context::{closure_env#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 2]>>, rustc_middle::query::erase::Erased<[u8; 2]>>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:100:18
+  98:     0x7f70b12a36ca - with_context<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 2]>>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:5
+  99:     0x7f70b12a36ca - with_related_context<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 2]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:124:5
+ 100:     0x7f70b12a36ca - start_query<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:134:9
+ 101:     0x7f70b12a36ca - execute_job_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:18
+ 102:     0x7f70b12a36ca - execute_job<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:413:9
+ 103:     0x7f70b12a36ca - try_execute_query<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:358:13
+ 104:     0x7f70b13bcc2b - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:32
+ 105:     0x7f70b13bcc2b - maybe_grow<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+ 106:     0x7f70b13bcc2b - ensure_sufficient_stack<rustc_middle::query::erase::Erased<[u8; 2]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+ 107:     0x7f70b13bcc2b - get_query_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:5
+ 108:     0x7f70b13bcc2b - __rust_end_short_backtrace
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:554:26
+ 109:     0x7f70b1c385b3 - query_get_at<rustc_query_system::query::caches::DefaultCache<rustc_middle::infer::canonical::Canonical<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Predicate>>, rustc_middle::query::erase::Erased<[u8; 2]>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:155:17
+ 110:     0x7f70b1c385b3 - evaluate_obligation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/mod.rs:2179:1
+ 111:     0x7f70b1c385b3 - evaluate_obligation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/query/evaluate_obligation.rs:104:50
+ 112:     0x7f70b1c38ddc - evaluate_obligation_no_overflow
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/query/evaluate_obligation.rs:118:15
+ 113:     0x7f70b1b77414 - predicate_must_hold_considering_regions
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/query/evaluate_obligation.rs:50:9
+ 114:     0x7f70b1b77414 - process_trait_obligation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/fulfill.rs:690:16
+ 115:     0x7f70b1b75b6c - process_obligation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/fulfill.rs:380:21
+ 116:     0x7f70b1bc6699 - process_obligations<rustc_trait_selection::traits::fulfill::PendingPredicateObligation, rustc_trait_selection::traits::fulfill::FulfillProcessor>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/obligation_forest/mod.rs:457:23
+ 117:     0x7f70b1b6cb05 - select
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/fulfill.rs:100:13
+ 118:     0x7f70b1b6cb05 - select_where_possible
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_trait_selection/src/traits/fulfill.rs:150:9
+ 119:     0x7f70afe4cb5d - select_obligations_where_possible<rustc_hir_typeck::fn_ctxt::checks::{impl#0}::check_argument_types::{closure_env#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:597:26
+ 120:     0x7f70afe4cb5d - check_argument_types
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:343:17
+ 121:     0x7f70afe0dff4 - confirm_builtin_call
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/callee.rs:454:9
+ 122:     0x7f70afe0c792 - check_call
+ 123:     0x7f70afea6b52 - check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:336:45
+ 124:     0x7f70afe27a05 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:240:18
+ 125:     0x7f70afe27a05 - maybe_grow<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+ 126:     0x7f70afe27a05 - ensure_sufficient_stack<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+ 127:     0x7f70afe27a05 - check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:236:18
+ 128:     0x7f70afea5353 - check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:190:9
+ 129:     0x7f70afe55f7e - check_stmt
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1491:17
+ 130:     0x7f70afe56656 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1543:17
+ 131:     0x7f70afe56656 - with_breakable_ctxt<rustc_hir_typeck::fn_ctxt::checks::{impl#0}::check_block_with_expected::{closure_env#0}, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:1523:22
+ 132:     0x7f70afe56656 - check_block_with_expected
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1541:26
+ 133:     0x7f70afea6782 - check_expr_kind
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:335:41
+ 134:     0x7f70afe27a05 - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:240:18
+ 135:     0x7f70afe27a05 - maybe_grow<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+ 136:     0x7f70afe27a05 - ensure_sufficient_stack<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+ 137:     0x7f70afe27a05 - check_expr_with_expectation_and_args
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:236:18
+ 138:     0x7f70afea5353 - check_expr_with_expectation
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:190:9
+ 139:     0x7f70afe297af - check_expr_with_hint
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:142:9
+ 140:     0x7f70afe297af - check_return_expr
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/expr.rs:830:30
+ 141:     0x7f70b004551d - check_fn
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/check.rs:120:5
+ 142:     0x7f70aff314a4 - {closure#0}<rustc_hir_typeck::typeck::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/lib.rs:215:9
+ 143:     0x7f70aff314a4 - typeck_with_fallback<rustc_hir_typeck::typeck::{closure_env#0}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/lib.rs:175:36
+ 144:     0x7f70aff314a4 - typeck
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/lib.rs:157:5
+ 145:     0x7f70b14e85bc - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:577:33
+ 146:     0x7f70b14e85bc - __rust_begin_short_backtrace<rustc_query_impl::query_impl::typeck::dynamic_query::{closure#2}::{closure_env#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:506:18
+ 147:     0x7f70b14af4dc - {closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:574:25
+ 148:     0x7f70b14af4dc - call_once<rustc_query_impl::query_impl::typeck::dynamic_query::{closure_env#2}, (rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+ 149:     0x7f70b13086c6 - compute<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/lib.rs:116:9
+ 150:     0x7f70b13086c6 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:72
+ 151:     0x7f70b13086c6 - {closure#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+ 152:     0x7f70b13086c6 - try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:270:16
+ 153:     0x7f70b13086c6 - with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:246:9
+ 154:     0x7f70b13086c6 - enter_context<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+ 155:     0x7f70b13086c6 - {closure#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:149:13
+ 156:     0x7f70b13086c6 - {closure#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:133:9
+ 157:     0x7f70b13086c6 - {closure#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:36
+ 158:     0x7f70b13086c6 - with_context_opt<rustc_middle::ty::context::tls::with_context::{closure_env#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:100:18
+ 159:     0x7f70b13086c6 - with_context<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:5
+ 160:     0x7f70b13086c6 - with_related_context<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:124:5
+ 161:     0x7f70b13086c6 - start_query<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:134:9
+ 162:     0x7f70b13086c6 - execute_job_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:18
+ 163:     0x7f70b13086c6 - execute_job<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:413:9
+ 164:     0x7f70b13086c6 - try_execute_query<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:358:13
+ 165:     0x7f70b13ae2f6 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:32
+ 166:     0x7f70b13ae2f6 - maybe_grow<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+ 167:     0x7f70b13ae2f6 - ensure_sufficient_stack<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+ 168:     0x7f70b13ae2f6 - get_query_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:5
+ 169:     0x7f70b13ae2f6 - __rust_end_short_backtrace
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:554:26
+ 170:     0x7f70aff16e70 - query_get_at<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:155:17
+ 171:     0x7f70aff30a72 - typeck<rustc_span::def_id::LocalDefId>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/mod.rs:2179:1
+ 172:     0x7f70aff30a72 - typeck<rustc_span::def_id::LocalDefId>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:376:35
+ 173:     0x7f70aff30a72 - used_trait_imports
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_typeck/src/lib.rs:152:11
+ 174:     0x7f70b14e63bc - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:577:33
+ 175:     0x7f70b14e63bc - __rust_begin_short_backtrace<rustc_query_impl::query_impl::used_trait_imports::dynamic_query::{closure#2}::{closure_env#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:506:18
+ 176:     0x7f70b14aa9cc - {closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:574:25
+ 177:     0x7f70b14aa9cc - call_once<rustc_query_impl::query_impl::used_trait_imports::dynamic_query::{closure_env#2}, (rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+ 178:     0x7f70b13086c6 - compute<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/lib.rs:116:9
+ 179:     0x7f70b13086c6 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:72
+ 180:     0x7f70b13086c6 - {closure#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+ 181:     0x7f70b13086c6 - try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:270:16
+ 182:     0x7f70b13086c6 - with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:246:9
+ 183:     0x7f70b13086c6 - enter_context<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+ 184:     0x7f70b13086c6 - {closure#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:149:13
+ 185:     0x7f70b13086c6 - {closure#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:133:9
+ 186:     0x7f70b13086c6 - {closure#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:36
+ 187:     0x7f70b13086c6 - with_context_opt<rustc_middle::ty::context::tls::with_context::{closure_env#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:100:18
+ 188:     0x7f70b13086c6 - with_context<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:5
+ 189:     0x7f70b13086c6 - with_related_context<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 8]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:124:5
+ 190:     0x7f70b13086c6 - start_query<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:134:9
+ 191:     0x7f70b13086c6 - execute_job_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:18
+ 192:     0x7f70b13086c6 - execute_job<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:413:9
+ 193:     0x7f70b13086c6 - try_execute_query<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:358:13
+ 194:     0x7f70b13ae656 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:32
+ 195:     0x7f70b13ae656 - maybe_grow<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+ 196:     0x7f70b13ae656 - ensure_sufficient_stack<rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+ 197:     0x7f70b13ae656 - get_query_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:5
+ 198:     0x7f70b13ae656 - __rust_end_short_backtrace
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:554:26
+ 199:     0x7f70afbb5bce - query_get_at<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:155:17
+ 200:     0x7f70afbb5bce - used_trait_imports<rustc_span::def_id::LocalDefId>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/mod.rs:2179:1
+ 201:     0x7f70afbb5bce - used_trait_imports<rustc_span::def_id::LocalDefId>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:376:35
+ 202:     0x7f70afbb5bce - check_crate
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/check_unused.rs:11:27
+ 203:     0x7f70afcb36d3 - check_crate
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_hir_analysis/src/lib.rs:499:5
+ 204:     0x7f70b037008c - analysis
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/passes.rs:768:5
+ 205:     0x7f70b14e860a - {closure#0}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:577:33
+ 206:     0x7f70b14e860a - __rust_begin_short_backtrace<rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2}::{closure_env#0}, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:506:18
+ 207:     0x7f70b156b928 - {closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:574:25
+ 208:     0x7f70b156b928 - call_once<rustc_query_impl::query_impl::analysis::dynamic_query::{closure_env#2}, (rustc_middle::ty::context::TyCtxt, ())>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+ 209:     0x7f70b1279ef9 - compute<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/lib.rs:116:9
+ 210:     0x7f70b1279ef9 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:72
+ 211:     0x7f70b1279ef9 - {closure#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+ 212:     0x7f70b1279ef9 - try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 1]>>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:270:16
+ 213:     0x7f70b1279ef9 - with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 1]>>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:246:9
+ 214:     0x7f70b1279ef9 - enter_context<rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+ 215:     0x7f70b1279ef9 - {closure#0}<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:149:13
+ 216:     0x7f70b1279ef9 - {closure#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:133:9
+ 217:     0x7f70b1279ef9 - {closure#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 1]>>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:36
+ 218:     0x7f70b1279ef9 - with_context_opt<rustc_middle::ty::context::tls::with_context::{closure_env#0}<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 1]>>, rustc_middle::query::erase::Erased<[u8; 1]>>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:100:18
+ 219:     0x7f70b1279ef9 - with_context<rustc_middle::ty::context::tls::with_related_context::{closure_env#0}<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 1]>>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:111:5
+ 220:     0x7f70b1279ef9 - with_related_context<rustc_query_impl::plumbing::{impl#3}::start_query::{closure_env#0}<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>, rustc_middle::query::erase::Erased<[u8; 1]>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:124:5
+ 221:     0x7f70b1279ef9 - start_query<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::execute_job_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:134:9
+ 222:     0x7f70b1279ef9 - execute_job_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:480:18
+ 223:     0x7f70b1279ef9 - execute_job<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:413:9
+ 224:     0x7f70b1279ef9 - try_execute_query<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:358:13
+ 225:     0x7f70b14342c2 - {closure#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:32
+ 226:     0x7f70b14342c2 - maybe_grow<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+ 227:     0x7f70b14342c2 - ensure_sufficient_stack<rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::query::plumbing::get_query_non_incr::{closure_env#0}<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_data_structures/src/stack.rs:17:5
+ 228:     0x7f70b14342c2 - get_query_non_incr<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_system/src/query/plumbing.rs:810:5
+ 229:     0x7f70b14342c2 - __rust_end_short_backtrace
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_query_impl/src/plumbing.rs:554:26
+ 230:     0x7f70af89a1a0 - query_get_at<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:155:17
+ 231:     0x7f70af89a1a0 - analysis
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/mod.rs:2179:1
+ 232:     0x7f70af89a1a0 - analysis
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/query/plumbing.rs:376:35
+ 233:     0x7f70af89a1a0 - {closure#4}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver_impl/src/lib.rs:412:52
+ 234:     0x7f70af89a1a0 - {closure#0}<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure_env#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context.rs:571:37
+ 235:     0x7f70af89a1a0 - {closure#0}<rustc_middle::ty::context::{impl#9}::enter::{closure_env#0}<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure_env#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:82:9
+ 236:     0x7f70af89a1a0 - try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#9}::enter::{closure_env#0}<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure_env#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:270:16
+ 237:     0x7f70af89a1a0 - with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#9}::enter::{closure_env#0}<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure_env#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/local.rs:246:9
+ 238:     0x7f70af89a1a0 - enter_context<rustc_middle::ty::context::{impl#9}::enter::{closure_env#0}<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure_env#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context/tls.rs:79:9
+ 239:     0x7f70af89a1a0 - enter<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure_env#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_middle/src/ty/context.rs:571:9
+ 240:     0x7f70af8e58aa - {closure#2}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver_impl/src/lib.rs:412:13
+ 241:     0x7f70af8e58aa - enter<rustc_driver_impl::run_compiler::{closure#1}::{closure_env#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/queries.rs:389:19
+ 242:     0x7f70af8984b3 - {closure#1}
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_driver_impl/src/lib.rs:353:22
+ 243:     0x7f70af8984b3 - {closure#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:332:21
+ 244:     0x7f70af8984b3 - set_source_map<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::interface::run_compiler::{closure#0}::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:1034:5
+ 245:     0x7f70af886024 - {closure#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/interface.rs:326:13
+ 246:     0x7f70af886024 - set<rustc_span::SessionGlobals, rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/.cargo/registry/src/index.crates.io-6f17d22bba15001f/scoped-tls-1.0.0/src/lib.rs:137:9
+ 247:     0x7f70af8a031c - create_session_globals_then<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_span/src/lib.rs:120:5
+ 248:     0x7f70af8a031c - {closure#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/compiler/rustc_interface/src/util.rs:155:38
+ 249:     0x7f70af8a031c - __rust_begin_short_backtrace<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys_common/backtrace.rs:135:18
+ 250:     0x7f70af88cd55 - {closure#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:529:17
+ 251:     0x7f70af88cd55 - call_once<core::result::Result<(), rustc_span::ErrorGuaranteed>, std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/panic/unwind_safe.rs:271:9
+ 252:     0x7f70af88cd55 - do_call<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:500:40
+ 253:     0x7f70af88cd55 - try<core::result::Result<(), rustc_span::ErrorGuaranteed>, core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panicking.rs:464:19
+ 254:     0x7f70af88cd55 - catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/panic.rs:142:14
+ 255:     0x7f70af88cd55 - {closure#1}<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/thread/mod.rs:528:30
+ 256:     0x7f70af88cd55 - call_once<std::thread::{impl#0}::spawn_unchecked_::{closure_env#1}<rustc_interface::util::run_in_thread_pool_with_globals::{closure#0}::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#0}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#1}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, ()>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/core/src/ops/function.rs:250:5
+ 257:     0x7f70ade9ceda - call_once<(), dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1985:9
+ 258:     0x7f70ade9ceda - call_once<(), alloc::boxed::Box<dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global>, alloc::alloc::Global>
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/alloc/src/boxed.rs:1985:9
+ 259:     0x7f70adea6d25 - thread_start
+                               at /home/matthias/vcs/github/rust_debug_assertions/library/std/src/sys/unix/thread.rs:108:17
+ 260:     0x7f70adca344b - <unknown>
+ 261:     0x7f70add26e40 - <unknown>
+ 262:                0x0 - <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.72.0-dev running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [layout_of] computing layout of `V0usize`
+#1 [evaluate_obligation] evaluating trait selection obligation `V0usize: core::mem::transmutability::BikeshedIntrinsicFrom<V0usize, V0usize, core::mem::transmutability::Assume { alignment: false, lifetimes: false, safety: false, validity: false }>`
+#2 [typeck] type-checking `nsize::u_should_have_correct_length`
+#3 [used_trait_imports] finding used_trait_imports `nsize::u_should_have_correct_length`
+#4 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+C-bug, F-transmutability, I-ICE, T-compiler, requires-debug-assertions, requires-nightly

@@ -1,0 +1,47 @@
+Issue Title:
+infinite recursion on invalid class
+
+Source Code & Bug Trace:
+class foo {
+  foo a;
+  virtual int c();
+};
+
+$ ~/repos/llvm/build/bin/clang -xc++ -std=c++20 prep.cc
+prep.cc:2:7: error: field has incomplete type 'foo'
+    2 |   foo a;
+      |       ^
+prep.cc:1:7: note: definition of 'foo' is not complete until the closing '}'
+    1 | class foo {
+      |       ^
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/local/google/home/kadircet/repos/llvm/build/bin/clang-20 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -dumpdir a- -disable-free -clear-ast-before-backend -main-file-name prep.cc -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/usr/local/google/home/kadircet/repos/tmp/clangd_crashes/real_inf_Rec -fcoverage-compilation-dir=/usr/local/google/home/kadircet/repos/tmp/clangd_crashes/real_inf_Rec -resource-dir /usr/local/google/home/kadircet/repos/llvm/build/lib/clang/20 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/x86_64-linux-gnu/c++/14 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/backward -internal-isystem /usr/local/google/home/kadircet/repos/llvm/build/lib/clang/20/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/14/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++20 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/prep-f2a347.o -x c++ prep.cc
+1.      prep.cc:4:2: current parser token ';'
+2.      prep.cc:1:1: parsing struct/union/class body 'foo'
+  #0 0x0000561ebe915988 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:723:13
+  #1 0x0000561ebe91355e llvm::sys::RunSignalHandlers() /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Signals.cpp:106:18
+  #2 0x0000561ebe916038 SignalHandler(int) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/Unix/Signals.inc:413:1
+  #3 0x00007f29492591a0 (/lib/x86_64-linux-gnu/libc.so.6+0x3d1a0)
+  #4 0x0000561ec2041d81 AddInteger /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/FoldingSet.h:355:7
+  #5 0x0000561ec2041d81 AddPointer /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/FoldingSet.h:346:5
+  #6 0x0000561ec2041d81 Profile /usr/local/google/home/kadircet/repos/llvm/clang/include/clang/AST/DeclarationName.h:69:8
+  #7 0x0000561ec2041d81 Profile /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/FoldingSet.h:238:7
+  #8 0x0000561ec2041d81 Equals /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/FoldingSet.h:420:3
+  #9 0x0000561ec2041d81 llvm::FoldingSet<clang::detail::CXXSpecialNameExtra>::NodeEquals(llvm::FoldingSetBase const*, llvm::FoldingSetBase::Node*, llvm::FoldingSetNodeID const&, unsigned int, llvm::FoldingSetNodeID&) /usr/local/google/home/kadircet/repos/llvm/llvm/include/llvm/ADT/FoldingSet.h:554:12
+ #10 0x0000561ebe8860bc llvm::FoldingSetBase::FindNodeOrInsertPos(llvm::FoldingSetNodeID const&, void*&, llvm::FoldingSetBase::FoldingSetInfo const&) /usr/local/google/home/kadircet/repos/llvm/llvm/lib/Support/FoldingSet.cpp:288:9
+ #11 0x0000561ec2040f9e clang::DeclarationNameTable::getCXXDestructorName(clang::CanQual<clang::Type>) /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclarationName.cpp:327:13
+ #12 0x0000561ec2055bc7 clang::CXXRecordDecl::getDestructor() const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclCXX.cpp:2022:34
+ #13 0x0000561ec2055a89 clang::CXXRecordDecl::hasConstexprDestructor() const /usr/local/google/home/kadircet/repos/llvm/clang/lib/AST/DeclCXX.cpp:602:10
+ #14 0x0000561ec13d2ad2 bool clang::Sema::CheckCompletedCXXClass(clang::Scope*, clang::CXXRecordDecl*)::$_0::operator()(clang::CXXMethodDecl*) const::'lambda'(clang::QualType, auto&&)::operator()<'lambda'(clang::QualType, auto&&)&>(clang::QualType, auto&&) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:7056:13
+ #15 0x0000561ec13d2bb1 bool clang::Sema::CheckCompletedCXXClass(clang::Scope*, clang::CXXRecordDecl*)::$_0::operator()(clang::CXXMethodDecl*) const::'lambda'(clang::QualType, auto&&)::operator()<'lambda'(clang::QualType, auto&&)&>(clang::QualType, auto&&) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:0:16
+ #16 0x0000561ec13d2bb1 bool clang::Sema::CheckCompletedCXXClass(clang::Scope*, clang::CXXRecordDecl*)::$_0::operator()(clang::CXXMethodDecl*) const::'lambda'(clang::QualType, auto&&)::operator()<'lambda'(clang::QualType, auto&&)&>(clang::QualType, auto&&) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:0:16
+ #17 0x0000561ec13d2bb1 bool clang::Sema::CheckCompletedCXXClass(clang::Scope*, clang::CXXRecordDecl*)::$_0::operator()(clang::CXXMethodDecl*) const::'lambda'(clang::QualType, auto&&)::operator()<'lambda'(clang::QualType, auto&&)&>(clang::QualType, auto&&) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:0:16
+ #18 0x0000561ec13d2bb1 bool clang::Sema::CheckCompletedCXXClass(clang::Scope*, clang::CXXRecordDecl*)::$_0::operator()(clang::CXXMethodDecl*) const::'lambda'(clang::QualType, auto&&)::operator()<'lambda'(clang::QualType, auto&&)&>(clang::QualType, auto&&) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:0:16
+ #19 0x0000561ec13d2bb1 bool clang::Sema::CheckCompletedCXXClass(clang::Scope*, clang::CXXRecordDecl*)::$_0::operator()(clang::CXXMethodDecl*) const::'lambda'(clang::QualType, auto&&)::operator()<'lambda'(clang::QualType, auto&&)&>(clang::QualType, auto&&) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:0:16
+ #20 0x0000561ec13d2bb1 bool clang::Sema::CheckCompletedCXXClass(clang::Scope*, clang::CXXRecordDecl*)::$_0::operator()(clang::CXXMethodDecl*) const::'lambda'(clang::QualType, auto&&)::operator()<'lambda'(clang::QualType, auto&&)&>(clang::QualType, auto&&) const /usr/local/google/home/kadircet/repos/llvm/clang/lib/Sema/SemaDeclCXX.cpp:0:16
+
+
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid, regression:19

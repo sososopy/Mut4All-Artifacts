@@ -1,0 +1,358 @@
+Issue Title:
+MIR inliner ICEs trying to inline async closures · Issue #68841 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_closure)]
+
+use std::future::Future;
+
+fn async_closure() -> impl Future<Output = u8> {
+    (async move || -> u8 {
+        42
+    })()
+}
+
+fn main() {
+    let _fut = async_closure();
+}
+
+Bug Trace:
+error: internal compiler error: src/librustc/traits/codegen/mod.rs:57: Encountered error `OutputTypeParameterMismatch(Binder(<[closure@async-closure.rs:10:5: 12:7] as std::ops::Fn<()>>), Binder(<[closure@async-closure.rs:10:5: 12:7] as std::ops::Fn<()>>), Sorts(ExpectedFound { expected: impl std::future::Future, found: std::future::GenFuture<[static generator@async-closure.rs:10:26: 12:6 {}]> }))` selecting `Binder(<[closure@async-closure.rs:10:5: 12:7] as std::ops::Fn<()>>)` during codegen
+
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:883:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.40/src/backtrace/libunwind.rs:88
+   1: backtrace::backtrace::trace_unsynchronized
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.40/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:77
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1052
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1428
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:204
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:224
+  10: <alloc::boxed::Box<F> as core::ops::function::Fn<A>>::call
+             at ./src/liballoc/boxed.rs:1029
+  11: rustc_driver::report_ice
+             at src/librustc_driver/lib.rs:1157
+  12: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:474
+  13: std::panicking::begin_panic
+             at ./src/libstd/panicking.rs:397
+  14: rustc_errors::HandlerInner::bug
+             at src/librustc_errors/lib.rs:883
+  15: rustc_errors::Handler::bug
+             at src/librustc_errors/lib.rs:658
+  16: rustc::util::bug::opt_span_bug_fmt::{{closure}}
+             at src/librustc/util/bug.rs:36
+  17: rustc::ty::context::tls::with_opt::{{closure}}
+             at src/librustc/ty/context.rs:1805
+  18: rustc::ty::context::tls::with_context_opt
+             at src/librustc/ty/context.rs:1757
+  19: rustc::ty::context::tls::with_opt
+             at src/librustc/ty/context.rs:1805
+  20: rustc::util::bug::opt_span_bug_fmt
+             at src/librustc/util/bug.rs:32
+  21: rustc::util::bug::bug_fmt
+             at src/librustc/util/bug.rs:12
+  22: rustc::traits::codegen::codegen_fulfill_obligation::{{closure}}
+             at src/librustc/traits/codegen/mod.rs:57
+  23: rustc::infer::InferCtxtBuilder::enter::{{closure}}
+             at src/librustc/infer/mod.rs:535
+  24: rustc::ty::context::GlobalCtxt::enter_local::{{closure}}::{{closure}}
+             at src/librustc/ty/context.rs:1529
+  25: rustc::ty::context::tls::enter_context::{{closure}}
+             at src/librustc/ty/context.rs:1696
+  26: rustc::ty::context::tls::set_tlv
+             at src/librustc/ty/context.rs:1681
+  27: rustc::ty::context::tls::enter_context
+             at src/librustc/ty/context.rs:1696
+  28: rustc::ty::context::GlobalCtxt::enter_local::{{closure}}
+             at src/librustc/ty/context.rs:1529
+  29: rustc::ty::context::tls::with_related_context::{{closure}}
+             at src/librustc/ty/context.rs:1784
+  30: rustc::ty::context::tls::with_context::{{closure}}
+             at src/librustc/ty/context.rs:1768
+  31: rustc::ty::context::tls::with_context_opt
+             at src/librustc/ty/context.rs:1757
+  32: rustc::ty::context::tls::with_context
+             at src/librustc/ty/context.rs:1768
+  33: rustc::ty::context::tls::with_related_context
+             at src/librustc/ty/context.rs:1781
+  34: rustc::ty::context::GlobalCtxt::enter_local
+             at src/librustc/ty/context.rs:1521
+  35: rustc::infer::InferCtxtBuilder::enter
+             at src/librustc/infer/mod.rs:534
+  36: rustc::traits::codegen::codegen_fulfill_obligation
+             at src/librustc/traits/codegen/mod.rs:34
+  37: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::codegen_fulfill_obligation>::compute::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:951
+  38: rustc::ty::query::__query_compute::codegen_fulfill_obligation
+             at src/librustc/ty/query/plumbing.rs:902
+  39: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::codegen_fulfill_obligation>::compute
+             at src/librustc/ty/query/plumbing.rs:943
+  40: rustc::dep_graph::graph::DepGraph::with_task_impl
+             at src/librustc/dep_graph/graph.rs:341
+  41: rustc::dep_graph::graph::DepGraph::with_task
+             at src/librustc/dep_graph/graph.rs:209
+  42: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:557
+  43: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:278
+  44: rustc::ty::context::tls::enter_context::{{closure}}
+             at src/librustc/ty/context.rs:1696
+  45: rustc::ty::context::tls::set_tlv
+             at src/librustc/ty/context.rs:1681
+  46: rustc::ty::context::tls::enter_context
+             at src/librustc/ty/context.rs:1696
+  47: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:278
+  48: rustc::ty::context::tls::with_related_context::{{closure}}
+             at src/librustc/ty/context.rs:1784
+  49: rustc::ty::context::tls::with_context::{{closure}}
+             at src/librustc/ty/context.rs:1768
+  50: rustc::ty::context::tls::with_context_opt
+             at src/librustc/ty/context.rs:1757
+  51: rustc::ty::context::tls::with_context
+             at src/librustc/ty/context.rs:1768
+  52: rustc::ty::context::tls::with_related_context
+             at src/librustc/ty/context.rs:1781
+  53: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query
+             at src/librustc/ty/query/plumbing.rs:267
+  54: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:547
+  55: rustc::ty::query::plumbing::with_diagnostics
+             at src/librustc/ty/query/plumbing.rs:212
+  56: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job
+             at src/librustc/ty/query/plumbing.rs:546
+  57: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+             at src/librustc/ty/query/plumbing.rs:380
+  58: rustc::ty::query::TyCtxtAt::codegen_fulfill_obligation
+             at src/librustc/ty/query/plumbing.rs:1057
+  59: rustc::ty::query::<impl rustc::ty::context::TyCtxt>::codegen_fulfill_obligation
+             at src/librustc/ty/query/plumbing.rs:1020
+  60: rustc::ty::instance::resolve_associated_item
+             at src/librustc/ty/instance.rs:417
+  61: rustc::ty::instance::Instance::resolve
+             at src/librustc/ty/instance.rs:270
+  62: rustc_mir::transform::inline::Inliner::get_valid_function_call
+             at src/librustc_mir/transform/inline.rs:189
+  63: rustc_mir::transform::inline::Inliner::run_pass
+             at src/librustc_mir/transform/inline.rs:83
+  64: <rustc_mir::transform::inline::Inline as rustc_mir::transform::MirPass>::run_pass
+             at src/librustc_mir/transform/inline.rs:43
+  65: rustc_mir::transform::run_passes::{{closure}}
+             at src/librustc_mir/transform/mod.rs:167
+  66: rustc_mir::transform::run_passes
+             at src/librustc_mir/transform/mod.rs:174
+  67: rustc_mir::transform::run_optimization_passes
+             at src/librustc_mir/transform/mod.rs:272
+  68: rustc_mir::transform::optimized_mir
+             at src/librustc_mir/transform/mod.rs:343
+  69: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::optimized_mir>::compute
+             at src/librustc/ty/query/plumbing.rs:943
+  70: rustc::dep_graph::graph::DepGraph::with_task_impl
+             at src/librustc/dep_graph/graph.rs:341
+  71: rustc::dep_graph::graph::DepGraph::with_task
+             at src/librustc/dep_graph/graph.rs:209
+  72: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:557
+  73: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:278
+  74: rustc::ty::context::tls::enter_context::{{closure}}
+             at src/librustc/ty/context.rs:1696
+  75: rustc::ty::context::tls::set_tlv
+             at src/librustc/ty/context.rs:1681
+  76: rustc::ty::context::tls::enter_context
+             at src/librustc/ty/context.rs:1696
+  77: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:278
+  78: rustc::ty::context::tls::with_related_context::{{closure}}
+             at src/librustc/ty/context.rs:1784
+  79: rustc::ty::context::tls::with_context::{{closure}}
+             at src/librustc/ty/context.rs:1768
+  80: rustc::ty::context::tls::with_context_opt
+             at src/librustc/ty/context.rs:1757
+  81: rustc::ty::context::tls::with_context
+             at src/librustc/ty/context.rs:1768
+  82: rustc::ty::context::tls::with_related_context
+             at src/librustc/ty/context.rs:1781
+  83: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query
+             at src/librustc/ty/query/plumbing.rs:267
+  84: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}
+             at src/librustc/ty/query/plumbing.rs:547
+  85: rustc::ty::query::plumbing::with_diagnostics
+             at src/librustc/ty/query/plumbing.rs:212
+  86: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job
+             at src/librustc/ty/query/plumbing.rs:546
+  87: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+             at src/librustc/ty/query/plumbing.rs:380
+  88: rustc::ty::query::TyCtxtAt::optimized_mir
+             at src/librustc/ty/query/plumbing.rs:1057
+  89: rustc::ty::query::<impl rustc::ty::context::TyCtxt>::optimized_mir
+             at src/librustc/ty/query/plumbing.rs:1020
+  90: rustc::ty::<impl rustc::ty::context::TyCtxt>::instance_mir
+             at src/librustc/ty/mod.rs:2883
+  91: rustc_mir::monomorphize::collector::collect_neighbours
+             at src/librustc_mir/monomorphize/collector.rs:1162
+  92: rustc_mir::monomorphize::collector::collect_items_rec
+             at src/librustc_mir/monomorphize/collector.rs:371
+  93: rustc_mir::monomorphize::collector::collect_items_rec
+             at src/librustc_mir/monomorphize/collector.rs:381
+  94: rustc_mir::monomorphize::collector::collect_crate_mono_items::{{closure}}::{{closure}}
+             at src/librustc_mir/monomorphize/collector.rs:296
+  95: core::iter::traits::iterator::Iterator::for_each::call::{{closure}}
+             at ./src/libcore/iter/traits/iterator.rs:656
+  96: core::iter::traits::iterator::Iterator::fold::ok::{{closure}}
+             at ./src/libcore/iter/traits/iterator.rs:2000
+  97: core::iter::traits::iterator::Iterator::try_fold
+             at ./src/libcore/iter/traits/iterator.rs:1876
+  98: core::iter::traits::iterator::Iterator::fold
+             at ./src/libcore/iter/traits/iterator.rs:2003
+  99: core::iter::traits::iterator::Iterator::for_each
+             at ./src/libcore/iter/traits/iterator.rs:659
+ 100: rustc_mir::monomorphize::collector::collect_crate_mono_items::{{closure}}
+             at src/librustc_mir/monomorphize/collector.rs:294
+ 101: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at ./src/librustc_data_structures/profiling.rs:518
+ 102: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at ./src/librustc_session/utils.rs:9
+ 103: rustc_mir::monomorphize::collector::collect_crate_mono_items
+             at src/librustc_mir/monomorphize/collector.rs:293
+ 104: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+             at src/librustc_mir/monomorphize/partitioning.rs:868
+ 105: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::collect_and_partition_mono_items>::compute::{{closure}}
+             at ./src/librustc/ty/query/plumbing.rs:951
+ 106: rustc::ty::query::__query_compute::collect_and_partition_mono_items
+             at ./src/librustc/ty/query/plumbing.rs:902
+ 107: rustc::dep_graph::graph::DepGraph::with_task_impl
+             at ./src/librustc/dep_graph/graph.rs:341
+ 108: rustc::dep_graph::graph::DepGraph::with_eval_always_task
+             at ./src/librustc/dep_graph/graph.rs:388
+ 109: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}::{{closure}}
+             at ./src/librustc/ty/query/plumbing.rs:549
+ 110: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at ./src/librustc/ty/query/plumbing.rs:278
+ 111: rustc::ty::context::tls::enter_context::{{closure}}
+             at ./src/librustc/ty/context.rs:1696
+ 112: rustc::ty::context::tls::set_tlv
+             at ./src/librustc/ty/context.rs:1681
+ 113: rustc::ty::context::tls::enter_context
+             at ./src/librustc/ty/context.rs:1696
+ 114: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}
+             at ./src/librustc/ty/query/plumbing.rs:278
+ 115: rustc::ty::context::tls::with_related_context::{{closure}}
+             at ./src/librustc/ty/context.rs:1784
+ 116: rustc::ty::context::tls::with_context::{{closure}}
+             at ./src/librustc/ty/context.rs:1768
+ 117: rustc::ty::context::tls::with_context_opt
+             at ./src/librustc/ty/context.rs:1757
+ 118: rustc::ty::context::tls::with_context
+             at ./src/librustc/ty/context.rs:1768
+ 119: rustc::ty::context::tls::with_related_context
+             at ./src/librustc/ty/context.rs:1781
+ 120: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query
+             at ./src/librustc/ty/query/plumbing.rs:267
+ 121: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}
+             at ./src/librustc/ty/query/plumbing.rs:547
+ 122: rustc::ty::query::plumbing::with_diagnostics
+             at ./src/librustc/ty/query/plumbing.rs:212
+ 123: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job
+             at ./src/librustc/ty/query/plumbing.rs:546
+ 124: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+             at ./src/librustc/ty/query/plumbing.rs:380
+ 125: rustc::ty::query::TyCtxtAt::collect_and_partition_mono_items
+             at ./src/librustc/ty/query/plumbing.rs:1057
+ 126: rustc::ty::query::<impl rustc::ty::context::TyCtxt>::collect_and_partition_mono_items
+             at ./src/librustc/ty/query/plumbing.rs:1020
+ 127: rustc_codegen_ssa::base::codegen_crate
+             at ./src/librustc_codegen_ssa/base.rs:534
+ 128: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_utils::codegen_backend::CodegenBackend>::codegen_crate
+             at src/librustc_codegen_llvm/lib.rs:265
+ 129: rustc_interface::passes::start_codegen::{{closure}}
+             at src/librustc_interface/passes.rs:968
+ 130: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at ./src/librustc_data_structures/profiling.rs:518
+ 131: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at ./src/librustc_session/utils.rs:9
+ 132: rustc_interface::passes::start_codegen
+             at src/librustc_interface/passes.rs:967
+ 133: rustc_interface::queries::Queries::ongoing_codegen::{{closure}}::{{closure}}
+             at src/librustc_interface/queries.rs:280
+ 134: rustc_interface::passes::QueryContext::enter::{{closure}}
+             at src/librustc_interface/passes.rs:701
+ 135: rustc::ty::context::tls::enter_global::{{closure}}
+             at ./src/librustc/ty/context.rs:1719
+ 136: rustc::ty::context::tls::enter_context::{{closure}}
+             at ./src/librustc/ty/context.rs:1696
+ 137: rustc::ty::context::tls::set_tlv
+             at ./src/librustc/ty/context.rs:1681
+ 138: rustc::ty::context::tls::enter_context
+             at ./src/librustc/ty/context.rs:1696
+ 139: rustc::ty::context::tls::enter_global
+             at ./src/librustc/ty/context.rs:1719
+ 140: rustc_interface::passes::QueryContext::enter
+             at src/librustc_interface/passes.rs:701
+ 141: rustc_interface::queries::Queries::ongoing_codegen::{{closure}}
+             at src/librustc_interface/queries.rs:274
+ 142: rustc_interface::queries::Query<T>::compute
+             at src/librustc_interface/queries.rs:33
+ 143: rustc_interface::queries::Queries::ongoing_codegen
+             at src/librustc_interface/queries.rs:272
+ 144: rustc_driver::run_compiler::{{closure}}::{{closure}}
+             at src/librustc_driver/lib.rs:405
+ 145: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+             at ./src/librustc_interface/queries.rs:336
+ 146: rustc_driver::run_compiler::{{closure}}
+             at src/librustc_driver/lib.rs:295
+ 147: rustc_interface::interface::run_compiler_in_existing_thread_pool
+             at ./src/librustc_interface/interface.rs:186
+ 148: rustc_interface::interface::run_compiler::{{closure}}
+             at ./src/librustc_interface/interface.rs:200
+ 149: rustc_interface::util::spawn_thread_pool::{{closure}}::{{closure}}::{{closure}}
+             at ./src/librustc_interface/util.rs:155
+ 150: scoped_tls::ScopedKey<T>::set
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137
+ 151: rustc_interface::util::spawn_thread_pool::{{closure}}::{{closure}}
+             at ./src/librustc_interface/util.rs:151
+ 152: scoped_tls::ScopedKey<T>::set
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137
+ 153: syntax::attr::with_globals::{{closure}}
+             at ./src/libsyntax/attr/mod.rs:44
+ 154: scoped_tls::ScopedKey<T>::set
+             at /home/wesley/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137
+ 155: syntax::attr::with_globals
+             at ./src/libsyntax/attr/mod.rs:44
+ 156: rustc_interface::util::spawn_thread_pool::{{closure}}
+             at ./src/librustc_interface/util.rs:150
+ 157: rustc_interface::util::scoped_thread::{{closure}}
+             at ./src/librustc_interface/util.rs:125
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.42.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z mir-opt-level=2 -Z dump-mir=Inline
+
+query stack during panic:
+#0 [codegen_fulfill_obligation] checking if `std::ops::Fn` fulfills its obligations
+#1 [optimized_mir] processing `async_closure`
+#2 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-MIR, A-mir-opt, C-bug, E-needs-test, F-async_closure, I-ICE, T-compiler, glacier, requires-nightly

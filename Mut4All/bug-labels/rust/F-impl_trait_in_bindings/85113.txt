@@ -1,0 +1,50 @@
+Issue Title:
+ICE with opaque type · Issue #85113 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(min_type_alias_impl_trait)]
+#![feature(impl_trait_in_bindings)]
+
+type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+
+trait Output<'a> {}
+
+impl<'a> Output<'a> for &'a str {}
+
+fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
+    let out: OpaqueOutputImpl<'a> = arg;
+    arg // This was supposed to be `out`
+}
+
+fn main() {
+    let s = String::from("wassup");
+    cool_fn(&s);
+}
+
+Bug Trace:
+error: internal compiler error: member constraint for `DefId(0:5 ~ playground[b426]::OpaqueOutputImpl::{opaque#0})` has an option region `'_#7r` that is not a universal region
+  --> src/main.rs:11:37
+   |
+11 |     let out: OpaqueOutputImpl<'a> = arg;
+   |                                     ^^^
+   |
+   = note: delayed at compiler/rustc_mir/src/borrow_check/region_infer/mod.rs:697:22
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', compiler/rustc_errors/src/lib.rs:1019:13
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/881c1ac408d93bb7adaa3a51dabab9266e82eee8/library/std/src/panicking.rs:493:5
+   1: std::panicking::begin_panic_fmt
+             at /rustc/881c1ac408d93bb7adaa3a51dabab9266e82eee8/library/std/src/panicking.rs:435:5
+   2: rustc_errors::HandlerInner::flush_delayed
+   3: <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop
+   4: core::ptr::drop_in_place<rustc_session::parse::ParseSess>
+   5: <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop
+   6: core::ptr::drop_in_place<rustc_interface::interface::Compiler>
+   7: rustc_span::with_source_map
+   8: rustc_interface::interface::create_compiler_and_run
+   9: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+C-bug, E-needs-test, F-impl_trait_in_bindings, F-type_alias_impl_trait, I-ICE, T-compiler, glacier, requires-nightly

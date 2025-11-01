@@ -1,0 +1,115 @@
+Issue Title:
+rustdoc: ICE: `IndexMap: key not found` · Issue #123370 · rust-lang/rust · GitHub
+
+Rust Code:
+mod foo {
+    pub trait MyTrait<'a> {
+        type MyItem: ?Sized;
+    }
+
+    pub struct Inner<'a, Q, R: ?Sized> {
+        field: Q,
+        field3: &'a u8,
+        my_foo: Foo<Q>,
+        field2: R,
+    }
+
+    pub struct Outer<'a, T, K: ?Sized> {
+        my_inner: Inner<'a, T, K>,
+    }
+
+    pub struct Foo<T> {
+        myfield: T,
+    }
+}
+
+pub use foo::{Foo, Inner as NotInner, MyTrait as NotMyTrait};
+
+unsafe impl<'a, Q, R: ?Sized> Send for NotInner<'static, Q, R>
+where
+    Q: NotMyTrait<'a>,
+    <Q as NotMyTrait<'a>>::MyItem: Copy,
+    R:,
+    Foo<Q>: Send,
+{
+}
+
+Bug Trace:
+thread 'rustc' panicked at src/librustdoc/clean/auto_trait.rs:184:48:
+IndexMap: key not found
+stack backtrace:
+   0:     0x7f682162fab5 - std::backtrace_rs::backtrace::libunwind::trace::hd05a2634679e73ea
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/../../backtrace/src/backtrace/libunwind.rs:105:5
+   1:     0x7f682162fab5 - std::backtrace_rs::backtrace::trace_unsynchronized::h5fa1f43b8bc32308
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f682162fab5 - std::sys_common::backtrace::_print_fmt::h86f89c05b6f3b358
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x7f682162fab5 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h2505421225654434
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f682167ecfb - core::fmt::rt::Argument::fmt::hd5d08d10359ab8fa
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/core/src/fmt/rt.rs:142:9
+   5:     0x7f682167ecfb - core::fmt::write::h781407e40e36fef6
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/core/src/fmt/mod.rs:1153:17
+   6:     0x7f682162469f - std::io::Write::write_fmt::h50b0312535eb923d
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/io/mod.rs:1843:15
+   7:     0x7f682162f88e - std::sys_common::backtrace::_print::h3f029dab9d9de7aa
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7f682162f88e - std::sys_common::backtrace::print::hc75990c3fa14dba3
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7f68216322d9 - std::panicking::default_hook::{{closure}}::h922885e771795d34
+  10:     0x7f6821632043 - std::panicking::default_hook::h21efc43c2afa1a45
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/panicking.rs:291:9
+  11:     0x7f681e00172f - std[375484aa8b2cb50]::panicking::update_hook::<alloc[821ede63e8fc86]::boxed::Box<rustc_driver_impl[e297f741f91ba0d1]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x7f68216329dc - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::hb0e5ac0e6706a4b6
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/alloc/src/boxed.rs:2032:9
+  13:     0x7f68216329dc - std::panicking::rust_panic_with_hook::h59358e2845b89f3e
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/panicking.rs:792:13
+  14:     0x7f6821632786 - std::panicking::begin_panic_handler::{{closure}}::ha78388fd50053ee8
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/panicking.rs:657:13
+  15:     0x7f682162ff79 - std::sys_common::backtrace::__rust_end_short_backtrace::h400d6ca56bf2e416
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/sys_common/backtrace.rs:171:18
+  16:     0x7f68216324b7 - rust_begin_unwind
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/panicking.rs:645:5
+  17:     0x7f682167b196 - core::panicking::panic_fmt::h4de27c9b9b8a08f6
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/core/src/panicking.rs:72:14
+  18:     0x7f682167b34c - core::panicking::panic_display::h8a56a1afc1cad966
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/core/src/panicking.rs:256:5
+  19:     0x7f682167af3c - core::panicking::panic_str::hf2d3ba7e1221bdd0
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/core/src/panicking.rs:231:5
+  20:     0x7f682167af3c - core::option::expect_failed::he4f5d9a9b6b14a09
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/core/src/option.rs:1994:5
+  21:     0x622f17c7088f - rustdoc[7a4e3bff3e63d75b]::clean::auto_trait::clean_param_env::{closure#4}::{closure#0}
+  22:     0x622f17a5ff50 - <&rustc_middle[727f51790fc507aa]::ty::list::List<rustc_middle[727f51790fc507aa]::ty::generic_args::GenericArg> as rustc_type_ir[7b89237c9ae2d317]::fold::TypeFoldable<rustc_middle[727f51790fc507aa]::ty::context::TyCtxt>>::try_fold_with::<rustc_middle[727f51790fc507aa]::ty::fold::RegionFolder>
+  23:     0x622f17c6f5ac - rustdoc[7a4e3bff3e63d75b]::clean::auto_trait::clean_param_env
+  24:     0x622f17c6b46a - rustdoc[7a4e3bff3e63d75b]::clean::auto_trait::synthesize_auto_trait_impl
+  25:     0x622f17b2fde9 - rustdoc[7a4e3bff3e63d75b]::clean::utils::get_auto_trait_and_blanket_impls
+  26:     0x622f17c3fdda - <rustdoc[7a4e3bff3e63d75b]::passes::collect_trait_impls::SyntheticImplCollector as rustdoc[7a4e3bff3e63d75b]::visit::DocVisitor>::visit_item
+  27:     0x622f17c4011a - <rustdoc[7a4e3bff3e63d75b]::passes::collect_trait_impls::SyntheticImplCollector as rustdoc[7a4e3bff3e63d75b]::visit::DocVisitor>::visit_item
+  28:     0x622f17c4011a - <rustdoc[7a4e3bff3e63d75b]::passes::collect_trait_impls::SyntheticImplCollector as rustdoc[7a4e3bff3e63d75b]::visit::DocVisitor>::visit_item
+  29:     0x622f17c3c8ed - rustdoc[7a4e3bff3e63d75b]::passes::collect_trait_impls::collect_trait_impls
+  30:     0x622f17b60fbf - rustdoc[7a4e3bff3e63d75b]::core::run_global_ctxt
+  31:     0x622f17a68f8f - <rustc_middle[727f51790fc507aa]::ty::context::GlobalCtxt>::enter::<rustdoc[7a4e3bff3e63d75b]::main_args::{closure#1}::{closure#0}::{closure#0}, core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>>::{closure#1}
+  32:     0x622f17a733df - rustc_interface[7e80a97f5ffe3188]::interface::run_compiler::<core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>, rustdoc[7a4e3bff3e63d75b]::main_args::{closure#1}>::{closure#0}
+  33:     0x622f17a3fa71 - std[375484aa8b2cb50]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[7e80a97f5ffe3188]::util::run_in_thread_with_globals<rustc_interface[7e80a97f5ffe3188]::util::run_in_thread_pool_with_globals<rustc_interface[7e80a97f5ffe3188]::interface::run_compiler<core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>, rustdoc[7a4e3bff3e63d75b]::main_args::{closure#1}>::{closure#0}, core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>>::{closure#0}, core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>>
+  34:     0x622f17a7c871 - <<std[375484aa8b2cb50]::thread::Builder>::spawn_unchecked_<rustc_interface[7e80a97f5ffe3188]::util::run_in_thread_with_globals<rustc_interface[7e80a97f5ffe3188]::util::run_in_thread_pool_with_globals<rustc_interface[7e80a97f5ffe3188]::interface::run_compiler<core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>, rustdoc[7a4e3bff3e63d75b]::main_args::{closure#1}>::{closure#0}, core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>>::{closure#0}, core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[80fc1acd563ed540]::result::Result<(), rustc_span[dfd9a8dc472d1c23]::ErrorGuaranteed>>::{closure#1} as core[80fc1acd563ed540]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  35:     0x7f682163c3fb - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::ha59513463fcdfaa7
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/alloc/src/boxed.rs:2018:9
+  36:     0x7f682163c3fb - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hb36d526b5b46b238
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/alloc/src/boxed.rs:2018:9
+  37:     0x7f682163c3fb - std::sys::pal::unix::thread::Thread::new::thread_start::h5fc6bcaedcf9c5fc
+                               at /rustc/5dbaafdb9305df5332157e74eaaa55c615aa489f/library/std/src/sys/pal/unix/thread.rs:108:17
+  38:     0x7f681adbb55a - <unknown>
+  39:     0x7f681ae38a3c - <unknown>
+  40:                0x0 - <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md
+
+note: please attach the file at `/tmp/im/rustc-ice-2024-04-02T15_57_23-2945492.txt` to your bug report
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+A-auto-traits, A-synthetic-impls, C-bug, I-ICE, T-rustdoc

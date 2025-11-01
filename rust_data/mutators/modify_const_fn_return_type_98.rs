@@ -1,0 +1,34 @@
+use crate::mutator::Mutator;
+use syn::{Item, ReturnType, Type, TypeParamBound, PathArguments};
+use proc_macro2::Ident;
+
+pub struct Modify_Const_Fn_Return_Type_98;
+
+impl Mutator for Modify_Const_Fn_Return_Type_98 {
+    fn name(&self) -> &str {
+        "Modify_Const_Fn_Return_Type_98"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let Item::Fn(func) = item {
+                if func.sig.constness.is_some() {
+                    if let ReturnType::Type(_, ref mut ty) = func.sig.output {
+                        if let Type::ImplTrait(ref mut impl_trait) = **ty {
+                            for bound in impl_trait.bounds.iter_mut() {
+                                if let TypeParamBound::Trait(trait_bound) = bound {
+                                    if let Some(ref mut path) = trait_bound.path.segments.last_mut() {
+                                        path.ident = Ident::new("ConstTrait", path.ident.span());
+                                        path.arguments = PathArguments::None;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "This mutation operator targets const functions with complex return types involving traits. By modifying the return type to include a non-existent trait like 'ConstTrait', it introduces potential type resolution errors. This mutation aims to explore how the Rust compiler handles such erroneous constructs, potentially revealing issues in type resolution or parsing."
+    }
+}

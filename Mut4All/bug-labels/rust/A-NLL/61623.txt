@@ -1,0 +1,123 @@
+Issue Title:
+rustc panic due to reference passed instead of mut reference · Issue #61623 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::collections::HashMap;
+use std::marker::PhantomData;
+use std::str::FromStr;
+
+struct Value<'a, T : FromStr + ToString + Clone, P : HasTree> {
+    subkey : String,
+    parent : &'a mut P,
+    default : T,
+    phantom : PhantomData<T>
+}
+
+pub trait HasTree {
+    fn get_tree(&mut self) -> &mut Tree;
+}
+
+impl<'a, T : FromStr + ToString + Clone, P : HasTree> Value<'a, T, P> {
+    fn from (subkey : String, parent : &'a mut P, default : T) -> Value<'a, T, P> {
+        Value {
+            subkey : subkey,
+            parent : parent,
+            default : default,
+            phantom : PhantomData {}
+        }
+    }
+
+    fn get(&self) -> T {
+        let default = || { self.default.clone() };
+        self.parent.get_tree().enter(&self.subkey).map_or_else(default, |subkey|
+            subkey.data.as_ref().map_or_else(default, |str|
+            str.parse::<T>().ok().unwrap_or_else(default)))
+    }
+}
+
+
+#[derive(Clone)]
+pub struct Tree {
+    branches : HashMap<String, Tree>,
+    pub data : Option<String>
+}
+
+impl Tree {
+    pub fn new() -> Tree {
+        Tree {
+            branches : HashMap::new(),
+            data : None
+        }
+    }
+
+    fn enter(&self, s : &String) -> Option<&Tree> {
+        self.branches.get(s)
+    }
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+thread 'rustc' panicked at 'no entry found for key', src/libcore/option.rs:1036:5
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.29/src/backtrace/libunwind.rs:88
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.29/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:47
+   3: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:36
+   4: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   5: std::panicking::default_hook
+             at src/libstd/panicking.rs:212
+   6: rustc::util::common::panic_hook
+   7: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:479
+   8: std::panicking::continue_panic_fmt
+             at src/libstd/panicking.rs:382
+   9: rust_begin_unwind
+             at src/libstd/panicking.rs:309
+  10: core::panicking::panic_fmt
+             at src/libcore/panicking.rs:85
+  11: core::option::expect_failed
+             at src/libcore/option.rs:1036
+  12: rustc_mir::borrow_check::path_utils::each_borrow_involving_path
+  13: rustc_mir::borrow_check::MirBorrowckCtxt::access_place
+  14: ::visit_statement_entry
+  15: rustc_mir::borrow_check::do_mir_borrowck
+  16: rustc::ty::context::GlobalCtxt::enter_local
+  17: rustc_mir::borrow_check::mir_borrowck
+  18: rustc::ty::query::__query_compute::mir_borrowck
+  19: rustc::ty::query::::compute
+  20: rustc::dep_graph::graph::DepGraph::with_task_impl
+  21: rustc::ty::query::plumbing::::get_query
+  22: rustc::ty::::par_body_owners
+  23: rustc::util::common::time
+  24: rustc_interface::passes::analysis
+  25: rustc::ty::query::__query_compute::analysis
+  26: rustc::dep_graph::graph::DepGraph::with_task_impl
+  27: rustc::ty::query::plumbing::::get_query
+  28: rustc::ty::context::tls::enter_global
+  29: rustc_interface::passes::BoxedGlobalCtxt::access::{{closure}}
+  30: rustc_interface::passes::create_global_ctxt::{{closure}}
+  31: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  32: std::thread::local::LocalKey::with
+  33: scoped_tls::ScopedKey::set
+  34: syntax::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+query stack during panic:
+#0 [mir_borrowck] processing `Value::<'a, T, P>::get`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: internal compiler error: unexpected panic
+note: the compiler unexpectedly panicked. this is a bug.
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+note: rustc 1.37.0-nightly (5eeb567a2 2019-06-06) running on x86_64-unknown-linux-gnu
+note: compiler flags: -C codegen-units=1 -C debuginfo=2 --crate-type lib
+note: some of the compiler flags provided by cargo are hidden
+error: Could not compile playground.
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-NLL, C-bug, I-ICE, P-high, T-compiler, regression-from-stable-to-stable

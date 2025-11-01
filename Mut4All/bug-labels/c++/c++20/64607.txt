@@ -1,0 +1,33 @@
+Issue Title:
+Clang crashes with requires expression in lambda in concept constraints
+
+Source Code & Bug Trace:
+template<typename T> concept doesnt_matter = true;
+
+template<class T>
+concept test = 
+    []{
+        return requires(T t) {
+            { t } -> doesnt_matter;
+        };
+    }();
+
+static_assert(test<int>);
+
+#include <concepts>
+#include <type_traits>
+#include <utility>
+#include <tuple>
+
+template<class T>
+concept tuple_like = 
+    [] <std::size_t...I> (std::index_sequence<I...>) {
+        return ((requires(T t) {
+                    { std::get<I>(t) } -> std::convertible_to<std::tuple_element_t<I, T>&>;
+                }) && ...);
+    } (std::make_index_sequence<std::tuple_size_v<T>>{});
+
+static_assert(tuple_like<std::tuple<int>>);
+
+Bug Labels:
+c++20, clang:frontend, concepts, confirmed, crash

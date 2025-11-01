@@ -1,0 +1,99 @@
+Issue Title:
+[libclang] clangd-14 regression: segfault parsing cuda requires on defaulted argument with deduced type
+
+Source Code & Bug Trace:
+#include <type_traits>
+
+template <typename _Callable>
+struct _RangeAdaptor {
+    _RangeAdaptor(const _Callable& = {}) requires std::is_default_constructible_v<_Callable> {
+    }
+};
+
+template <typename _Callable>
+struct _RangeAdaptorClosure :  _RangeAdaptor<_Callable> {
+    using _RangeAdaptor<_Callable>::_RangeAdaptor;
+};
+
+template <typename _Callable>
+_RangeAdaptorClosure(_Callable) -> _RangeAdaptorClosure<_Callable>;
+
+_RangeAdaptorClosure crash = []{};
+
+CompileFlags:
+  Add: ["--std=c++20"]
+
+I[23:33:15.054] Ubuntu clangd version 14.0.0-++20220316013304+add3ab7f4c8a-1~exp1~20220316133356.105
+I[23:33:15.054] Features: linux
+I[23:33:15.054] PID: 2854488
+I[23:33:15.054] Working directory: /tmp
+I[23:33:15.054] argv[0]: clangd-14
+I[23:33:15.054] argv[1]: -log=verbose
+I[23:33:15.054] argv[2]: --check=/tmp/t.cu
+V[23:33:15.054] User config file is /home/u/.config/clangd/config.yaml
+I[23:33:15.054] Entering check mode (no LSP server)
+I[23:33:15.054] Testing on source file /tmp/t.cu
+V[23:33:15.054] config note at /tmp/.clangd:1:0: Parsing config fragment
+V[23:33:15.055] config note at /tmp/.clangd:1:0: Parsed 1 fragments from file
+V[23:33:15.055] Config fragment: compiling /tmp/.clangd:1 -> 0x0000000001621B30 (trusted=false)
+I[23:33:15.055] Loading compilation database...
+I[23:33:15.055] Failed to find compilation database for /tmp/t.cu
+I[23:33:15.055] Generic fallback command is: /usr/bin/clang --std=c++20 -resource-dir=/usr/lib/llvm-14/lib/clang/14.0.0 -- /tmp/t.cu
+I[23:33:15.055] Parsing command...
+V[23:33:15.056] Ignored diagnostic. CUDA version is newer than the latest supported version 11.5
+I[23:33:15.056] internal (cc1) args are: -cc1 -triple x86_64-pc-linux-gnu -target-sdk-version=11.5 -aux-triple nvptx64-nvidia-cuda -fsyntax-only -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name t.cu -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -fcoverage-compilation-dir=/tmp -resource-dir /usr/lib/llvm-14/lib/clang/14.0.0 -internal-isystem /usr/lib/llvm-14/lib/clang/14.0.0/include/cuda_wrappers -include __clang_cuda_runtime_wrapper.h -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/x86_64-linux-gnu/c++/10 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/backward -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/x86_64-linux-gnu/c++/10 -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/backward -internal-isystem /usr/lib/llvm-14/lib/clang/14.0.0/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -internal-isystem /usr/lib/llvm-14/lib/clang/14.0.0/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib/gcc/x86_64-linux-gnu/10/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -internal-isystem /usr/local/cuda/include --std=c++20 -fdeprecated-macro -fdebug-compilation-dir=/tmp -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -cuid=b16119e00140480d -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -x cuda /tmp/t.cu
+I[23:33:15.057] Building preamble...
+I[23:33:15.327] Indexing headers...
+V[23:33:15.394] indexed preamble AST for /tmp/t.cu version null:
+  symbol slab: 8827 symbols, 3474738 bytes
+  ref slab: 0 symbols, 0 refs, 128 bytes
+  relations slab: 154 relations, 4376 bytes
+V[23:33:15.433] Build dynamic index for header symbols with estimated memory usage of 7289916 bytes
+V[23:33:15.435] Built preamble of size 5328456 for file /tmp/t.cu version null
+I[23:33:15.436] Building AST...
+ #0 0x00007fdfc8c178e1 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/lib/x86_64-linux-gnu/libLLVM-14.so.1+0xe3c8e1)
+ #1 0x00007fdfc8c155fc llvm::sys::RunSignalHandlers() (/lib/x86_64-linux-gnu/libLLVM-14.so.1+0xe3a5fc)
+ #2 0x00007fdfc8c17e1b (/lib/x86_64-linux-gnu/libLLVM-14.so.1+0xe3ce1b)
+ #3 0x00007fdfd1e733c0 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x143c0)
+ #4 0x00007fdfcf2d5800 clang::FunctionDecl::hasOneParamOrDefaultArgs() const (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xc5c800)
+ #5 0x00007fdfcf2fe596 clang::CXXConstructorDecl::isCopyOrMoveConstructor(unsigned int&) const (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xc85596)
+ #6 0x00007fdfcf7a25bf clang::Sema::checkTypeSupport(clang::QualType, clang::SourceLocation, clang::ValueDecl*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x11295bf)
+ #7 0x00007fdfcfa29c43 clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x13b0c43)
+ #8 0x00007fdfcfa35edb clang::Sema::BuildDeclarationNameExpr(clang::CXXScopeSpec const&, clang::DeclarationNameInfo const&, clang::NamedDecl*, clang::NamedDecl*, clang::TemplateArgumentListInfo const*, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x13bcedb)
+ #9 0x00007fdfcfe40772 (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x17c7772)
+#10 0x00007fdfcfe3653c (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x17bd53c)
+#11 0x00007fdfcfe28d9a clang::Sema::SubstExpr(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x17afd9a)
+#12 0x00007fdfcf8d0c2f (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x1257c2f)
+#13 0x00007fdfcf8cba66 clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::ArrayRef<clang::TemplateArgument>, clang::SourceRange, clang::ConstraintSatisfaction&) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x1252a66)
+#14 0x00007fdfcf8cc60b clang::Sema::CheckFunctionConstraints(clang::FunctionDecl const*, clang::ConstraintSatisfaction&, clang::SourceLocation) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x125360b)
+#15 0x00007fdfcfcc7f58 clang::Sema::AddOverloadCandidate(clang::FunctionDecl*, clang::DeclAccessPair, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, bool, clang::CallExpr::ADLCallKind, llvm::MutableArrayRef<clang::ImplicitConversionSequence>, clang::OverloadCandidateParamOrder) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x164ef58)
+#16 0x00007fdfcfbe6831 clang::Sema::LookupSpecialMember(clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, bool, bool, bool, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x156d831)
+#17 0x00007fdfcf8ddb7d clang::Sema::inferCUDATargetForImplicitSpecialMember(clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, clang::CXXMethodDecl*, bool, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x1264b7d)
+#18 0x00007fdfcf9a1977 clang::Sema::DeclareImplicitDefaultConstructor(clang::CXXRecordDecl*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x1328977)
+#19 0x00007fdfcf9a0d21 clang::Sema::AddImplicitlyDeclaredMembersToClass(clang::CXXRecordDecl*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x1327d21)
+#20 0x00007fdfcf920611 clang::Sema::ActOnFields(clang::Scope*, clang::SourceLocation, clang::Decl*, llvm::ArrayRef<clang::Decl*>, clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributesView const&) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x12a7611)
+#21 0x00007fdfcfe2b265 clang::Sema::InstantiateClass(clang::SourceLocation, clang::CXXRecordDecl*, clang::CXXRecordDecl*, clang::MultiLevelTemplateArgumentList const&, clang::TemplateSpecializationKind, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x17b2265)
+#22 0x00007fdfcfe2d04e clang::Sema::InstantiateClassTemplateSpecialization(clang::SourceLocation, clang::ClassTemplateSpecializationDecl*, clang::TemplateSpecializationKind, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x17b404e)
+#23 0x00007fdfcfed52ae (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x185c2ae)
+#24 0x00007fdfcf79c9dc clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x11239dc)
+#25 0x00007fdfcfec8650 clang::Sema::RequireCompleteTypeImpl(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x184f650)
+#26 0x00007fdfcfec7df2 clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, clang::Sema::TypeDiagnoser&) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x184edf2)
+#27 0x00007fdfcfec8d7e clang::Sema::RequireCompleteType(clang::SourceLocation, clang::QualType, clang::Sema::CompleteTypeKind, unsigned int) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x184fd7e)
+#28 0x00007fdfcf90de75 clang::Sema::AddInitializerToDecl(clang::Decl*, clang::Expr*, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x1294e75)
+#29 0x00007fdfcf0980b0 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xa1f0b0)
+#30 0x00007fdfcf09525f clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xa1c25f)
+#31 0x00007fdfcf13c7db clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xac37db)
+#32 0x00007fdfcf13c290 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xac3290)
+#33 0x00007fdfcf13b70a clang::Parser::ParseExternalDeclaration(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xac270a)
+#34 0x00007fdfcf139d4d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xac0d4d)
+#35 0x00007fdfcf07cd0d clang::ParseAST(clang::Sema&, bool, bool) (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0xa03d0d)
+#36 0x00007fdfd0b92117 clang::FrontendAction::Execute() (/lib/x86_64-linux-gnu/libclang-cpp.so.14+0x2519117)
+#37 0x0000000000708de2 (/usr/lib/llvm-14/bin/clangd+0x708de2)
+#38 0x000000000052ec66 (/usr/lib/llvm-14/bin/clangd+0x52ec66)
+#39 0x0000000000523a7e (/usr/lib/llvm-14/bin/clangd+0x523a7e)
+#40 0x00007fdfc78bf0b3 __libc_start_main /build/glibc-sMfBJT/glibc-2.31/csu/../csu/libc-start.c:342:3
+#41 0x0000000000472a5e (/usr/lib/llvm-14/bin/clangd+0x472a5e)
+
+
+Bug Labels:
+clang:frontend, crash, cuda

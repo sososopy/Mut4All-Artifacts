@@ -1,0 +1,78 @@
+Issue Title:
+ICE: borrowck `best_blame_constraint` unwrap on a `None` value, `OpaqueTypeKey { def_id...` / `None` in `compiler/rustc_borrowck/src/region_infer/mod.rs ` · Issue #133252 · rust-lang/rust · GitHub
+
+Rust Code:
+//@compile-flags: --edition=2024
+trait Owned: 'static {}
+fn ice() -> impl Future<Output = &'static dyn Owned> {
+    async {
+        let not_static = 0;
+        force_send(async_load(&not_static));
+        loop {}
+    }
+}
+fn force_send<T: Send>(_: T) {}
+fn async_load<'a, T: LoadQuery<'a>>(this: T) -> impl Future {
+    async {
+        this.get_future().await;
+    }
+}
+
+trait LoadQuery<'a>: Sized {
+    type LoadFuture: Future;
+
+    fn get_future(self) -> Self::LoadFuture {
+        loop {}
+    }
+}
+
+impl<'a> LoadQuery<'a> for &'a u8 {
+    type LoadFuture = ();
+}
+
+Bug Trace:
+stack backtrace:
+   0: _rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic
+   3: core::option::unwrap_failed
+   4: <rustc_borrowck::region_infer::RegionInferenceContext>::best_blame_constraint::<<rustc_borrowck::MirBorrowckCtxt>::free_region_constraint_info::{closure#0}>
+   5: <rustc_borrowck::MirBorrowckCtxt>::explain_why_borrow_contains_point
+   6: <rustc_borrowck::MirBorrowckCtxt>::report_borrowed_value_does_not_live_long_enough
+   7: rustc_borrowck::path_utils::each_borrow_involving_path::<<rustc_borrowck::MirBorrowckCtxt>::check_access_for_conflict::{closure#1}, <rustc_borrowck::MirBorrowckCtxt>::check_access_for_conflict::{closure#0}, rustc_borrowck::MirBorrowckCtxt>
+   8: <rustc_borrowck::MirBorrowckCtxt>::access_place
+   9: <rustc_borrowck::MirBorrowckCtxt as rustc_mir_dataflow::framework::visitor::ResultsVisitor<rustc_borrowck::dataflow::BorrowckResults>>::visit_terminator_before_primary_effect
+  10: <rustc_mir_dataflow::framework::direction::Forward as rustc_mir_dataflow::framework::direction::Direction>::visit_results_in_block::<rustc_borrowck::dataflow::BorrowckFlowState, rustc_borrowck::dataflow::BorrowckResults, rustc_borrowck::MirBorrowckCtxt>
+  11: rustc_mir_dataflow::framework::visitor::visit_results::<rustc_borrowck::dataflow::BorrowckFlowState, rustc_borrowck::dataflow::BorrowckResults, core::iter::adapters::map::Map<core::iter::adapters::map::Map<core::slice::iter::Iter<rustc_middle::mir::BasicBlock>, rustc_middle::mir::traversal::reverse_postorder::{closure#0}>, rustc_borrowck::do_mir_borrowck::{closure#2}>, rustc_borrowck::MirBorrowckCtxt>
+  12: rustc_borrowck::do_mir_borrowck
+  13: rustc_borrowck::mir_borrowck
+      [... omitted 2 frames ...]
+  14: <rustc_borrowck::type_check::TypeChecker>::prove_closure_bounds
+  15: <rustc_borrowck::type_check::TypeChecker>::check_rvalue
+  16: <rustc_borrowck::type_check::TypeChecker>::typeck_mir
+  17: rustc_borrowck::type_check::type_check
+  18: rustc_borrowck::nll::compute_regions
+  19: rustc_borrowck::do_mir_borrowck
+  20: rustc_borrowck::mir_borrowck
+      [... omitted 2 frames ...]
+  21: rustc_hir_analysis::collect::type_of::opaque::find_opaque_ty_constraints_for_rpit
+      [... omitted 2 frames ...]
+  22: rustc_middle::query::plumbing::query_get_at::<rustc_query_system::query::caches::DefIdCache<rustc_middle::query::erase::Erased<[u8; 8]>>>
+  23: rustc_hir_analysis::collect::type_of::type_of
+      [... omitted 2 frames ...]
+  24: rustc_hir_analysis::check::check::check_item_type
+  25: rustc_hir_analysis::check::wfcheck::check_well_formed
+      [... omitted 2 frames ...]
+  26: <rustc_data_structures::sync::parallel::ParallelGuard>::run::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_data_structures::sync::parallel::disabled::try_par_for_each_in<&[rustc_hir::hir::ImplItemId], rustc_span::ErrorGuaranteed, <rustc_middle::hir::ModuleItems>::par_impl_items<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure#1}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>
+  27: rustc_hir_analysis::check::wfcheck::check_mod_type_wf
+      [... omitted 2 frames ...]
+  28: <rustc_data_structures::sync::parallel::ParallelGuard>::run::<(), rustc_data_structures::sync::parallel::disabled::par_for_each_in<&[rustc_hir::hir_id::OwnerId], <rustc_middle::hir::map::Map>::par_for_each_module<rustc_hir_analysis::check_crate::{closure#0}::{closure#0}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>
+  29: rustc_hir_analysis::check_crate
+  30: rustc_interface::passes::analysis
+      [... omitted 2 frames ...]
+  31: <rustc_middle::ty::context::GlobalCtxt>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+  32: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+  33: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+
+Bug Labels:
+A-borrow-checker, A-edition-2024, C-bug, I-ICE, S-bug-has-test, S-has-mcve, T-compiler

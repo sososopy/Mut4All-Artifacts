@@ -1,0 +1,211 @@
+Issue Title:
+ICE on Current Stable · Issue #84073 · rust-lang/rust · GitHub
+
+Rust Code:
+pub struct RaceFuture<T, F, S, G, U>
+    where F: StatefulFuture<Option<T>, S>,
+          G: Future<Output = Option<U>>,
+{
+    inner: F,
+    future: G,
+    event: fn(&mut S, U) -> T,
+}
+
+impl<T, F, S, G, U> StatefulFuture<Option<T>, S> for RaceFuture<T, F, S, G, U>
+    where F: StatefulFuture<Option<T>, S>,
+          G: Future<Output = Option<U>>,
+{
+    fn poll(&mut self, cx: &mut Context<'_>, state: &mut S) -> Poll<Option<T>> {
+        Poll::Pending // FIXME
+    }
+}
+
+pub trait StatefulFuture<T, S> {
+    fn poll(&mut self, cx: &mut Context<'_>, state: &mut S) -> Poll<T>;
+}
+
+pub struct Never<T, S>(PhantomData<(T, S)>);
+
+impl<T, S> StatefulFuture<T, S> for Never<T, S> {
+    fn poll(&mut self, cx: &mut Context<'_>, state: &mut S) -> Poll<T> {
+        Poll::Pending
+    }
+}
+
+/// Race builder.  Add tasks by calling `when()`.
+pub struct RaceBuilder<T, F, S>
+    where F: StatefulFuture<Option<T>, S>
+{
+    future: F,
+    _phantom: PhantomData<(S, T)>,
+}
+
+impl<T, F, S> RaceBuilder<T, F, S>
+    where F: StatefulFuture<Option<T>, S>
+{
+    pub fn when<U, G>(self, future: G, event: fn(&mut S, U) -> T)
+            -> RaceBuilder<T, RaceFuture<T, F, S, G, U>, S>
+        where G: Future<Output = Option<U>>,
+    {
+        RaceBuilder {
+            future: RaceFuture {
+                inner: self.future, future, event
+            },
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// A future that returns a closure for the first completed future.
+#[derive(Debug)]
+pub struct Race<'a, T, S, R, F>
+    where R: Fn(RaceBuilder<T, Never<T, S>, S>, &mut S) -> RaceBuilder<T, F, S>,
+          F: StatefulFuture<Option<T>, S>,
+{
+    state: &'a mut S,
+    race: R,
+    _phantom: PhantomData<(T, F)>,
+}
+
+impl<'a, T, S, R, F> Race<'a, T, S, R, F>
+    where R: Fn(RaceBuilder<T, Never<T, S>, S>, &mut S) -> RaceBuilder<T, F, S>,
+          F: StatefulFuture<Option<T>, S>,
+{
+    pub fn new(state: &'a mut S, race: R) -> Self {
+        Self { state, race, _phantom: PhantomData }
+    }
+}
+
+impl<T, S, R, F> Future for Race<'_, T, S, R, F>
+    where R: Fn(RaceBuilder<T, Never<T, S>, S>, &mut S) -> RaceBuilder<T, F, S>,
+          F: StatefulFuture<Option<T>, S>,
+{
+    type Output = T;
+    
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        Poll::Pending // FIXME
+    }
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_trait_selection/src/traits/select/mod.rs:1793:17: Impl DefId(51:74 ~ pasts[9c70]::race::{impl#1}) was matchable against Obligation(predicate=Binder(TraitPredicate(<pasts::race::Never<_, State> as pasts::race::StatefulFuture<std::option::Option<_>, State>>)), depth=0) but now is not
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/2fd73fabe469357a12c2c974c140f67e7cdd76d0/library/std/src/panic.rs:59:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_infer::infer::InferCtxt::commit_unconditionally
+   8: rustc_trait_selection::traits::select::confirmation::<impl rustc_trait_selection::traits::select::SelectionContext>::confirm_candidate
+   9: rustc_trait_selection::traits::select::SelectionContext::select
+  10: rustc_trait_selection::traits::fulfill::FulfillProcessor::process_trait_obligation
+  11: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  12: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  13: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_vars_with_obligations
+  14: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_method_argument_types
+  15: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  16: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  17: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  18: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  19: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  20: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  21: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  22: rustc_typeck::check::check::check_fn
+  23: rustc_typeck::check::closure::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_closure
+  24: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  25: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  26: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_argument_types
+  27: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::confirm_builtin_call
+  28: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  29: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  30: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  31: rustc_typeck::check::_match::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::demand_scrutinee_type
+  32: rustc_typeck::check::_match::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_match
+  33: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  34: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  35: rustc_typeck::check::_match::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::demand_scrutinee_type
+  36: rustc_typeck::check::_match::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_match
+  37: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  38: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  39: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  40: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  41: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  42: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  43: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  44: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  45: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  46: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  47: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  48: rustc_typeck::check::check::check_fn
+  49: rustc_typeck::check::closure::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_closure
+  50: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  51: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  52: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_argument_types
+  53: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::confirm_builtin_call
+  54: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  55: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  56: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  57: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  58: rustc_typeck::check::check::check_fn
+  59: rustc_infer::infer::InferCtxtBuilder::enter
+  60: rustc_typeck::check::typeck
+  61: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  62: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  63: rustc_data_structures::stack::ensure_sufficient_stack
+  64: rustc_query_system::query::plumbing::force_query_with_job
+  65: rustc_query_system::query::plumbing::get_query_impl
+  66: rustc_middle::ty::context::TyCtxt::typeck_opt_const_arg
+  67: rustc_infer::infer::InferCtxtBuilder::enter
+  68: rustc_mir_build::build::mir_built
+  69: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_built>::compute
+  70: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  71: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  72: rustc_data_structures::stack::ensure_sufficient_stack
+  73: rustc_query_system::query::plumbing::force_query_with_job
+  74: rustc_query_system::query::plumbing::get_query_impl
+  75: rustc_mir::transform::check_unsafety::unsafety_check_result
+  76: core::ops::function::FnOnce::call_once
+  77: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  78: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  79: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  80: rustc_data_structures::stack::ensure_sufficient_stack
+  81: rustc_query_system::query::plumbing::force_query_with_job
+  82: rustc_query_system::query::plumbing::force_query_impl
+  83: rustc_middle::dep_graph::dep_node::dep_kind::unsafety_check_result::force_from_dep_node
+  84: rustc_query_system::dep_graph::graph::DepGraph<K>::try_mark_previous_green
+  85: rustc_query_system::dep_graph::graph::DepGraph<K>::try_mark_previous_green
+  86: rustc_query_system::dep_graph::graph::DepGraph<K>::try_mark_previous_green
+  87: rustc_query_system::dep_graph::graph::DepGraph<K>::try_mark_green_and_read
+  88: rustc_data_structures::stack::ensure_sufficient_stack
+  89: rustc_query_system::query::plumbing::get_query_impl
+  90: rustc_typeck::collect::type_of::type_of
+  91: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::type_of>::compute
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.51.0 (2fd73fabe 2021-03-23) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck] type-checking `run`
+#1 [mir_built] building MIR for `run`
+#2 [unsafety_check_result] unsafety-checking `run`
+#3 [mir_borrowck] borrow-checking `run`
+#4 [type_of] computing type of `run::{opaque#0}`
+#5 [check_mod_item_types] checking item types in top-level module
+#6 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-trait-system, C-bug, I-ICE, T-compiler, glacier

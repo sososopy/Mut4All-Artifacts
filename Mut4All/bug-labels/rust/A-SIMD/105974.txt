@@ -1,0 +1,130 @@
+Issue Title:
+ICE: `Unexpected types for BinOp: i32 Add f32'` during const eval, simd / platform intrinsics · Issue #105974 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(repr_simd, platform_intrinsics)]
+#![allow(non_camel_case_types)]
+
+#[repr(simd)]
+#[derive(Copy, Clone)]
+pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
+
+#[repr(simd)]
+#[derive(Copy, Clone)]
+pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
+
+
+extern "platform-intrinsic" {
+    fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
+}
+
+fn main() {
+    let z = f32x4(0.0, 0.0, 0.0, 0.0);
+
+    unsafe {
+        simd_reduce_add_ordered(z, 0);
+    }
+}
+
+Bug Trace:
+Preparing a sysroot for Miri (target: x86_64-unknown-linux-gnu)... done
+WARNING: Ignoring `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `/home/matthias/.rustup/toolchains/master/bin/cargo-miri runner target/miri/x86_64-unknown-linux-gnu/debug/l`
+thread 'rustc' panicked at 'Unexpected types for BinOp: i32 Add f32', /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/compiler/rustc_const_eval/src/interpret/operator.rs:356:17
+stack backtrace:
+   0:     0x7fd72f565a7a - std::backtrace_rs::backtrace::libunwind::trace::h675f1ceb153ea7ae
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7fd72f565a7a - std::backtrace_rs::backtrace::trace_unsynchronized::hb49ecb27b3f21616
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7fd72f565a7a - std::sys_common::backtrace::_print_fmt::heed8017caffdd7be
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/sys_common/backtrace.rs:65:5
+   3:     0x7fd72f565a7a - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h3894bf63bbd3123e
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7fd72f5c87ae - core::fmt::write::he7f57c8e5422bc28
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/core/src/fmt/mod.rs:1208:17
+   5:     0x7fd72f555e45 - std::io::Write::write_fmt::h6ba59abf267eeb64
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/io/mod.rs:1682:15
+   6:     0x7fd72f565845 - std::sys_common::backtrace::_print::hce22f76c6561fbb7
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/sys_common/backtrace.rs:47:5
+   7:     0x7fd72f565845 - std::sys_common::backtrace::print::h643226e6044a7d8b
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/sys_common/backtrace.rs:34:9
+   8:     0x7fd72f56858f - std::panicking::default_hook::{{closure}}::h07ffa697a6219d7f
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/panicking.rs:267:22
+   9:     0x7fd72f5682cb - std::panicking::default_hook::hef8af9e242fe6c62
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/panicking.rs:286:9
+  10:     0x7fd732837ec1 - rustc_driver[d7be8f11e105c0f0]::DEFAULT_HOOK::{closure#0}::{closure#0}
+  11:     0x7fd72f568dcd - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h29fb01ab60f84c8e
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/alloc/src/boxed.rs:2032:9
+  12:     0x7fd72f568dcd - std::panicking::rust_panic_with_hook::he2ea406e87ab35d7
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/panicking.rs:692:13
+  13:     0x7fd72f568b49 - std::panicking::begin_panic_handler::{{closure}}::hde5a31e2eb3df269
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/panicking.rs:579:13
+  14:     0x7fd72f565f2c - std::sys_common::backtrace::__rust_end_short_backtrace::h985bac594543f953
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/sys_common/backtrace.rs:137:18
+  15:     0x7fd72f568852 - rust_begin_unwind
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/panicking.rs:575:5
+  16:     0x7fd72f5c5193 - core::panicking::panic_fmt::h5db2becac776eeb8
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/core/src/panicking.rs:64:14
+  17:     0x55723a1a92ed - <rustc_const_eval[b02055f297dad764]::interpret::eval_context::InterpCx<miri[847ce3eb8ca6ac8b]::machine::MiriMachine>>::overflowing_binary_op
+  18:     0x55723a1aa60a - <rustc_const_eval[b02055f297dad764]::interpret::eval_context::InterpCx<miri[847ce3eb8ca6ac8b]::machine::MiriMachine>>::binary_op
+  19:     0x55723a1dc9be - <rustc_const_eval[b02055f297dad764]::interpret::eval_context::InterpCx<miri[847ce3eb8ca6ac8b]::machine::MiriMachine> as miri[847ce3eb8ca6ac8b]::shims::intrinsics::simd::EvalContextExt>::emulate_simd_intrinsic
+  20:     0x55723a185929 - <rustc_const_eval[b02055f297dad764]::interpret::eval_context::InterpCx<miri[847ce3eb8ca6ac8b]::machine::MiriMachine>>::eval_fn_call
+  21:     0x55723a1bb088 - <rustc_const_eval[b02055f297dad764]::interpret::eval_context::InterpCx<miri[847ce3eb8ca6ac8b]::machine::MiriMachine> as miri[847ce3eb8ca6ac8b]::concurrency::thread::EvalContextExt>::run_threads
+  22:     0x55723a266e7d - miri[847ce3eb8ca6ac8b]::eval::eval_entry
+  23:     0x55723a0c20e4 - <rustc_interface[1151441b26fe27c4]::passes::QueryContext>::enter::<<miri[c97a8f71cae8150d]::MiriCompilerCalls as rustc_driver[d7be8f11e105c0f0]::Callbacks>::after_analysis::{closure#0}, ()>
+  24:     0x55723a0c7263 - <miri[c97a8f71cae8150d]::MiriCompilerCalls as rustc_driver[d7be8f11e105c0f0]::Callbacks>::after_analysis
+  25:     0x7fd731ae7981 - <rustc_interface[1151441b26fe27c4]::interface::Compiler>::enter::<rustc_driver[d7be8f11e105c0f0]::run_compiler::{closure#1}::{closure#2}, core[c1c11602ca27bace]::result::Result<core[c1c11602ca27bace]::option::Option<rustc_interface[1151441b26fe27c4]::queries::Linker>, rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>>
+  26:     0x7fd731ae2978 - rustc_span[dbf0d871ebdcd257]::with_source_map::<core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>, rustc_interface[1151441b26fe27c4]::interface::run_compiler<core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>, rustc_driver[d7be8f11e105c0f0]::run_compiler::{closure#1}>::{closure#0}::{closure#0}>
+  27:     0x7fd731ae2465 - <scoped_tls[2b67eac439d2d2c5]::ScopedKey<rustc_span[dbf0d871ebdcd257]::SessionGlobals>>::set::<rustc_interface[1151441b26fe27c4]::interface::run_compiler<core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>, rustc_driver[d7be8f11e105c0f0]::run_compiler::{closure#1}>::{closure#0}, core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>>
+  28:     0x7fd731ae1a52 - std[88850a980e0de7b4]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[1151441b26fe27c4]::util::run_in_thread_pool_with_globals<rustc_interface[1151441b26fe27c4]::interface::run_compiler<core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>, rustc_driver[d7be8f11e105c0f0]::run_compiler::{closure#1}>::{closure#0}, core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>>
+  29:     0x7fd7320fa19a - <<std[88850a980e0de7b4]::thread::Builder>::spawn_unchecked_<rustc_interface[1151441b26fe27c4]::util::run_in_thread_pool_with_globals<rustc_interface[1151441b26fe27c4]::interface::run_compiler<core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>, rustc_driver[d7be8f11e105c0f0]::run_compiler::{closure#1}>::{closure#0}, core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[c1c11602ca27bace]::result::Result<(), rustc_errors[9d192be5a1a3a729]::ErrorGuaranteed>>::{closure#1} as core[c1c11602ca27bace]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  30:     0x7fd72f572dc3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h52d93a0f91af410d
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/alloc/src/boxed.rs:2000:9
+  31:     0x7fd72f572dc3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h59c4f45bc7a03c07
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/alloc/src/boxed.rs:2000:9
+  32:     0x7fd72f572dc3 - std::sys::unix::thread::Thread::new::thread_start::h3b75c683c379ccb2
+                               at /rustc/65bd2a6a73d6a74fb1266a1d96b23de8810a5fb2/library/std/src/sys/unix/thread.rs:108:17
+  33:     0x7fd72f21d8fd - <unknown>
+  34:     0x7fd72f29fa60 - <unknown>
+  35:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.68.0-nightly (65bd2a6a7 2022-12-20) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED] -C target-cpu=native
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+
+Miri caused an ICE during evaluation. Here's the interpreter backtrace at the time of the panic:
+note: the place in the program where the ICE was triggered
+  --> src/main.rs:21:9
+   |
+21 |         simd_reduce_add_ordered(z, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inside `main` at src/main.rs:21:9: 21:38
+   = note: inside `<fn() as std::ops::FnOnce<()>>::call_once - shim(fn())` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/core/src/ops/function.rs:507:5: 507:71
+   = note: inside `std::sys_common::backtrace::__rust_begin_short_backtrace::<fn(), ()>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/sys_common/backtrace.rs:121:18: 121:21
+   = note: inside closure at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/rt.rs:166:18: 166:82
+   = note: inside `std::ops::function::impls::<impl std::ops::FnOnce<()> for &dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>::call_once` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/core/src/ops/function.rs:606:13: 606:31
+   = note: inside `std::panicking::r#try::do_call::<&dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe, i32>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/panicking.rs:483:40: 483:43
+   = note: inside `std::panicking::r#try::<i32, &dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/panicking.rs:447:19: 447:81
+   = note: inside `std::panic::catch_unwind::<&dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe, i32>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/panic.rs:137:14: 137:33
+   = note: inside closure at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/rt.rs:148:48: 148:73
+   = note: inside `std::panicking::r#try::do_call::<[closure@std::rt::lang_start_internal::{closure#2}], isize>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/panicking.rs:483:40: 483:43
+   = note: inside `std::panicking::r#try::<isize, [closure@std::rt::lang_start_internal::{closure#2}]>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/panicking.rs:447:19: 447:81
+   = note: inside `std::panic::catch_unwind::<[closure@std::rt::lang_start_internal::{closure#2}], isize>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/panic.rs:137:14: 137:33
+   = note: inside `std::rt::lang_start_internal` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/rt.rs:148:20: 148:98
+   = note: inside `std::rt::lang_start::<()>` at /home/matthias/.rustup/toolchains/master/lib/rustlib/src/rust/library/std/src/rt.rs:165:17: 170:6
+
+Bug Labels:
+A-SIMD, A-const-eval, A-intrinsics, A-miri, A-target-feature, C-bug, I-ICE, T-compiler, requires-nightly

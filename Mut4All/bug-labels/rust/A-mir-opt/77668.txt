@@ -1,0 +1,92 @@
+Issue Title:
+ice with -Zmir-opt-level=2  issue-50865-private-impl-trait/auxiliary/lib.rs · Issue #77668 · rust-lang/rust · GitHub
+
+Rust Code:
+#![crate_type = "lib"]
+
+pub fn bar<P>( // Error won't happen if "bar" is not generic
+    _baz: P,
+) {
+    hide_foo()();
+}
+
+fn hide_foo() -> impl Fn() { // Error won't happen if "iterate" hasn't impl Trait or has generics
+    foo
+}
+
+fn foo() { // Error won't happen if "foo" isn't used in "iterate" or has generics
+}
+
+Bug Trace:
+error: internal compiler error: Encountered error `Unimplemented` selecting `Binder(<impl std::ops::Fn<()> as std::ops::Fn<()>>)` during codegen
+  |
+  = note: delayed at compiler/rustc_trait_selection/src/traits/codegen/mod.rs:65:32
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', compiler/rustc_errors/src/lib.rs:961:13
+stack backtrace:
+   0:     0x7f0f02a6f0b0 - std::backtrace_rs::backtrace::libunwind::trace::h622bab51c72c4e69
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/../../backtrace/src/backtrace/libunwind.rs:96
+   1:     0x7f0f02a6f0b0 - std::backtrace_rs::backtrace::trace_unsynchronized::h7e820b882ebd41ee
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/../../backtrace/src/backtrace/mod.rs:66
+   2:     0x7f0f02a6f0b0 - std::sys_common::backtrace::_print_fmt::h64d46258114db92f
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/sys_common/backtrace.rs:79
+   3:     0x7f0f02a6f0b0 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h47111d0c1b5f0da5
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/sys_common/backtrace.rs:58
+   4:     0x7f0f02ade07c - core::fmt::write::h1857a60b204f1b6a
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/core/src/fmt/mod.rs:1080
+   5:     0x7f0f02a61052 - std::io::Write::write_fmt::h4604516fed3e5731
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/io/mod.rs:1516
+   6:     0x7f0f02a73e7d - std::sys_common::backtrace::_print::h785e7a78d5ef272c
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/sys_common/backtrace.rs:61
+   7:     0x7f0f02a73e7d - std::sys_common::backtrace::print::h108047ac5c4555d5
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/sys_common/backtrace.rs:48
+   8:     0x7f0f02a73e7d - std::panicking::default_hook::{{closure}}::h1d0c271f0d087ebf
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/panicking.rs:208
+   9:     0x7f0f02a73b28 - std::panicking::default_hook::h692753e26f11b7b7
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/panicking.rs:227
+  10:     0x7f0f033013e8 - rustc_driver::report_ice::h767ab601e5f63209
+  11:     0x7f0f02a746c6 - std::panicking::rust_panic_with_hook::h74ddc20305301cd9
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/panicking.rs:581
+  12:     0x7f0f02a74249 - std::panicking::begin_panic_handler::{{closure}}::h1a9ca6427ceee1d0
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/panicking.rs:484
+  13:     0x7f0f02a6f54c - std::sys_common::backtrace::__rust_end_short_backtrace::h97e27b7ab754adde
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/sys_common/backtrace.rs:153
+  14:     0x7f0f02a74209 - rust_begin_unwind
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/panicking.rs:483
+  15:     0x7f0f02a741bb - std::panicking::begin_panic_fmt::h45d0f154d1dd3395
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/panicking.rs:437
+  16:     0x7f0f0631d281 - rustc_errors::HandlerInner::flush_delayed::h4e44ea29efc5a508
+  17:     0x7f0f06319be1 - <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop::hc2218eb325dc8425
+  18:     0x7f0f0334ed76 - core::ptr::drop_in_place::he652386dc31d9e30
+  19:     0x7f0f03350bc6 - <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop::h60c7e2432b201062
+  20:     0x7f0f0332a6fd - core::ptr::drop_in_place::h2f4d4236293b18c7
+  21:     0x7f0f03324dea - rustc_span::with_source_map::h23e56868796f6dc3
+  22:     0x7f0f03359ed2 - rustc_interface::interface::create_compiler_and_run::h9a8debbb19483b80
+  23:     0x7f0f03338d0a - scoped_tls::ScopedKey<T>::set::hacc47b1cdb25a215
+  24:     0x7f0f0335c611 - std::sys_common::backtrace::__rust_begin_short_backtrace::h3d5db7946c19f316
+  25:     0x7f0f032da18e - core::ops::function::FnOnce::call_once{{vtable.shim}}::he1a30fa4d30a2178
+  26:     0x7f0f02a82fda - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::h588ce842808b3fd0
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/alloc/src/boxed.rs:1042
+  27:     0x7f0f02a82fda - <alloc::boxed::Box<F> as core::ops::function::FnOnce<A>>::call_once::h46bc655f05471a92
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/alloc/src/boxed.rs:1042
+  28:     0x7f0f02a82fda - std::sys::unix::thread::Thread::new::thread_start::hb4b79d379b730058
+                               at /rustc/98edd1fbf8a68977a2a7c1312eb1ebff80515a92/library/std/src/sys/unix/thread.rs:87
+  29:     0x7f0f0297f3e9 - start_thread
+  30:     0x7f0f0289c293 - __GI___clone
+  31:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.49.0-nightly (98edd1fbf 2020-10-06) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z mir-opt-level=2
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+A-mir-opt, C-bug, E-needs-test, I-ICE, T-compiler, requires-nightly

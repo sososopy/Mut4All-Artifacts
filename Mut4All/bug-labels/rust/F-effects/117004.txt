@@ -1,0 +1,72 @@
+Issue Title:
+ice: calling ~const trait method in non const fn raises no host param id · Issue #117004 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_trait_impl, effects)]
+
+#[const_trait]
+pub trait Stone {
+    type Recorded: Copy;
+
+    fn get_record(&self) -> Self::Recorded;
+}
+
+pub struct Wall<T: Stone>(T::Recorded);
+
+pub struct Brick;
+
+impl const Stone for Brick {
+    type Recorded = i32;
+    
+    fn get_record(&self) -> i32 {
+        0
+    }
+}
+
+impl<T: ~const Stone> Wall<T> {
+    fn new(value: T) -> Self {
+        Self(value.get_record())
+    }
+}
+
+fn main() {
+    let _ = Wall::new(Brick);
+}
+
+Bug Trace:
+0: <rustc_errors::HandlerInner>::emit_diagnostic
+             1: <rustc_session::session::Session>::delay_span_bug::<rustc_span::span_encoding::Span, &str>
+             2: <rustc_ast_lowering::LoweringContext>::lower_qpath
+             3: <rustc_ast_lowering::LoweringContext>::lower_param_bounds
+             4: <rustc_ast_lowering::LoweringContext>::lower_item_kind
+             5: <rustc_ast_lowering::item::ItemLowerer>::lower_node
+             6: rustc_ast_lowering::lower_to_hir
+             7: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::hir_crate::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+             8: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+             9: rustc_query_impl::query_impl::hir_crate::get_query_non_incr::__rust_end_short_backtrace
+            10: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::hir_attrs::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+            11: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_hir::hir_id::OwnerId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+            12: rustc_query_impl::query_impl::hir_attrs::get_query_non_incr::__rust_end_short_backtrace
+            13: <rustc_middle::hir::map::Map>::attrs
+            14: rustc_passes::entry::entry_fn
+            15: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::entry_fn::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 12]>>
+            16: <rustc_query_impl::query_impl::entry_fn::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, ())>>::call_once
+            17: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 12]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+            18: rustc_query_impl::query_impl::entry_fn::get_query_non_incr::__rust_end_short_backtrace
+            19: rustc_interface::passes::analysis
+            20: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 1]>>
+            21: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, false>
+            22: rustc_query_impl::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+            23: std::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+            24: <<std::thread::Builder>::spawn_unchecked_<rustc_interface::util::run_in_thread_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#1} as core::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+            25: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                       at /rustc/4578435e1695863d921c7763d5a0add98f8e3869/library/alloc/src/boxed.rs:2007:9
+            26: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                       at /rustc/4578435e1695863d921c7763d5a0add98f8e3869/library/alloc/src/boxed.rs:2007:9
+            27: std::sys::unix::thread::Thread::new::thread_start
+                       at /rustc/4578435e1695863d921c7763d5a0add98f8e3869/library/std/src/sys/unix/thread.rs:108:17
+            28: start_thread
+            29: clone
+
+Bug Labels:
+C-bug, F-const_trait_impl, F-effects, I-ICE, T-compiler

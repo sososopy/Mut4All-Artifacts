@@ -1,0 +1,98 @@
+Issue Title:
+NLL mode causes ICE (region_obligations not empty) · Issue #51771 · rust-lang/rust · GitHub
+
+Rust Code:
+#![no_std]
+#![feature(nll)]
+
+#[cfg(not(feature="no-stdlib"))]
+extern crate std;
+use core::default::Default;
+pub use core::ops::IndexMut;
+pub use core::ops::Index;
+pub use core::ops::Range;
+pub trait SliceWrapper<T> {
+    fn slice(& self) -> & [T];
+    fn len(&self) -> usize{
+        self.slice().len()
+    }
+}
+
+pub trait SliceWrapperMut<T> : SliceWrapper<T> {
+  fn slice_mut (&mut self) -> & mut [T];
+}
+
+pub trait AllocatedSlice<T>
+    : SliceWrapperMut<T> + SliceWrapper<T> + Default {
+}
+
+impl<T, U> AllocatedSlice<T> for U where U : SliceWrapperMut<T> + SliceWrapper<T> + Default {
+
+}
+
+
+pub struct AllocatedStackMemory<'a, T:'a> {
+    pub mem : &'a mut [T],
+}
+
+macro_rules! define_index_ops_mut {
+
+    ($T0: ident, $T:ident, $MemoryType:ty) => {
+        impl<'a, $T> ::core::ops::Index<usize> for $MemoryType
+        {
+            type Output = T;
+
+            #[inline]
+            fn index(&self, index: usize) -> &Self::Output {
+                ::core::ops::Index::index(&**self, index)
+            }
+        }
+        
+        impl<'a, $T> ::core::ops::IndexMut<usize> for $MemoryType
+        {
+            #[inline]
+            fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+                ::core::ops::IndexMut::index_mut(&mut **self, index)
+            }
+        }
+        
+        
+
+
+        impl<'a, $T> ::core::ops::Deref for $MemoryType {
+            type Target = [T];
+            
+            fn deref(&self) -> &[T] {
+                self.slice()
+            }
+        }
+        impl<'a, $T> ::core::ops::DerefMut for $MemoryType {
+            fn deref_mut(&mut self) -> &mut [T] {
+                self.slice_mut()
+            }
+        }
+    }
+}
+define_index_ops_mut!(a, T, AllocatedStackMemory<'a, T>);
+
+impl<'a, T: 'a> core::default::Default for AllocatedStackMemory<'a, T> {
+    fn default() -> Self {
+        return AllocatedStackMemory::<'a, T>{mem : &mut[]};
+    }
+}
+
+
+impl<'a, T: 'a> SliceWrapper<T> for AllocatedStackMemory<'a, T> {
+    fn slice(& self) -> & [T] {
+        return & self.mem;
+    }
+}
+
+impl<'a, T: 'a> SliceWrapperMut<T> for AllocatedStackMemory<'a, T> {
+    fn slice_mut(& mut self) ->& mut [T] {
+        return &mut self.mem;
+    }
+}
+
+Bug Labels:
+A-NLL, I-ICE

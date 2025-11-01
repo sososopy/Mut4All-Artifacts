@@ -1,0 +1,34 @@
+Mutation Operator: Modify Pattern Matching in `match` Statements
+
+Target: `match` statements in Rust code
+
+Purpose: This mutation operator modifies pattern matching constructs within `match` statements, specifically targeting patterns involving ranges and bindings, to potentially trigger compiler bugs related to pattern exhaustiveness and unreachable patterns.
+
+Mutation Rule:
+1. Identify `match` statements with complex patterns, especially those using ranges or pattern bindings.
+2. For each pattern in the `match` statement:
+   a. If the pattern includes a range (e.g., `1..`, `..=-1`), attempt to replace it with a single value or an inclusive range that overlaps with existing patterns.
+   b. If the pattern uses a binding (e.g., `FOO_REF_REF`), replace it with an explicit value or another literal that could cause overlap or redundancy with other patterns.
+3. Ensure the modified pattern still covers some values but intentionally create overlaps or unreachable patterns to increase the chances of triggering compiler warnings or errors.
+
+Example:
+Original Code:
+```rust
+match (99, 0i8) {
+    FOO_REF_REF => {}
+    (1.., ..=-34665) | (..=-1, 1..) => {}
+}
+```
+
+Mutated Code:
+```rust
+match (99, 0i8) {
+    (10, 0) => {}
+    (0..=100, ..=-34665) | (..=-1, 1..) => {}
+}
+```
+
+Explanation:
+- The original pattern `FOO_REF_REF` is replaced with an explicit tuple `(10, 0)`.
+- The range `1..` is mutated to `0..=100` to create potential pattern overlap or redundancy.
+- The aim is to generate scenarios where patterns have overlapping values or become unreachable, potentially causing the compiler to emit warnings or encounter edge cases leading to internal compiler errors.

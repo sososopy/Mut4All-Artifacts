@@ -1,0 +1,65 @@
+Issue Title:
+ICE when using "Generic Associated Types" feature with references for impl block · Issue #80433 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(generic_associated_types)]
+
+#[derive(Default)]
+struct E<T> {
+    data: T,
+}
+
+trait TestMut {
+    type Output<'a>;
+    fn test_mut<'a>(&'a mut self) -> Self::Output<'a>;
+}
+
+impl<T> TestMut for E<T>
+where
+    T: 'static,
+{
+    type Output<'a> = &'a mut T;
+    fn test_mut<'a>(&'a mut self) -> Self::Output<'a> {
+        &mut self.data
+    }
+}
+
+fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
+{
+    for n in 0i16..100 {
+        *dst.test_mut() = n.into();
+    }
+}
+
+fn main() {
+    let mut t1: E<f32> = Default::default();
+    test_simpler(&mut t1);
+}
+
+Bug Trace:
+0:        0x1107200dc - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::ha6f5ddd5259d3e16
+   1:        0x110784c8d - core::fmt::write::hefe95a44532fe6ed
+   2:        0x110711e86 - std::io::Write::write_fmt::hf513c99961415bff
+   3:        0x110723d89 - std::panicking::default_hook::{{closure}}::h70a3a940826edea5
+   4:        0x110723910 - std::panicking::default_hook::h9520f36dd50be056
+   5:        0x108cb1458 - rustc_driver::report_ice::h64178aa7cd01307c
+   6:        0x11072456e - std::panicking::rust_panic_with_hook::h102f8bee4e0ef4c7
+   7:        0x110724075 - std::panicking::begin_panic_handler::{{closure}}::hb72eee9aad2e147c
+   8:        0x110720598 - std::sys_common::backtrace::__rust_end_short_backtrace::h372ff87ecb2667f3
+   9:        0x110723fda - _rust_begin_unwind
+  10:        0x1107ab27b - std::panicking::begin_panic_fmt::hf0e714fa3e981e6e
+  11:        0x10d3472a6 - rustc_errors::HandlerInner::flush_delayed::he9da53448a9bd660
+  12:        0x10d3434eb - <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop::h44af1dc5df0a1fa4
+  13:        0x108ccba5a - core::ptr::drop_in_place::hd03156b954b70984
+  14:        0x108ccefb8 - <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop::hd4c9eabf652375d9
+  15:        0x108cc8112 - core::ptr::drop_in_place::h83698f86dd7e4a49
+  16:        0x108cb3ab1 - rustc_span::with_source_map::hb3cfcc431ed11000
+  17:        0x108ce7694 - rustc_interface::interface::create_compiler_and_run::he8e7b2281c1964ad
+  18:        0x108cbff94 - std::sys_common::backtrace::__rust_begin_short_backtrace::h9bf0a320b59d4a76
+  19:        0x108c56799 - core::ops::function::FnOnce::call_once{{vtable.shim}}::hb43737fa064e4b63
+  20:        0x11073150d - std::sys::unix::thread::Thread::new::thread_start::h93dd3097fa4fa219
+  21:     0x7fff20358950 - __pthread_start
+
+Bug Labels:
+A-GATs, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier, requires-nightly

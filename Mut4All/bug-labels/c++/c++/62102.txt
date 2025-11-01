@@ -1,0 +1,84 @@
+Issue Title:
+[clang] Invalid cast assertion in clang::Sema::PrintInstantiationStack()
+
+Source Code & Bug Trace:
+template <typename> struct S {};
+template <typename T, typename U> constexpr bool operator==(S<T>, S<U> x) {
+  return 0 == x;
+}
+
+struct E {
+  friend bool operator==(const E&, const E&);
+  S<int> s;
+};
+bool operator==(const E&, const E&) = default;
+
+$ clang -cc1 -triple x86_64-unknown-linux-gnu -fsyntax-only -std=c++20 /tmp/a.cc
+/tmp/a.cc:3:12: error: invalid operands to binary expression ('int' and 'S<int>')
+  return 0 == x;
+         ~ ^  ~
+/tmp/a.cc:10:35: note: in instantiation of function template specialization 'operator==<int, int>' requested here
+bool operator==(const E&, const E&) = default;
+                                  ^
+clang: /work/llvm-project/llvm/include/llvm/Support/Casting.h:579: decltype(auto) llvm::cast(From *) [To = clang::CXXRecordDecl, From = clang::DeclContext]: Assertion `isa<To>(Val) && "cast<Ty>() argument of incompatible type!"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: build/bin/clang -cc1 -triple x86_64-unknown-linux-gnu -fsyntax-only -std=c++20 /tmp/a.cc
+1.      <eof> parser at end of file
+2.      /tmp/a.cc:2:50: instantiating function definition 'operator==<int, int>'
+ #0 0x0000559070d83ad8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (build/bin/clang+0x34dcad8)
+ #1 0x0000559070d8177e llvm::sys::RunSignalHandlers() (build/bin/clang+0x34da77e)
+ #2 0x0000559070d8415d SignalHandler(int) Signals.cpp:0:0
+ #3 0x00007fc45685af90 (/lib/x86_64-linux-gnu/libc.so.6+0x3bf90)
+ #4 0x00007fc4568a9ccc __pthread_kill_implementation ./nptl/pthread_kill.c:44:76
+ #5 0x00007fc45685aef2 raise ./signal/../sysdeps/posix/raise.c:27:6
+ #6 0x00007fc456845472 abort ./stdlib/abort.c:81:7
+ #7 0x00007fc456845395 _nl_load_domain ./intl/loadmsgcat.c:1177:9
+ #8 0x00007fc456853df2 (/lib/x86_64-linux-gnu/libc.so.6+0x34df2)
+ #9 0x000055907365af60 clang::Sema::PrintInstantiationStack() (build/bin/clang+0x5db3f60)
+#10 0x0000559072df38cc clang::Sema::EmitCurrentDiagnostic(unsigned int) (build/bin/clang+0x554c8cc)
+#11 0x0000559072df47d7 clang::Sema::ImmediateDiagBuilder::~ImmediateDiagBuilder() (build/bin/clang+0x554d7d7)
+#12 0x0000559072df4948 clang::Sema::SemaDiagnosticBuilder::~SemaDiagnosticBuilder() (build/bin/clang+0x554d948)
+#13 0x00005590730f0e58 clang::Sema::InvalidOperands(clang::SourceLocation, clang::ActionResult<clang::Expr*, true>&, clang::ActionResult<clang::Expr*, true>&) (build/bin/clang+0x5849e58)
+#14 0x00005590730f94eb clang::Sema::CheckCompareOperands(clang::ActionResult<clang::Expr*, true>&, clang::ActionResult<clang::Expr*, true>&, clang::SourceLocation, clang::BinaryOperatorKind) (build/bin/clang+0x58524eb)
+#15 0x00005590730de72e clang::Sema::CreateBuiltinBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::Expr*, clang::Expr*) (build/bin/clang+0x583772e)
+#16 0x000055907347f926 clang::Sema::CreateOverloadedBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, clang::Expr*, bool, bool, clang::FunctionDecl*) (build/bin/clang+0x5bd8926)
+#17 0x0000559073677368 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::RebuildCXXOperatorCallExpr(clang::OverloadedOperatorKind, clang::SourceLocation, clang::Expr*, clang::Expr*, clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#18 0x000055907366cfdd clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXOperatorCallExpr(clang::CXXOperatorCallExpr*) SemaTemplateInstantiate.cpp:0:0
+#19 0x0000559073693d45 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) SemaTemplateInstantiate.cpp:0:0
+#20 0x0000559073681d26 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#21 0x0000559073662ab3 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (build/bin/clang+0x5dbbab3)
+#22 0x00005590736bbae7 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (build/bin/clang+0x5e14ae7)
+#23 0x0000559073200aaa void llvm::function_ref<void ()>::callback_fn<clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool)::$_0>(long) SemaExpr.cpp:0:0
+#24 0x0000559072ded3af clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (build/bin/clang+0x55463af)
+#25 0x000055907310a99a clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) (build/bin/clang+0x586399a)
+#26 0x000055907310fd06 MarkExprReferenced(clang::Sema&, clang::SourceLocation, clang::Decl*, clang::Expr*, bool, llvm::DenseMap<clang::VarDecl const*, int, llvm::DenseMapInfo<clang::VarDecl const*, void>, llvm::detail::DenseMapPair<clang::VarDecl const*, int>>&) SemaExpr.cpp:0:0
+#27 0x00005590730cf98b clang::Sema::MarkDeclRefReferenced(clang::DeclRefExpr*, clang::Expr const*) (build/bin/clang+0x582898b)
+#28 0x000055907347e39e CreateFunctionRefExpr(clang::Sema&, clang::FunctionDecl*, clang::NamedDecl*, clang::Expr const*, bool, clang::SourceLocation, clang::DeclarationNameLoc const&) SemaOverload.cpp:0:0
+#29 0x000055907347febe clang::Sema::CreateOverloadedBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, clang::Expr*, bool, bool, clang::FunctionDecl*) (build/bin/clang+0x5bd8ebe)
+#30 0x0000559073051bf6 (anonymous namespace)::DefaultedComparisonSynthesizer::visitExpandedSubobject(clang::QualType, std::pair<clang::ActionResult<clang::Expr*, true>, clang::ActionResult<clang::Expr*, true>>) SemaDeclCXX.cpp:0:0
+#31 0x0000559073051a19 (anonymous namespace)::DefaultedComparisonVisitor<(anonymous namespace)::DefaultedComparisonSynthesizer, (anonymous namespace)::StmtListResult, clang::ActionResult<clang::Stmt*, true>, std::pair<clang::ActionResult<clang::Expr*, true>, clang::ActionResult<clang::Expr*, true>>>::visitSubobjects((anonymous namespace)::StmtListResult&, clang::CXXRecordDecl*, clang::Qualifiers) SemaDeclCXX.cpp:0:0
+#32 0x00005590730220e0 (anonymous namespace)::DefaultedComparisonSynthesizer::build() SemaDeclCXX.cpp:0:0
+#33 0x0000559073021d12 clang::Sema::DefineDefaultedComparison(clang::SourceLocation, clang::FunctionDecl*, clang::Sema::DefaultedComparisonKind) (build/bin/clang+0x577ad12)
+#34 0x0000559073040de6 clang::Sema::SetDeclDefaulted(clang::Decl*, clang::SourceLocation) (build/bin/clang+0x5799de6)
+#35 0x0000559072cc4c2f clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (build/bin/clang+0x541dc2f)
+#36 0x0000559072ce1f6f clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (build/bin/clang+0x543af6f)
+#37 0x0000559072cc3b17 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (build/bin/clang+0x541cb17)
+#38 0x0000559072cc33f1 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (build/bin/clang+0x541c3f1)
+#39 0x0000559072cc23ae clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (build/bin/clang+0x541b3ae)
+#40 0x0000559072cc025e clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (build/bin/clang+0x541925e)
+#41 0x0000559072cbadce clang::ParseAST(clang::Sema&, bool, bool) (build/bin/clang+0x5413dce)
+#42 0x00005590716c734f clang::FrontendAction::Execute() (build/bin/clang+0x3e2034f)
+#43 0x000055907163a38d clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (build/bin/clang+0x3d9338d)
+#44 0x000055907179815e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (build/bin/clang+0x3ef115e)
+#45 0x000055906e9f2d6d cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (build/bin/clang+0x114bd6d)
+#46 0x000055906e9eeb6e ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#47 0x000055906e9ed783 clang_main(int, char**, llvm::ToolContext const&) (build/bin/clang+0x1146783)
+#48 0x000055906e9fe821 main (build/bin/clang+0x1157821)
+#49 0x00007fc45684618a __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#50 0x00007fc456846245 call_init ./csu/../csu/libc-start.c:128:20
+#51 0x00007fc456846245 __libc_start_main ./csu/../csu/libc-start.c:368:5
+#52 0x000055906e9eabaa _start (build/bin/clang+0x1143baa)
+
+Bug Labels:
+c++, clang:frontend, confirmed, crash-on-invalid

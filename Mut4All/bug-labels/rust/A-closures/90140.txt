@@ -1,0 +1,110 @@
+Issue Title:
+ICE: `cargo fix --edition` could not fully normalize `Iterator::Item` · Issue #90140 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::iter::Empty;
+
+struct Foo<I: Iterator> {
+    data: Vec<I::Item>,
+}
+
+pub fn foo() {
+    let v = Foo::<Empty<()>> { data: vec![] };
+
+    (|| v.data[0])();
+}
+
+Bug Trace:
+Migrating src/lib.rs from 2018 edition to 2021
+error: internal compiler error: compiler/rustc_traits/src/normalize_erasing_regions.rs:54:32: could not fully normalize `<<I as std::iter::Iterator>::Item as std::iter::Iterator>::Item`
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1147:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_infer::infer::InferCtxtBuilder::enter
+   8: core::ops::function::FnOnce::call_once
+   9: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  10: rustc_data_structures::stack::ensure_sufficient_stack
+  11: rustc_query_system::query::plumbing::try_execute_query
+  12: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::normalize_generic_arg_after_erasing_regions
+  13: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  14: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::normalize_erasing_regions
+  15: <rustc_ty_utils::needs_drop::NeedsDropTypes<F> as core::iter::traits::iterator::Iterator>::next
+  16: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  17: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  18: core::iter::adapters::process_results
+  19: rustc_ty_utils::needs_drop::adt_significant_drop_tys
+  20: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  21: rustc_data_structures::stack::ensure_sufficient_stack
+  22: rustc_query_system::query::plumbing::try_execute_query
+  23: rustc_query_system::query::plumbing::get_query
+  24: rustc_ty_utils::needs_drop::has_significant_drop_raw
+  25: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  26: rustc_data_structures::stack::ensure_sufficient_stack
+  27: rustc_query_system::query::plumbing::try_execute_query
+  28: rustc_query_system::query::plumbing::get_query
+  29: rustc_middle::ty::util::<impl rustc_middle::ty::TyS>::has_significant_drop
+  30: rustc_typeck::check::upvar::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::analyze_closure
+  31: <rustc_typeck::check::upvar::InferBorrowKindVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  32: rustc_hir::intravisit::walk_expr
+  33: rustc_hir::intravisit::walk_stmt
+  34: rustc_hir::intravisit::walk_block
+  35: rustc_hir::intravisit::walk_body
+  36: rustc_infer::infer::InferCtxtBuilder::enter
+  37: rustc_typeck::check::typeck
+  38: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  39: rustc_data_structures::stack::ensure_sufficient_stack
+  40: rustc_query_system::query::plumbing::try_execute_query
+  41: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  42: rustc_typeck::check::typeck
+  43: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  44: rustc_data_structures::stack::ensure_sufficient_stack
+  45: rustc_query_system::query::plumbing::try_execute_query
+  46: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  47: rustc_middle::hir::map::Map::par_body_owners
+  48: rustc_typeck::check::typeck_item_bodies
+  49: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  50: rustc_data_structures::stack::ensure_sufficient_stack
+  51: rustc_query_system::query::plumbing::try_execute_query
+  52: rustc_query_system::query::plumbing::get_query
+  53: rustc_session::utils::<impl rustc_session::session::Session>::time
+  54: rustc_typeck::check_crate
+  55: rustc_interface::passes::analysis
+  56: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  57: rustc_data_structures::stack::ensure_sufficient_stack
+  58: rustc_query_system::query::plumbing::try_execute_query
+  59: rustc_query_system::query::plumbing::get_query
+  60: rustc_interface::passes::QueryContext::enter
+  61: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  62: rustc_span::with_source_map
+  63: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (efd048394 2021-10-20) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [normalize_generic_arg_after_erasing_regions] normalizing `<<I as core::iter::traits::iterator::Iterator>::Item as core::iter::traits::iterator::Iterator>::Item`
+#1 [adt_significant_drop_tys] computing when `Foo` has a significant destructor
+#2 [has_significant_drop_raw] computing whether `Foo<core::iter::sources::empty::Empty<()>>` has a significant drop
+#3 [typeck] type-checking `foo`
+#4 [typeck] type-checking `foo::{closure#0}`
+#5 [typeck_item_bodies] type-checking all item bodies
+#6 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-closures, A-edition-2021, C-bug, I-ICE, T-compiler

@@ -1,0 +1,172 @@
+Issue Title:
+ICE: `cycle detected when computing function signature of` · Issue #125512 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(object_safe_for_dispatch)]
+trait B {
+    fn f(a: A) -> A;
+}
+trait A {
+    fn concrete(b: B) -> B;
+}
+fn main() {}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zunstable-options --edition=2024
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zunstable-options --edition=2024
+
+Bug Trace:
+warning: trait `B` is never used
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:2:7
+  |
+2 | trait B {
+  |       ^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: trait `A` is never used
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:5:7
+  |
+5 | trait A {
+  |       ^
+
+warning: 2 warnings emitted
+
+note: no errors encountered even though delayed bugs were created
+
+note: those delayed bugs will now be shown as internal compiler errors
+
+error: internal compiler error[E0391]: cycle detected when computing function signature of `B::f`
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:3:5
+  |
+3 |     fn f(a: A) -> A;
+  |     ^^^^^^^^^^^^^^^^
+  |
+note: ...which requires checking if trait `A` is object safe...
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:5:1
+  |
+5 | trait A {
+  | ^^^^^^^
+note: ...which requires determining object safety of trait `A`...
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:5:1
+  |
+5 | trait A {
+  | ^^^^^^^
+note: ...which requires computing function signature of `A::concrete`...
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:6:5
+  |
+6 |     fn concrete(b: B) -> B;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires checking if trait `B` is object safe...
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:2:1
+  |
+2 | trait B {
+  | ^^^^^^^
+note: ...which requires determining object safety of trait `B`...
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:2:1
+  |
+2 | trait B {
+  | ^^^^^^^
+  = note: ...which again requires computing function signature of `B::f`, completing the cycle
+note: cycle used when checking that `B` is well-formed
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:2:1
+  |
+2 | trait B {
+  | ^^^^^^^
+  = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+note: delayed at compiler/rustc_query_system/src/query/job.rs:597:16 - disabled backtrace
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:3:5
+  |
+3 |     fn f(a: A) -> A;
+  |     ^^^^^^^^^^^^^^^^
+
+error: internal compiler error[E0782]: trait objects must include the `dyn` keyword
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:6:20
+  |
+6 |     fn concrete(b: B) -> B;
+  |                    ^
+  |
+  = note: `B` it is not object safe, so it can't be `dyn`
+note: delayed at compiler/rustc_hir_analysis/src/hir_ty_lowering/lint.rs:63:17 - disabled backtrace
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:6:20
+  |
+6 |     fn concrete(b: B) -> B;
+  |                    ^
+help: use a new generic type parameter, constrained by `B`
+  |
+6 |     fn concrete<T: B>(b: T) -> B;
+  |                ++++++    ~
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+  |
+6 |     fn concrete(b: impl B) -> B;
+  |                    ++++
+
+error: internal compiler error[E0782]: trait objects must include the `dyn` keyword
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:6:26
+  |
+6 |     fn concrete(b: B) -> B;
+  |                          ^
+  |
+note: delayed at compiler/rustc_hir_analysis/src/hir_ty_lowering/lint.rs:63:17 - disabled backtrace
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:6:26
+  |
+6 |     fn concrete(b: B) -> B;
+  |                          ^
+help: `B` is not object safe, use `impl B` to return an opaque type, as long as you return a single underlying type
+  |
+6 |     fn concrete(b: B) -> impl B;
+  |                          ++++
+
+error: internal compiler error[E0782]: trait objects must include the `dyn` keyword
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:3:13
+  |
+3 |     fn f(a: A) -> A;
+  |             ^
+  |
+  = note: `A` it is not object safe, so it can't be `dyn`
+note: delayed at compiler/rustc_hir_analysis/src/hir_ty_lowering/lint.rs:63:17 - disabled backtrace
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:3:13
+  |
+3 |     fn f(a: A) -> A;
+  |             ^
+help: use a new generic type parameter, constrained by `A`
+  |
+3 |     fn f<T: A>(a: T) -> A;
+  |         ++++++    ~
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+  |
+3 |     fn f(a: impl A) -> A;
+  |             ++++
+
+error: internal compiler error[E0782]: trait objects must include the `dyn` keyword
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:3:19
+  |
+3 |     fn f(a: A) -> A;
+  |                   ^
+  |
+note: delayed at compiler/rustc_hir_analysis/src/hir_ty_lowering/lint.rs:63:17 - disabled backtrace
+ --> /tmp/icemaker_global_tempdir.Y2ZB7VqiZYxB/rustc_testrunner_tmpdir_reporting.n6c2niMcV32C/mvce.rs:3:19
+  |
+3 |     fn f(a: A) -> A;
+  |                   ^
+help: `A` is not object safe, use `impl A` to return an opaque type, as long as you return a single underlying type
+  |
+3 |     fn f(a: A) -> impl A;
+  |                   ++++
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.80.0-nightly (9e297bf54 2024-05-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z unstable-options -Z dump-mir-dir=dir
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+A-HIR, C-bug, F-dyn_compatible_for_dispatch, I-ICE, S-bug-has-test, S-has-mcve, T-compiler

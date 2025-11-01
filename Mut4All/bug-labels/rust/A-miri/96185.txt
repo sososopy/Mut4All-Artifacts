@@ -1,0 +1,90 @@
+Issue Title:
+enums with repr(align) generate Scalar layout with padding (ICE: miri: field access on non aggregate <uninitialized> ) · Issue #96185 · rust-lang/rust · GitHub
+
+Rust Code:
+#[allow(dead_code)]
+#[repr(align(8))]
+enum Aligned {
+    Zero = 0,
+    One = 1,
+}
+
+fn main() {
+    let aligned = Aligned::Zero;
+    assert_eq!(aligned as u8, 0);
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/compiler/rustc_errors/src/lib.rs:1289:9
+stack backtrace:
+   0:     0x7f76b349d83d - std::backtrace_rs::backtrace::libunwind::trace::hdc1f21fb71c845ee
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7f76b349d83d - std::backtrace_rs::backtrace::trace_unsynchronized::h825695a1eac7e4dc
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f76b349d83d - std::sys_common::backtrace::_print_fmt::h201cc1fed0ce4598
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/sys_common/backtrace.rs:66:5
+   3:     0x7f76b349d83d - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h4c86a2fdb08a33f9
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/sys_common/backtrace.rs:45:22
+   4:     0x7f76b34f8f1c - core::fmt::write::hee99b3f0c63f5ca9
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/core/src/fmt/mod.rs:1194:17
+   5:     0x7f76b348f031 - std::io::Write::write_fmt::hfa56cdeea03f4b89
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/io/mod.rs:1655:15
+   6:     0x7f76b34a0555 - std::sys_common::backtrace::_print::hbd75018aef718598
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/sys_common/backtrace.rs:48:5
+   7:     0x7f76b34a0555 - std::sys_common::backtrace::print::hc594da4af1e8ead7
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/sys_common/backtrace.rs:35:9
+   8:     0x7f76b34a0555 - std::panicking::default_hook::{{closure}}::h0602100d469ef01e
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/panicking.rs:295:22
+   9:     0x7f76b34a01c9 - std::panicking::default_hook::hc7ef6a8909090411
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/panicking.rs:314:9
+  10:     0x7f76b3cd0521 - rustc_driver[8e3c698622bece67]::DEFAULT_HOOK::{closure#0}::{closure#0}
+  11:     0x7f76b34a0d26 - std::panicking::rust_panic_with_hook::hb9245fe7222caa6e
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/panicking.rs:702:17
+  12:     0x55a6325ed2d3 - std[7eb92d5d5059ff02]::panicking::begin_panic::<rustc_errors[dbef8fecc23abfce]::ExplicitBug>::{closure#0}
+  13:     0x55a6325ecbc6 - std[7eb92d5d5059ff02]::sys_common::backtrace::__rust_end_short_backtrace::<std[7eb92d5d5059ff02]::panicking::begin_panic<rustc_errors[dbef8fecc23abfce]::ExplicitBug>::{closure#0}, !>
+  14:     0x55a63245f68f - std[7eb92d5d5059ff02]::panicking::begin_panic::<rustc_errors[dbef8fecc23abfce]::ExplicitBug>
+  15:     0x55a6325dd1c6 - std[7eb92d5d5059ff02]::panic::panic_any::<rustc_errors[dbef8fecc23abfce]::ExplicitBug>
+  16:     0x55a6325dcf93 - <rustc_errors[dbef8fecc23abfce]::HandlerInner>::span_bug::<rustc_span[e15e523c5f5ffbde]::span_encoding::Span, &alloc[8d468ea801fd4f9]::string::String>
+  17:     0x55a6325dcc80 - <rustc_errors[dbef8fecc23abfce]::Handler>::span_bug::<rustc_span[e15e523c5f5ffbde]::span_encoding::Span, &alloc[8d468ea801fd4f9]::string::String>
+  18:     0x55a632519f0e - rustc_middle[c02e249562e6ab88]::ty::context::tls::with_opt::<rustc_middle[c02e249562e6ab88]::util::bug::opt_span_bug_fmt<rustc_span[e15e523c5f5ffbde]::span_encoding::Span>::{closure#0}, ()>
+  19:     0x55a632519c69 - rustc_middle[c02e249562e6ab88]::util::bug::opt_span_bug_fmt::<rustc_span[e15e523c5f5ffbde]::span_encoding::Span>
+  20:     0x55a6324606d3 - rustc_middle[c02e249562e6ab88]::util::bug::span_bug_fmt::<rustc_span[e15e523c5f5ffbde]::span_encoding::Span>
+  21:     0x55a63255b9b9 - <rustc_const_eval[afe50d724bd7fc79]::interpret::eval_context::InterpCx<miri[ada871e22c039dff]::machine::Evaluator>>::operand_field
+  22:     0x55a6325f43f5 - <alloc[8d468ea801fd4f9]::vec::Vec<core[f08f6a517a2b1407]::result::Result<rustc_const_eval[afe50d724bd7fc79]::interpret::operand::OpTy<miri[ada871e22c039dff]::machine::Tag>, rustc_middle[c02e249562e6ab88]::mir::interpret::error::InterpErrorInfo>> as alloc[8d468ea801fd4f9]::vec::spec_from_iter::SpecFromIter<core[f08f6a517a2b1407]::result::Result<rustc_const_eval[afe50d724bd7fc79]::interpret::operand::OpTy<miri[ada871e22c039dff]::machine::Tag>, rustc_middle[c02e249562e6ab88]::mir::interpret::error::InterpErrorInfo>, core[f08f6a517a2b1407]::iter::adapters::map::Map<core[f08f6a517a2b1407]::ops::range::Range<usize>, <rustc_const_eval[afe50d724bd7fc79]::interpret::validity::ValidityVisitor<miri[ada871e22c039dff]::machine::Evaluator> as rustc_const_eval[afe50d724bd7fc79]::interpret::visitor::ValueVisitor<miri[ada871e22c039dff]::machine::Evaluator>>::walk_value::{closure#0}>>>::from_iter
+  23:     0x55a632605ba5 - <rustc_const_eval[afe50d724bd7fc79]::interpret::validity::ValidityVisitor<miri[ada871e22c039dff]::machine::Evaluator> as rustc_const_eval[afe50d724bd7fc79]::interpret::visitor::ValueVisitor<miri[ada871e22c039dff]::machine::Evaluator>>::walk_value
+  24:     0x55a63254ee1f - <rustc_const_eval[afe50d724bd7fc79]::interpret::eval_context::InterpCx<miri[ada871e22c039dff]::machine::Evaluator>>::validate_operand_internal
+  25:     0x55a63254ca54 - <rustc_const_eval[afe50d724bd7fc79]::interpret::eval_context::InterpCx<miri[ada871e22c039dff]::machine::Evaluator>>::statement
+  26:     0x55a6324f745b - miri[ada871e22c039dff]::eval::eval_entry
+  27:     0x55a63246aa22 - <rustc_interface[b4fe925d1e8786a0]::passes::QueryContext>::enter::<<miri[e50af0efed857ec5]::MiriCompilerCalls as rustc_driver[8e3c698622bece67]::Callbacks>::after_analysis::{closure#0}, ()>
+  28:     0x55a63246358e - <miri[e50af0efed857ec5]::MiriCompilerCalls as rustc_driver[8e3c698622bece67]::Callbacks>::after_analysis
+  29:     0x7f76b5d05db5 - <rustc_interface[b4fe925d1e8786a0]::interface::Compiler>::enter::<rustc_driver[8e3c698622bece67]::run_compiler::{closure#1}::{closure#2}, core[f08f6a517a2b1407]::result::Result<core[f08f6a517a2b1407]::option::Option<rustc_interface[b4fe925d1e8786a0]::queries::Linker>, rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>>
+  30:     0x7f76b5d2eeef - rustc_span[e15e523c5f5ffbde]::with_source_map::<core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>, rustc_interface[b4fe925d1e8786a0]::interface::create_compiler_and_run<core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>, rustc_driver[8e3c698622bece67]::run_compiler::{closure#1}>::{closure#1}>
+  31:     0x7f76b5d069b7 - <scoped_tls[ed206aee8c9203a6]::ScopedKey<rustc_span[e15e523c5f5ffbde]::SessionGlobals>>::set::<rustc_interface[b4fe925d1e8786a0]::interface::run_compiler<core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>, rustc_driver[8e3c698622bece67]::run_compiler::{closure#1}>::{closure#0}, core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>>
+  32:     0x7f76b5d1bf0f - std[7eb92d5d5059ff02]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[b4fe925d1e8786a0]::util::run_in_thread_pool_with_globals<rustc_interface[b4fe925d1e8786a0]::interface::run_compiler<core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>, rustc_driver[8e3c698622bece67]::run_compiler::{closure#1}>::{closure#0}, core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>>::{closure#0}, core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>>
+  33:     0x7f76b5d1c049 - <<std[7eb92d5d5059ff02]::thread::Builder>::spawn_unchecked_<rustc_interface[b4fe925d1e8786a0]::util::run_in_thread_pool_with_globals<rustc_interface[b4fe925d1e8786a0]::interface::run_compiler<core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>, rustc_driver[8e3c698622bece67]::run_compiler::{closure#1}>::{closure#0}, core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>>::{closure#0}, core[f08f6a517a2b1407]::result::Result<(), rustc_errors[dbef8fecc23abfce]::ErrorGuaranteed>>::{closure#1} as core[f08f6a517a2b1407]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  34:     0x7f76b34aabd3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hd2056160a42acd52
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/alloc/src/boxed.rs:1866:9
+  35:     0x7f76b34aabd3 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h99c5b980edefbf69
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/alloc/src/boxed.rs:1866:9
+  36:     0x7f76b34aabd3 - std::sys::unix::thread::Thread::new::thread_start::h42961cfa146716e3
+                               at /rustc/ec77f252434a532fdb5699ae4f21a3072d211edd/library/std/src/sys/unix/thread.rs:108:17
+  37:     0x7f76b32835c2 - start_thread
+  38:     0x7f76b3308584 - __clone
+  39:                0x0 - <unknown>
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.62.0-nightly (ec77f2524 2022-04-17) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental -C target-cpu=native
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-const-eval, A-miri, C-bug, I-ICE, T-compiler

@@ -1,0 +1,133 @@
+Issue Title:
+Trait with a lifetime parameter, associated constant, and an associated type can trigger an ICE · Issue #84659 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(const_generics)]
+
+trait Bar<const N: usize> {}
+
+trait Foo<'a> {
+    const N: usize;
+    type Baz: Bar<{ Self::N }>;
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', /rustc/42816d61ead7e46d462df997958ccfd514f8c21c/library/std/src/panic.rs:59:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::span_bug
+   3: rustc_errors::Handler::span_bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::span_bug_fmt
+   7: rustc_infer::infer::region_constraints::RegionConstraintCollector::make_subregion
+   8: rustc_infer::infer::region_constraints::RegionConstraintCollector::make_eqregion
+   9: <rustc_infer::infer::equate::Equate as rustc_middle::ty::relate::TypeRelation>::regions
+  10: <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::relate::Relate>::relate
+  11: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &mut F>::call_once
+  12: <core::result::Result<T,E> as rustc_middle::ty::context::InternIteratorElement<T,R>>::intern_with
+  13: rustc_infer::infer::InferCtxt::commit_if_ok
+  14: rustc_infer::infer::InferCtxt::commit_if_ok
+  15: rustc_infer::infer::InferCtxt::probe
+  16: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::assemble_candidates
+  17: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::candidate_from_obligation_no_cache
+  18: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  19: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  20: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::candidate_from_obligation
+  21: rustc_trait_selection::traits::select::SelectionContext::select
+  22: rustc_infer::infer::InferCtxtBuilder::enter
+  23: rustc_trait_selection::traits::codegen::codegen_fulfill_obligation
+  24: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::codegen_fulfill_obligation>::compute
+  25: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  26: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  27: rustc_data_structures::stack::ensure_sufficient_stack
+  28: rustc_query_system::query::plumbing::force_query_with_job
+  29: rustc_query_system::query::plumbing::get_query_impl
+  30: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::codegen_fulfill_obligation
+  31: rustc_ty_utils::instance::inner_resolve_instance
+  32: rustc_ty_utils::instance::resolve_instance
+  33: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance>::compute
+  34: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  35: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  36: rustc_data_structures::stack::ensure_sufficient_stack
+  37: rustc_query_system::query::plumbing::force_query_with_job
+  38: rustc_query_system::query::plumbing::get_query_impl
+  39: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::resolve_instance
+  40: rustc_middle::ty::instance::Instance::resolve_opt_const_arg
+  41: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  42: <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const
+  43: <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_mir_const
+  44: <rustc_infer::infer::at::At as rustc_trait_selection::traits::query::normalize::AtExt>::normalize
+  45: rustc_infer::infer::InferCtxtBuilder::enter
+  46: core::ops::function::FnOnce::call_once
+  47: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::normalize_mir_const_after_erasing_regions>::compute
+  48: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  49: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  50: rustc_data_structures::stack::ensure_sufficient_stack
+  51: rustc_query_system::query::plumbing::force_query_with_job
+  52: rustc_query_system::query::plumbing::get_query_impl
+  53: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::normalize_mir_const_after_erasing_regions
+  54: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::normalize_erasing_regions
+  55: rustc_mir::interpret::eval_context::InterpCx<M>::push_stack_frame
+  56: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+  57: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_allocation_raw>::compute
+  58: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  59: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  60: rustc_data_structures::stack::ensure_sufficient_stack
+  61: rustc_query_system::query::plumbing::force_query_with_job
+  62: rustc_query_system::query::plumbing::get_query_impl
+  63: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_allocation_raw
+  64: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  65: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_const_value_raw>::compute
+  66: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  67: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  68: rustc_data_structures::stack::ensure_sufficient_stack
+  69: rustc_query_system::query::plumbing::force_query_with_job
+  70: rustc_query_system::query::plumbing::get_query_impl
+  71: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_const_value_raw
+  72: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  73: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  74: rustc_infer::infer::InferCtxt::const_eval_resolve
+  75: rustc_trait_selection::traits::const_evaluatable::is_const_evaluatable
+  76: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  77: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  78: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  79: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_all_or_error
+  80: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::select_all_obligations_or_error
+  81: rustc_infer::infer::InferCtxtBuilder::enter
+  82: rustc_typeck::check::wfcheck::check_associated_item
+  83: rustc_typeck::check::wfcheck::check_trait_item
+  84: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  85: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  86: rustc_query_system::query::plumbing::force_query_with_job
+  87: rustc_query_system::query::plumbing::get_query_impl
+  88: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_trait_item_well_formed
+  89: <rustc_typeck::check::wfcheck::CheckTypeWellFormedVisitor as rustc_hir::intravisit::Visitor>::visit_trait_item
+  90: rustc_data_structures::sync::par_for_each_in
+  91: rustc_hir::hir::Crate::par_visit_all_item_likes
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.53.0-nightly (42816d61e 2021-04-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [codegen_fulfill_obligation] checking if `Foo` fulfills its obligations
+#1 [resolve_instance] resolving instance `<Self as Foo>::N`
+#2 [normalize_mir_const_after_erasing_regions] normalizing `<Self as Foo>::N`
+#3 [eval_to_allocation_raw] const-evaluating + checking `Foo::Baz::{constant#0}`
+#4 [eval_to_const_value_raw] simplifying constant for the type system `Foo::Baz::{constant#0}`
+#5 [check_trait_item_well_formed] checking that `Foo::Baz` is well-formed
+#6 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-const-generics, C-bug, E-needs-test, F-const_generics, I-ICE, P-medium, T-compiler, glacier

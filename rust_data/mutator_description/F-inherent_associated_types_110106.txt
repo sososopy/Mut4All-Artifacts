@@ -1,0 +1,43 @@
+Mutation Operator: Modify Inherent Associated Types
+
+Target: Structs with inherent associated types
+
+Mutation Rule:
+1. Identify a struct with an inherent associated type defined in its implementation block. In the provided example, this is `struct D<T>` with `impl<T: Default> D<T>` and `type Item = T;`.
+2. Introduce a second, conflicting inherent associated type within the same implementation block. This involves adding another `type` declaration with the same name as the first but a different definition.
+3. Ensure that the conflicting definition introduces a cyclic dependency or type mismatch. For example, if `type Item = T;` is already defined, add `type Item = Self::OtherItem;` where `OtherItem` does not resolve correctly or creates a cycle.
+
+Example:
+Original Code:
+```rust
+struct D<T> {
+  a: T
+}
+
+impl<T: Default> D<T> {
+    type Item = T;
+
+    fn next() -> Self::Item {
+        Self::Item::default()
+    }
+}
+```
+
+Mutated Code:
+```rust
+struct D<T> {
+  a: T
+}
+
+impl<T: Default> D<T> {
+    type Item = T;
+    type Item = Self::OtherItem; // Conflicting inherent associated type
+
+    fn next() -> Self::Item {
+        Self::Item::default()
+    }
+}
+```
+
+Explanation:
+This mutation operator deliberately adds a conflicting inherent associated type to trigger the Rust compiler's cycle detection mechanisms. It is designed to explore the boundaries and robustness of handling inherent associated types, which are still an unstable feature in Rust. By introducing a cyclic or conflicting definition, the chances of provoking an ICE (Internal Compiler Error) or similar compiler failure increase. This mutation exploits the complexity involved in resolving associated type paths, especially when cyclic dependencies are involved.

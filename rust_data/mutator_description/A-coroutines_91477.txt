@@ -1,0 +1,23 @@
+Rust compiler bugs related to the use of coroutines and the `yield` keyword often surface due to improper handling of types and lifetimes, resulting in internal compiler errors (ICE). This suggests that the interaction between generators and type checking or borrowing mechanics in the compiler can be fragile. 
+
+To design mutation operators that are likely to expose similar issues, we should focus on constructs involving:
+
+1. Yielding different types and observing type inference and checking.
+2. Mixing asynchronous and synchronous code.
+3. Manipulating lifetime specifiers in function signatures that involve generators.
+
+Mutation Operator:
+
+1. Target Construct: Function with async/await and yield expressions.
+2. Mutation Rule:
+   - Identify a function that uses the `async` keyword and includes `await` expressions, or a function using the `yield` keyword within a generator.
+   - Change the return type of the function to include a lifetime specifier or an incorrect type in relation to the yielded value.
+   - Alter an existing `await` expression into a `yield` expression or vice versa, thereby forcing a type mismatch.
+
+For instance, if `fn example() -> impl Future<Output = T>` is present in the seed program:
+
+- Replace it with `fn example<'a>() -> impl Future<Output = &'a T>` where `'a` is an arbitrary lifetime specifier.
+- Inside the function, change an `await` expression to `yield`, such as `let x = async_expression.await;` to `let x = yield async_expression;`.
+- Ensure any yielded values are of different types to test type compatibility, like yielding a string when a number is expected.
+
+These mutations target type inference and lifetime management around coroutine-like constructs, aiming to exploit potential compiler fragility in these areas.

@@ -1,0 +1,67 @@
+Issue Title:
+tuple variant crashing iterating over vector with std::apply (clang 17.0.1 - clang 19.1.0)
+
+Source Code & Bug Trace:
+#include <iostream>
+#include <vector>
+#include <variant>
+#include <tuple>
+#include <string_view>
+#include <cstdlib> // for std::atoi, std::atof
+#include <type_traits>
+
+template <typename... Ts>
+std::vector<std::variant<Ts...>> fill_vector(const std::vector<std::string_view>& input) {
+    using VariantType = std::variant<Ts...>;
+    std::vector<VariantType> result;
+    result.reserve(input.size());
+
+    for (const auto& str : input) {
+        bool converted = false;
+
+        // Create a temporary tuple to pass to std::apply
+        std::tuple<Ts...> tempTuple;
+
+        std::apply([&](auto&&... args) {
+            // Fold expression to try each type
+            (([&] {
+                using T = std::decay_t<decltype(args)>;
+                if (!converted) {
+                    if constexpr (std::is_integral_v<T>) {
+                        try {
+                            result.emplace_back(static_cast<T>(std::atoi(str.data())));
+                            converted = true;
+                        } catch (...) {}
+                    } else if constexpr (std::is_floating_point_v<T>) {
+                        try {
+                            result.emplace_back(static_cast<T>(std::atof(str.data())));
+                            converted = true;
+                        } catch (...) {}
+                    }
+                }
+            }()), ...);
+        }, tempTuple);
+
+        if (!converted) {
+            result.emplace_back(std::string(str)); // Fallback to string
+        }
+    }
+
+    return result;
+}
+
+int main() {
+    std::vector<std::string_view> input = {"123", "45.67", "hello", "789"};
+
+    auto output = fill_vector<int, double, std::string>(input);
+
+    for (const auto& v : output) {
+        std::visit([](const auto& value) { std::cout << value << " "; }, v);
+    }
+
+    return 0;
+}
+
+
+Bug Labels:
+clang:frontend, crash

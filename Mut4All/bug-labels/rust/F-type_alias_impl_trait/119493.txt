@@ -1,0 +1,116 @@
+Issue Title:
+ICE: `Unexpected type for constructor ` · Issue #119493 · rust-lang/rust · GitHub
+
+Rust Code:
+fn r#struct() {
+    #[derive(Copy, Clone)]
+    struct Foo(PhantomData<T>);
+
+    type U = impl Copy;
+    let foo: U = Foo((1u32, 2u32));
+    let Foo((0..=255, true)) = foo;
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+#![feature(type_alias_impl_trait)]
+// MSAN:         call void @__msan_warning{{(_with_origin_noreturn\(i32 0\)|_noreturn\(\))}}
+
+fn main() {
+    type T = impl Copy;
+    let foo: T = Some((1u32, 2u32));
+    match foo {
+        None => (),
+        Some((a, b)) => (),
+    }
+}
+
+fn upvar() {
+    #[derive(Copy, Clone)]
+    struct Foo((u32, u32));
+
+    type T = impl Copy;
+    let foo: T = Foo((1u32, 2u32));
+    let x = move || {
+        let Foo::Var(Supertype::Var(x)) = foo;
+    };
+}
+
+fn enum_upvar() {
+    type T = impl Copy;
+    let foo: T = Some((1u32, 2u32));
+    let x = move || {
+        match foo {
+            None => (),
+            Some((a, b)) => (),
+        }
+    };
+}
+
+fn r#struct() {
+    #[derive(Copy, Clone)]
+    struct Foo(PhantomData<T>);
+
+    type U = impl Copy;
+    let foo: U = Foo((1u32, 2u32));
+    let Foo((0..=255, true)) = foo;
+}
+
+mod only_pattern {
+    type T = impl Copy;
+
+    fn foo(foo: T) {
+        let (mut x, mut y) = foo;
+        x = 42;
+        y = "foo";
+    }
+
+    type U = impl Copy;
+
+    fn bar(bar: Option<U>) {
+        match bar {
+            Some((mut x, mut y)) => {
+                x = 42;
+                y = "foo";
+            }
+            None => {}
+        }
+    }
+}
+
+mod only_pattern_rpit {
+    #[allow(unconditional_recursion)]
+    fn foo(b: bool) -> impl Copy {
+        let (mut x, mut y) = foo(false);
+        x = 42;
+        y = "foo";
+        if b {
+            panic!()
+        } else {
+            foo(true)
+        }
+    }
+
+    fn bar(b: bool) -> Option<impl Copy> {
+        if b {
+            return None;
+        }
+        match bar(!b) {
+            Some((mut x, mut y)) => {
+                x = 42;
+                y = "foo";
+            }
+            None => {}
+        }
+        None
+    }
+}
+
+Bug Labels:
+A-exhaustiveness-checking, C-bug, F-type_alias_impl_trait, I-ICE, T-compiler

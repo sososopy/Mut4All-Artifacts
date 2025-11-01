@@ -1,0 +1,46 @@
+Issue Title:
+ICE with Bevy on nightly · Issue #87531 · rust-lang/rust · GitHub
+
+Rust Code:
+use bevy::{
+    ecs::query::{Fetch, FilterFetch, WorldQuery},
+    prelude::*,
+};
+
+pub(crate) fn get_children_mut<Q, F, C>(children: &Children, q: &mut Query<Q, F>, mut callback: C)
+where
+    C: FnMut(<<Q as WorldQuery>::Fetch as Fetch>::Item),
+    Q: WorldQuery,
+    F: WorldQuery,
+    F::Fetch: FilterFetch,
+{
+    children.iter().for_each(move |child_id| {
+        if let Ok(result) = q.get_mut(*child_id) {
+            callback(result);
+        }
+    });
+}
+
+fn query_children_system(children: Query<&Children>, mut selections: Query<Entity>) {
+    for children in children.iter() {
+        get_children_mut(children, &mut selections, |_| {})
+    }
+}
+
+fn main() {
+    App::build().add_system(query_children_system.system());
+}
+
+Bug Trace:
+[package]
+name = "ice_repro"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = {version="0.5.0", default-features=false}
+
+Bug Labels:
+A-codegen, C-bug, I-ICE, T-compiler

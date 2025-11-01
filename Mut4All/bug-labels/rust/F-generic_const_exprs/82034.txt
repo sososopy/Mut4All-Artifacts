@@ -1,0 +1,120 @@
+Issue Title:
+Panic in nightly rustc with type interference for const_generics · Issue #82034 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+#![feature(const_evaluatable_checked)]
+#![allow(incomplete_features)]
+pub trait IsTrue {}
+pub trait IsFalse {}
+
+pub struct Assert<const CHECK: bool> {}
+
+impl IsTrue for Assert<true> {}
+impl IsFalse for Assert<false> {}
+
+pub struct SliceConstWriter<'a, const N: usize> {
+    ptr: &'a mut [u8]
+}
+impl<'a, const N: usize> SliceConstWriter<'a, {N}> {
+    pub fn from_slice(vec: &'a mut [u8]) -> Self {
+        Self {
+            ptr: vec
+        }
+    }
+
+    pub fn convert<const NN: usize>(mut self) -> SliceConstWriter<'a, {NN}> {
+        SliceConstWriter {
+            ptr: self.ptr
+        }
+    }
+}
+
+impl<'a, const N: usize> SliceConstWriter<'a, {N}> where Assert::<{N >= 2}>: IsTrue {
+    // broken
+    pub fn write_u8(mut self) -> SliceConstWriter<'a, {N-2}> {
+        self.convert()
+    }
+    
+    //working
+    // pub fn write_u8(mut self) -> SliceConstWriter<'a, {N-2}> {
+    //     SliceConstWriter {
+    //         ptr: self.ptr
+    //     }
+    // }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::SliceConstWriter;
+
+    #[test]
+    fn it_works() {
+        let mut buff = [0u8; 128];
+        let mut a = SliceConstWriter::<10>::from_slice(&mut buff);
+
+        let mut a = a.write_u8().write_u8().write_u8().write_u8().write_u8();
+    }
+}
+
+Bug Trace:
+error: internal compiler error: compiler\rustc_middle\src\ich\impls_ty.rs:94:17: StableHasher: unexpected region '_#2r
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/e9920ef7749d11fc71cc32ca4ba055bcfeaab945\library\std\src\panic.rs:59:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   6: rustc_middle::ty::context::tls::with_opt
+   7: rustc_middle::util::bug::opt_span_bug_fmt
+   8: rustc_middle::util::bug::bug_fmt
+   9: rustc_middle::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::RegionKind>::hash_stable
+  10: std::thread::local::LocalKey<T>::with
+  11: <T as rustc_query_system::dep_graph::dep_node::DepNodeParams<Ctxt>>::to_fingerprint
+  12: rustc_query_system::query::plumbing::get_query_impl
+  13: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  14: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  15: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  16: rustc_infer::infer::canonical::query_response::<impl rustc_infer::infer::InferCtxt>::make_canonicalized_query_response
+  17: <rustc_infer::infer::InferCtxtBuilder as rustc_trait_selection::infer::InferCtxtBuilderExt>::enter_canonical_trait_query
+  18: rustc_traits::type_op::type_op_ascribe_user_type
+  19: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::type_op_ascribe_user_type>::compute
+  20: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  21: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  22: rustc_data_structures::stack::ensure_sufficient_stack
+  23: rustc_query_system::query::plumbing::force_query_with_job
+  24: rustc_query_system::query::plumbing::get_query_impl
+  25: rustc_trait_selection::traits::query::type_op::ascribe_user_type::<impl rustc_trait_selection::traits::query::type_op::QueryTypeOp for rustc_middle::traits::query::type_op::AscribeUserType>::perform_query
+  26: rustc_trait_selection::traits::query::type_op::QueryTypeOp::fully_perform_into
+  27: <rustc_middle::ty::ParamEnvAnd<Q> as rustc_trait_selection::traits::query::type_op::TypeOp>::fully_perform
+  28: rustc_mir::borrow_check::type_check::type_check
+  29: rustc_mir::borrow_check::nll::compute_regions
+  30: rustc_mir::borrow_check::do_mir_borrowck
+  31: rustc_infer::infer::InferCtxtBuilder::enter
+  32: rustc_mir::borrow_check::mir_borrowck
+  33: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::mir_borrowck>::compute
+  34: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  35: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  36: rustc_data_structures::stack::ensure_sufficient_stack
+  37: rustc_query_system::query::plumbing::force_query_with_job
+  38: rustc_query_system::query::plumbing::get_query_impl
+  39: rustc_query_system::query::plumbing::ensure_query_impl
+  40: rustc_interface::passes::analysis
+  41: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  42: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  43: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  44: rustc_data_structures::stack::ensure_sufficient_stack
+  45: rustc_query_system::query::plumbing::force_query_with_job
+  46: rustc_query_system::query::plumbing::get_query_impl
+  47: rustc_interface::passes::QueryContext::enter
+  48: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  49: rustc_span::with_source_map
+  50: rustc_interface::interface::create_compiler_and_run
+  51: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, glacier, requires-nightly

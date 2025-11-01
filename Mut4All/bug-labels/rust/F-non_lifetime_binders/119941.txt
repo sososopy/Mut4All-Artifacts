@@ -1,0 +1,77 @@
+Issue Title:
+ICE with feature(non_lifetime_binders) · Issue #119941 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(non_lifetime_binders)]
+
+use std::marker::PhantomData;
+
+pub trait Foo<T: ?Sized> {
+    type Bar<K: ?Sized>;
+}
+
+pub struct Bar<T: ?Sized> {
+    pd: PhantomData<T>
+}
+
+pub struct Baz {}
+
+impl Foo<usize> for Baz {
+    type Bar<K: ?Sized> = Bar<K>;
+}
+
+pub fn f<T1, T2>(a: T1, b: T2)
+where
+    T1: for <T> Foo<usize, Bar<T> = Bar<T>>, 
+    T2: for <T> Foo<usize, Bar<T> = T1::Bar<T>>,
+{}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        f(Baz{}, Baz{});
+    }
+}
+
+Bug Trace:
+note: delayed at /rustc/a2d9d73e608f1b24eba840c4fd2d68dbe3b65e01/compiler/rustc_trait_selection/src/traits/query/type_op/mod.rs:157:29
+         0: <rustc_errors::DiagCtxtInner>::emit_diagnostic
+         1: <rustc_errors::DiagCtxt>::emit_diagnostic
+         2: <rustc_span::ErrorGuaranteed as rustc_errors::diagnostic_builder::EmissionGuarantee>::emit_producing_guarantee
+         3: <rustc_borrowck::type_check::TypeChecker>::normalize_and_prove_instantiated_predicates
+         4: <rustc_borrowck::type_check::TypeVerifier as rustc_middle::mir::visit::Visitor>::visit_constant
+         5: <rustc_borrowck::type_check::TypeVerifier as rustc_middle::mir::visit::Visitor>::visit_body
+         6: rustc_borrowck::type_check::type_check
+         7: rustc_borrowck::nll::compute_regions
+         8: rustc_borrowck::do_mir_borrowck
+         9: rustc_borrowck::mir_borrowck
+        10: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::mir_borrowck::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+        11: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+        12: rustc_query_impl::query_impl::mir_borrowck::get_query_incr::__rust_end_short_backtrace
+        13: rustc_interface::passes::analysis
+        14: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 1]>>
+        15: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+        16: rustc_query_impl::query_impl::analysis::get_query_incr::__rust_end_short_backtrace
+        17: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}
+        18: std::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+        19: <<std::thread::Builder>::spawn_unchecked_<rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#1} as core::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+        20: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                   at /rustc/a2d9d73e608f1b24eba840c4fd2d68dbe3b65e01/library/alloc/src/boxed.rs:2016:9
+        21: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                   at /rustc/a2d9d73e608f1b24eba840c4fd2d68dbe3b65e01/library/alloc/src/boxed.rs:2016:9
+        22: std::sys::unix::thread::Thread::new::thread_start
+                   at /rustc/a2d9d73e608f1b24eba840c4fd2d68dbe3b65e01/library/std/src/sys/unix/thread.rs:108:17
+        23: start_thread
+                   at ./nptl/pthread_create.c:442:8
+        24: clone3
+                   at ./misc/../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+  --> src/lib.rs:31:9
+   |
+31 |         f(Baz{}, Baz{});
+   |         ^^^^^^^^^^^^^^^
+
+Bug Labels:
+C-bug, F-non_lifetime_binders, I-ICE, T-compiler, T-types, requires-nightly

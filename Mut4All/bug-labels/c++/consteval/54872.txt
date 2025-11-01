@@ -1,0 +1,131 @@
+Issue Title:
+Clang frontend segfault during consteval evaluation
+
+Source Code & Bug Trace:
+#include <array>
+#include <tuple>
+
+template <template <typename> typename finish_result = std::add_const>
+consteval auto transform_array(const auto &arr, auto func) {
+  using arr_type = std::remove_reference_t<decltype(arr)>;
+  using value_type = typename arr_type::value_type;
+  constexpr auto rows = std::tuple_size_v<arr_type>;
+  using transform_result = decltype(func(std::declval<value_type>()));
+  using result_type = typename finish_result<transform_result>::type;
+  return [&arr, func ]<std::size_t... Is>(std::index_sequence<Is...>) {
+    return std::array<result_type, rows>{func(arr[Is])...};
+  }
+  (std::make_index_sequence<rows>());
+}
+
+template <auto arr> consteval auto transpose() {
+  constexpr auto inner = []<typename T, std::size_t R, std::size_t C>(
+                             std::array<const std::array<T, C>, R>) {
+    return []<std::size_t... Is>(std::index_sequence<Is...>) {
+      return std::array<const std::array<T, R>, C>{
+          transform_array(arr, [](const auto &row) { return row[Is]; })...};
+    }
+    (std::make_index_sequence<C>());
+  };
+  return inner(arr);
+}
+
+constexpr std::array<const std::array<const double, 3>, 3> cin = {
+    {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}};
+auto in = cin;
+auto cout = transpose<cin>();
+
+Stack dump:
+0.	Program arguments: /usr/local/Cellar/llvm/14.0.0/bin/clang-14 -cc1 -triple x86_64-apple-macosx10.15.0 -Wundef-prefix=TARGET_OS_ -Werror=undef-prefix -Wdeprecated-objc-isa-usage -Werror=deprecated-objc-isa-usage -emit-obj -mrelax-all --mrelax-relocations -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name test.cpp -mrelocation-model pic -pic-level 2 -mframe-pointer=all -ffp-contract=on -fno-rounding-math -funwind-tables=2 -fcompatibility-qualified-id-block-type-checking -fvisibility-inlines-hidden-static-local-var -target-cpu penryn -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=lldb -target-linker-version 609.8 -fcoverage-compilation-dir=/tmp/crash -resource-dir /usr/local/Cellar/llvm/14.0.0/lib/clang/14.0.0 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk -stdlib=libc++ -internal-isystem /usr/local/opt/llvm/bin/../include/c++/v1 -internal-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/local/include -internal-isystem /usr/local/Cellar/llvm/14.0.0/lib/clang/14.0.0/include -internal-externc-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include -std=c++20 -fdeprecated-macro -fdebug-compilation-dir=/tmp/crash -ferror-limit 19 -stack-protector 1 -fblocks -fencode-extended-block-signature -fregister-global-dtors-with-atexit -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -fmax-type-align=16 -fcolor-diagnostics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /var/folders/38/7n17x4m55w523lmdfxz5yxtr0000gn/T/test-ea69c0.o -x c++ test.cpp
+1.	test.cpp:32:28: current parser token ')'
+2.	test.cpp:17:36: instantiating function definition 'transpose<{{{{1.000000e+00, 2.000000e+00, 3.000000e+00}}, {{4.000000e+00, 5.000000e+00, 6.000000e+00}}, {{7.000000e+00, 8.000000e+00, 9.000000e+00}}}}>'
+3.	test.cpp:18:26: instantiating function definition 'transpose()::(anonymous class)::operator()<const double, 3UL, 3UL>'
+4.	test.cpp:20:12: instantiating function definition 'transpose()::(anonymous class)::operator()(std::array<const std::array<const double, 3UL>, 3UL>)::(anonymous class)::operator()<0UL, 1UL, 2UL>'
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM.dylib            0x000000010f992b54 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 43
+1  libLLVM.dylib            0x000000010f992f5b SignalHandler(int) + 168
+2  libsystem_platform.dylib 0x00007fff6ad515fd _sigtramp + 29
+3  libsystem_platform.dylib 000000000000000000 _sigtramp + 18446603338723813920
+4  libclang-cpp.dylib       0x000000010cff813c EvaluateInPlace(clang::APValue&, (anonymous namespace)::EvalInfo&, (anonymous namespace)::LValue const&, clang::Expr const*, bool) + 198
+5  libclang-cpp.dylib       0x000000010cff7df2 clang::Expr::EvaluateAsConstantExpr(clang::Expr::EvalResult&, clang::ASTContext const&, clang::Expr::ConstantExprKind) const + 386
+6  libclang-cpp.dylib       0x000000010d5a1bf7 clang::Sema::PopExpressionEvaluationContext() + 1597
+7  libclang-cpp.dylib       0x000000010cdd1f5a clang::EnterExpressionEvaluationContext::~EnterExpressionEvaluationContext() + 18
+8  libclang-cpp.dylib       0x000000010d8c8970 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 3278
+9  libclang-cpp.dylib       0x000000010d3828fc clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 74
+10 libclang-cpp.dylib       0x000000010d8495e8 clang::Sema::DeduceReturnType(clang::FunctionDecl*, clang::SourceLocation, bool) + 220
+11 libclang-cpp.dylib       0x000000010d56d724 clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*) + 1174
+12 libclang-cpp.dylib       0x000000010d792506 CreateFunctionRefExpr(clang::Sema&, clang::FunctionDecl*, clang::NamedDecl*, clang::Expr const*, bool, clang::SourceLocation, clang::DeclarationNameLoc const&) + 122
+13 libclang-cpp.dylib       0x000000010d797e0c clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) + 2764
+14 libclang-cpp.dylib       0x000000010d571eec clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 928
+15 libclang-cpp.dylib       0x000000010d588653 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 79
+16 libclang-cpp.dylib       0x000000010d89b3de clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) + 376
+17 libclang-cpp.dylib       0x000000010d8adecc clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) + 24
+18 libclang-cpp.dylib       0x000000010d8a8bfb clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) + 299
+19 libclang-cpp.dylib       0x000000010d8923ce clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 76
+20 libclang-cpp.dylib       0x000000010d8c87b8 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 2838
+21 libclang-cpp.dylib       0x000000010d3828fc clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 74
+22 libclang-cpp.dylib       0x000000010d8495e8 clang::Sema::DeduceReturnType(clang::FunctionDecl*, clang::SourceLocation, bool) + 220
+23 libclang-cpp.dylib       0x000000010d56d724 clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*) + 1174
+24 libclang-cpp.dylib       0x000000010d792506 CreateFunctionRefExpr(clang::Sema&, clang::FunctionDecl*, clang::NamedDecl*, clang::Expr const*, bool, clang::SourceLocation, clang::DeclarationNameLoc const&) + 122
+25 libclang-cpp.dylib       0x000000010d797e0c clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) + 2764
+26 libclang-cpp.dylib       0x000000010d571eec clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 928
+27 libclang-cpp.dylib       0x000000010d588653 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 79
+28 libclang-cpp.dylib       0x000000010d89b3de clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) + 376
+29 libclang-cpp.dylib       0x000000010d8adecc clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) + 24
+30 libclang-cpp.dylib       0x000000010d8a8bfb clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) + 299
+31 libclang-cpp.dylib       0x000000010d8923ce clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 76
+32 libclang-cpp.dylib       0x000000010d8c87b8 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 2838
+33 libclang-cpp.dylib       0x000000010d3828fc clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 74
+34 libclang-cpp.dylib       0x000000010d8495e8 clang::Sema::DeduceReturnType(clang::FunctionDecl*, clang::SourceLocation, bool) + 220
+35 libclang-cpp.dylib       0x000000010d56d724 clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*) + 1174
+36 libclang-cpp.dylib       0x000000010d790c22 FinishOverloadedCallExpr(clang::Sema&, clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, clang::OverloadCandidateSet*, clang::OverloadCandidate**, clang::OverloadingResult, bool) + 190
+37 libclang-cpp.dylib       0x000000010d790b0e clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 494
+38 libclang-cpp.dylib       0x000000010d571d31 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 485
+39 libclang-cpp.dylib       0x000000010d588653 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 79
+40 libclang-cpp.dylib       0x000000010ce0120f clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) + 2901
+41 libclang-cpp.dylib       0x000000010ce02be0 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) + 1122
+42 libclang-cpp.dylib       0x000000010ce0547f clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) + 11521
+43 libclang-cpp.dylib       0x000000010ce00653 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) + 41
+44 libclang-cpp.dylib       0x000000010cdff497 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) + 187
+45 libclang-cpp.dylib       0x000000010cde0dfe clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) + 2804
+46 libclang-cpp.dylib       0x000000010cddef56 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 2086
+47 libclang-cpp.dylib       0x000000010ce6354c clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) + 822
+48 libclang-cpp.dylib       0x000000010ce62fa2 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 284
+49 libclang-cpp.dylib       0x000000010ce6273a clang::Parser::ParseExternalDeclaration(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) + 2150
+50 libclang-cpp.dylib       0x000000010ce61482 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) + 1118
+51 libclang-cpp.dylib       0x000000010cdcd563 clang::ParseAST(clang::Sema&, bool, bool) + 528
+52 libclang-cpp.dylib       0x000000010e1767f3 clang::FrontendAction::Execute() + 77
+53 libclang-cpp.dylib       0x000000010e11628c clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 706
+54 libclang-cpp.dylib       0x000000010e1cae13 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 515
+55 clang-14                 0x000000010cc99819 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 2351
+56 clang-14                 0x000000010cc977f2 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) + 265
+57 clang-14                 0x000000010cc97237 main + 8084
+58 libdyld.dylib            0x00007fff6ab58cc9 start + 1
+59 libdyld.dylib            0x0000000000000048 start + 18446603338725880704
+clang-14: error: unable to execute command: Segmentation fault: 11
+clang-14: error: clang frontend command failed due to signal (use -v to see invocation)
+Homebrew clang version 14.0.0
+Target: x86_64-apple-darwin19.6.0
+Thread model: posix
+InstalledDir: /usr/local/opt/llvm/bin
+
+
+using ::a __attribute__((using_if_exists;
+            template < class , b... > struct c {       }
+         template < a... n > using index_sequence = c< a, n... >;
+         template < class b, b d > using __make_integer_sequence =     __make_integer_seq< c, b, d >;
+         template < a e > using f = make_integer_sequence< a, e >;
+         template < class , g > struct array {       }
+         consteval auto h(auto , auto ) {       }
+         template < auto arr > auto i() {
+  []<typename j, a k, a l>(array<const array<j, l>, k>) {
+    []<a... m>(stdindex_sequence<m...>) {
+      array{h(arr, [] { m })...};
+    }
+    (f<l>());
+  }
+  (arr);        }
+         array< const array< double, 3 >, 3 > cin = i< cin >
+
+Bug Labels:
+c++20, clang:frontend, consteval, crash

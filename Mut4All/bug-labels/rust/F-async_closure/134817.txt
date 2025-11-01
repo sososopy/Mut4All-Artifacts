@@ -1,0 +1,134 @@
+Issue Title:
+typing for async function pointer to generic function · Issue #134817 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_trait_bounds)]
+
+use std::future::Future;
+use std::{process::Output, time::Duration};
+use tokio::runtime::Runtime;
+
+pub enum Hello<IF, LF> {
+    Foo(IF, LF, u64),
+    Bar(IF),
+}
+fn do_stuff<IF, LF, R>(hello: Hello<IF, LF>)
+where
+    IF: async FnOnce() -> R + Send + 'static,
+    LF: async FnMut(&mut R) + Send + 'static,
+{
+    match hello {
+        Hello::Foo(init_fn, mut loop_fn, sleep_dur) => {
+            let rt = Runtime::new().expect("cannot build async runtime");
+            rt.block_on(async {
+                let mut resources = init_fn().await;
+                loop {
+                    loop_fn(&mut resources).await;
+                    tokio::time::sleep(Duration::new(sleep_dur, 0)).await;
+                }
+            });
+        }
+        _ => todo!(),
+    }
+}
+
+fn main() {
+    do_stuff(Hello::Bar::<_, fn(&mut ()) -> dyn Future<Output = ()>>(
+        async || {
+            tokio::time::sleep(Duration::new(1, 0)).await;
+        },
+    ));
+}
+
+Bug Trace:
+stack backtrace:
+   0:     0x765e7d6bdaea - <std::sys::backtrace::BacktraceLock::print::DisplayBacktrace as core::fmt::Display>::fmt::h1d0ee148a2de4294
+   1:     0x765e7de138a6 - core::fmt::write::hf11d8a23ef99d1ee
+   2:     0x765e7ed3ad11 - std::io::Write::write_fmt::h5552168af656165a
+   3:     0x765e7d6bd942 - std::sys::backtrace::BacktraceLock::print::h796c6a285a4725f9
+   4:     0x765e7d6bfe3a - std::panicking::default_hook::{{closure}}::h325be6bc905d0158
+   5:     0x765e7d6bfc83 - std::panicking::default_hook::h4be7e4f43af8c145
+   6:     0x765e7c82cfd8 - std[576b7bfd2cf774ca]::panicking::update_hook::<alloc[f786130172a2e500]::boxed::Box<rustc_driver_impl[54dd4ff5a6961956]::install_ice_hook::{closure#1}>>::{closure#0}
+   7:     0x765e7d6c05f8 - std::panicking::rust_panic_with_hook::ha28ff0db34716bf7
+   8:     0x765e7c865ae1 - std[576b7bfd2cf774ca]::panicking::begin_panic::<rustc_errors[400d740334a151d5]::ExplicitBug>::{closure#0}
+   9:     0x765e7c85acc6 - std[576b7bfd2cf774ca]::sys::backtrace::__rust_end_short_backtrace::<std[576b7bfd2cf774ca]::panicking::begin_panic<rustc_errors[400d740334a151d5]::ExplicitBug>::{closure#0}, !>
+  10:     0x765e7c8576d9 - std[576b7bfd2cf774ca]::panicking::begin_panic::<rustc_errors[400d740334a151d5]::ExplicitBug>
+  11:     0x765e7c86fa41 - <rustc_errors[400d740334a151d5]::diagnostic::BugAbort as rustc_errors[400d740334a151d5]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  12:     0x765e7cdc98cc - <rustc_errors[400d740334a151d5]::DiagCtxtHandle>::span_bug::<rustc_span[5ca00d45d35c07fd]::span_encoding::Span, alloc[f786130172a2e500]::string::String>
+  13:     0x765e7ce4e6d7 - rustc_middle[b909414d40cb41fe]::util::bug::opt_span_bug_fmt::<rustc_span[5ca00d45d35c07fd]::span_encoding::Span>::{closure#0}
+  14:     0x765e7ce3376a - rustc_middle[b909414d40cb41fe]::ty::context::tls::with_opt::<rustc_middle[b909414d40cb41fe]::util::bug::opt_span_bug_fmt<rustc_span[5ca00d45d35c07fd]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+  15:     0x765e7ce335fb - rustc_middle[b909414d40cb41fe]::ty::context::tls::with_context_opt::<rustc_middle[b909414d40cb41fe]::ty::context::tls::with_opt<rustc_middle[b909414d40cb41fe]::util::bug::opt_span_bug_fmt<rustc_span[5ca00d45d35c07fd]::span_enco
+ding::Span>::{closure#0}, !>::{closure#0}, !>
+  16:     0x765e7b34dab7 - rustc_middle[b909414d40cb41fe]::util::bug::span_bug_fmt::<rustc_span[5ca00d45d35c07fd]::span_encoding::Span>
+  17:     0x765e7e4853cc - <rustc_middle[b909414d40cb41fe]::ty::instance::Instance>::expect_resolve
+  18:     0x765e7b5b988e - rustc_monomorphize[599c2cf5d481a779]::collector::items_of_instance
+  19:     0x765e7e23ccd0 - rustc_query_impl[6b10eca21df4ac6c]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[6b10eca21df4ac6c]::query_impl::items_of_instance::dynamic_query::{closure#2}::{closure#0}, rustc_middle[b909414d40cb41fe]::query::era
+se::Erased<[u8; 32usize]>>
+  20:     0x765e7e23ac45 - rustc_query_system[913920e265418f40]::query::plumbing::try_execute_query::<rustc_query_impl[6b10eca21df4ac6c]::DynamicConfig<rustc_query_system[913920e265418f40]::query::caches::DefaultCache<(rustc_middle[b909414d40cb41fe]::ty:
+:instance::Instance, rustc_middle[b909414d40cb41fe]::mir::mono::CollectionMode), rustc_middle[b909414d40cb41fe]::query::erase::Erased<[u8; 32usize]>>, false, false, false>, rustc_query_impl[6b10eca21df4ac6c]::plumbing::QueryCtxt, true>
+  21:     0x765e7e2398e4 - rustc_query_impl[6b10eca21df4ac6c]::query_impl::items_of_instance::get_query_incr::__rust_end_short_backtrace
+  22:     0x765e7e238f4c - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec::{closure#0}                                                                                                                                    16:41:22 [10/57]
+  23:     0x765e7ef1774e - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  24:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  25:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  26:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  27:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  28:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  29:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  30:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  31:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  32:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  33:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  34:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  35:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  36:     0x765e7ef18093 - rustc_monomorphize[599c2cf5d481a779]::collector::collect_items_rec
+  37:     0x765e7e3495ea - rustc_monomorphize[599c2cf5d481a779]::partitioning::collect_and_partition_mono_items
+  38:     0x765e7e348756 - rustc_query_impl[6b10eca21df4ac6c]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[6b10eca21df4ac6c]::query_impl::collect_and_partition_mono_items::dynamic_query::{closure#2}::{closure#0}, rustc_middle[b909414d40cb41
+fe]::query::erase::Erased<[u8; 24usize]>>
+  39:     0x765e7e348727 - <rustc_query_impl[6b10eca21df4ac6c]::query_impl::collect_and_partition_mono_items::dynamic_query::{closure#2} as core[c1b327b82653d6c1]::ops::function::FnOnce<(rustc_middle[b909414d40cb41fe]::ty::context::TyCtxt, ())>>::call_on
+ce
+  40:     0x765e7ed467d6 - rustc_query_system[913920e265418f40]::query::plumbing::try_execute_query::<rustc_query_impl[6b10eca21df4ac6c]::DynamicConfig<rustc_query_system[913920e265418f40]::query::caches::SingleCache<rustc_middle[b909414d40cb41fe]::query
+::erase::Erased<[u8; 24usize]>>, false, false, false>, rustc_query_impl[6b10eca21df4ac6c]::plumbing::QueryCtxt, true>
+  41:     0x765e7ed45f89 - rustc_query_impl[6b10eca21df4ac6c]::query_impl::collect_and_partition_mono_items::get_query_incr::__rust_end_short_backtrace
+  42:     0x765e7edcde70 - <rustc_codegen_llvm[cdec4fa7cea21c2d]::LlvmCodegenBackend as rustc_codegen_ssa[8d2a18b1528a2a1b]::traits::backend::CodegenBackend>::codegen_crate
+  43:     0x765e7edd7e64 - <rustc_interface[c17f2d9f8580ef84]::queries::Linker>::codegen_and_build_linker
+  44:     0x765e7ef0d152 - rustc_interface[c17f2d9f8580ef84]::passes::create_and_enter_global_ctxt::<core[c1b327b82653d6c1]::option::Option<rustc_interface[c17f2d9f8580ef84]::queries::Linker>, rustc_driver_impl[54dd4ff5a6961956]::run_compiler::{closure#0
+}::{closure#2}>::{closure#2}::{closure#0}
+  45:     0x765e7ed69956 - rustc_interface[c17f2d9f8580ef84]::interface::run_compiler::<(), rustc_driver_impl[54dd4ff5a6961956]::run_compiler::{closure#0}>::{closure#1}
+  46:     0x765e7ec44011 - std[576b7bfd2cf774ca]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[c17f2d9f8580ef84]::util::run_in_thread_with_globals<rustc_interface[c17f2d9f8580ef84]::util::run_in_thread_pool_with_globals<rustc_interface[
+c17f2d9f8580ef84]::interface::run_compiler<(), rustc_driver_impl[54dd4ff5a6961956]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>
+  47:     0x765e7ec444a6 - <<std[576b7bfd2cf774ca]::thread::Builder>::spawn_unchecked_<rustc_interface[c17f2d9f8580ef84]::util::run_in_thread_with_globals<rustc_interface[c17f2d9f8580ef84]::util::run_in_thread_pool_with_globals<rustc_interface[c17f2d9f85
+80ef84]::interface::run_compiler<(), rustc_driver_impl[54dd4ff5a6961956]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>::{closure#1} as core[c1b327b82653d6c1]::ops::function::FnOnce<()>>::call_once::{shim:v
+table#0}
+  48:     0x765e7ec45a6f - std::sys::pal::unix::thread::Thread::new::thread_start::he1f2589b932bd245
+  49:     0x765e78e9ca94 - start_thread
+                               at ./nptl/pthread_create.c:447:8
+  50:     0x765e78f29c3c - clone3
+                               at ./misc/../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+  51:                0x0 - <unknown>
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/home/heiseish/Projects/open_source/rustc_panic/rustc-ice-2024-12-27T08_40_34-90427.txt` to your bug report
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [items_of_instance] collecting items used by `do_stuff::<{async closure@src/main.rs:33:9: 33:17}, for<'a> fn(&'a mut ()) -> dyn core::future::future::Future<Output = ()>, ()>::{closure#0}`
+#1 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+warning: `rustc_panic` (bin "rustc_panic") generated 1 warning (run `cargo fix --bin "rustc_panic"` to apply 1 suggestion)
+error: could not compile `rustc_panic` (bin "rustc_panic"); 1 warning emitted
+
+Caused by:
+  process didn't exit successfully: `/home/heiseish/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc --crate-name rustc_panic --edition=2021 src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --diagnost
+ic-width=254 --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=26ab0fcf5b8dc6c6 -C extra-filename=-673f8cce13ac8c1d --out-dir /home/heiseish/Projects/o
+pen_source/rustc_panic/target/debug/deps -C incremental=/home/heiseish/Projects/open_source/rustc_panic/target/debug/incremental -L dependency=/home/heiseish/Projects/open_source/rustc_panic/target/debug/deps --extern tokio=/home/heiseish/Projects/open_s
+ource/rustc_panic/target/debug/deps/libtokio-516589f016b48863.rlib` (exit status: 101)
+
+Bug Labels:
+C-bug, F-async_closure, I-ICE, T-compiler

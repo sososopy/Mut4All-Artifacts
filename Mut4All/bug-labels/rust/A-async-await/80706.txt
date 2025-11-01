@@ -1,0 +1,161 @@
+Issue Title:
+ICE(stable): thread 'rustc' panicked at 'called `Option::unwrap()` on a `None` value', compiler/rustc_middle/src/ty/instance.rs:434:85 · Issue #80706 · rust-lang/rust · GitHub
+
+Rust Code:
+use core::fmt::Debug;
+use futures::future::BoxFuture;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let dependency = "dependency".to_owned();
+    let storage = InMemoryStorage;
+    run(&dependency, storage).await;
+    Ok(())
+}
+
+pub(crate) struct InMemoryStorage;
+
+struct User<'dep> {
+    name: String,
+    dep: &'dep str,
+}
+
+impl<'a> StorageRequest<InMemoryStorage> for SaveUser<'a> {
+    fn execute(
+        &self,
+        storage: &InMemoryStorage,
+    ) -> BoxFuture<
+        Result<<Self as StorageRequestReturnType>::Output, <InMemoryStorage as Storage>::Error>,
+    > {
+        todo!()
+    }
+}
+
+trait Storage {
+    type Error;
+}
+
+impl Storage for InMemoryStorage {
+    type Error = String;
+}
+
+trait StorageRequestReturnType {
+    type Output;
+}
+
+trait StorageRequest<S: Storage>: StorageRequestReturnType {
+    fn execute(
+        &self,
+        storage: &S,
+    ) -> BoxFuture<Result<<Self as StorageRequestReturnType>::Output, <S as Storage>::Error>>;
+}
+
+struct SaveUser<'a> {
+    name: &'a str,
+}
+
+impl<'a> StorageRequestReturnType for SaveUser<'a> {
+    type Output = ();
+}
+
+impl<'dep> User<'dep> {
+    async fn new<S>(storage: &S, dep: &'dep str) -> User<'dep>
+    where
+        S: Storage,
+    {
+        User {
+            dep,
+            name: "Joe".to_owned(),
+        }
+    }
+
+    async fn save<S>(mut self, storage: &S)
+    where
+        S: Storage,
+        for<'a> SaveUser<'a>: StorageRequest<S>,
+        <S as Storage>::Error: Debug,
+    {
+        SaveUser { name: &self.name }
+            .execute(storage)
+            .await
+            .unwrap();
+    }
+}
+
+async fn run<S>(dep: &'_ str, storage: S)
+where
+    S: Storage,
+    <S as Storage>::Error: Debug,
+    for<'a> SaveUser<'a>: StorageRequest<S>,
+{
+    let user = User::new(&storage, dep).await;
+    user.save(&storage).await;
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'called `Option::unwrap()` on a `None` value', compiler/rustc_middle/src/ty/instance.rs:434:85
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/e1884a8e3c3e813aada8254edfa120e85bf5ffca/library/std/src/panicking.rs:495:5
+   1: core::panicking::panic_fmt
+             at /rustc/e1884a8e3c3e813aada8254edfa120e85bf5ffca/library/core/src/panicking.rs:92:14
+   2: core::panicking::panic
+             at /rustc/e1884a8e3c3e813aada8254edfa120e85bf5ffca/library/core/src/panicking.rs:50:5
+   3: rustc_middle::ty::instance::Instance::resolve_drop_in_place
+   4: <rustc_mir::monomorphize::collector::MirNeighborCollector as rustc_middle::mir::visit::Visitor>::visit_terminator
+   5: rustc_mir::monomorphize::collector::collect_neighbours
+   6: rustc_mir::monomorphize::collector::collect_items_rec
+   7: rustc_mir::monomorphize::collector::collect_items_rec
+   8: rustc_mir::monomorphize::collector::collect_items_rec
+   9: rustc_mir::monomorphize::collector::collect_items_rec
+  10: rustc_mir::monomorphize::collector::collect_items_rec
+  11: rustc_mir::monomorphize::collector::collect_items_rec
+  12: rustc_mir::monomorphize::collector::collect_items_rec
+  13: rustc_mir::monomorphize::collector::collect_items_rec
+  14: rustc_mir::monomorphize::collector::collect_items_rec
+  15: rustc_mir::monomorphize::collector::collect_items_rec
+  16: rustc_mir::monomorphize::collector::collect_items_rec
+  17: rustc_mir::monomorphize::collector::collect_items_rec
+  18: rustc_mir::monomorphize::collector::collect_items_rec
+  19: rustc_mir::monomorphize::collector::collect_items_rec
+  20: rustc_mir::monomorphize::collector::collect_items_rec
+  21: rustc_mir::monomorphize::collector::collect_items_rec
+  22: rustc_mir::monomorphize::collector::collect_items_rec
+  23: rustc_mir::monomorphize::collector::collect_items_rec
+  24: rustc_mir::monomorphize::collector::collect_items_rec
+  25: rustc_session::utils::<impl rustc_session::session::Session>::time
+  26: rustc_mir::monomorphize::collector::collect_crate_mono_items
+  27: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+  28: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::collect_and_partition_mono_items>::compute
+  29: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  30: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  31: rustc_data_structures::stack::ensure_sufficient_stack
+  32: rustc_query_system::query::plumbing::get_query_impl
+  33: rustc_codegen_ssa::base::codegen_crate
+  34: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  35: rustc_interface::passes::QueryContext::enter
+  36: rustc_interface::queries::Queries::ongoing_codegen
+  37: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  38: rustc_span::with_source_map
+  39: rustc_interface::interface::create_compiler_and_run
+  40: rustc_span::with_session_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.49.0 (e1884a8e3 2020-12-29) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+
+Bug Labels:
+A-associated-items, A-async-await, AsyncAwait-Triaged, C-bug, E-needs-test, I-ICE, I-monomorphization, P-high, T-compiler, glacier, regression-from-stable-to-stable

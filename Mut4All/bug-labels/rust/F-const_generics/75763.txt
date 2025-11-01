@@ -1,0 +1,54 @@
+Issue Title:
+ICE with non-utf8 const generic &str · Issue #75763 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+
+struct Bug<const S: &'static str>;
+    
+fn main() {
+    let b: Bug::<{
+        unsafe {
+            std::mem::transmute::<&[u8], &str>(&[0xC0, 0xC1, 0xF5])
+        }
+    }>;
+}
+
+Bug Trace:
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/e15510ca33ea15c893b78710101c962b11459963/library/std/src/panicking.rs:475
+   1: core::panicking::panic_fmt
+             at /rustc/e15510ca33ea15c893b78710101c962b11459963/library/core/src/panicking.rs:85
+   2: core::option::expect_none_failed
+             at /rustc/e15510ca33ea15c893b78710101c962b11459963/library/core/src/option.rs:1221
+   3: rustc_middle::ty::print::pretty::PrettyPrinter::pretty_print_const
+   4: rustc_middle::ty::print::pretty::<impl core::fmt::Display for &rustc_middle::ty::consts::Const>::fmt
+   5: core::fmt::write
+             at /rustc/e15510ca33ea15c893b78710101c962b11459963/library/core/src/fmt/mod.rs:1117
+   6: rustc_middle::ty::print::obsolete::DefPathBasedNames::push_generic_params
+   7: rustc_codegen_llvm::type_of::uncached_llvm_type
+   8: <rustc_target::abi::TyAndLayout<&rustc_middle::ty::TyS> as rustc_codegen_llvm::type_of::LayoutLlvmExt>::llvm_type
+   9: rustc_codegen_ssa::mir::operand::OperandRef<V>::new_zst
+  10: <core::iter::adapters::chain::Chain<A,B> as core::iter::traits::iterator::Iterator>::fold
+  11: <alloc::vec::Vec<T> as alloc::vec::SpecExtend<T,I>>::from_iter
+  12: rustc_codegen_ssa::mir::codegen_mir
+  13: rustc_codegen_ssa::base::codegen_instance
+  14: <rustc_middle::mir::mono::MonoItem as rustc_codegen_ssa::mono_item::MonoItemExt>::define
+  15: rustc_codegen_llvm::base::compile_codegen_unit::module_codegen
+  16: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  17: rustc_codegen_llvm::base::compile_codegen_unit
+  18: rustc_codegen_ssa::base::codegen_crate
+  19: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  20: rustc_interface::passes::QueryContext::enter
+  21: rustc_interface::queries::Queries::ongoing_codegen
+  22: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  23: rustc_span::with_source_map
+  24: rustc_interface::interface::create_compiler_and_run
+  25: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+Bug Labels:
+A-const-generics, C-bug, E-needs-test, F-const_generics, I-ICE, T-compiler

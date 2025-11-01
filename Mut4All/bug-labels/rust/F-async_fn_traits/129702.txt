@@ -1,0 +1,96 @@
+Issue Title:
+ICE: `debuginfo: Trying to create type name for unexpected type: CoroutineWitness` · Issue #129702 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_closure, noop_waker, async_fn_traits)]
+
+use std::future::Future;
+use std::pin::pin;
+use std::task::*;
+
+pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
+    let mut fut = pin!(fut);
+    let ctx = &mut Context::from_waker(Waker::noop());
+
+    loop {
+        match fut.as_mut().poll(ctx) {
+            Poll::Pending => {}
+            Poll::Ready(t) => break t,
+        }
+    }
+}
+
+async fn call_once(f: impl async FnOnce(DropMe)) {
+    f(DropMe("world")).await;
+}
+
+#[derive(Debug)]
+struct DropMe(&'static str);
+
+impl Drop for DropMe {
+    fn drop(&mut self) {
+        println!("{}", self.0);
+    }
+}
+
+pub fn main() {
+    block_on(async {
+        let b = DropMe("hello");
+        let async_closure = async move |a: DropMe| {
+            println!("{a:?} {b:?}");
+        };
+        call_once(async_closure).await;
+    });
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_codegen_ssa/src/debuginfo/type_names.rs:447:13: debuginfo: Trying to create type name for unexpected type: CoroutineWitness(DefId(0:15 ~ async_closure_drop[f75a]::main::{closure#0}::{closure#0}::{closure#0}), [])
+
+thread 'rustc' panicked at compiler/rustc_codegen_ssa/src/debuginfo/type_names.rs:447:13:
+Box<dyn Any>
+stack backtrace:
+   0:     0x731b947eb32d - <std::sys::backtrace::BacktraceLock::print::DisplayBacktrace as core::fmt::Display>::fmt::h7db77851e9ebb774
+   1:     0x731b950031d7 - core::fmt::write::h9cfbdc571e0dc2eb
+   2:     0x731b95fd9c91 - std::io::Write::write_fmt::h3ab32c8206ff30b6
+   3:     0x731b947eda0b - std::panicking::default_hook::{{closure}}::h38e1e6aafa3385ea
+   4:     0x731b947ed67e - std::panicking::default_hook::h128e065af5edc5f1
+   5:     0x731b9394ff99 - std[1420b3a934c096b7]::panicking::update_hook::<alloc[e966b72f101d6e3b]::boxed::Box<rustc_driver_impl[bb501fee5761e404]::install_ice_hook::{closure#0}>>::{closure#0}
+   6:     0x731b947ee327 - std::panicking::rust_panic_with_hook::h3da31308f8371ddd
+   7:     0x731b9398a1e1 - std[1420b3a934c096b7]::panicking::begin_panic::<rustc_errors[975dcf607b16fe9a]::ExplicitBug>::{closure#0}
+   8:     0x731b9397d8a6 - std[1420b3a934c096b7]::sys::backtrace::__rust_end_short_backtrace::<std[1420b3a934c096b7]::panicking::begin_panic<rustc_errors[975dcf607b16fe9a]::ExplicitBug>::{closure#0}, !>
+   9:     0x731b93978bf6 - std[1420b3a934c096b7]::panicking::begin_panic::<rustc_errors[975dcf607b16fe9a]::ExplicitBug>
+  10:     0x731b93993401 - <rustc_errors[975dcf607b16fe9a]::diagnostic::BugAbort as rustc_errors[975dcf607b16fe9a]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+  11:     0x731b93f5b064 - rustc_middle[8198af3142fd3a9]::util::bug::opt_span_bug_fmt::<rustc_span[b2ae2de433ea6577]::span_encoding::Span>::{closure#0}
+  12:     0x731b93f412ea - rustc_middle[8198af3142fd3a9]::ty::context::tls::with_opt::<rustc_middle[8198af3142fd3a9]::util::bug::opt_span_bug_fmt<rustc_span[b2ae2de433ea6577]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+  13:     0x731b93f4119b - rustc_middle[8198af3142fd3a9]::ty::context::tls::with_context_opt::<rustc_middle[8198af3142fd3a9]::ty::context::tls::with_opt<rustc_middle[8198af3142fd3a9]::util::bug::opt_span_bug_fmt<rustc_span[b2ae2de433ea6577]::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+  14:     0x731b91ac8f80 - rustc_middle[8198af3142fd3a9]::util::bug::bug_fmt
+  15:     0x731b957a3293 - rustc_codegen_ssa[6619af2d2b318611]::debuginfo::type_names::push_debuginfo_type_name
+  16:     0x731b9579cde5 - rustc_codegen_ssa[6619af2d2b318611]::debuginfo::type_names::push_generic_params
+  17:     0x731b9192005b - <rustc_codegen_llvm[36125070fdede679]::context::CodegenCx as rustc_codegen_ssa[6619af2d2b318611]::traits::debuginfo::DebugInfoMethods>::dbg_scope_fn
+  18:     0x731b95edcf7c - rustc_codegen_ssa[6619af2d2b318611]::mir::codegen_mir::<rustc_codegen_llvm[36125070fdede679]::builder::Builder>
+  19:     0x731b95edacb5 - rustc_codegen_llvm[36125070fdede679]::base::compile_codegen_unit::module_codegen
+  20:     0x731b95f874d3 - <rustc_codegen_llvm[36125070fdede679]::LlvmCodegenBackend as rustc_codegen_ssa[6619af2d2b318611]::traits::backend::ExtraBackendMethods>::compile_codegen_unit
+  21:     0x731b95f83ec4 - <rustc_codegen_llvm[36125070fdede679]::LlvmCodegenBackend as rustc_codegen_ssa[6619af2d2b318611]::traits::backend::CodegenBackend>::codegen_crate
+  22:     0x731b9617c070 - <rustc_interface[7fb29fbff936f0be]::queries::Linker>::codegen_and_build_linker
+  23:     0x731b95dc0a97 - rustc_interface[7fb29fbff936f0be]::interface::run_compiler::<core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>, rustc_driver_impl[bb501fee5761e404]::run_compiler::{closure#0}>::{closure#1}
+  24:     0x731b95e509d0 - std[1420b3a934c096b7]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[7fb29fbff936f0be]::util::run_in_thread_with_globals<rustc_interface[7fb29fbff936f0be]::util::run_in_thread_pool_with_globals<rustc_interface[7fb29fbff936f0be]::interface::run_compiler<core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>, rustc_driver_impl[bb501fee5761e404]::run_compiler::{closure#0}>::{closure#1}, core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>>::{closure#0}, core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>>
+  25:     0x731b95e5103a - <<std[1420b3a934c096b7]::thread::Builder>::spawn_unchecked_<rustc_interface[7fb29fbff936f0be]::util::run_in_thread_with_globals<rustc_interface[7fb29fbff936f0be]::util::run_in_thread_pool_with_globals<rustc_interface[7fb29fbff936f0be]::interface::run_compiler<core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>, rustc_driver_impl[bb501fee5761e404]::run_compiler::{closure#0}>::{closure#1}, core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>>::{closure#0}, core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[d1ee7ab0152fc8ae]::result::Result<(), rustc_span[b2ae2de433ea6577]::ErrorGuaranteed>>::{closure#1} as core[d1ee7ab0152fc8ae]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  26:     0x731b95e513ab - std::sys::pal::unix::thread::Thread::new::thread_start::h2097b27b23ed513c
+  27:     0x731b9761439d - <unknown>
+  28:     0x731b9769949c - <unknown>
+  29:                0x0 - <unknown>
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/home/matthias/vcs/github/rust/rustc-ice-2024-08-28T19_34_10-1810605.txt` to your bug report
+
+note: compiler flags: -C debuginfo=2
+
+query stack during panic:
+end of query stack
+error: aborting due to 1 previous error
+
+Bug Labels:
+A-debuginfo, C-bug, F-async_closure, F-async_fn_traits, I-ICE, T-compiler

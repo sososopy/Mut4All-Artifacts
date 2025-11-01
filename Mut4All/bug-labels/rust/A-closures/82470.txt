@@ -1,0 +1,163 @@
+Issue Title:
+ICE with async_trait · Issue #82470 · rust-lang/rust · GitHub
+
+Rust Code:
+#![no_std]
+#[cfg(test)]
+
+use async_trait::async_trait;
+use ufmt::{uWrite, uwriteln};
+
+
+#[async_trait]
+trait MyTraitAsync<ComError>{
+    const HEADER: &'static str;
+
+    async fn read(&mut self, cmd: VarOffset) -> Result<u16, ComError>;
+    // Print one of the internal variables of the controller to a uWrite
+    async fn ushow_var<W: uWrite>(&mut self, f: &mut W, var: VarOffset) -> Result<(), ComError> {
+        uwriteln!(f, "{:?}: {}", var, self.read(var).await.ok().unwrap()).ok();
+        Ok(())
+    }
+}
+
+Bug Trace:
+~/projects/reproductions/ice0 on  master! ⌚ 23:48:18
+$ RUST_BACKTRACE=1 cargo build
+   Compiling ice0 v0.1.0 (/home/orion/projects/reproductions/ice0)
+error[E0706]: functions in traits cannot be declared `async`
+  --> src/lib.rs:12:5
+   |
+12 |     async fn read(&mut self, cmd: VarOffset) -> Result<u16, ComError>;
+   |     -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> src/lib.rs:14:5
+   |
+14 |       async fn ushow_var<W: uWrite>(&mut self, f: &mut W, var: VarOffset) -> Result<(), ComError> {
+   |       ^----
+   |       |
+   |  _____`async` because of this
+   | |
+15 | |         uwriteln!(f, "{:?}: {}", var, self.read(var).await.ok().unwrap()).ok();
+16 | |         Ok(())
+17 | |     }
+   | |_____^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error: cannot find attribute `async_trait` in this scope
+ --> src/lib.rs:8:3
+  |
+8 | #[async_trait]
+  |   ^^^^^^^^^^^
+
+error[E0412]: cannot find type `VarOffset` in this scope
+  --> src/lib.rs:12:35
+   |
+12 |     async fn read(&mut self, cmd: VarOffset) -> Result<u16, ComError>;
+   |                                   ^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `VarOffset` in this scope
+  --> src/lib.rs:14:62
+   |
+14 |     async fn ushow_var<W: uWrite>(&mut self, f: &mut W, var: VarOffset) -> Result<(), ComError> {
+   |                                                              ^^^^^^^^^ not found in this scope
+
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> src/lib.rs:15:39
+   |
+15 |         uwriteln!(f, "{:?}: {}", var, self.read(var).await.ok().unwrap()).ok();
+   |                                       ^^^^^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+thread 'rustc' panicked at 'called `Option::unwrap()` on a `None` value', compiler/rustc_middle/src/hir/map/mod.rs:178:30
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/cb75ad5db02783e8b0222fee363c5f63f7e2cf5b/library/std/src/panicking.rs:493:5
+   1: core::panicking::panic_fmt
+             at /rustc/cb75ad5db02783e8b0222fee363c5f63f7e2cf5b/library/core/src/panicking.rs:92:14
+   2: core::panicking::panic
+             at /rustc/cb75ad5db02783e8b0222fee363c5f63f7e2cf5b/library/core/src/panicking.rs:50:5
+   3: rustc_middle::hir::map::Map::def_kind
+   4: core::ops::function::FnOnce::call_once
+   5: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+   6: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+   7: rustc_query_system::query::plumbing::get_query_impl
+   8: rustc_middle::ty::util::<impl rustc_middle::ty::context::TyCtxt>::closure_base_def_id
+   9: rustc_typeck::collect::generics_of
+  10: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::generics_of>::compute
+  11: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  12: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  13: rustc_data_structures::stack::ensure_sufficient_stack
+  14: rustc_query_system::query::plumbing::get_query_impl
+  15: rustc_query_system::query::plumbing::ensure_query_impl
+  16: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  17: rustc_hir::intravisit::walk_expr
+  18: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  19: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  20: rustc_hir::intravisit::walk_expr
+  21: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  22: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  23: rustc_hir::intravisit::walk_expr
+  24: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  25: rustc_hir::intravisit::walk_block
+  26: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_expr
+  27: rustc_hir::intravisit::walk_trait_item
+  28: <rustc_typeck::collect::CollectItemTypesVisitor as rustc_hir::intravisit::Visitor>::visit_trait_item
+  29: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  30: rustc_typeck::collect::collect_mod_item_types
+  31: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::collect_mod_item_types>::compute
+  32: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  33: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  34: rustc_data_structures::stack::ensure_sufficient_stack
+  35: rustc_query_system::query::plumbing::get_query_impl
+  36: rustc_query_system::query::plumbing::ensure_query_impl
+  37: rustc_typeck::check_crate
+  38: rustc_interface::passes::analysis
+  39: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  40: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  41: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  42: rustc_data_structures::stack::ensure_sufficient_stack
+  43: rustc_query_system::query::plumbing::get_query_impl
+  44: rustc_interface::passes::QueryContext::enter
+  45: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  46: rustc_span::with_source_map
+  47: rustc_interface::interface::create_compiler_and_run
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.50.0 (cb75ad5db 2021-02-10) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [def_kind] looking up definition kind of `MyTraitAsync::ushow_var::{closure#0}`
+#1 [generics_of] computing generics of `MyTraitAsync::ushow_var::{closure#0}::{closure#0}`
+#2 [collect_mod_item_types] collecting item types in top-level module
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0412, E0706, E0728.
+For more information about an error, try `rustc --explain E0412`.
+error: could not compile `ice0`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-async-await, A-closures, AsyncAwait-Triaged, C-bug, E-needs-test, I-ICE, T-compiler, glacier

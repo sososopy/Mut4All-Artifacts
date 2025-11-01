@@ -1,0 +1,53 @@
+Issue Title:
+ICE: OutputTypeParameterMismatch in failing to resolve associated type as tuple. · Issue #33364 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::marker::PhantomData;
+
+trait Foo<'a> {
+    type Item: 'a;
+
+    fn consume<F>(self, f: F) where F: Fn(Self::Item);
+}
+
+fn get<T>() -> T { unimplemented!() }
+
+impl<'a, A: 'a, B: 'a, C: 'a> Foo<'a> for 
+(PhantomData<A>, PhantomData<B>, PhantomData<C>) {
+    type Item = (&'a A, &'a B, &'a C);
+
+    fn consume<F>(self, f: F) where F: Fn(Self::Item) {
+        f(get());
+    }
+}
+
+#[derive(Clone)]
+struct Wrap<T> {
+    foo: T,
+}
+
+impl<T: for<'a> Foo<'a>> Wrap<T> {
+    fn consume<F>(self, f: F) where F: for<'a> Fn(<T as Foo<'a>>::Item) {
+        self.foo.consume(f);
+    }
+}
+
+fn drop3<A, B, C>(_: A, _: B, _: C) {}
+
+fn main() {
+    let foo = (PhantomData::<u32>, PhantomData::<f32>, PhantomData::<i32>);
+    let wrap = Wrap {
+        foo: foo
+    };
+
+    wrap.clone().consume(|item| {
+        let (a, b, c) = item;
+        drop3(a, b, c);
+    });
+
+    // uncomment to break
+    // wrap.consume(|(a, b, c)| drop3(a, b, c));
+}
+
+Bug Labels:
+A-lazy-normalization, A-trait-system, C-bug, I-ICE, P-medium, T-compiler, regression-from-stable-to-stable

@@ -1,0 +1,102 @@
+Issue Title:
+Segmentation fault during optimization pass with aarch64 simd · Issue #84020 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics, platform_intrinsics, repr_simd)]
+#![allow(incomplete_features)]
+
+extern "platform-intrinsic" {
+    fn simd_eq<T, U>(a: T, b: T) -> U;
+    fn simd_and<T>(a: T, b: T) -> T;
+}
+
+#[derive(Copy, Clone)]
+#[repr(simd)]
+pub struct F<const N: usize>([f32; N]);
+
+impl<const N: usize> F<N> {
+    pub fn splat(value: f32) -> Self {
+        Self([value; N])
+    }
+
+    pub fn eq(self, other: Self) -> I<N> {
+        unsafe { simd_eq(self, other) }
+    }
+}
+
+#[repr(simd)]
+pub struct I<const N: usize>([i32; N]);
+
+impl<const N: usize> core::ops::BitAnd for I<N> {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
+        unsafe { simd_and(self, other) }
+    }
+}
+
+impl<const N: usize> I<N> {
+    pub fn to_array(self) -> [bool; N] {
+        let mut array = [false; N];
+        let mut i = 0;
+        while i < N {
+            array[i] = self.0[i] == -1;
+            i += 1;
+        }
+        array
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn bug() {
+        let a = F::<64>::splat(0.);
+        let b = F::<64>::splat(0.);
+        let c = F::<64>::splat(0.);
+        let m = a.eq(b) & a.eq(c);
+        assert!(m.to_array()[0]);
+    }
+}
+
+Bug Trace:
+* thread #9, name = 'LTO f64_ops.4vffyy4v-cgu.7', stop reason = EXC_BAD_ACCESS (code=1, address=0x8)
+    frame #0: 0x0000000100473f7c librustc_driver-6566963bd0589bc0.dylib`llvm::Type::getTypeID() const + 12
+    frame #1: 0x0000000100474468 librustc_driver-6566963bd0589bc0.dylib`llvm::Type::isVectorTy() const + 32
+    frame #2: 0x000000010047453c librustc_driver-6566963bd0589bc0.dylib`llvm::Type::getScalarType() const + 32
+    frame #3: 0x00000001007e4b68 librustc_driver-6566963bd0589bc0.dylib`llvm::Type::isIntOrIntVectorTy() const + 24
+    frame #4: 0x000000010311a8b0 librustc_driver-6566963bd0589bc0.dylib`llvm::EVT::isExtendedInteger() const + 116
+    frame #5: 0x000000010048cdb8 librustc_driver-6566963bd0589bc0.dylib`llvm::EVT::isInteger() const + 64
+    frame #6: 0x000000010278d710 librustc_driver-6566963bd0589bc0.dylib`llvm::SelectionDAG::getNode(unsigned int, llvm::SDLoc const&, llvm::EVT, llvm::SDValue, llvm::SDNodeFlags) + 5776
+    frame #7: 0x0000000102778264 librustc_driver-6566963bd0589bc0.dylib`llvm::SelectionDAG::getNode(unsigned int, llvm::SDLoc const&, llvm::EVT, llvm::SDValue) + 156
+    frame #8: 0x000000010231db08 librustc_driver-6566963bd0589bc0.dylib`performExtendCombine(llvm::SDNode*, llvm::TargetLowering::DAGCombinerInfo&, llvm::SelectionDAG&) + 832
+    frame #9: 0x0000000102317e48 librustc_driver-6566963bd0589bc0.dylib`llvm::AArch64TargetLowering::PerformDAGCombine(llvm::SDNode*, llvm::TargetLowering::DAGCombinerInfo&) const + 1128
+    frame #10: 0x0000000102541298 librustc_driver-6566963bd0589bc0.dylib`(anonymous namespace)::DAGCombiner::combine(llvm::SDNode*) + 364
+    frame #11: 0x000000010253a094 librustc_driver-6566963bd0589bc0.dylib`(anonymous namespace)::DAGCombiner::Run(llvm::CombineLevel) + 820
+    frame #12: 0x0000000102539ce0 librustc_driver-6566963bd0589bc0.dylib`llvm::SelectionDAG::Combine(llvm::CombineLevel, llvm::AAResults*, llvm::CodeGenOpt::Level) + 92
+    frame #13: 0x00000001027df038 librustc_driver-6566963bd0589bc0.dylib`llvm::SelectionDAGISel::CodeGenAndEmitDAG() + 1084
+    frame #14: 0x00000001027deb8c librustc_driver-6566963bd0589bc0.dylib`llvm::SelectionDAGISel::SelectBasicBlock(llvm::ilist_iterator<llvm::ilist_detail::node_options<llvm::Instruction, true, false, void>, false, true>, llvm::ilist_iterator<llvm::ilist_detail::node_options<llvm::Instruction, true, false, void>, false, true>, bool&) + 352
+    frame #15: 0x00000001027de010 librustc_driver-6566963bd0589bc0.dylib`llvm::SelectionDAGISel::SelectAllBasicBlocks(llvm::Function const&) + 4444
+    frame #16: 0x00000001027dbb98 librustc_driver-6566963bd0589bc0.dylib`llvm::SelectionDAGISel::runOnMachineFunction(llvm::MachineFunction&) + 1568
+    frame #17: 0x000000010229e0e8 librustc_driver-6566963bd0589bc0.dylib`(anonymous namespace)::AArch64DAGToDAGISel::runOnMachineFunction(llvm::MachineFunction&) + 56
+    frame #18: 0x0000000102d18d00 librustc_driver-6566963bd0589bc0.dylib`llvm::MachineFunctionPass::runOnFunction(llvm::Function&) + 460
+    frame #19: 0x000000010426b76c librustc_driver-6566963bd0589bc0.dylib`llvm::FPPassManager::runOnFunction(llvm::Function&) + 548
+    frame #20: 0x0000000104272588 librustc_driver-6566963bd0589bc0.dylib`llvm::FPPassManager::runOnModule(llvm::Module&) + 116
+    frame #21: 0x000000010426bfd8 librustc_driver-6566963bd0589bc0.dylib`(anonymous namespace)::MPPassManager::runOnModule(llvm::Module&) + 688
+    frame #22: 0x000000010426bb70 librustc_driver-6566963bd0589bc0.dylib`llvm::legacy::PassManagerImpl::run(llvm::Module&) + 272
+    frame #23: 0x00000001042729a4 librustc_driver-6566963bd0589bc0.dylib`llvm::legacy::PassManager::run(llvm::Module&) + 36
+    frame #24: 0x00000001003f9a58 librustc_driver-6566963bd0589bc0.dylib`LLVMRustWriteOutputFile + 696
+    frame #25: 0x00000001003465a4 librustc_driver-6566963bd0589bc0.dylib`rustc_codegen_llvm::back::write::write_output_file::hc09c4bfb3a246709 + 356
+  * frame #26: 0x0000000100344f60 librustc_driver-6566963bd0589bc0.dylib`rustc_codegen_llvm::back::write::codegen::with_codegen::h9282ea3405df7f19 + 140
+    frame #27: 0x000000010034964c librustc_driver-6566963bd0589bc0.dylib`rustc_codegen_llvm::back::write::codegen::h18b6d47a71c14803 + 2616
+    frame #28: 0x0000000100384f44 librustc_driver-6566963bd0589bc0.dylib`rustc_codegen_ssa::back::write::finish_intra_module_work::ha36a9bd9f4a0717d + 180
+    frame #29: 0x00000001003802a8 librustc_driver-6566963bd0589bc0.dylib`rustc_codegen_ssa::back::write::execute_work_item::ha652a44c2011cc51 + 1228
+    frame #30: 0x000000010038b80c librustc_driver-6566963bd0589bc0.dylib`std::sys_common::backtrace::__rust_begin_short_backtrace::he5bf95f074532528 + 180
+    frame #31: 0x00000001003289e4 librustc_driver-6566963bd0589bc0.dylib`std::panicking::try::hc21045c482577b07 + 48
+    frame #32: 0x000000010038e33c librustc_driver-6566963bd0589bc0.dylib`core::ops::function::FnOnce::call_once$u7b$$u7b$vtable.shim$u7d$$u7d$::hd4c96fd994a769dd + 144
+    frame #33: 0x0000000115c4ee34 libstd-405150871270d457.dylib`_$LT$alloc..boxed..Box$LT$F$C$A$GT$$u20$as$u20$core..ops..function..FnOnce$LT$Args$GT$$GT$::call_once::hc929de8808b588b8 [inlined] _$LT$alloc..boxed..Box$LT$F$C$A$GT$$u20$as$u20$core..ops..function..FnOnce$LT$Args$GT$$GT$::call_once::h2b5dd4f23298a6af at boxed.rs:1546:9 [opt]
+    frame #34: 0x0000000115c4ee28 libstd-405150871270d457.dylib`_$LT$alloc..boxed..Box$LT$F$C$A$GT$$u20$as$u20$core..ops..function..FnOnce$LT$Args$GT$$GT$::call_once::hc929de8808b588b8 at boxed.rs:1546 [opt]
+    frame #35: 0x0000000115c5073c libstd-405150871270d457.dylib`std::sys::unix::thread::Thread::new::thread_start::hd74574d62a5c9da7 at thread.rs:71:17 [opt]
+
+Bug Labels:
+A-LLVM, A-SIMD, C-bug, E-needs-mcve, I-ICE, O-AArch64, T-compiler, glacier, requires-nightly

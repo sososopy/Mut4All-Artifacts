@@ -1,0 +1,88 @@
+Issue Title:
+[clang] Assertion failure when prefix increment is deleted and postfix increment is overloaded
+
+Source Code & Bug Trace:
+class b {
+  void operator++() = delete;
+  template <class> void operator++(int) {
+    b bb;
+    ++bb;
+  }
+};
+
+
+<source>:11:5: error: overload resolution selected deleted operator '++'
+   11 |     ++bb;
+      |     ^ ~~
+<source>:8:8: note: candidate function has been explicitly deleted
+    8 |   void operator++() = delete;
+      |        ^
+clang++: /root/llvm-project/clang/lib/Sema/SemaOverload.cpp:11346: bool CheckArityMismatch(clang::Sema&, clang::OverloadCandidate*, unsigned int): Assertion `(Cand->FailureKind == ovl_fail_too_many_arguments) || (Cand->FailureKind == ovl_fail_bad_deduction && Cand->DeductionFailure.Result == Sema::TDK_TooManyArguments)' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics <source>
+1.	<source>:11:9: current parser token ';'
+2.	<source>:7:1: parsing struct/union/class body 'b'
+3.	<source>:9:41: parsing function body 'b::operator++'
+4.	<source>:9:41: in compound statement ('{}')
+ #0 0x00000000037fbef8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x37fbef8)
+ #1 0x00000000037f9bdc llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x37f9bdc)
+ #2 0x00000000037426b8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fee89242520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x00007fee892969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x00007fee89242476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x00007fee892287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x00007fee8922871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x00007fee89239e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x00000000068e2d1e CheckArityMismatch(clang::Sema&, clang::OverloadCandidate*, unsigned int) (.isra.0) SemaOverload.cpp:0:0
+#10 0x0000000006925079 clang::OverloadCandidateSet::NoteCandidates(clang::Sema&, llvm::ArrayRef<clang::Expr*>, llvm::ArrayRef<clang::OverloadCandidate*>, llvm::StringRef, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6925079)
+#11 0x0000000006925791 clang::OverloadCandidateSet::NoteCandidates(std::pair<clang::SourceLocation, clang::PartialDiagnostic>, clang::Sema&, clang::OverloadCandidateDisplayKind, llvm::ArrayRef<clang::Expr*>, llvm::StringRef, clang::SourceLocation, llvm::function_ref<bool (clang::OverloadCandidate&)>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6925791)
+#12 0x000000000692a876 clang::Sema::CreateOverloadedUnaryOp(clang::SourceLocation, clang::UnaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x692a876)
+#13 0x00000000065b31ab clang::Sema::BuildUnaryOp(clang::Scope*, clang::SourceLocation, clang::UnaryOperatorKind, clang::Expr*, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x65b31ab)
+#14 0x00000000060786de clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x60786de)
+#15 0x000000000607a31a clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x607a31a)
+#16 0x000000000607a4b9 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x607a4b9)
+#17 0x000000000607f039 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x607f039)
+#18 0x00000000060fabe9 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x60fabe9)
+#19 0x00000000060f12a7 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x60f12a7)
+#20 0x00000000060f2167 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x60f2167)
+#21 0x00000000060f3089 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x60f3089)
+#22 0x00000000060f49aa clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x60f49aa)
+#23 0x0000000006022d96 clang::Parser::ParseLexedMethodDef(clang::Parser::LexedMethod&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6022d96)
+#24 0x0000000006022a9d clang::Parser::ParseLexedMethodDefs(clang::Parser::ParsingClass&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6022a9d)
+#25 0x000000000606ec95 clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributes&, unsigned int, clang::Decl*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x606ec95)
+#26 0x0000000006070cd0 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6070cd0)
+#27 0x0000000006049f08 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6049f08)
+#28 0x000000000600f144 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x600f144)
+#29 0x000000000600fad1 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x600fad1)
+#30 0x0000000006016d86 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6016d86)
+#31 0x0000000006017c2d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6017c2d)
+#32 0x000000000600ac1a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x600ac1a)
+#33 0x000000000407f038 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x407f038)
+#34 0x00000000042ec069 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x42ec069)
+#35 0x000000000426b11e clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x426b11e)
+#36 0x00000000043cb23e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x43cb23e)
+#37 0x0000000000c0d476 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc0d476)
+#38 0x0000000000c04cfa ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#39 0x00000000040c0309 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#40 0x0000000003742b64 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3742b64)
+#41 0x00000000040c08ff clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#42 0x00000000040888d5 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x40888d5)
+#43 0x000000000408933d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x408933d)
+#44 0x0000000004091235 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4091235)
+#45 0x0000000000c0a86c clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc0a86c)
+#46 0x0000000000b02574 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xb02574)
+#47 0x00007fee89229d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#48 0x00007fee89229e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#49 0x0000000000c047de _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc047de)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Compiler returned: 134
+
+
+<source>:9:25: note: candidate function template not viable: requires 1 argument, but 1 was provided
+    9 |   template <class> void operator++(int) {
+      |                         ^          ~~~
+
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid

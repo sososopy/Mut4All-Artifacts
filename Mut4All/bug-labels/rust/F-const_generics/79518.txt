@@ -1,0 +1,134 @@
+Issue Title:
+ICE with const_evaluatable_checked: unable to compare const generics array · Issue #79518 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(const_generics, const_evaluatable_checked)]
+
+use std::mem;
+
+pub trait HardcodedPayload {
+    type ArrayType: AsRef<[u8]> + AsMut<[u8]> + Default + PartialEq;
+    const PAYLOAD: Self::ArrayType;
+
+    fn test() where [u8; mem::size_of::<Self::ArrayType>()]: Sized + PartialEq { //workaround for `[u8; N]`
+        let mut buf = [0u8; mem::size_of::<Self::ArrayType>()];
+        //*insert read here*
+        if buf == Self::PAYLOAD {} //crashed here
+    }
+}
+
+pub struct UserStruct {
+    _a: i32,
+}
+
+impl HardcodedPayload for UserStruct {
+    type ArrayType = [u8; 2];
+    const PAYLOAD: Self::ArrayType = [0xff, 0xff];
+}
+
+fn main() {}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_traits/src/normalize_erasing_regions.rs:37:32: could not fully normalize `Const { ty: fn() -> usize {std::mem::size_of::<<Self as HardcodedPayload>::ArrayType>}, val: Value(Scalar(<ZST>)) }`
+
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:958:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::bug
+   2: rustc_errors::Handler::bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::bug_fmt
+   8: rustc_infer::infer::InferCtxtBuilder::enter
+   9: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions
+  10: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  11: rustc_data_structures::stack::ensure_sufficient_stack
+  12: rustc_query_system::query::plumbing::get_query_impl
+  13: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_const
+  14: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::subst_and_normalize_erasing_regions
+  15: rustc_mir::interpret::operand::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_operand
+  16: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+  17: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+  18: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_allocation_raw>::compute
+  19: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+  20: rustc_query_system::query::plumbing::get_query_impl
+  21: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  22: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_const_value_raw>::compute
+  23: rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
+  24: rustc_query_system::query::plumbing::get_query_impl
+  25: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  26: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_const_value_raw>::compute
+  27: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  28: rustc_data_structures::stack::ensure_sufficient_stack
+  29: rustc_query_system::query::plumbing::get_query_impl
+  30: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+  31: rustc_middle::ty::consts::Const::try_eval_usize
+  32: rustc_middle::ty::error::<impl rustc_middle::ty::TyS>::sort_string
+  33: <rustc_middle::ty::error::TypeError as core::fmt::Display>::fmt
+  34: core::fmt::write
+             at /rustc/1c389ffeff814726dec325f0f2b0c99107df2673/library/core/src/fmt/mod.rs:1078:17
+  35: rustc_infer::infer::error_reporting::<impl rustc_infer::infer::InferCtxt>::note_type_err
+  36: rustc_infer::infer::error_reporting::<impl rustc_infer::infer::InferCtxt>::report_and_explain_type_error
+  37: rustc_infer::infer::InferCtxt::report_mismatched_types
+  38: rustc_typeck::check::demand::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::demand_coerce_diag
+  39: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_coercable_to_type
+  40: rustc_typeck::check::op::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_overloaded_binop
+  41: rustc_typeck::check::op::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_binop
+  42: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  43: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  44: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  45: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  46: rustc_typeck::check::_match::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_match
+  47: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  48: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  49: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  50: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  51: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  52: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  53: rustc_typeck::check::check::check_fn
+  54: rustc_infer::infer::InferCtxtBuilder::enter
+  55: rustc_typeck::check::typeck
+  56: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck>::compute
+  57: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  58: rustc_data_structures::stack::ensure_sufficient_stack
+  59: rustc_query_system::query::plumbing::get_query_impl
+  60: rustc_query_system::query::plumbing::ensure_query_impl
+  61: rustc_typeck::check::typeck_item_bodies
+  62: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck_item_bodies>::compute
+  63: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  64: rustc_data_structures::stack::ensure_sufficient_stack
+  65: rustc_query_system::query::plumbing::get_query_impl
+  66: rustc_typeck::check_crate
+  67: rustc_interface::passes::analysis
+  68: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  69: rustc_query_system::dep_graph::graph::DepGraph<K>::with_eval_always_task
+  70: rustc_data_structures::stack::ensure_sufficient_stack
+  71: rustc_query_system::query::plumbing::get_query_impl
+  72: rustc_interface::passes::QueryContext::enter
+  73: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  74: rustc_span::with_source_map
+  75: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.50.0-nightly (1c389ffef 2020-11-24) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [normalize_generic_arg_after_erasing_regions] normalizing `std::mem::size_of::<<Self as HardcodedPayload>::ArrayType>`
+#1 [eval_to_allocation_raw] const-evaluating + checking `HardcodedPayload::test::{constant#0}`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `HardcodedPayload::test::{constant#0}`
+#3 [eval_to_const_value_raw] simplifying constant for the type system `HardcodedPayload::test::{constant#0}`
+#4 [typeck] type-checking `HardcodedPayload::test`
+#5 [typeck_item_bodies] type-checking all item bodies
+#6 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, glacier, requires-nightly

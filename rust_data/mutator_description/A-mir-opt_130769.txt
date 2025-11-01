@@ -1,0 +1,43 @@
+Mutation Operator: Modify Usage of `Poll` Enum in Function
+
+Target: The mutation operator targets Rust functions utilizing the `std::task::Poll` enum, specifically in match arms handling.
+
+Mutation Rule:
+1. Identify a function that matches on a `Poll` enum value.
+2. Modify an existing match arm involving `Poll::Ready(Ok(Some(...)))` by changing the inner type to a different structure or type from the seed program that is not already used within the match arm.
+3. If no suitable type exists, introduce a simple enum within the function scope that can be used instead.
+4. Ensure that the new type maintains a consistent pattern with the original structure to avoid syntactic errors but potentially triggers semantic inconsistencies or compiler edge cases.
+
+Example:
+Original Code:
+```rust
+pub fn poll(val: Poll<Result<Option<Vec<u8>>, u8>>) {
+    match val {
+        Poll::Ready(Ok(Some(_trailers))) => {}
+        Poll::Ready(Err(_err)) => {}
+        Poll::Ready(Ok(None)) => {}
+        Poll::Pending => {}
+    }
+}
+```
+
+Mutated Code:
+```rust
+pub fn poll(val: Poll<Result<Option<CustomType>, u8>>) {
+    enum CustomType {
+        Value(u32),
+    }
+    
+    match val {
+        Poll::Ready(Ok(Some(CustomType::Value(_)))) => {}
+        Poll::Ready(Err(_err)) => {}
+        Poll::Ready(Ok(None)) => {}
+        Poll::Pending => {}
+    }
+}
+```
+
+Explanation:
+- The `Poll::Ready(Ok(Some(_trailers)))` arm is changed to handle `Poll::Ready(Ok(Some(CustomType::Value(_))))`.
+- A new `CustomType` enum with a variant `Value(u32)` is introduced in the function scope.
+- This mutation might trigger subtle MIR optimizations or transformation bugs due to the introduction of a different structure in the match arm, potentially affecting compiler invariants or assumptions.

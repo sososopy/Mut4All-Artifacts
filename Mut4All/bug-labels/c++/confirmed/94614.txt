@@ -1,0 +1,126 @@
+Issue Title:
+rejects valid (trunk) or compiler crash (18.x) when trying to deduce parameter type of template class inside template class
+
+Source Code & Bug Trace:
+namespace{
+
+template<class, class>struct DoubleTrouble{};
+struct ZeroTrouble{};
+template <class T, class U>
+struct Outer{
+	using Trouble = DoubleTrouble<U,T>;
+
+	template <class V>
+	struct Inner{
+		explicit Inner(const V& v, Trouble* trouble) {}
+	};
+
+	template <class V>
+	Inner<V> factory(const V& v) {
+		return Inner(v, &trouble_);
+	}
+
+ private:
+	Trouble trouble_;
+};
+
+}
+
+void boom(){
+	Outer<char, int> ou;
+	ZeroTrouble z;
+	ou.factory(z);
+}
+
+
+<source>:18:10: error: no viable constructor or deduction guide for deduction of template arguments of 'Inner'
+   18 |                 return Inner(v, &trouble_);
+      |                        ^
+<source>:30:5: note: in instantiation of function template specialization '(anonymous namespace)::Outer<char, int>::factory<(anonymous namespace)::ZeroTrouble>' requested here
+   30 |         ou.factory(z);
+      |            ^
+<source>:13:12: note: candidate template ignored: deduced conflicting types for parameter 'V' ('(anonymous namespace)::ZeroTrouble' vs. 'char')
+   13 |                 explicit Inner(const V& v, Trouble* trouble) {}
+      |                          ^
+<source>:12:9: note: candidate function template not viable: requires 1 argument, but 2 were provided
+   12 |         struct Inner{
+      |                ^~~~~
+
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: clang++ -O2 -std=c++20 -c boom.cc
+1.      <eof> parser at end of file
+2.      boom.cc:17:11: instantiating function definition '(anonymous namespace)::Outer<char, int>::factory<(anonymous namespace)::ZeroTrouble>'
+ #0 0x00007ff06d5d9a09 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/lib/Support/Unix/Signals.inc:723:13
+ #1 0x00007ff06d5d7430 llvm::sys::RunSignalHandlers() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/lib/Support/Signals.cpp:106:18
+ #2 0x00007ff06d512ce0 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/lib/Support/CrashRecoveryContext.cpp:73:5
+ #3 0x00007ff06d512ce0 CrashRecoverySignalHandler(int) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/lib/Support/CrashRecoveryContext.cpp:390:51
+ #4 0x00007ff06c441240 __restore_rt (/lib64/libc.so.6+0x41240)
+ #5 0x00007ff075c6354a clang::TemplateArgument::getNonTypeTemplateArgumentType() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/AST/TemplateBase.cpp:354:3
+ #6 0x00007ff075c6354a checkDeducedTemplateArguments(clang::ASTContext&, clang::DeducedTemplateArgument const&, clang::DeducedTemplateArgument const&, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:229:24
+ #7 0x00007ff075c5784a clang::TemplateArgument::isNull() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/include/clang/AST/TemplateBase.h:298:42
+ #8 0x00007ff075c5784a DeduceTemplateArgumentsByTypeMatch(clang::Sema&, clang::TemplateParameterList*, clang::QualType, clang::QualType, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, bool, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:1566:16
+ #9 0x00007ff075c6254d DeduceTemplateArguments(clang::Sema&, clang::TemplateParameterList*, clang::TemplateArgument const&, clang::TemplateArgument, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:0:14
+#10 0x00007ff075c6233d DeduceTemplateArguments(clang::Sema&, clang::TemplateParameterList*, llvm::ArrayRef<clang::TemplateArgument>, llvm::ArrayRef<clang::TemplateArgument>, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:2443:16
+#11 0x00007ff075c65624 DeduceTemplateSpecArguments(clang::Sema&, clang::TemplateParameterList*, clang::QualType, clang::QualType, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:636:10
+#12 0x00007ff075c57a62 DeduceTemplateArgumentsByTypeMatch(clang::Sema&, clang::TemplateParameterList*, clang::QualType, clang::QualType, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, bool, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:1883:18
+#13 0x00007ff075c5887a DeduceTemplateArgumentsByTypeMatch(clang::Sema&, clang::TemplateParameterList*, clang::QualType, clang::QualType, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, bool, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:0:14
+#14 0x00007ff075c5b098 DeduceTemplateArgumentsFromCallArgument(clang::Sema&, clang::TemplateParameterList*, unsigned int, clang::QualType, clang::QualType, clang::Expr::Classification, clang::Expr*, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg>&, bool, unsigned int, unsigned int, clang::TemplateSpecCandidateSet*) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:4179:10
+#15 0x00007ff075c55950 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>)::$_1::operator()(clang::QualType, unsigned int, bool) const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:4297:3
+#16 0x00007ff075c550e6 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::QualType, clang::Expr::Classification, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateDeduction.cpp:4322:16
+#17 0x00007ff075afedf7 clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind, clang::OverloadCandidateParamOrder, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaOverload.cpp:7629:31
+#18 0x00007ff0759d73a0 clang::Sema::DeduceTemplateSpecializationFromInitializer(clang::TypeSourceInfo*, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>)::$_0::operator()(clang::FunctionTemplateDecl*, clang::CXXDeductionGuideDecl*, clang::DeclAccessPair, bool, bool) const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaInit.cpp:10714:7
+#19 0x00007ff0759c6852 llvm::iterator_adaptor_base<clang::UnresolvedSetIterator, clang::DeclAccessPair*, std::random_access_iterator_tag, clang::NamedDecl*, long, clang::NamedDecl*, clang::NamedDecl*>::operator++() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaInit.cpp:10811:7
+#20 0x00007ff0759c6852 clang::Sema::DeduceTemplateSpecializationFromInitializer(clang::TypeSourceInfo*, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>)::$_1::operator()(bool) const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaInit.cpp:10797:61
+#21 0x00007ff0759c5e25 clang::Sema::DeduceTemplateSpecializationFromInitializer(clang::TypeSourceInfo*, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaInit.cpp:10884:3
+#22 0x00007ff0758fa82f clang::Sema::BuildCXXTypeConstructExpr(clang::TypeSourceInfo*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaExprCXX.cpp:1523:10
+#23 0x00007ff075ccfd3b llvm::SmallVectorTemplateCommon<clang::Expr*, void>::begin() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/ADT/SmallVector.h:280:45
+#24 0x00007ff075ccfd3b llvm::SmallVectorTemplateCommon<clang::Expr*, void>::end() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/ADT/SmallVector.h:282:27
+#25 0x00007ff075ccfd3b llvm::SmallVector<clang::Expr*, 8u>::~SmallVector() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/ADT/SmallVector.h:1215:46
+#26 0x00007ff075ccfd3b clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXUnresolvedConstructExpr(clang::CXXUnresolvedConstructExpr*) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/TreeTransform.h:13820:1
+#27 0x00007ff075ce7685 clang::ActionResult<clang::Expr*, true>::isInvalid() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/include/clang/Sema/Ownership.h:199:41
+#28 0x00007ff075ce7685 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/TreeTransform.h:7957:14
+#29 0x00007ff075cd4e61 clang::ActionResult<clang::Stmt*, true>::isInvalid() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/include/clang/Sema/Ownership.h:199:41
+#30 0x00007ff075cd4e61 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/TreeTransform.h:7547:16
+#31 0x00007ff075cc1f63 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateInstantiate.cpp:4098:23
+#32 0x00007ff075d0d937 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:5185:14
+#33 0x00007ff075d10687 clang::FunctionDecl::isDefined() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/include/clang/AST/Decl.h:2222:12
+#34 0x00007ff075d10687 clang::Sema::PerformPendingInstantiations(bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:6446:23
+#35 0x00007ff07544af37 llvm::TimeTraceScope::~TimeTraceScope() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/Support/TimeProfiler.h:155:9
+#36 0x00007ff07544af37 clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/Sema.cpp:1089:3
+#37 0x00007ff07544b66f clang::Sema::ActOnEndOfTranslationUnit() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Sema/Sema.cpp:1130:9
+#38 0x00007ff074b690bd clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Parse/Parser.cpp:0:13
+#39 0x00007ff074a8ec6c clang::ParseAST(clang::Sema&, bool, bool) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Parse/ParseAST.cpp:162:5
+#40 0x00007ff076d2a916 clang::CompilerInstance::shouldBuildGlobalModuleIndex() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Frontend/CompilerInstance.cpp:84:11
+#41 0x00007ff076d2a916 clang::FrontendAction::Execute() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Frontend/FrontendAction.cpp:1073:10
+#42 0x00007ff076c9d374 llvm::Error::getPtr() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/Support/Error.h:279:12
+#43 0x00007ff076c9d374 llvm::Error::operator bool() /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/Support/Error.h:239:16
+#44 0x00007ff076c9d374 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Frontend/CompilerInstance.cpp:1057:23
+#45 0x00007ff076da5ff6 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:272:25
+#46 0x0000556e9184f650 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/tools/driver/cc1_main.cpp:294:15
+#47 0x0000556e9184c398 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/tools/driver/driver.cpp:365:12
+#48 0x00007ff0769164e9 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0::operator()() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Driver/Job.cpp:440:30
+#49 0x00007ff0769164e9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0>(long) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/ADT/STLFunctionalExtras.h:45:12
+#50 0x00007ff06d512a6e llvm::function_ref<void ()>::operator()() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/ADT/STLFunctionalExtras.h:0:12
+#51 0x00007ff06d512a6e llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/lib/Support/CrashRecoveryContext.cpp:426:3
+#52 0x00007ff076916240 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Driver/Job.cpp:440:7
+#53 0x00007ff0768de00c clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Driver/Compilation.cpp:199:15
+#54 0x00007ff0768de24e clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Driver/Compilation.cpp:253:13
+#55 0x00007ff0768fa8ac llvm::SmallVectorBase<unsigned int>::empty() const /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/include/llvm/ADT/SmallVector.h:94:46
+#56 0x00007ff0768fa8ac clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/lib/Driver/Driver.cpp:1921:23
+#57 0x0000556e9184bc2d clang_main(int, char**, llvm::ToolContext const&) /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/tools/clang/tools/driver/driver.cpp:540:21
+#58 0x0000556e918586d9 main /home/abuild/rpmbuild/BUILD/llvm-18.1.6.src/build/tools/clang/tools/driver/clang-driver.cpp:17:10
+#59 0x00007ff06c42a1f0 __libc_start_call_main /usr/src/debug/glibc-2.39/csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#60 0x00007ff06c42a2b9 call_init /usr/src/debug/glibc-2.39/csu/../csu/libc-start.c:128:20
+#61 0x00007ff06c42a2b9 __libc_start_main@GLIBC_2.2.5 /usr/src/debug/glibc-2.39/csu/../csu/libc-start.c:347:5
+#62 0x0000556e91848b15 _start /home/abuild/rpmbuild/BUILD/glibc-2.39/csu/../sysdeps/x86_64/start.S:117:0
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+clang version 18.1.6
+Target: x86_64-suse-linux
+Thread model: posix
+InstalledDir: /usr/bin
+
+
+Bug Labels:
+clang:frontend, confirmed, crash

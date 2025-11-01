@@ -1,0 +1,64 @@
+Issue Title:
+Miri crashes on dyn method receiver calls with arbitrary-self type · Issue #71427 · rust-lang/rust · GitHub
+
+Rust Code:
+trait Foo {
+    fn bar(self: Pin<&mut Self>) -> bool;
+}
+
+impl Foo for &'static str {
+    fn bar(self: Pin<&mut Self>) -> bool {
+        true
+    }
+}
+
+fn main() {
+    let mut test: Pin<Box<dyn Foo>> = Box::pin("foo");
+    test.as_mut().bar();
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', src/librustc_errors/lib.rs:904:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1069
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1504
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:515
+  12: std::panicking::begin_panic
+  13: rustc_errors::HandlerInner::bug
+  14: rustc_errors::Handler::bug
+  15: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  16: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  17: rustc_middle::ty::context::tls::with_opt
+  18: rustc_middle::util::bug::opt_span_bug_fmt
+  19: rustc_middle::util::bug::bug_fmt
+  20: rustc_mir::interpret::terminator::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_fn_call
+  21: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::terminator
+  22: miri::eval::eval_main
+  23: rustc_middle::ty::context::tls::enter_global
+  24: <miri::MiriCompilerCalls as rustc_driver::Callbacks>::after_analysis
+  25: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  26: scoped_tls::ScopedKey<T>::set
+  27: rustc_ast::attr::with_globals
+
+Bug Labels:
+A-DSTs, A-miri, C-enhancement, F-arbitrary_self_types, I-ICE, T-compiler

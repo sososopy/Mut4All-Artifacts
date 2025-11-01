@@ -1,0 +1,57 @@
+Issue Title:
+Intermittent parser crash with defaulted std::predicate template argument
+
+Source Code & Bug Trace:
+#include <concepts>
+#include <string>
+
+template <std::predicate<char> Lambda = decltype([](char ch) {return ch != '?';})>
+bool matches(const std::string& s) {
+  for (auto ch : s) if (Lambda()(ch)) return true;
+  return false;
+}
+
+int main(int argc, char *argv[]) {
+  return matches(argv[1]);
+}
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /usr/bin/clang-16 -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name reproduce.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=gdb -fcoverage-compilation-dir=/home/johs/notes/2023-09-22/tmp -resource-dir /usr/lib/clang/16 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../include/c++/13.2.1 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../include/c++/13.2.1/x86_64-pc-linux-gnu -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../include/c++/13.2.1/backward -internal-isystem /usr/lib/clang/16/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++2b -fdeprecated-macro -fdebug-compilation-dir=/home/johs/notes/2023-09-22/tmp -ferror-limit 19 -stack-protector 2 -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/reproduce-daf933.o -x c++ ./reproduce.cpp
+1.      ./reproduce.cpp:4:82: current parser token '>'
+ #0 0x00007ff41821f503 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/libLLVM-16.so+0xe1f503)
+ #1 0x00007ff41821c7bf llvm::sys::RunSignalHandlers() (/usr/lib/libLLVM-16.so+0xe1c7bf)
+ #2 0x00007ff41821c90d (/usr/lib/libLLVM-16.so+0xe1c90d)
+ #3 0x00007ff416c3e710 (/usr/lib/libc.so.6+0x3e710)
+ #4 0x00007ff42036bff2 clang::DeclarationNameLoc::DeclarationNameLoc(clang::DeclarationName) (/usr/lib/libclang-cpp.so.16+0xb6bff2)
+ #5 0x00007ff420d862a7 clang::Sema::BuildTypeConstraint(clang::CXXScopeSpec const&, clang::TemplateIdAnnotation*, clang::TemplateTypeParmDecl*, clang::SourceLocation, bool) (/usr/lib/libclang-cpp.so.16+0x15862a7)
+ #6 0x00007ff4201a6e90 clang::Parser::ParseTypeParameter(unsigned int, unsigned int) (/usr/lib/libclang-cpp.so.16+0x9a6e90)
+ #7 0x00007ff420193462 clang::Parser::ParseTemplateParameterList(unsigned int, llvm::SmallVectorImpl<clang::NamedDecl*>&) (/usr/lib/libclang-cpp.so.16+0x993462)
+ #8 0x00007ff420193668 clang::Parser::ParseTemplateParameters(clang::Parser::MultiParseScope&, unsigned int, llvm::SmallVectorImpl<clang::NamedDecl*>&, clang::SourceLocation&, clang::SourceLocation&) (/usr/lib/libclang-cpp.so.16+0x993668)
+ #9 0x00007ff420193bbb clang::Parser::ParseTemplateDeclarationOrSpecialization(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/usr/lib/libclang-cpp.so.16+0x993bbb)
+#10 0x00007ff420193efb clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/usr/lib/libclang-cpp.so.16+0x993efb)
+#11 0x00007ff42010a51d clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (/usr/lib/libclang-cpp.so.16+0x90a51d)
+#12 0x00007ff4201b8684 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/usr/lib/libclang-cpp.so.16+0x9b8684)
+#13 0x00007ff4201b9073 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/usr/lib/libclang-cpp.so.16+0x9b9073)
+#14 0x00007ff4200ecf49 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/libclang-cpp.so.16+0x8ecf49)
+#15 0x00007ff42191e7c9 clang::FrontendAction::Execute() (/usr/lib/libclang-cpp.so.16+0x211e7c9)
+#16 0x00007ff4218c0d2f clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/libclang-cpp.so.16+0x20c0d2f)
+#17 0x00007ff42197bf02 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/libclang-cpp.so.16+0x217bf02)
+#18 0x0000557afd2d4a6f cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/bin/clang-16+0x14a6f)
+#19 0x0000557afd2d8b10 (/usr/bin/clang-16+0x18b10)
+#20 0x0000557afd2d9a88 clang_main(int, char**) (/usr/bin/clang-16+0x19a88)
+#21 0x00007ff416c27cd0 (/usr/lib/libc.so.6+0x27cd0)
+#22 0x00007ff416c27d8a __libc_start_main (/usr/lib/libc.so.6+0x27d8a)
+#23 0x0000557afd2cced5 _start (/usr/bin/clang-16+0xced5)
+clang-16: error: unable to execute command: Segmentation fault (core dumped)
+clang-16: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 16.0.6
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang-16: note: diagnostic msg:
+********************
+
+
+Bug Labels:
+c++20, clang:frontend, concepts, confirmed, crash-on-valid

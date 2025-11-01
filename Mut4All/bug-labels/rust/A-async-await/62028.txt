@@ -1,0 +1,78 @@
+Issue Title:
+thread 'rustc' panicked at 'assertion failed: target_offset >= offset' · Issue #62028 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_await)]
+
+use std::cell::RefCell;
+use std::future::Future;
+
+//use futures::future::FutureExt;
+
+
+struct Connection {
+    a: RefCell<()>
+}
+
+
+impl Connection {
+    async fn execute<'a>(&'a mut self, _sql: &'a str) -> Result<(), ()> {
+        Ok(())
+    }
+    
+    async fn transaction<'a, 'b, T, R, FT>(&'a mut self, f: T) -> Result<R, ()> 
+    where T: FnOnce(&mut Connection) -> FT + 'static, 
+          FT: Future<Output = Result<R, ()>> + 'b,
+          'b: 'a,
+    {
+        self.execute("BEGIN").await?;
+        match f(self).await {
+            Ok(res) => {
+                self.execute("COMMIT").await?;
+                Ok(res)
+            }
+            Err(err) => {
+                self.execute("ROLLBACK ").await?;
+                Err(err)
+            }
+        }
+    }   
+}
+
+
+async fn foo(_conn: &mut Connection) -> Result<(), ()> {
+    Ok(())
+}
+
+async fn bar(_conn: &mut Connection) -> Result<(),()> {
+    Ok(())
+} 
+
+async fn do_something(conn: &mut Connection) -> Result<(), ()> {
+    foo(conn).await?;
+    bar(conn).await?;
+    Ok(())
+}
+
+
+fn assert_send<F>(_f: F) where F: Future + Send {}
+
+fn main() {
+    let res = async {
+        let mut conn = Connection {
+            a: RefCell::new(())
+        };
+        conn.transaction(async move |conn| {
+            //do_something(conn).await?;
+            //foo(conn).await?;
+            Ok(())
+        }).await
+    };
+    
+    assert_send(res);
+
+    println!("Hello, world!");
+}
+
+Bug Labels:
+A-async-await, C-bug, I-ICE, T-compiler

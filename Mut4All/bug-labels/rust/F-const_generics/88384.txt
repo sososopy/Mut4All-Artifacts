@@ -1,0 +1,83 @@
+Issue Title:
+ICE on const generic + static slice of fn() · Issue #88384 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(fn_traits)]
+#![feature(adt_const_params)]
+
+#[derive(PartialEq, Eq)]
+struct CompileTimeSettings{
+    hooks: &'static[fn()],
+}
+
+struct Foo<const T: CompileTimeSettings>;
+
+impl<const T: CompileTimeSettings> Foo<T> {
+    fn callHooks(){
+    }
+}
+
+fn main(){
+    const settings: CompileTimeSettings = CompileTimeSettings{
+        hooks: &[],
+    };
+    
+    Foo::<settings>::callHooks();
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1145:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_mir::const_eval::destructure_const
+   8: core::ops::function::FnOnce::call_once
+   9: rustc_query_system::query::plumbing::get_query_impl
+  10: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::destructure_const
+  11: rustc_middle::ty::relate::super_relate_consts
+  12: <rustc_infer::infer::combine::ConstInferUnifier as rustc_middle::ty::relate::TypeRelation>::consts
+  13: rustc_middle::ty::relate::super_relate_consts
+  14: <rustc_infer::infer::combine::ConstInferUnifier as rustc_middle::ty::relate::TypeRelation>::consts
+  15: rustc_infer::infer::combine::<impl rustc_infer::infer::InferCtxt>::unify_const_variable
+  16: rustc_infer::infer::combine::<impl rustc_infer::infer::InferCtxt>::super_combine_consts
+  17: <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::relate::Relate>::relate
+  18: <I as rustc_middle::ty::context::InternAs<[T],R>>::intern_with
+  19: rustc_middle::ty::relate::super_relate_tys
+  20: rustc_infer::infer::combine::<impl rustc_infer::infer::InferCtxt>::super_combine_tys
+  21: <rustc_infer::infer::equate::Equate as rustc_middle::ty::relate::TypeRelation>::tys
+  22: rustc_infer::infer::InferCtxt::commit_if_ok
+  23: rustc_traits::type_op::AscribeUserTypeCx::relate
+  24: rustc_traits::type_op::AscribeUserTypeCx::relate_mir_and_user_ty
+  25: <rustc_infer::infer::InferCtxtBuilder as rustc_trait_selection::infer::InferCtxtBuilderExt>::enter_canonical_trait_query
+  26: rustc_traits::type_op::type_op_ascribe_user_type
+  27: rustc_query_system::query::plumbing::get_query_impl
+  28: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_op_ascribe_user_type
+  29: rustc_trait_selection::traits::query::type_op::ascribe_user_type::<impl rustc_trait_selection::traits::query::type_op::QueryTypeOp for rustc_middle::traits::query::type_op::AscribeUserType>::perform_query
+  30: rustc_trait_selection::traits::query::type_op::QueryTypeOp::fully_perform_into
+  31: <rustc_middle::ty::ParamEnvAnd<Q> as rustc_trait_selection::traits::query::type_op::TypeOp>::fully_perform
+  32: rustc_mir::borrow_check::type_check::canonical::<impl rustc_mir::borrow_check::type_check::TypeChecker>::fully_perform_op
+  33: rustc_mir::borrow_check::type_check::type_check
+  34: rustc_mir::borrow_check::nll::compute_regions
+  35: rustc_mir::borrow_check::do_mir_borrowck
+  36: rustc_infer::infer::InferCtxtBuilder::enter
+  37: rustc_mir::borrow_check::mir_borrowck
+  38: core::ops::function::FnOnce::call_once
+  39: rustc_query_system::query::plumbing::get_query_impl
+  40: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_borrowck
+  41: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  42: rustc_interface::passes::analysis
+  43: rustc_query_system::query::plumbing::get_query_impl
+  44: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  45: rustc_interface::passes::QueryContext::enter
+  46: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  47: rustc_span::with_source_map
+  48: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+A-const-generics, C-bug, F-adt_const_params, F-const_generics, I-ICE, T-compiler, glacier

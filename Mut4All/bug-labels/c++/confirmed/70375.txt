@@ -1,0 +1,135 @@
+Issue Title:
+Clang ICE when compiling missing forward declaration of template specialization
+
+Source Code & Bug Trace:
+#include <coroutine>
+
+template <typename Output>
+struct Task {
+  template <typename POutput>
+  struct PromiseTypeImpl;
+
+  // Oops, I forgot to forward declare the specialization, but that caused a Clang ICE!
+  // template <>
+  // struct PromiseTypeImpl<void>;
+
+  using promise_type = PromiseTypeImpl<Output>;
+  using handle_type = std::coroutine_handle<promise_type>;
+
+  template <typename POutput>
+  struct PromiseTypeImpl {
+    Task<POutput> get_return_object() { return {handle_type::from_promise(*this)}; }
+    std::suspend_always initial_suspend() { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
+
+    void return_value(POutput expr) {}
+    void unhandled_exception() {}
+  };
+
+  template <>
+  struct PromiseTypeImpl<void> {
+    Task<void> get_return_object() { return {handle_type::from_promise(*this)}; }
+    std::suspend_always initial_suspend() { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
+
+    void return_void() {}
+    void unhandled_exception() {}
+  };
+
+  handle_type hdl_;
+};
+
+Task<void> foo() { co_return; }
+
+
+clang++ -c -std=c++20 repro_ice.cc
+
+
+Unable to find instantiation of declaration!
+UNREACHABLE executed at /home/ych/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:6374!
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /home/ych/llvm-project/build/bin/clang++ -c -std=c++20 repro_ice.cc
+1.	<eof> parser at end of file
+2.	repro_ice.cc:27:16: instantiating function definition 'Task<void>::PromiseTypeImpl<void>::get_return_object'
+ #0 0x000055c88107a7e1 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /home/ych/llvm-project/llvm/lib/Support/Unix/Signals.inc:723:11
+ #1 0x000055c88107acdb PrintStackTraceSignalHandler(void*) /home/ych/llvm-project/llvm/lib/Support/Unix/Signals.inc:798:1
+ #2 0x000055c881078db6 llvm::sys::RunSignalHandlers() /home/ych/llvm-project/llvm/lib/Support/Signals.cpp:105:5
+ #3 0x000055c88107a0ce llvm::sys::CleanupOnSignal(unsigned long) /home/ych/llvm-project/llvm/lib/Support/Unix/Signals.inc:368:1
+ #4 0x000055c880fa0f57 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) /home/ych/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:0:7
+ #5 0x000055c880fa12f5 CrashRecoverySignalHandler(int) /home/ych/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:391:1
+ #6 0x00007f0f5ce5fbb0 __restore_rt (/lib64/libc.so.6+0x3dbb0)
+ #7 0x00007f0f5ceb0884 __pthread_kill_implementation (/lib64/libc.so.6+0x8e884)
+ #8 0x00007f0f5ce5fafe gsignal (/lib64/libc.so.6+0x3dafe)
+ #9 0x00007f0f5ce4887f abort (/lib64/libc.so.6+0x2687f)
+#10 0x000055c880fa9680 llvm::install_out_of_memory_new_handler() /home/ych/llvm-project/llvm/lib/Support/ErrorHandling.cpp:193:0
+#11 0x000055c886ce2721 clang::Sema::FindInstantiatedDecl(clang::SourceLocation, clang::NamedDecl*, clang::MultiLevelTemplateArgumentList const&, bool) /home/ych/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:0:9
+#12 0x000055c886c7020e (anonymous namespace)::TemplateInstantiator::TransformDecl(clang::SourceLocation, clang::Decl*) /home/ych/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:1613:3
+#13 0x000055c886c9b7c1 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformRecordType(clang::TypeLocBuilder&, clang::RecordTypeLoc) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:6532:45
+#14 0x000055c886c60f00 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) /home/ych/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:71:1
+#15 0x000055c886c9b079 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformPointerType(clang::TypeLocBuilder&, clang::PointerTypeLoc) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:5203:20
+#16 0x000055c886c60cc6 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) /home/ych/llvm-project/build/tools/clang/include/clang/AST/TypeNodes.inc:63:1
+#17 0x000055c886c5fa9f clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:4894:34
+#18 0x000055c886c614c1 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::QualType) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:4873:19
+#19 0x000055c886c72ab6 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCXXDependentScopeMemberExpr(clang::CXXDependentScopeMemberExpr*) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:13784:29
+#20 0x000055c886c693a0 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/ych/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:854:1
+#21 0x000055c886c76662 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:11395:36
+#22 0x000055c886c696b0 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/ych/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:950:1
+#23 0x000055c886c6b6fe clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExprs(clang::Expr* const*, unsigned int, bool, llvm::SmallVectorImpl<clang::Expr*>&, bool*) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:4265:29
+#24 0x000055c886c79ca5 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformInitListExpr(clang::InitListExpr*) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:11755:7
+#25 0x000055c886c69df6 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/ych/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1220:1
+#26 0x000055c886c6aa0e clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformInitializer(clang::Expr*, bool) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:4112:25
+#27 0x000055c886cb14b8 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:7923:36
+#28 0x000055c886c680c5 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformStmt(clang::Stmt*, clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::StmtDiscardKind) /home/ych/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:658:1
+#29 0x000055c886c93196 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:7523:38
+#30 0x000055c886cab3b7 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*) /home/ych/llvm-project/clang/lib/Sema/TreeTransform.h:7505:23
+#31 0x000055c886c66f29 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformStmt(clang::Stmt*, clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::StmtDiscardKind) /home/ych/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:74:1
+#32 0x000055c886c66d3d clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) /home/ych/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:4059:23
+#33 0x000055c886cf61e1 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) /home/ych/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:5154:14
+#34 0x000055c886cf8ab5 clang::Sema::PerformPendingInstantiations(bool) /home/ych/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:6415:13
+#35 0x000055c885822dff clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) /home/ych/llvm-project/clang/lib/Sema/Sema.cpp:1088:3
+#36 0x000055c88582321d clang::Sema::ActOnEndOfTranslationUnit() /home/ych/llvm-project/clang/lib/Sema/Sema.cpp:1123:5
+#37 0x000055c885683e47 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /home/ych/llvm-project/clang/lib/Parse/Parser.cpp:716:5
+#38 0x000055c88567ee57 clang::ParseAST(clang::Sema&, bool, bool) /home/ych/llvm-project/clang/lib/Parse/ParseAST.cpp:163:16
+#39 0x000055c8823f517b clang::ASTFrontendAction::ExecuteAction() /home/ych/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1186:1
+#40 0x000055c8825d57e6 clang::CodeGenAction::ExecuteAction() /home/ych/llvm-project/clang/lib/CodeGen/CodeGenAction.cpp:1208:5
+#41 0x000055c8823f4b9c clang::FrontendAction::Execute() /home/ych/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1074:7
+#42 0x000055c8823195d8 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /home/ych/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:1045:23
+#43 0x000055c8825bfb71 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /home/ych/llvm-project/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:272:8
+#44 0x000055c87f31c2cf cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /home/ych/llvm-project/clang/tools/driver/cc1_main.cpp:294:13
+#45 0x000055c87f30e432 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /home/ych/llvm-project/clang/tools/driver/driver.cpp:366:5
+#46 0x000055c87f30fded clang_main(int, char**, llvm::ToolContext const&)::$_0::operator()(llvm::SmallVectorImpl<char const*>&) const /home/ych/llvm-project/clang/tools/driver/driver.cpp:506:7
+#47 0x000055c87f30fdbd int llvm::function_ref<int (llvm::SmallVectorImpl<char const*>&)>::callback_fn<clang_main(int, char**, llvm::ToolContext const&)::$_0>(long, llvm::SmallVectorImpl<char const*>&) /home/ych/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:5
+#48 0x000055c8821bcd61 llvm::function_ref<int (llvm::SmallVectorImpl<char const*>&)>::operator()(llvm::SmallVectorImpl<char const*>&) const /home/ych/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:68:5
+#49 0x000055c8821b9b18 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0::operator()() const /home/ych/llvm-project/clang/lib/Driver/Job.cpp:440:34
+#50 0x000055c8821b9ae5 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::$_0>(long) /home/ych/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:5
+#51 0x000055c87fd39dd9 llvm::function_ref<void ()>::operator()() const /home/ych/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:68:5
+#52 0x000055c880fa0d4a llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /home/ych/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:427:3
+#53 0x000055c8821b947b clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const /home/ych/llvm-project/clang/lib/Driver/Job.cpp:440:7
+#54 0x000055c88215737a clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const /home/ych/llvm-project/clang/lib/Driver/Compilation.cpp:199:15
+#55 0x000055c882157587 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const /home/ych/llvm-project/clang/lib/Driver/Compilation.cpp:253:13
+#56 0x000055c8821718e2 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) /home/ych/llvm-project/clang/lib/Driver/Driver.cpp:1884:7
+#57 0x000055c87f30defc clang_main(int, char**, llvm::ToolContext const&) /home/ych/llvm-project/clang/tools/driver/driver.cpp:542:9
+#58 0x000055c87f33e57d main /home/ych/llvm-project/build/tools/clang/tools/driver/clang-driver.cpp:15:3
+#59 0x00007f0f5ce49b8a __libc_start_call_main (/lib64/libc.so.6+0x27b8a)
+#60 0x00007f0f5ce49c4b __libc_start_main@GLIBC_2.2.5 (/lib64/libc.so.6+0x27c4b)
+#61 0x000055c87f30cba5 _start (/home/ych/llvm-project/build/bin/clang+++0x5130ba5)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 18.0.0
+Target: x86_64-redhat-linux-gnu
+Thread model: posix
+InstalledDir: /home/ych/llvm-project/build/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/repro_ice-1a72a2.cpp
+clang++: note: diagnostic msg: /tmp/repro_ice-1a72a2.sh
+clang++: note: diagnostic msg: 
+
+********************      
+
+
+Bug Labels:
+clang:frontend, confirmed, crash

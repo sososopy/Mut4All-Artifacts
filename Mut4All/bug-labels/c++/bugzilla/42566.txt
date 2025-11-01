@@ -1,0 +1,218 @@
+Issue Title:
+Assertion failure in translation unit with exactly 1 less than a power of 2 (starting at 127) operator== overloads combined with at least one operator== template with a substitution failure
+
+Source Code & Bug Trace:
+template<bool>
+struct enable_if;
+
+template<>
+struct enable_if<true> {
+  using type = void;
+};
+
+template<typename T, typename = void>
+constexpr bool always_false = false;
+
+template<typename T>
+constexpr bool always_false<
+	T,
+	decltype(foo(T()))
+> = T() == T();
+
+
+template<typename T, typename = typename enable_if<always_false<T>>::type>
+bool operator==(T, T);
+
+template<typename T, typename = typename enable_if<always_false<T>>::type>
+void data(T);
+
+template<int>
+struct S{};
+template<int x>
+constexpr bool operator==(S<x>, S<x>) {
+  return false;
+}
+
+template<int x>
+constexpr bool s = S<x>() == S<x>() and s<x - 1>;
+
+template<>
+constexpr bool s<0> = S<0>() == S<0>();
+
+void test() {
+  s<127>;
+}
+
+template<typename T>
+struct wrapper {
+	wrapper() = default;
+	wrapper(wrapper &&) = default;
+
+	template<typename U, typename = typename enable_if<always_false<U>>::type>
+	explicit wrapper(U);
+	
+	friend auto foo(wrapper w) {
+		data(w.m);
+	}
+
+	int m;
+};
+
+struct wrapper2 {
+  wrapper<void> m;
+};
+
+file.cpp:51:3: error: no matching function for call to 'data'
+                data(w.m);
+                ^~~~
+file.cpp:15:11: note: in instantiation of member function 'foo' requested here
+        decltype(foo(T()))
+                 ^
+file.cpp:47:53: note: during template argument deduction for variable template partial specialization 'always_false<T, decltype(foo(T()))>' [with T = wrapper<void>]
+        template<typename U, typename = typename enable_if<always_false<U>>::type>
+                                                           ^
+file.cpp:48:11: note: in instantiation of default argument for 'wrapper<wrapper<void> >' required here
+        explicit wrapper(U);
+                 ^~~~~~~~~~
+file.cpp:43:8: note: while substituting deduced template arguments into function template 'wrapper' [with U = wrapper<void>, $1 = (no value)]
+struct wrapper {
+       ^
+file.cpp:57:8: note: while declaring the implicit copy constructor for 'wrapper2'
+struct wrapper2 {
+       ^
+file.cpp:23:6: note: candidate template ignored: substitution failure [with T = int]: implicit instantiation of undefined template 'enable_if<false>'
+void data(T);
+     ^
+clang-10: /home/david/llvm/clang/lib/AST/DeclTemplate.cpp:224: void clang::RedeclarableTemplateDecl::addSpecializationImpl(llvm::FoldingSetVector<EntryType> &, EntryType *, void *) [Derived = clang::VarTemplateDecl, EntryType = clang::VarTemplateSpecializationDecl]: Assertion `!findSpecializationImpl(Specializations, SETraits::getTemplateArgs(Entry), CorrectInsertPos) && InsertPos == CorrectInsertPos && "given incorrect InsertPos for specialization"' failed.
+Stack dump:
+0.	Program arguments: /home/david/llvm/build/bin/clang-10 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -mrelax-all -disable-free -main-file-name file.cpp -mrelocation-model static -mthread-model posix -mframe-pointer=all -fmath-errno -masm-verbose -mconstructor-aliases -munwind-tables -fuse-init-array -target-cpu x86-64 -dwarf-column-info -debugger-tuning=gdb -coverage-notes-file /dev/null.gcno -resource-dir /home/david/llvm/build/lib/clang/10.0.0 -internal-isystem /usr/lib/gcc/x86_64-pc-linux-gnu/9.2.0/include/g++-v9 -internal-isystem /usr/lib/gcc/x86_64-pc-linux-gnu/9.2.0/include/g++-v9/x86_64-pc-linux-gnu -internal-isystem /usr/lib/gcc/x86_64-pc-linux-gnu/9.2.0/include/g++-v9/backward -internal-isystem /usr/local/include -internal-isystem /home/david/llvm/build/lib/clang/10.0.0/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -w -std=c++2a -fdeprecated-macro -fdebug-compilation-dir /home/david/tm5/reduce -ferror-limit 19 -fmessage-length 0 -fno-implicit-modules -fobjc-runtime=gcc -fcxx-exceptions -fexceptions -fdiagnostics-show-option -fcolor-diagnostics -o /dev/null -x c++ file.cpp 
+1.	file.cpp:59:2: current parser token ';'
+2.	file.cpp:57:1: parsing struct/union/class body 'wrapper2'
+ #&#8203;0 0x000000000313ee4d PrintStackTraceSignalHandler(void*) (.llvm.14200593635904155002) (/home/david/llvm/build/bin/clang-10+0x313ee4d)
+ #&#8203;1 0x000000000313c630 llvm::sys::RunSignalHandlers() (/home/david/llvm/build/bin/clang-10+0x313c630)
+ #&#8203;2 0x000000000313f2e8 SignalHandler(int) (/home/david/llvm/build/bin/clang-10+0x313f2e8)
+ #&#8203;3 0x00007fcf82ba7660 __restore_rt (/lib64/libpthread.so.0+0x14660)
+ #&#8203;4 0x00007fcf825b8d21 raise (/lib64/libc.so.6+0x38d21)
+ #&#8203;5 0x00007fcf825a2535 abort (/lib64/libc.so.6+0x22535)
+ #&#8203;6 0x00007fcf825a240f _nl_load_domain.cold (/lib64/libc.so.6+0x2240f)
+ #&#8203;7 0x00007fcf825b0712 (/lib64/libc.so.6+0x30712)
+ #&#8203;8 0x00000000054a66ee void clang::RedeclarableTemplateDecl::addSpecializationImpl<clang::VarTemplateDecl, clang::VarTemplateSpecializationDecl>(llvm::FoldingSetVector<clang::VarTemplateSpecializationDecl, llvm::SmallVector<clang::VarTemplateSpecializationDecl*, 8u> >&, clang::VarTemplateSpecializationDecl*, void*) (/home/david/llvm/build/bin/clang-10+0x54a66ee)
+ #&#8203;9 0x00000000051a99a1 clang::TemplateDeclInstantiator::VisitVarTemplateSpecializationDecl(clang::VarTemplateDecl*, clang::VarDecl*, void*, clang::TemplateArgumentListInfo const&, llvm::ArrayRef<clang::TemplateArgument>, clang::VarTemplateSpecializationDecl*) (/home/david/llvm/build/bin/clang-10+0x51a99a1)
+#&#8203;10 0x00000000051ad4e5 clang::Sema::BuildVarTemplateInstantiation(clang::VarTemplateDecl*, clang::VarDecl*, clang::TemplateArgumentList const&, clang::TemplateArgumentListInfo const&, llvm::SmallVectorImpl<clang::TemplateArgument>&, clang::SourceLocation, void*, llvm::SmallVector<clang::Sema::LateInstantiatedAttribute, 16u>*, clang::LocalInstantiationScope*) (/home/david/llvm/build/bin/clang-10+0x51ad4e5)
+#&#8203;11 0x0000000005079d1b clang::Sema::CheckVarTemplateId(clang::VarTemplateDecl*, clang::SourceLocation, clang::SourceLocation, clang::TemplateArgumentListInfo const&) (/home/david/llvm/build/bin/clang-10+0x5079d1b)
+#&#8203;12 0x000000000507aaf9 clang::Sema::CheckVarTemplateId(clang::CXXScopeSpec const&, clang::DeclarationNameInfo const&, clang::VarTemplateDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) (/home/david/llvm/build/bin/clang-10+0x507aaf9)
+#&#8203;13 0x000000000517324c clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformUnresolvedLookupExpr(clang::UnresolvedLookupExpr*) (/home/david/llvm/build/bin/clang-10+0x517324c)
+#&#8203;14 0x00000000051786ec clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArgument(clang::TemplateArgumentLoc const&, clang::TemplateArgumentLoc&, bool) (/home/david/llvm/build/bin/clang-10+0x51786ec)
+#&#8203;15 0x0000000005176e14 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateSpecializationType(clang::TypeLocBuilder&, clang::TemplateSpecializationTypeLoc, clang::TemplateName) (/home/david/llvm/build/bin/clang-10+0x5176e14)
+#&#8203;16 0x000000000517656c clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTSIInObjectScope(clang::TypeLoc, clang::QualType, clang::NamedDecl*, clang::CXXScopeSpec&) (/home/david/llvm/build/bin/clang-10+0x517656c)
+#&#8203;17 0x0000000005165278 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformNestedNameSpecifierLoc(clang::NestedNameSpecifierLoc, clang::QualType, clang::NamedDecl*) (.llvm.209458239465659423) (/home/david/llvm/build/bin/clang-10+0x5165278)
+#&#8203;18 0x000000000517d8af clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformDependentNameType(clang::TypeLocBuilder&, clang::DependentNameTypeLoc, bool) (/home/david/llvm/build/bin/clang-10+0x517d8af)
+#&#8203;19 0x000000000514ff48 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) (.llvm.209458239465659423) (/home/david/llvm/build/bin/clang-10+0x514ff48)
+#&#8203;20 0x000000000507d989 SubstDefaultTemplateArgument(clang::Sema&, clang::TemplateDecl*, clang::SourceLocation, clang::SourceLocation, clang::TemplateTypeParmDecl*, llvm::SmallVectorImpl<clang::TemplateArgument>&) (/home/david/llvm/build/bin/clang-10+0x507d989)
+#&#8203;21 0x000000000507d446 clang::Sema::SubstDefaultTemplateArgumentIfAvailable(clang::TemplateDecl*, clang::SourceLocation, clang::SourceLocation, clang::Decl*, llvm::SmallVectorImpl<clang::TemplateArgument>&, bool&) (/home/david/llvm/build/bin/clang-10+0x507d446)
+#&#8203;22 0x000000000510b957 clang::Sema::FinishTemplateArgumentDeduction(clang::FunctionTemplateDecl*, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg> const*, bool, llvm::function_ref<bool ()>) (/home/david/llvm/build/bin/clang-10+0x510b957)
+#&#8203;23 0x000000000510dcc1 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) (/home/david/llvm/build/bin/clang-10+0x510dcc1)
+#&#8203;24 0x0000000004fdaff7 clang::Sema::AddTemplateOverloadCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, bool, clang::CallExpr::ADLCallKind) (/home/david/llvm/build/bin/clang-10+0x4fdaff7)
+#&#8203;25 0x0000000004efb845 clang::Sema::LookupSpecialMember(clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, bool, bool, bool, bool) (/home/david/llvm/build/bin/clang-10+0x4efb845)
+#&#8203;26 0x0000000004cc5944 defaultedSpecialMemberIsConstexpr(clang::Sema&, clang::CXXRecordDecl*, clang::Sema::CXXSpecialMember, bool, clang::CXXConstructorDecl*, clang::Sema::InheritedConstructorInfo*) (/home/david/llvm/build/bin/clang-10+0x4cc5944)
+#&#8203;27 0x0000000004ccb81b clang::Sema::DeclareImplicitCopyConstructor(clang::CXXRecordDecl*) (/home/david/llvm/build/bin/clang-10+0x4ccb81b)
+#&#8203;28 0x0000000004ccaef3 clang::Sema::AddImplicitlyDeclaredMembersToClass(clang::CXXRecordDecl*) (/home/david/llvm/build/bin/clang-10+0x4ccaef3)
+#&#8203;29 0x0000000004bf0c3a clang::Sema::ActOnFields(clang::Scope*, clang::SourceLocation, clang::Decl*, llvm::ArrayRef<clang::Decl*>, clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributesView const&) (/home/david/llvm/build/bin/clang-10+0x4bf0c3a)
+#&#8203;30 0x0000000004ccad10 clang::Sema::ActOnFinishCXXMemberSpecification(clang::Scope*, clang::SourceLocation, clang::Decl*, clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributesView const&) (/home/david/llvm/build/bin/clang-10+0x4ccad10)
+#&#8203;31 0x00000000049f5ef2 clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::Parser::ParsedAttributesWithRange&, unsigned int, clang::Decl*) (/home/david/llvm/build/bin/clang-10+0x49f5ef2)
+#&#8203;32 0x00000000049f2f5e clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::Parser::ParsedAttributesWithRange&) (/home/david/llvm/build/bin/clang-10+0x49f2f5e)
+#&#8203;33 0x00000000049ae3d6 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*) (/home/david/llvm/build/bin/clang-10+0x49ae3d6)
+#&#8203;34 0x00000000049693da clang::Parser::ParseDeclOrFunctionDefInternal(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/home/david/llvm/build/bin/clang-10+0x49693da)
+#&#8203;35 0x0000000004968f4f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/home/david/llvm/build/bin/clang-10+0x4968f4f)
+#&#8203;36 0x0000000004967d79 clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/home/david/llvm/build/bin/clang-10+0x4967d79)
+#&#8203;37 0x0000000004965a7d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (/home/david/llvm/build/bin/clang-10+0x4965a7d)
+#&#8203;38 0x0000000004960fb4 clang::ParseAST(clang::Sema&, bool, bool) (/home/david/llvm/build/bin/clang-10+0x4960fb4)
+#&#8203;39 0x0000000003ab7c1f clang::FrontendAction::Execute() (/home/david/llvm/build/bin/clang-10+0x3ab7c1f)
+#&#8203;40 0x0000000003a154d8 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/home/david/llvm/build/bin/clang-10+0x3a154d8)
+#&#8203;41 0x0000000003b64067 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/home/david/llvm/build/bin/clang-10+0x3b64067)
+#&#8203;42 0x000000000201134f cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/home/david/llvm/build/bin/clang-10+0x201134f)
+#&#8203;43 0x000000000200f048 main (/home/david/llvm/build/bin/clang-10+0x200f048)
+#&#8203;44 0x00007fcf825a3f1b __libc_start_main (/lib64/libc.so.6+0x23f1b)
+#&#8203;45 0x000000000200c02a _start (/home/david/llvm/build/bin/clang-10+0x200c02a)
+clang-10: error: unable to execute command: Aborted (core dumped)
+clang-10: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 10.0.0 (https://github.com/llvm-project/llvm-project-20170507/ ca2448658e135c6576df4eead8b997ebede4f0fa)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /home/david/llvm/build/bin
+clang-10: note: diagnostic msg: PLEASE submit a bug report to https://bugs.llvm.org/ and include the crash backtrace, preprocessed source, and associated run script.
+clang-10: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang-10: note: diagnostic msg: /tmp/file-96c166.cpp
+clang-10: note: diagnostic msg: /tmp/file-96c166.sh
+clang-10: note: diagnostic msg: 
+
+********************
+
+template<bool>
+struct enable_if;
+
+template<>
+struct enable_if<true> {
+  using type = void;
+};
+
+template<typename T, typename = void>
+constexpr bool always_false = false;
+
+template<typename T>
+constexpr bool always_false<
+	T,
+	decltype(foo(T()))
+> = false;
+
+template<typename T, typename = typename enable_if<always_false<T>>::type>
+void data(T);
+
+template<typename T>
+struct wrapper {
+	wrapper() = default;
+	wrapper(wrapper &&) = default;
+
+	template<typename U, typename = typename enable_if<always_false<U>>::type>
+	explicit wrapper(U);
+	
+	friend auto foo(wrapper w) {
+		data(w.m);
+	}
+
+	int m;
+};
+
+struct wrapper2 {
+  wrapper<int> m;
+};
+
+file.cpp:30:3: error: no matching function for call to 'data'
+                data(w.m);
+                ^~~~
+file.cpp:15:11: note: in instantiation of member function 'foo' requested here
+        decltype(foo(T()))
+                 ^
+file.cpp:26:53: note: during template argument deduction for variable template partial specialization 'always_false<T, decltype(foo(T()))>' [with T = wrapper<int>]
+        template<typename U, typename = typename enable_if<always_false<U>>::type>
+                                                           ^
+file.cpp:27:11: note: in instantiation of default argument for 'wrapper<wrapper<int> >' required here
+        explicit wrapper(U);
+                 ^~~~~~~~~~
+file.cpp:22:8: note: while substituting deduced template arguments into function template 'wrapper' [with U = wrapper<int>, $1 = (no value)]
+struct wrapper {
+       ^
+file.cpp:36:8: note: while declaring the implicit copy constructor for 'wrapper2'
+struct wrapper2 {
+       ^
+file.cpp:19:6: note: candidate template ignored: substitution failure [with T = int]: implicit instantiation of undefined template 'enable_if<false>'
+void data(T);
+     ^
+1 error generated.
+
+Bug Labels:
+bugzilla, c++14, clang:frontend, confirmed, crash

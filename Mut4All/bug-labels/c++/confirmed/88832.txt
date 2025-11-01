@@ -1,0 +1,66 @@
+Issue Title:
+clang crashes when template instantiation results in a constant instead of a type
+
+Source Code & Bug Trace:
+template <typename T> struct O {
+  static const T v = 0;
+};
+
+struct P {
+  template <typename T> using I = typename O<T>::v;
+};
+
+struct Q
+{
+  template <typename T>
+  int foo() { return T::template I<int>; }
+};
+
+int bar() {
+  Q m;
+  return m.foo<P>();
+}
+
+Assertion failed: isa<To>(Val) && "cast<Ty>() argument of incompatible type!", file <...>\llvm\include\llvm/Support/Casting.h, line 578
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: <...>\\clang++.exe -c test.cpp -o tmp.o
+1.	<eof> parser at end of file
+2.	test.cpp:12:7: instantiating function definition 'Q::foo<P>'
+Exception Code: 0x80000003
+<...>
+ #6 0x00007ff7e339e681 <...>\llvm\include\llvm\Support\Casting.h:578:0
+ #7 0x00007ff7e45275e1 clang::Sema::ResolveSingleFunctionTemplateSpecialization(class clang::OverloadExpr *, bool, class clang::DeclAccessPair *, class clang::TemplateSpecCandidateSet *) <...>\clang\lib\Sema\SemaOverload.cpp:13504:0
+ #8 0x00007ff7e456b514 `anonymous namespace'::AddressOfFunctionResolver::AddressOfFunctionResolver <...>\clang\lib\Sema\SemaOverload.cpp:12901:0
+ #9 0x00007ff7e4526ac6 clang::Sema::ResolveAddressOfOverloadedFunction(class clang::Expr *, class clang::QualType, bool, class clang::DeclAccessPair &, bool *) <...>\clang\lib\Sema\SemaOverload.cpp:13288:0
+#10 0x00007ff7e45450ed IsStandardConversion <...>\clang\lib\Sema\SemaOverload.cpp:2087:0
+#11 0x00007ff7e454d1f9 TryImplicitConversion <...>\clang\lib\Sema\SemaOverload.cpp:1699:0
+#12 0x00007ff7e4513802 clang::Sema::TryImplicitConversion(class clang::Expr *, class clang::QualType, bool, enum clang::Sema::AllowedExplicit, bool, bool, bool) <...>\clang\lib\Sema\SemaOverload.cpp:1752:0
+#13 0x00007ff7e425fab2 clang::InitializationSequence::InitializeFrom(class clang::Sema &, class clang::InitializedEntity const &, class clang::InitializationKind const &, class llvm::MutableArrayRef<class clang::Expr *>, bool, bool) <...>\clang\lib\Sema\SemaInit.cpp:6555:0
+#14 0x00007ff7e425dc2d clang::InitializationSequence::InitializationSequence(class clang::Sema &, class clang::InitializedEntity const &, class clang::InitializationKind const &, class llvm::MutableArrayRef<class clang::Expr *>, bool, bool) <...>\clang\lib\Sema\SemaInit.cpp:6119:0
+#15 0x00007ff7e425ae5f clang::Sema::PerformCopyInitialization(class clang::InitializedEntity const &, class clang::SourceLocation, class clang::ActionResult<class clang::Expr *, 1>, bool, bool) <...>\clang\lib\Sema\SemaInit.cpp:10673:0
+#16 0x00007ff7e3bfbfa1 clang::Sema::PerformMoveOrCopyInitialization(class clang::InitializedEntity const &, struct clang::Sema::NamedReturnInfo const &, class clang::Expr *, bool) <...>\clang\lib\Sema\SemaStmt.cpp:3634:0
+#17 0x00007ff7e3bfe4b2 clang::Sema::BuildReturnStmt(class clang::SourceLocation, class clang::Expr *, bool) <...>\clang\lib\Sema\SemaStmt.cpp:4254:0
+#18 0x00007ff7e410ff86 clang::TreeTransform<`anonymous namespace'::TemplateInstantiator>::RebuildReturnStmt <...>\clang\lib\Sema\TreeTransform.h:1494:0
+#19 0x00007ff7e41b492b clang::TreeTransform<`anonymous namespace'::TemplateInstantiator>::TransformReturnStmt <...>\clang\lib\Sema\TreeTransform.h:8153:0
+#20 0x00007ff7e41b8249 clang::TreeTransform<`anonymous namespace'::TemplateInstantiator>::TransformStmt <...>\build\tools\clang\include\clang\AST\StmtNodes.inc:920:0
+#21 0x00007ff7e4166b80 clang::TreeTransform<`anonymous namespace'::TemplateInstantiator>::TransformCompoundStmt <...>\clang\lib\Sema\TreeTransform.h:7738:0
+#22 0x00007ff7e41668fa clang::TreeTransform<`anonymous namespace'::TemplateInstantiator>::TransformCompoundStmt <...>\clang\lib\Sema\TreeTransform.h:7717:0
+#23 0x00007ff7e41ba0cd clang::TreeTransform<`anonymous namespace'::TemplateInstantiator>::TransformStmt <...>\build\tools\clang\include\clang\AST\StmtNodes.inc:1526:0
+#24 0x00007ff7e40fc8d0 clang::Sema::SubstStmt(class clang::Stmt *, class clang::MultiLevelTemplateArgumentList const &) <...>\clang\lib\Sema\SemaTemplateInstantiate.cpp:4353:0
+#25 0x00007ff7e45a91bf clang::Sema::InstantiateFunctionDefinition(class clang::SourceLocation, class clang::FunctionDecl *, bool, bool, bool) <...>\clang\lib\Sema\SemaTemplateInstantiateDecl.cpp:5220:0
+#26 0x00007ff7e45ae25e clang::Sema::PerformPendingInstantiations(bool) <...>\clang\lib\Sema\SemaTemplateInstantiateDecl.cpp:6494:0
+#27 0x00007ff7e2732011 clang::Sema::ActOnEndOfTranslationUnitFragment(enum clang::Sema::TUFragmentKind) <...>\clang\lib\Sema\Sema.cpp:1095:0
+#28 0x00007ff7e272f878 clang::Sema::ActOnEndOfTranslationUnit(void) <...>\clang\lib\Sema\Sema.cpp:1136:0
+<...>
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 19.0.0git
+Target: x86_64-pc-windows-msvc
+Thread model: posix
+Build config: +unoptimized, +assertions
+clang++: note: diagnostic msg: 
+********************
+
+
+Bug Labels:
+clang:frontend, confirmed, crash-on-invalid

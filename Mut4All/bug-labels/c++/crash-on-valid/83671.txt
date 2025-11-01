@@ -1,0 +1,50 @@
+Issue Title:
+[Clang] 19.0.0 SIGSEGV due to NULL Pointer dereference caused by receiving an NULL  BaseDecl  at  EmptySubobjectMap::ComputeEmptySubobjectSizes()
+
+Source Code & Bug Trace:
+void EmptySubobjectMap::ComputeEmptySubobjectSizes() {
+  // Check the bases.
+  for (const CXXBaseSpecifier &Base : Class->bases()) {
+    const CXXRecordDecl *BaseDecl = Base.getType()->getAsCXXRecordDecl(); // [!]
+
+    CharUnits EmptySize;
+    const ASTRecordLayout &Layout = Context.getASTRecordLayout(BaseDecl); // [1]
+    if (BaseDecl->isEmpty()) {
+      // If the class decl is empty, get its size.
+      EmptySize = Layout.getSize();
+    } else {
+      // Otherwise, we get the largest empty subobject for the decl.
+      EmptySize = Layout.getSizeOfLargestEmptySubobject();
+    }
+
+    if (EmptySize > SizeOfLargestEmptySubobject)
+      SizeOfLargestEmptySubobject = EmptySize;
+  }
+
+  // Check the fields.
+  for (const FieldDecl *FD : Class->fields()) {
+    const RecordType *RT =
+        Context.getBaseElementType(FD->getType())->getAs<RecordType>();
+
+    // We only care about record types.
+    if (!RT)
+      continue;
+
+    CharUnits EmptySize;
+    const CXXRecordDecl *MemberDecl = RT->getAsCXXRecordDecl();
+    const ASTRecordLayout &Layout = Context.getASTRecordLayout(MemberDecl);
+    if (MemberDecl->isEmpty()) {
+      // If the class decl is empty, get its size.
+      EmptySize = Layout.getSize();
+    } else {
+      // Otherwise, we get the largest empty subobject for the decl.
+      EmptySize = Layout.getSizeOfLargestEmptySubobject();
+    }
+
+    if (EmptySize > SizeOfLargestEmptySubobject)
+      SizeOfLargestEmptySubobject = EmptySize;
+  }
+}
+
+Bug Labels:
+c++, clang:frontend, confirmed, crash-on-valid

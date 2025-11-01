@@ -1,0 +1,101 @@
+Issue Title:
+[clang++ 17.0.6]  Segfault from using a concept which has immediatly invoked generic lambda with constrained template parameter.
+
+Source Code & Bug Trace:
+template <typename>
+concept trivial_concept = (true);
+
+template <typename>
+concept bug = ([]<trivial_concept T = int>() { return true; }());
+
+template <typename>
+concept no_bug = ([] { return true; }());
+
+// If this is present, the crash does not happen.
+// static_assert(bug<int>);
+
+int main() { 
+    bug auto x = 0;
+    no_bug auto y = 0;
+
+    [](auto...){}(x, y);
+}
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /usr/bin/clang++ -cc1 -triple x86_64-pc-linux-gnu -emit-obj -mrelax-all -dumpdir a- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name clang-bug.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fcoverage-compilation-dir=/home/pamiro/repos/guilander/build -resource-dir /usr/lib/clang/17 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/x86_64-pc-linux-gnu -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/backward -internal-isystem /usr/lib/clang/17/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++2c -fdeprecated-macro -fdebug-compilation-dir=/home/pamiro/repos/guilander/build -ferror-limit 19 -stack-protector 2 -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/clang-bug-e8cc84.o -x c++ /home/pamiro/clang-bug.cpp
+1.	/home/pamiro/clang-bug.cpp:14:19: current parser token ';'
+2.	/home/pamiro/clang-bug.cpp:13:12: parsing function body 'main'
+3.	/home/pamiro/clang-bug.cpp:13:12: in compound statement ('{}')
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM-17.so      0x0000739c0537bcb0 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 64
+1  libLLVM-17.so      0x0000739c05378f1d
+2  libc.so.6          0x0000739c04650ae0
+3  libclang-cpp.so.17 0x0000739c0d6b3feb
+4  libclang-cpp.so.17 0x0000739c0d66dc30
+5  libclang-cpp.so.17 0x0000739c0d68a866 clang::Expr::EvaluateAsConstantExpr(clang::Expr::EvalResult&, clang::ASTContext const&, clang::Expr::ConstantExprKind) const + 1254
+6  libclang-cpp.so.17 0x0000739c0dbfc5a2
+7  libclang-cpp.so.17 0x0000739c0dbfcccd
+8  libclang-cpp.so.17 0x0000739c0dbfd13b clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) + 923
+9  libclang-cpp.so.17 0x0000739c0dbfdf99 clang::Sema::CheckInstantiatedFunctionTemplateConstraints(clang::SourceLocation, clang::FunctionDecl*, llvm::ArrayRef<clang::TemplateArgument>, clang::ConstraintSatisfaction&) + 793
+10 libclang-cpp.so.17 0x0000739c0e0ba11b clang::Sema::FinishTemplateArgumentDeduction(clang::FunctionTemplateDecl*, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg> const*, bool, llvm::function_ref<bool ()>) + 5019
+11 libclang-cpp.so.17 0x0000739c0e0baf91
+12 libclang-cpp.so.17 0x0000739c0dad33c1 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 113
+13 libclang-cpp.so.17 0x0000739c0e0d9f08 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) + 6424
+14 libclang-cpp.so.17 0x0000739c0f344185
+15 libclang-cpp.so.17 0x0000739c0dfc2b17 clang::Sema::AddMethodCandidate(clang::DeclAccessPair, clang::QualType, clang::Expr::Classification, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, clang::OverloadCandidateParamOrder) + 135
+16 libclang-cpp.so.17 0x0000739c0dfda600 clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) + 928
+17 libclang-cpp.so.17 0x0000739c0dd86437 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 87
+18 libclang-cpp.so.17 0x0000739c0e105f2a
+19 libclang-cpp.so.17 0x0000739c0e0fe11f clang::Sema::SubstExpr(clang::Expr*, clang::MultiLevelTemplateArgumentList const&) + 95
+20 libclang-cpp.so.17 0x0000739c0dbfbd73
+21 libclang-cpp.so.17 0x0000739c0dbfcccd
+22 libclang-cpp.so.17 0x0000739c0dbfd13b clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) + 923
+23 libclang-cpp.so.17 0x0000739c0e0dae60 clang::Sema::DeduceAutoType(clang::TypeLoc, clang::Expr*, clang::QualType&, clang::sema::TemplateDeductionInfo&, bool, bool, clang::TemplateSpecCandidateSet*) + 3888
+24 libclang-cpp.so.17 0x0000739c0dc57603 clang::Sema::deduceVarTypeFromInitializer(clang::VarDecl*, clang::DeclarationName, clang::QualType, clang::TypeSourceInfo*, clang::SourceRange, bool, clang::Expr*) + 1331
+25 libclang-cpp.so.17 0x0000739c0dc57aa1 clang::Sema::DeduceVariableDeclarationType(clang::VarDecl*, bool, clang::Expr*) + 81
+26 libclang-cpp.so.17 0x0000739c0dc72515 clang::Sema::AddInitializerToDecl(clang::Decl*, clang::Expr*, bool) + 437
+27 libclang-cpp.so.17 0x0000739c0d30bcf2 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) + 546
+28 libclang-cpp.so.17 0x0000739c0d315e8b clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 2715
+29 libclang-cpp.so.17 0x0000739c0d3308b5 clang::Parser::ParseSimpleDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, bool, clang::Parser::ForRangeInit*, clang::SourceLocation*) + 837
+30 libclang-cpp.so.17 0x0000739c0d330db2 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) + 290
+31 libclang-cpp.so.17 0x0000739c0d3b23bc clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 3356
+32 libclang-cpp.so.17 0x0000739c0d3b25cb clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 331
+33 libclang-cpp.so.17 0x0000739c0d3b7675 clang::Parser::ParseCompoundStatementBody(bool) + 1365
+34 libclang-cpp.so.17 0x0000739c0d3b93aa clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) + 218
+35 libclang-cpp.so.17 0x0000739c0d3ba3fc clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) + 1724
+36 libclang-cpp.so.17 0x0000739c0d3161d0 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 3552
+37 libclang-cpp.so.17 0x0000739c0d3a8009
+38 libclang-cpp.so.17 0x0000739c0d3becc2 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) + 2594
+39 libclang-cpp.so.17 0x0000739c0d3bf0ea clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 618
+40 libclang-cpp.so.17 0x0000739c0d2fbd99 clang::ParseAST(clang::Sema&, bool, bool) + 601
+41 libclang-cpp.so.17 0x0000739c0ebc44f9 clang::FrontendAction::Execute() + 393
+42 libclang-cpp.so.17 0x0000739c0ebb0df7 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 391
+43 libclang-cpp.so.17 0x0000739c0ec93c92 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 450
+44 clang++            0x00005670f2222c18 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 3928
+45 clang++            0x00005670f222810f
+46 clang++            0x00005670f2228c2e clang_main(int, char**, llvm::ToolContext const&) + 1950
+47 clang++            0x00005670f221ed54 main + 52
+48 libc.so.6          0x0000739c04639c88
+49 libc.so.6          0x0000739c04639d4c __libc_start_main + 140
+50 clang++            0x00005670f221ed95 _start + 37
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 17.0.6
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/clang-bug-3bb744.cpp
+clang++: note: diagnostic msg: /tmp/clang-bug-3bb744.sh
+clang++: note: diagnostic msg: 
+
+********************
+
+
+Bug Labels:
+c++26, clang:frontend, concepts, confirmed, crash

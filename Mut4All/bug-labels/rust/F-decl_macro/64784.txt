@@ -1,0 +1,85 @@
+Issue Title:
+Declarative macros can create infinite glob import cycles · Issue #64784 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(decl_macro)]
+
+pub macro m($i:ident, $j:ident) {
+    mod $i {
+        pub use crate::$j::*;
+        pub struct A;
+    }
+}
+
+m!(x, y);
+m!(y, x);
+
+Bug Trace:
+thread 'rustc' panicked at 'already borrowed: BorrowMutError', src/libcore/result.rs:1165:5
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.37/src/backtrace/libunwind.rs:88
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.37/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:76
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:60
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1030
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1412
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:64
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:196
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:210
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:477
+  12: std::panicking::continue_panic_fmt
+             at src/libstd/panicking.rs:380
+  13: rust_begin_unwind
+             at src/libstd/panicking.rs:307
+  14: core::panicking::panic_fmt
+             at src/libcore/panicking.rs:85
+  15: core::result::unwrap_failed
+             at src/libcore/result.rs:1165
+  16: rustc_resolve::resolve_imports::<impl rustc_resolve::Resolver>::try_define
+  17: rustc_resolve::resolve_imports::<impl rustc_resolve::Resolver>::try_define
+  18: rustc_resolve::resolve_imports::<impl rustc_resolve::Resolver>::try_define
+  19: rustc_resolve::resolve_imports::ImportResolver::resolve_imports
+  20: rustc_resolve::macros::<impl syntax::ext::base::Resolver for rustc_resolve::Resolver>::resolve_imports
+  21: syntax::ext::expand::MacroExpander::fully_expand_fragment
+  22: syntax::ext::expand::MacroExpander::expand_crate
+  23: rustc_interface::passes::configure_and_expand_inner::{{closure}}
+  24: rustc::util::common::time
+  25: rustc_interface::passes::configure_and_expand_inner
+  26: rustc_interface::passes::configure_and_expand::{{closure}}
+  27: rustc_data_structures::box_region::PinnedGenerator<I,A,R>::new
+  28: rustc_interface::passes::configure_and_expand
+  29: rustc_interface::queries::Query<T>::compute
+  30: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::expansion
+  31: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  32: std::thread::local::LocalKey<T>::with
+  33: scoped_tls::ScopedKey<T>::set
+  34: syntax::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.39.0-nightly (6ef275e6c 2019-09-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C codegen-units=1 -C debuginfo=2 --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+Bug Labels:
+A-macros-2.0, E-needs-test, F-decl_macro, I-ICE, T-compiler, glacier, requires-nightly

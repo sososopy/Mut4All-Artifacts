@@ -1,0 +1,100 @@
+Issue Title:
+Clang crashes on incorrect code with -std=c++23
+
+Source Code & Bug Trace:
+#include <iostream>
+#include <vector>
+auto mutated(auto&& vec)
+{
+    #ifndef foo
+        int foo=0;
+    #endif
+    std::transform (vec.begin(), vec.end(), std::back_inserter (vec), [] (float x) -> float {
+        std::cout << "The vector is " << x << std::endl;
+        return x;
+    });
+    return vec;
+}
+int main() {
+    std::vector<int> vec1;
+    vec1.reserve (2);
+    mutated (vec1);
+    std::for_each (mutated (vec1).begin (), mutated (vec1).end (), [] (int x) -> int (int y) {
+        std::cout << "The vector is " << x << y << std::endl;
+        return x * y;
+    });
+    return 0;
+}
+
+clang++ -x c++ -std=c++23 main.cpp
+
+
+<source>:8:10: error: no member named 'transform' in namespace 'std'
+    8 |     std::transform (vec.begin(), vec.end(), std::back_inserter (vec), [] (float x) -> float {
+      |     ~~~~~^
+<source>:18:71: error: function cannot return function type 'int (int)'
+   18 |     std::for_each (mutated (vec1).begin (), mutated (vec1).end (), [] (int x) -> int (int y) {
+      |                                                                       ^
+<source>:19:47: error: use of undeclared identifier 'y'
+   19 |         std::cout << "The vector is " << x << y << std::endl;
+      |                                               ^
+<source>:20:20: error: use of undeclared identifier 'y'
+   20 |         return x * y;
+      |                    ^
+<source>:18:10: error: no member named 'for_each' in namespace 'std'
+   18 |     std::for_each (mutated (vec1).begin (), mutated (vec1).end (), [] (int x) -> int (int y) {
+      |     ~~~~~^
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-17.0.1/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-13.2.0 -fcolor-diagnostics -fno-crash-diagnostics -x c++ -std=c++23 <source>
+1.	<source>:22:5: current parser token 'return'
+2.	<source>:14:12: parsing function body 'main'
+3.	<source>:14:12: in compound statement ('{}')
+ #0 0x0000000003349f18 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3349f18)
+ #1 0x0000000003348044 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3348044)
+ #2 0x000000000329c028 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x000076337dc42520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x0000000005aee323 clang::Sema::CheckParmsForFunctionDef(llvm::ArrayRef<clang::ParmVarDecl*>, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x5aee323)
+ #5 0x000000000601db8c clang::Sema::CompleteLambdaCallOperator(clang::CXXMethodDecl*, clang::SourceLocation, clang::SourceLocation, clang::Expr*, clang::TypeSourceInfo*, clang::ConstexprSpecKind, clang::StorageClass, llvm::ArrayRef<clang::ParmVarDecl*>, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x601db8c)
+ #6 0x0000000005f661e5 clang::TreeTransform<clang::Sema::CorrectDelayedTyposInExpr(clang::Expr*, clang::VarDecl*, bool, llvm::function_ref<clang::ActionResult<clang::Expr*, true> (clang::Expr*)>)::TyposReplace>::TransformLambdaExpr(clang::LambdaExpr*) SemaExprCXX.cpp:0:0
+ #7 0x0000000005f735f5 clang::TreeTransform<clang::Sema::CorrectDelayedTyposInExpr(clang::Expr*, clang::VarDecl*, bool, llvm::function_ref<clang::ActionResult<clang::Expr*, true> (clang::Expr*)>)::TyposReplace>::TransformInitializer(clang::Expr*, bool) SemaExprCXX.cpp:0:0
+ #8 0x0000000005f7392a clang::TreeTransform<clang::Sema::CorrectDelayedTyposInExpr(clang::Expr*, clang::VarDecl*, bool, llvm::function_ref<clang::ActionResult<clang::Expr*, true> (clang::Expr*)>)::TyposReplace>::TransformExprs(clang::Expr* const*, unsigned int, bool, llvm::SmallVectorImpl<clang::Expr*>&, bool*) SemaExprCXX.cpp:0:0
+ #9 0x0000000005f7b3bc clang::TreeTransform<clang::Sema::CorrectDelayedTyposInExpr(clang::Expr*, clang::VarDecl*, bool, llvm::function_ref<clang::ActionResult<clang::Expr*, true> (clang::Expr*)>)::TyposReplace>::TransformCallExpr(clang::CallExpr*) SemaExprCXX.cpp:0:0
+#10 0x0000000005f61ddd clang::Sema::CorrectDelayedTyposInExpr(clang::Expr*, clang::VarDecl*, bool, llvm::function_ref<clang::ActionResult<clang::Expr*, true> (clang::Expr*)>) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x5f61ddd)
+#11 0x0000000005f632b1 clang::Sema::ActOnFinishFullExpr(clang::Expr*, clang::SourceLocation, bool, bool, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x5f632b1)
+#12 0x00000000061d1b2e clang::Sema::ActOnExprStmt(clang::ActionResult<clang::Expr*, true>, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x61d1b2e)
+#13 0x00000000059b3974 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59b3974)
+#14 0x00000000059a998c clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59a998c)
+#15 0x00000000059aa342 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59aa342)
+#16 0x00000000059ab149 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59ab149)
+#17 0x00000000059ac40a clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x59ac40a)
+#18 0x00000000058cabc8 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58cabc8)
+#19 0x00000000058fcb79 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58fcb79)
+#20 0x00000000058c5212 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58c5212)
+#21 0x00000000058c632f clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (.part.0) Parser.cpp:0:0
+#22 0x00000000058cda8f clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58cda8f)
+#23 0x00000000058cef0a clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58cef0a)
+#24 0x00000000058be95a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x58be95a)
+#25 0x00000000044f8b05 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x44f8b05)
+#26 0x0000000003dd5f21 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3dd5f21)
+#27 0x0000000003d5b9fb clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3d5b9fb)
+#28 0x0000000003eb5c23 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3eb5c23)
+#29 0x0000000000bd50c5 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xbd50c5)
+#30 0x0000000000bce42d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#31 0x0000000003ba7489 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#32 0x000000000329c453 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x329c453)
+#33 0x0000000003ba76a9 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#34 0x0000000003b6f477 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3b6f477)
+#35 0x0000000003b6fe2d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3b6fe2d)
+#36 0x0000000003b79d0c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0x3b79d0c)
+#37 0x0000000000bd2d31 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xbd2d31)
+#38 0x0000000000acf511 main (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xacf511)
+#39 0x000076337dc29d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#40 0x000076337dc29e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#41 0x0000000000bcdc2e _start (/opt/compiler-explorer/clang-17.0.1/bin/clang+++0xbcdc2e)
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Compiler returned: 139
+
+
+Bug Labels:
+c++23, clang:frontend, crash-on-invalid

@@ -1,0 +1,55 @@
+Mutation Operator:
+Target: Template Concepts and Static Assertions
+Applicable To: Code that defines and uses template concepts with static assertions.
+
+Mutation Rule:
+1. Identify a template concept definition. For example:
+   ```
+   template<auto Q> concept C = requires { Q.template operator()<int>(); };
+   ```
+
+2. Locate a static assertion that checks an instance of this concept. For example:
+   ```
+   static_assert(C<[]<D>{}>);
+   ```
+
+3. Modify the static assertion by introducing an additional layer of template instantiation using an inline constexpr variable, where this variable is a lambda expression. For instance:
+   - Step 1: Introduce an inline constexpr variable:
+     ```
+     inline constexpr auto Q = []<D>{};
+     ```
+
+   - Step 2: Alter the static assertion to use this variable:
+     ```
+     static_assert(C<Q>);
+     ```
+
+4. Ensure the mutation still utilizes the concept in a nested manner within a different concept, to potentially trigger additional evaluation complexity:
+   - Define another concept that nests the previous concept:
+     ```
+     template<class> concept E = C<Q>;
+     ```
+
+   - Use this new concept in another static assertion:
+     ```
+     static_assert(E<int>);
+     ```
+
+Example in Pseudo-Code:
+- Original:
+  ```
+  template<auto Q> concept C = requires { Q.template operator()<int>(); };
+  template<class> concept D = true;
+  static_assert(C<[]<D>{}>);
+  ```
+
+- Mutated:
+  ```
+  template<auto Q> concept C = requires { Q.template operator()<int>(); };
+  template<class> concept D = true;
+  inline constexpr auto Q = []<D>{};
+  template<class> concept E = C<Q>;
+  static_assert(E<int>);
+  ```
+
+This mutation targets the complex interplay between template instantiations, lambda expressions, and concept evaluations, which has been observed to trigger ICE (Internal Compiler Error) in cases of concept satisfaction checks.

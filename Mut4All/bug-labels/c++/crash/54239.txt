@@ -1,0 +1,129 @@
+Issue Title:
+clang memory error with error meesage "malloc_consolidate(): invalid chunk size"
+
+Source Code & Bug Trace:
+static signed char v1;
+static unsigned char v2[256], v3[256];
+
+__attribute__((noclone, noinline)) void foo(void) {
+  asm volatile(""
+               :
+               : "g"(&v1), "g"(&v2[0]), "g"(&v3[0])
+               : "memory");
+}
+
+__attribute__((noclone, noinline)) int bar(
+    const int x, const unsigned short *y, char *z) {
+  int i;
+  unsigned short u;
+  if (!v1) foo();
+  for (i = 0; i < x; i++) {
+    u = y[i];
+    int ctf0_idx;
+    ctf0_idx = (int)0x00000000;
+    int ctf0_constval;
+    ctf0_constval = (int)0x00;
+    int *ctf0_arr[] = {&ctf0_constval};
+    int ctf1_idx;
+    ctf1_idx = (int){0};
+    int ctf1_constval;
+    ctf1_constval = (int){0};
+    int *ctf1_arr[] = {&ctf1_constval};
+    z[i] = u < 0x0100 ? ((*ctf0_arr[ctf0_idx]) &
+                            (*ctf1_arr[ctf1_idx]))
+                      : v3[u & 0xff];
+  }
+  z[x] = '\0';
+  return x;
+}
+
+int main(void) {
+  char buf[18];
+  unsigned short s[18];
+  unsigned char c[18] = "abcdefghijklmnopq";
+  int i;
+  for (i = 0; i < 256; i++) {
+    v2[i] = i;
+    int ctf2_idx;
+    ctf2_idx = (int){0};
+    int ctf2_constval;
+    ctf2_constval = (int){0};
+    int *ctf2_arr[] = {
+        &ctf2_constval,
+    };
+    int ctf3_idx;
+    ctf3_idx = (int){0};
+    int ctf3_constval;
+    ctf3_constval = (int){0};
+    int *ctf3_arr[] = {
+        &ctf3_constval,
+    };
+    v3[i] =
+        ((*ctf2_arr[ctf2_idx]) || (*ctf3_arr[ctf3_idx])) +
+        1;
+  }
+  for (i = 0; i < 18; i++) s[i] = c[i];
+  s[5] |= 0x600;
+  s[6] |= 0x500;
+  s[11] |= 0x2000;
+  s[15] |= 0x500;
+  foo();
+  if (bar(17, s, buf) != 17 ||
+      __builtin_memcmp(buf, "abcdeghhijkmmnoqq", 18) != 0)
+    __builtin_abort();
+  return 0;
+}
+
+
+$ clang-6.0 -O1 -mllvm -polly a.c
+simplified.c:4:16: warning: unknown attribute 'noclone' ignored
+      [-Wunknown-attributes]
+__attribute__((noclone, noinline)) void foo(void) {
+               ^
+simplified.c:11:16: warning: unknown attribute 'noclone' ignored
+      [-Wunknown-attributes]
+__attribute__((noclone, noinline)) int bar(
+               ^
+free(): double free detected in tcache 2
+malloc_consolidate(): invalid chunk size
+clang: error: unable to execute command: Aborted (core dumped)
+clang: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 6.0.1-14 (tags/RELEASE_601/final)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang: note: diagnostic msg: PLEASE submit a bug report to http://llvm.org/bugs/ and include the crash backtrace, preprocessed source, and associated run script.
+clang: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang: note: diagnostic msg: /tmp/simplified-86113b.c
+clang: note: diagnostic msg: /tmp/simplified-86113b.sh
+clang: note: diagnostic msg:
+
+********************
+
+
+$ clang-6.0 -v
+clang version 6.0.1-14 (tags/RELEASE_601/final)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+Found candidate GCC installation: /usr/bin/../lib/gcc/x86_64-linux-gnu/10
+Found candidate GCC installation: /usr/bin/../lib/gcc/x86_64-linux-gnu/7
+Found candidate GCC installation: /usr/bin/../lib/gcc/x86_64-linux-gnu/7.5.0
+Found candidate GCC installation: /usr/bin/../lib/gcc/x86_64-linux-gnu/8
+Found candidate GCC installation: /usr/bin/../lib/gcc/x86_64-linux-gnu/9
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/10
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/7
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/7.5.0
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/8
+Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/9
+Selected GCC installation: /usr/bin/../lib/gcc/x86_64-linux-gnu/10
+Candidate multilib: .;@m64
+Selected multilib: .;@m64
+
+
+Bug Labels:
+clang:frontend, crash

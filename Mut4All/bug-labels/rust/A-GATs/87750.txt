@@ -1,0 +1,83 @@
+Issue Title:
+ICE with recursive type using GAT. · Issue #87750 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+use std::rc::Rc;
+use std::ops::Deref;
+
+trait PointerFamily {
+    type Pointer<T>: Deref<Target=T> + Sized;
+    
+    fn new<T>(obj: T) -> Self::Pointer<T>;
+}
+
+#[derive(Debug)]
+struct RcFamily;
+
+impl PointerFamily for RcFamily {
+    type Pointer<T> = Rc<T>;
+    
+    fn new<T>(obj: T) -> Rc<T> {
+        Rc::new(obj)
+    }
+}
+
+#[derive(Debug)]
+enum Node<T, P: PointerFamily> where P::Pointer<Node<T, P>>: Sized {
+    Cons(T, P::Pointer<Node<T, P>>),
+    Nil
+}
+
+type List<T, P> = <P as PointerFamily>::Pointer<Node<T, P>>;
+type RcList<T> = List<T, RcFamily>;
+type RcNode<T> = Node<T, RcFamily>;
+
+impl<T, P: PointerFamily> Node<T, P> where P::Pointer<Node<T, P>>: Sized {
+    fn new() -> P::Pointer<Self> {
+        P::new(Self::Nil)
+    }
+    
+    fn cons(head: T, tail: P::Pointer<Self>) -> P::Pointer<Self> {
+        P::new(Self::Cons(head, tail))
+    }
+}
+
+fn main() {
+    let mut list: RcList<i32> = RcNode::<i32>::new();
+    list = RcNode::<i32>::cons(1, list);
+    //println!("{:?}", list);
+    
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1034:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_codegen_llvm::context::CodegenCx as rustc_target::abi::LayoutOf>::spanned_layout_of
+   8: core::ops::function::impls::<impl core::ops::function::FnMut<A> for &mut F>::call_mut
+   9: <core::iter::adapters::chain::Chain<A,B> as core::iter::traits::iterator::Iterator>::fold
+  10: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  11: <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_middle::ty::layout::FnAbiExt<C>>::new_internal
+  12: <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_middle::ty::layout::FnAbiExt<C>>::of_instance
+  13: rustc_codegen_llvm::mono_item::<impl rustc_codegen_ssa::traits::declare::PreDefineMethods for rustc_codegen_llvm::context::CodegenCx>::predefine_fn
+  14: rustc_codegen_llvm::base::compile_codegen_unit::module_codegen
+  15: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  16: rustc_codegen_llvm::base::compile_codegen_unit
+  17: rustc_codegen_ssa::base::codegen_crate
+  18: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  19: rustc_interface::passes::QueryContext::enter
+  20: rustc_interface::queries::Queries::ongoing_codegen
+  21: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  22: rustc_span::with_source_map
+  23: rustc_interface::interface::create_compiler_and_run
+  24: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-GATs, C-bug, E-needs-test, F-generic_associated_types, I-ICE, T-compiler, glacier

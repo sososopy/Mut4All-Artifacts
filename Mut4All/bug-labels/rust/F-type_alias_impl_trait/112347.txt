@@ -1,0 +1,109 @@
+Issue Title:
+Compiler crashes on impl trait for async fn with unstable feature enabled · Issue #112347 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(associated_type_bounds)]
+#![feature(unboxed_closures)]
+
+use std::future::Future;
+
+use async_trait::async_trait;
+
+#[async_trait]
+trait Trait<Arg0>
+where
+    Arg0: ?Sized,
+{
+    type Return;
+
+    async fn func(&mut self, arg0: &Arg0) -> Self::Return;
+}
+
+#[async_trait]
+impl<AsyncFn, Arg0, Return> Trait<Arg0> for AsyncFn
+where
+    for<'a> AsyncFn: Fn<(&'a Arg0,), Output: Future<Output = Return> + Send + 'a> + Send + Sync,
+    Arg0: ?Sized + Sync,
+{
+    type Return = Return;
+
+    async fn func(&mut self, arg0: &Arg0) -> Self::Return {
+        self(arg0).await
+    }
+}
+
+async fn strlen(x: &str) -> usize {
+    x.len()
+}
+
+#[tokio::test]
+async fn test() {
+    assert_eq!(strlen.func("hello world").await, 11);
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'future has no bound vars', compiler/rustc_trait_selection/src/traits/select/confirmation.rs:751:50
+stack backtrace:
+   0: begin_panic_handler
+             at /rustc/e6d4725c76f3b526c74454bc51afdf6daf133506/library/std/src/panicking.rs:593:5
+   1: panic_fmt
+             at /rustc/e6d4725c76f3b526c74454bc51afdf6daf133506/library/core/src/panicking.rs:67:14
+   2: panic_display<&str>
+             at /rustc/e6d4725c76f3b526c74454bc51afdf6daf133506/library/core/src/panicking.rs:150:5
+   3: panic_str
+             at /rustc/e6d4725c76f3b526c74454bc51afdf6daf133506/library/core/src/panicking.rs:134:5
+   4: expect_failed
+             at /rustc/e6d4725c76f3b526c74454bc51afdf6daf133506/library/core/src/option.rs:1952:5
+   5: <rustc_trait_selection::traits::select::SelectionContext>::confirm_candidate
+   6: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_stack
+   7: <rustc_middle::dep_graph::dep_node::DepKind as rustc_query_system::dep_graph::DepKind>::with_deps::<<rustc_trait_selection::traits::select::SelectionContext>::in_task<<rustc_trait_selection::traits::select::SelectionContext>::evaluate_trait_predicate_recursively::{closure#0}::{closure#2}, core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>>::{closure#0}, core::result::Result<rustc_middle::traits::select::EvaluationResult, rustc_middle::traits::select::OverflowError>>
+   8: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicate_recursively
+   9: rustc_traits::evaluate_obligation::evaluate_obligation
+  10: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::predicate_must_hold_considering_regions
+  11: <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation
+  12: <rustc_data_structures::obligation_forest::ObligationForest<rustc_trait_selection::traits::fulfill::PendingPredicateObligation>>::process_obligations::<rustc_trait_selection::traits::fulfill::FulfillProcessor>
+  13: <dyn rustc_infer::traits::engine::TraitEngine as rustc_infer::traits::engine::TraitEngineExt>::select_all_or_error
+  14: rustc_traits::codegen::codegen_select_candidate
+  15: rustc_ty_utils::instance::resolve_instance
+  16: rustc_monomorphize::collector::collect_used_items
+  17: rustc_monomorphize::collector::collect_items_rec
+  18: rustc_monomorphize::collector::collect_items_rec
+  19: rustc_monomorphize::collector::collect_items_rec
+  20: rustc_monomorphize::collector::collect_items_rec
+  21: rustc_monomorphize::collector::collect_items_rec
+  22: rustc_monomorphize::collector::collect_items_rec
+  23: rustc_monomorphize::collector::collect_items_rec
+  24: rustc_monomorphize::collector::collect_items_rec
+  25: rustc_monomorphize::collector::collect_items_rec
+  26: rustc_data_structures::sync::par_for_each_in::<alloc::vec::Vec<rustc_middle::mir::mono::MonoItem>, rustc_monomorphize::collector::collect_crate_mono_items::{closure#1}::{closure#0}>
+  27: <rustc_session::session::Session>::time::<(), rustc_monomorphize::collector::collect_crate_mono_items::{closure#1}>
+  28: rustc_monomorphize::collector::collect_crate_mono_items
+  29: rustc_monomorphize::partitioning::collect_and_partition_mono_items
+  30: rustc_codegen_ssa::base::codegen_crate::<rustc_codegen_llvm::LlvmCodegenBackend>
+  31: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  32: <rustc_session::session::Session>::time::<alloc::boxed::Box<dyn core::any::Any>, rustc_interface::passes::start_codegen::{closure#0}>
+  33: rustc_interface::passes::start_codegen
+  34: <rustc_middle::ty::context::GlobalCtxt>::enter::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_span::ErrorGuaranteed>>
+  35: <rustc_interface::queries::Queries>::ongoing_codegen
+  36: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.72.0-nightly (e6d4725c7 2023-06-05) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [evaluate_obligation] evaluating trait selection obligation `for<'a> [async fn body@src/bin/compiler-crash.rs:31:35: 33:2]: core::future::future::Future`
+#1 [codegen_select_candidate] computing candidate for `<strlen as Trait<str>>`
+#2 [resolve_instance] resolving instance `<strlen as Trait<str>>::func::<'_, '_, '_>`
+#3 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+
+Bug Labels:
+C-bug, F-type_alias_impl_trait, F-unboxed_closures, I-ICE, T-compiler, glacier

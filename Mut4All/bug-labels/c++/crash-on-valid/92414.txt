@@ -1,0 +1,45 @@
+Issue Title:
+Clang crash on valid code since #87933
+
+Source Code & Bug Trace:
+namespace std {
+template <class T> class initializer_list {};
+}
+
+template <typename T, int> class C {
+public:
+  C(std::initializer_list<T>);
+};
+
+template <typename T> using Ptr =__remove_pointer(T) *;
+template <typename T>  C(T) ->  C<Ptr<T>, sizeof(T)>;
+
+class A {
+public:
+  template <typename T1, typename T2>
+  T1 *some_func(T2 &&);
+};
+
+struct B : A {
+  int *ar = some_func<int>(C{some_func<int>(0)});
+  B() {}
+};
+
+
+./main.cpp:23:28: error: no viable constructor or deduction guide for deduction of template arguments of 'C'
+   23 |   int *ar = some_func<int>(C{some_func<int>(0)});
+      |                            ^
+./main.cpp:6:34: note: candidate template ignored: couldn't infer template argument 'T'
+    6 | template <typename T, int> class C {
+      |                                  ^
+./main.cpp:8:3: note: candidate template ignored: couldn't infer template argument ''
+    8 |   C(std::initializer_list<T>);
+      |   ^
+./main.cpp:12:24: note: candidate template ignored: couldn't infer template argument 'T'
+   12 | template <typename T>  C(T) ->  C<Ptr<T>, sizeof(T)>;
+      |                        ^
+1 error generated.
+
+
+Bug Labels:
+clang:frontend, crash-on-valid

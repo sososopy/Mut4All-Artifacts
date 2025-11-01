@@ -1,0 +1,66 @@
+Issue Title:
+Panic with `Layout mismatch when copying!` from macro · Issue #61663 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::convert::TryFrom;
+
+pub trait Symbol<T> {
+    const VALUE: T;
+}
+
+pub struct FALSE;
+
+impl Symbol<i32> for FALSE {
+    const VALUE: i32 = 0;
+}
+
+pub struct TRUE;
+
+impl Symbol<i32> for TRUE {
+    const VALUE: i32 = 1;
+}
+
+macro_rules! impl_symbol_enum {
+    (
+        $Raw: ident,
+        $Enum: ident,
+        $Error: ident { $(
+            $Variant: ident = $Symbol: ident,
+        )* }
+    ) => {
+        #[derive(Debug)]
+        pub struct $Error($Raw);
+
+        #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+        pub enum $Enum {
+            $(
+                $Variant = <$Symbol as Symbol<$Raw>>::VALUE,
+            )*
+        }
+
+        impl TryFrom<$Raw> for $Enum {
+            type Error = $Error;
+
+            fn try_from(value: $Raw) -> Result<Self, Self::Error> {
+                match value {
+                    $(
+                        valid if valid == <$Symbol as Symbol<$Raw>>::VALUE => Ok($Enum::$Variant),
+                    )*
+                    invalid => Err($Error(invalid)),
+                }
+            }
+        }
+    }
+}
+
+impl_symbol_enum! {
+    i32,
+    InvalidLinkStatus,
+    LinkStatus {
+        Unlinked = FALSE,
+        Linked = TRUE,
+    }
+}
+
+Bug Labels:
+A-const-eval, C-bug, I-ICE, P-high, T-compiler, regression-from-stable-to-beta

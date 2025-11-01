@@ -1,0 +1,91 @@
+Issue Title:
+ICE regarding Allocator API · Issue #85916 · rust-lang/rust · GitHub
+
+Rust Code:
+#![cfg_attr(not(test), no_std)]
+#![cfg_attr(feature = "nightly", feature(allocator_api, maybe_uninit_extra, maybe_uninit_uninit_array, new_uninit))]
+
+extern crate alloc;
+
+use core::mem::{forget, transmute_copy, MaybeUninit};
+use core::ptr::{drop_in_place, slice_from_raw_parts_mut};
+
+#[cfg_attr(not(feature="nightly"), path="stable.rs")]
+#[cfg_attr(feature="nightly", path="nightly.rs")]
+mod boxed;
+pub use boxed::*;
+
+#[inline]
+pub(crate) fn init_slice<T, F: FnMut(usize) -> T>(s: &mut [MaybeUninit<T>], mut f: F) {
+    struct Guard<T> {
+        ptr: *mut T,
+        len: usize,
+    }
+
+    impl<T> Drop for Guard<T> {
+        fn drop(&mut self) {
+            // SAFETY: It is guaranteed that exactly `self.len` items in the slice have been initialized.
+            // `self.ptr` is guaranteed to be valid, even if `T` is a ZST, because it has been passed in
+            // through the slice `s`.
+            unsafe { drop_in_place(slice_from_raw_parts_mut(self.ptr, self.len)) };
+        }
+    }
+
+    let mut guard = Guard {
+        ptr: s.as_mut_ptr() as *mut T,
+        len: 0,
+    };
+
+    for (i, a) in s.iter_mut().enumerate() {
+        // Dropping a `MaybeUninit<T>` does nothing, so assigning to it like this
+        // does not cause any memory unsafety issues.
+        *a = MaybeUninit::new(f(i));
+        guard.len += 1;
+    }
+
+    forget(guard);
+}
+
+Bug Trace:
+stack backtrace:
+   0:     0x7ff830c2645f - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h64b9092317105df4
+   1:     0x7ff830c4f6aa - core::fmt::write::h4c8edbe553f89713
+   2:     0x7ff830c199e8 - <std::io::IoSlice as core::fmt::Debug>::fmt::h97785632734c4dcf
+   3:     0x7ff830c2a626 - std::panicking::take_hook::h12edddce955e43f1
+   4:     0x7ff830c2a109 - std::panicking::take_hook::h12edddce955e43f1
+   5:     0x7fffe9d29fa7 - rustc_driver::report_ice::h3049cb25589a84c3
+   6:     0x7ff830c2ae79 - std::panicking::rust_panic_with_hook::hb792f6deccc56d02
+   7:     0x7fffedefecd0 - <rustc_errors::snippet::Style as core::fmt::Debug>::fmt::hb979f8072521b87e
+   8:     0x7fffedefec49 - <rustc_errors::snippet::Style as core::fmt::Debug>::fmt::hb979f8072521b87e
+   9:     0x7fffee1a5681 - rustc_query_system::query::job::report_cycle::h81fc5a257d0f479e
+  10:     0x7fffedf2b370 - rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter::ui_testing::h625a176cbb1ed0cb
+  11:     0x7fffedf31d25 - rustc_errors::HandlerInner::err_count::hafc992165e552e1d
+  12:     0x7fffedf2f822 - rustc_errors::Handler::bug::hff657bce9edf0b10
+  13:     0x7fffeddf30c8 - rustc_middle::ty::sty::<impl rustc_middle::ty::list::List<rustc_middle::ty::sty::Binder<rustc_middle::ty::sty::ExistentialPredicate>>>::principal_def_id::h4203bcb716d2851d
+  14:     0x7fffeddec240 - rustc_middle::ty::subst::<impl rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg>>::truncate_to::h5faae0127e315250
+  15:     0x7fffeddec1e8 - rustc_middle::ty::subst::<impl rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg>>::truncate_to::h5faae0127e315250
+  16:     0x7fffeddf2ff9 - rustc_middle::ty::sty::<impl rustc_middle::ty::list::List<rustc_middle::ty::sty::Binder<rustc_middle::ty::sty::ExistentialPredicate>>>::principal_def_id::h4203bcb716d2851d
+  17:     0x7fffee1a18c7 - rustc_middle::util::bug::bug_fmt::h9bfd4648b61d87bb
+  18:     0x7fffea008d95 - rustc_codegen_llvm::llvm_::archive_ro::Child::data::hc789694af6654b76
+  19:     0x7fffea00a466 - rustc_codegen_llvm::llvm_::archive_ro::Child::data::hc789694af6654b76
+  20:     0x7fffe9ffe9a9 - rustc_codegen_llvm::llvm_::archive_ro::Child::data::hc789694af6654b76
+  21:     0x7fffe9f8ab42 - rustc_codegen_llvm::type_::<impl rustc_codegen_ssa::traits::type_::LayoutTypeMethods for rustc_codegen_llvm::context::CodegenCx>::reg_backend_type::h895b44fdd8dd0179
+  22:     0x7fffe9fc8e1c - <rustc_codegen_llvm::llvm_::ffi::PassKind as core::fmt::Debug>::fmt::hf964a257e2f76c5e
+  23:     0x7fffe9ffadff - <rustc_codegen_llvm::base::ValueIter as core::iter::traits::iterator::Iterator>::next::h961b1947c8d7e5f7
+  24:     0x7fffe9f8ca07 - rustc_codegen_llvm::type_::<impl rustc_codegen_ssa::traits::type_::LayoutTypeMethods for rustc_codegen_llvm::context::CodegenCx>::reg_backend_type::h895b44fdd8dd0179
+  25:     0x7fffe9ffa711 - <rustc_codegen_llvm::base::ValueIter as core::iter::traits::iterator::Iterator>::next::h961b1947c8d7e5f7
+  26:     0x7fffe9fa6201 - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::h2ae70781e72ad261
+  27:     0x7fffe9e5ed3f - rustc_interface::passes::BoxedResolver::to_resolver_outputs::h0d1350e5e7985bf3
+  28:     0x7fffe9e810c6 - rustc_interface::queries::Queries::ongoing_codegen::h0e9f2e74141d6805
+  29:     0x7fffe9d767dd - <rustc_driver::args::Error as core::fmt::Debug>::fmt::h37b23c9fa6ec772d
+  30:     0x7fffe9d44841 - rustc_driver::pretty::print_after_hir_lowering::h3093e466fb72c6e2
+  31:     0x7fffe9d77869 - <rustc_driver::args::Error as core::fmt::Debug>::fmt::h37b23c9fa6ec772d
+  32:     0x7fffe9d45bfb - rustc_driver::pretty::print_after_hir_lowering::h3093e466fb72c6e2
+  33:     0x7fffe9d96c81 - <rustc_driver::args::Error as core::fmt::Debug>::fmt::h37b23c9fa6ec772d
+  34:     0x7fffe9d2d9ed - <rustc_driver::Compilation as core::fmt::Debug>::fmt::hb0ab8f97bd4d8039
+  35:     0x7ff830c38c3c - std::sys::windows::thread::Thread::new::h7f0299499f002b12
+  36:     0x7ff880be7034 - BaseThreadInitThunk
+  37:     0x7ff881b82651 - RtlUserThreadStart
+
+Bug Labels:
+A-allocators, C-bug, I-ICE, T-compiler

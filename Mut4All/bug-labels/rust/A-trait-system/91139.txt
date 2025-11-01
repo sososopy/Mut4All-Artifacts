@@ -1,0 +1,77 @@
+Issue Title:
+ICE with GATs and lifetime-bounds and higher-ranked fn pointer type · Issue #91139 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+trait Foo<T> {
+    type Type<'a>
+    where
+        T: 'a;
+}
+
+impl<T> Foo<T> for () {
+    type Type<'a>
+    where
+        T: 'a,
+    = ();
+}
+
+fn foo<T>() {
+    let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+error: internal compiler error: compiler/rustc_borrowck/src/universal_regions.rs:805:36: cannot convert `RePlaceholder(Placeholder { universe: U2, name: BrAnon(0) })` to a region vid
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1169:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner>::bug
+   3: <rustc_errors::Handler>::bug
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>
+   5: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_borrowck::universal_regions::UniversalRegions>::to_region_vid
+   8: <rustc_borrowck::region_infer::RegionInferenceContext>::eval_verify_bound
+   9: <rustc_borrowck::region_infer::RegionInferenceContext>::eval_verify_bound
+  10: <rustc_borrowck::region_infer::RegionInferenceContext>::solve
+  11: rustc_borrowck::nll::compute_regions
+  12: rustc_borrowck::do_mir_borrowck
+  13: <rustc_infer::infer::InferCtxtBuilder>::enter::<rustc_middle::mir::query::BorrowCheckResult, rustc_borrowck::mir_borrowck::{closure#0}>
+  14: rustc_borrowck::mir_borrowck
+  15: <rustc_borrowck::provide::{closure#0} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+  16: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, &rustc_middle::mir::query::BorrowCheckResult>>
+  17: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_borrowck
+  18: <rustc_middle::hir::map::Map>::par_body_owners::<rustc_interface::passes::analysis::{closure#2}::{closure#0}>
+  19: <rustc_session::session::Session>::time::<(), rustc_interface::passes::analysis::{closure#2}>
+  20: rustc_interface::passes::analysis
+  21: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), core::result::Result<(), rustc_errors::ErrorReported>>>
+  22: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  23: <rustc_interface::passes::QueryContext>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}::{closure#3}, core::result::Result<(), rustc_errors::ErrorReported>>
+  24: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorReported>>
+  25: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorReported>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  26: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>
+  27: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorReported>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorReported>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_errors::ErrorReported>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.58.0-nightly (65f3f8b22 2021-11-21) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `foo::{closure#0}`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: could not compile `playground`
+
+Bug Labels:
+A-GATs, A-lifetimes, A-trait-system, A-type-system, C-bug, E-needs-test, F-generic_associated_types, GATs-triaged, I-ICE, T-compiler, glacier, requires-nightly

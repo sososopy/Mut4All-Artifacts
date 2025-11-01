@@ -1,0 +1,93 @@
+Issue Title:
+clang front-end ICE crash on short C++20 template snippet
+
+Source Code & Bug Trace:
+template <typename> int ZERO = 0;
+
+template <typename T>
+using complicated_int = decltype(
+	[]<int U=0>() { return ZERO<T>; } ()
+);
+
+template <typename T>
+using complicated_int_alias = complicated_int<T>;
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /the_llvm_dir/bin/clang-19 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -mrelax-all -dumpdir a- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name t.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/tmp -fcoverage-compilation-dir=/tmp -resource-dir /the_llvm_dir/lib/clang/19 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward -internal-isystem /the_llvm_dir/lib/clang/19/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++20 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/t-9d0335.o -x c++ t.cpp
+1.	t.cpp:9:31: at annotation token
+2.	t.cpp:5:2: instantiating function definition '(anonymous class)::operator()<0>'
+ #0 0x0000556234d4af00 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/the_llvm_dir/bin/clang-19+0x380af00)
+ #1 0x0000556234d484ce SignalHandler(int) Signals.cpp:0:0
+ #2 0x00007faaef242520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #3 0x0000556237b5927e clang::ASTContext::getSubstTemplateTypeParmType(clang::QualType, clang::Decl*, unsigned int, std::optional<unsigned int>) const (/the_llvm_dir/bin/clang-19+0x661927e)
+ #4 0x00005562377ff15b (anonymous namespace)::TemplateInstantiator::BuildSubstTemplateTypeParmType(clang::TypeLocBuilder&, bool, bool, clang::Decl*, unsigned int, std::optional<unsigned int>, clang::TemplateArgument, clang::SourceLocation) (.isra.0) SemaTemplateInstantiate.cpp:0:0
+ #5 0x00005562378007b9 (anonymous namespace)::TemplateInstantiator::TransformTemplateTypeParmType(clang::TypeLocBuilder&, clang::TemplateTypeParmTypeLoc, bool) SemaTemplateInstantiate.cpp:0:0
+ #6 0x0000556237826949 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+ #7 0x0000556237826a5b clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::QualType) SemaTemplateInstantiate.cpp:0:0
+ #8 0x00005562378235e5 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+ #9 0x0000556237826949 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#10 0x000055623782d84c clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArgument(clang::TemplateArgumentLoc const&, clang::TemplateArgumentLoc&, bool) SemaTemplateInstantiate.cpp:0:0
+#11 0x000055623783150a bool clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformTemplateArguments<clang::TemplateArgumentLoc const*>(clang::TemplateArgumentLoc const*, clang::TemplateArgumentLoc const*, clang::TemplateArgumentListInfo&, bool) (.constprop.0) SemaTemplateInstantiate.cpp:0:0
+#12 0x000055623783e0e1 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformUnresolvedLookupExpr(clang::UnresolvedLookupExpr*) SemaTemplateInstantiate.cpp:0:0
+#13 0x0000556237817907 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformReturnStmt(clang::ReturnStmt*) SemaTemplateInstantiate.cpp:0:0
+#14 0x000055623784800f clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#15 0x000055623784d9f5 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/the_llvm_dir/bin/clang-19+0x630d9f5)
+#16 0x000055623789471a clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/the_llvm_dir/bin/clang-19+0x635471a)
+#17 0x0000556236f05035 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/the_llvm_dir/bin/clang-19+0x59c5035)
+#18 0x00005562377a6326 clang::Sema::DeduceReturnType(clang::FunctionDecl*, clang::SourceLocation, bool) (/the_llvm_dir/bin/clang-19+0x6266326)
+#19 0x00005562372b7717 clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*, bool) (/the_llvm_dir/bin/clang-19+0x5d77717)
+#20 0x00005562375f6937 CreateFunctionRefExpr(clang::Sema&, clang::FunctionDecl*, clang::NamedDecl*, clang::Expr const*, bool, clang::SourceLocation, clang::DeclarationNameLoc const&) SemaOverload.cpp:0:0
+#21 0x000055623763dc9c clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) (/the_llvm_dir/bin/clang-19+0x60fdc9c)
+#22 0x000055623732829b clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/the_llvm_dir/bin/clang-19+0x5de829b)
+#23 0x000055623781f46a clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) SemaTemplateInstantiate.cpp:0:0
+#24 0x00005562378236ec clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeLocBuilder&, clang::TypeLoc) SemaTemplateInstantiate.cpp:0:0
+#25 0x0000556237826949 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformType(clang::TypeSourceInfo*) SemaTemplateInstantiate.cpp:0:0
+#26 0x000055623782b40e clang::Sema::SubstType(clang::QualType, clang::MultiLevelTemplateArgumentList const&, clang::SourceLocation, clang::DeclarationName) (/the_llvm_dir/bin/clang-19+0x62eb40e)
+#27 0x0000556237704079 clang::Sema::CheckTemplateIdType(clang::TemplateName, clang::SourceLocation, clang::TemplateArgumentListInfo&) (/the_llvm_dir/bin/clang-19+0x61c4079)
+#28 0x00005562377069ca clang::Sema::ActOnTemplateIdType(clang::Scope*, clang::CXXScopeSpec&, clang::SourceLocation, clang::OpaquePtr<clang::TemplateName>, clang::IdentifierInfo*, clang::SourceLocation, clang::SourceLocation, llvm::MutableArrayRef<clang::ParsedTemplateArgument>, clang::SourceLocation, bool, bool, clang::ImplicitTypenameContext) (/the_llvm_dir/bin/clang-19+0x61c69ca)
+#29 0x0000556236eb4bf7 clang::Parser::AnnotateTemplateIdTokenAsType(clang::CXXScopeSpec&, clang::ImplicitTypenameContext, bool) (/the_llvm_dir/bin/clang-19+0x5974bf7)
+#30 0x0000556236de8e42 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (/the_llvm_dir/bin/clang-19+0x58a8e42)
+#31 0x0000556236deb0d5 clang::Parser::ParseSpecifierQualifierList(clang::DeclSpec&, clang::ImplicitTypenameContext, clang::AccessSpecifier, clang::Parser::DeclSpecContext) (/the_llvm_dir/bin/clang-19+0x58ab0d5)
+#32 0x0000556236deb574 clang::Parser::ParseTypeName(clang::SourceRange*, clang::DeclaratorContext, clang::AccessSpecifier, clang::Decl**, clang::ParsedAttributes*) (/the_llvm_dir/bin/clang-19+0x58ab574)
+#33 0x0000556236e07bef clang::Parser::ParseAliasDeclarationAfterDeclarator(clang::Parser::ParsedTemplateInfo const&, clang::SourceLocation, clang::Parser::UsingDeclarator&, clang::SourceLocation&, clang::AccessSpecifier, clang::ParsedAttributes&, clang::Decl**) (/the_llvm_dir/bin/clang-19+0x58c7bef)
+#34 0x0000556236e0f2d6 clang::Parser::ParseUsingDeclaration(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::SourceLocation, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/the_llvm_dir/bin/clang-19+0x58cf2d6)
+#35 0x0000556236e1b7a5 clang::Parser::ParseUsingDirectiveOrDeclaration(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::SourceLocation&, clang::ParsedAttributes&) (/the_llvm_dir/bin/clang-19+0x58db7a5)
+#36 0x0000556236eb3eec clang::Parser::ParseDeclarationAfterTemplate(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo&, clang::ParsingDeclRAIIObject&, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/the_llvm_dir/bin/clang-19+0x5973eec)
+#37 0x0000556236ec04de clang::Parser::ParseTemplateDeclarationOrSpecialization(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (/the_llvm_dir/bin/clang-19+0x59804de)
+#38 0x0000556236ec0729 clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&) (/the_llvm_dir/bin/clang-19+0x5980729)
+#39 0x0000556236df82b7 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (/the_llvm_dir/bin/clang-19+0x58b82b7)
+#40 0x0000556236dbc267 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/the_llvm_dir/bin/clang-19+0x587c267)
+#41 0x0000556236dbdac7 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/the_llvm_dir/bin/clang-19+0x587dac7)
+#42 0x0000556236dae3da clang::ParseAST(clang::Sema&, bool, bool) (/the_llvm_dir/bin/clang-19+0x586e3da)
+#43 0x00005562357e7111 clang::FrontendAction::Execute() (/the_llvm_dir/bin/clang-19+0x42a7111)
+#44 0x00005562357655d9 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/the_llvm_dir/bin/clang-19+0x42255d9)
+#45 0x00005562358ad263 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/the_llvm_dir/bin/clang-19+0x436d263)
+#46 0x00005562323a8c53 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/the_llvm_dir/bin/clang-19+0xe68c53)
+#47 0x00005562323a105d ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#48 0x00005562323a4cba clang_main(int, char**, llvm::ToolContext const&) (/the_llvm_dir/bin/clang-19+0xe64cba)
+#49 0x00005562322a4f2b main (/the_llvm_dir/bin/clang-19+0xd64f2b)
+#50 0x00007faaef229d90 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:58:16
+#51 0x00007faaef229e40 call_init ./csu/../csu/libc-start.c:128:20
+#52 0x00007faaef229e40 __libc_start_main ./csu/../csu/libc-start.c:379:5
+#53 0x00005562323a04d5 _start (/the_llvm_dir/bin/clang-19+0xe604d5)
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 19.0.0git (https://github.com/llvm/llvm-project.git 2fcfc9754a16805b81e541dc8222a8b5cf17a121)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /the_llvm_dir/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/t-819489.cpp
+clang++: note: diagnostic msg: /tmp/t-819489.sh
+clang++: note: diagnostic msg: 
+
+********************
+
+
+Bug Labels:
+clang:frontend, crash

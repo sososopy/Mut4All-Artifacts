@@ -1,0 +1,76 @@
+Issue Title:
+internal compiler error when copying borrow of leaked Box into async move closure for FutureExt::then · Issue #123334 · rust-lang/rust · GitHub
+
+Rust Code:
+let max_colors = Box::leak(Box::new(pixels + 1));
+        let image_task = self.add_to(ctx, side_length);
+        let wrapped_task = task.then(async move |mut uncapped: SimpleArcow<ColorDescription>| {
+            uncapped.cap_indexed(*max_colors, image_task).await;
+            uncapped
+        })
+        .boxed()
+        .shared();
+Bug Trace:
+error: internal compiler error: broken MIR in DefId(0:642 ~ ochd[a7c9]::image_tasks::task_spec::{impl#15}::get_color_description_task::{closure#6}) (bb0[0]): equate_normalized_input_or_output: `Coroutine(DefId(0:643 ~ ochd[a7c9]::image_tasks::task_spec::{impl#15}::get_color_description_task::{closure#6}::{closure#0}), [i32, std::future::ResumeTy, (), image_tasks::cloneable::Arcow<'?2, image_tasks::task_spec::ColorDescription, image_tasks::task_spec::ColorDescription>, CoroutineWitness(DefId(0:643 ~ ochd[a7c9]::image_tasks::task_spec::{impl#15}::get_color_description_task::{closure#6}::{closure#0}), []), (image_tasks::cloneable::Arcow<'?1, image_tasks::task_spec::ColorDescription, image_tasks::task_spec::ColorDescription>, &'?3 mut usize, futures_util::future::Shared<std::pin::Pin<std::boxed::Box<dyn [Binder(Trait(futures_util::Future), []), Binder(Projection(ExistentialProjection { def_id: DefId(2:44307 ~ core[3b7f]::future::future::Future::Output), args: [], term: Term::Ty(image_tasks::cloneable::Arcow<'?4, image_tasks::MaybeFromPool<resvg::tiny_skia::Pixmap>, image_tasks::MaybeFromPool<resvg::tiny_skia::Pixmap>>) }), []), Binder(AutoTrait(DefId(2:31925 ~ core[3b7f]::marker::Send)), [])] + '?5, std::alloc::Global>>>)])==Coroutine(DefId(0:643 ~ ochd[a7c9]::image_tasks::task_spec::{impl#15}::get_color_description_task::{closure#6}::{closure#0}), [i32, std::future::ResumeTy, (), image_tasks::cloneable::Arcow<'?20, image_tasks::task_spec::ColorDescription, image_tasks::task_spec::ColorDescription>, CoroutineWitness(DefId(0:643 ~ ochd[a7c9]::image_tasks::task_spec::{impl#15}::get_color_description_task::{closure#6}::{closure#0}), []), (image_tasks::cloneable::Arcow<'?21, image_tasks::task_spec::ColorDescription, image_tasks::task_spec::ColorDescription>, &'?22 usize, futures_util::future::Shared<std::pin::Pin<std::boxed::Box<dyn [Binder(Trait(futures_util::Future), []), Binder(Projection(ExistentialProjection { def_id: DefId(2:44307 ~ core[3b7f]::future::future::Future::Output), args: [], term: Term::Ty(image_tasks::cloneable::Arcow<'?23, image_tasks::MaybeFromPool<resvg::tiny_skia::Pixmap>, image_tasks::MaybeFromPool<resvg::tiny_skia::Pixmap>>) }), []), Binder(AutoTrait(DefId(2:31925 ~ core[3b7f]::marker::Send)), [])] + '?24, std::alloc::Global>>>)])` failed with `NoSolution`
+    --> src/image_tasks/task_spec.rs:1159:38
+     |
+1159 |           let wrapped_task = task.then(async move |mut uncapped: SimpleArcow<ColorDescription>| {
+     |  ______________________________________^
+1160 | |             uncapped.cap_indexed(*max_colors, image_task).await;
+1161 | |             uncapped
+1162 | |         })
+     | |_________^
+     |
+note: delayed at compiler/rustc_borrowck/src/type_check/input_output.rs:213:17
+         0: std::backtrace::Backtrace::create
+         1: std::backtrace::Backtrace::capture
+         2: <rustc_errors::DiagCtxtInner>::emit_diagnostic
+         3: <rustc_errors::DiagCtxt>::emit_diagnostic
+         4: <rustc_errors::diagnostic::DiagnosticBuilder>::emit_producing_error_guaranteed
+         5: <rustc_borrowck::type_check::TypeChecker>::equate_normalized_input_or_output
+         6: rustc_borrowck::type_check::type_check
+         7: rustc_borrowck::nll::compute_regions
+         8: rustc_borrowck::do_mir_borrowck
+         9: rustc_borrowck::mir_borrowck
+        10: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::mir_borrowck::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+        11: <rustc_query_impl::query_impl::mir_borrowck::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+        12: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+        13: rustc_query_impl::query_impl::mir_borrowck::get_query_incr::__rust_end_short_backtrace
+        14: rustc_middle::query::plumbing::query_get_at::<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>>
+        15: <rustc_borrowck::type_check::TypeChecker>::prove_closure_bounds
+        16: <rustc_borrowck::type_check::TypeChecker>::check_rvalue
+        17: <rustc_borrowck::type_check::TypeChecker>::typeck_mir
+        18: rustc_borrowck::type_check::type_check
+        19: rustc_borrowck::nll::compute_regions
+        20: rustc_borrowck::do_mir_borrowck
+        21: rustc_borrowck::mir_borrowck
+        22: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::mir_borrowck::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 8]>>
+        23: <rustc_query_impl::query_impl::mir_borrowck::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+        24: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+        25: rustc_query_impl::query_impl::mir_borrowck::get_query_incr::__rust_end_short_backtrace
+        26: <rustc_middle::hir::map::Map>::par_body_owners::<rustc_interface::passes::analysis::{closure#1}::{closure#0}>::{closure#0}
+        27: <rustc_data_structures::sync::parallel::ParallelGuard>::run::<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], <rustc_middle::hir::map::Map>::par_body_owners<rustc_interface::passes::analysis::{closure#1}::{closure#0}>::{closure#0}>::{closure#0}::{closure#0}::{closure#0}>
+        28: <rustc_session::session::Session>::time::<(), rustc_interface::passes::analysis::{closure#1}>
+        29: rustc_interface::passes::analysis
+        30: rustc_query_impl::plumbing::__rust_begin_short_backtrace::<rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle::query::erase::Erased<[u8; 1]>>
+        31: <rustc_query_impl::query_impl::analysis::dynamic_query::{closure#2} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, ())>>::call_once
+        32: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::DynamicConfig<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>, false, false, false>, rustc_query_impl::plumbing::QueryCtxt, true>
+        33: rustc_query_impl::query_impl::analysis::get_query_incr::__rust_end_short_backtrace
+        34: <rustc_middle::ty::context::GlobalCtxt>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure#3}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+        35: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+        36: rustc_span::set_source_map::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}::{closure#0}>
+        37: rustc_span::create_session_globals_then::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}>
+        38: std::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+        39: <<std::thread::Builder>::spawn_unchecked_<rustc_interface::util::run_in_thread_with_globals<rustc_interface::util::run_in_thread_pool_with_globals<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#0}::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>::{closure#1} as core::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+        40: std::sys::pal::unix::thread::Thread::new::thread_start
+        41: __pthread_start
+    --> src/image_tasks/task_spec.rs:1159:38
+     |
+1159 |           let wrapped_task = task.then(async move |mut uncapped: SimpleArcow<ColorDescription>| {
+     |  ______________________________________^
+1160 | |             uncapped.cap_indexed(*max_colors, image_task).await;
+1161 | |             uncapped
+1162 | |         })
+     | |_________^
+Bug Labels:
+A-MIR, A-async-await, AsyncAwait-Triaged, C-bug, E-needs-mcve, I-ICE, T-compiler

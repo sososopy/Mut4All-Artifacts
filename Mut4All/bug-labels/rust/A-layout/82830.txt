@@ -1,0 +1,80 @@
+Issue Title:
+ICE when getting the size of a struct containing itself in an odd way · Issue #82830 · rust-lang/rust · GitHub
+
+Rust Code:
+trait A<Y, N> {
+    type B;
+}
+type MaybeBox<T> = <T as A<T, Box<T>>>::B;
+struct P {
+    t: MaybeBox<P>
+}
+impl<Y, N> A<Y, N> for P {
+    type B = N;
+}
+fn main() {
+    let t: MaybeBox<P>;
+}
+
+Bug Trace:
+warning: unused variable: `t`
+  --> src/ice.rs:12:9
+   |
+12 |     let t: MaybeBox<P>;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_t`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+error: internal compiler error: compiler/rustc_codegen_llvm/src/context.rs:778:17: failed to get layout for `Box<P>`: the type `std::alloc::Global` has an unknown layout
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/9b471a3f5fe57e5c6e08acf665f2094422415a3d/library/std/src/panic.rs:59:5
+stack backtrace:
+   0:        0x108462844 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h043213eec1d948a5
+   1:        0x1084befc4 - core::fmt::write::hf53968076cf4f14e
+   2:        0x108456ad0 - std::io::Write::write_fmt::h28b0246eee567fa4
+   3:        0x108466074 - std::panicking::default_hook::{{closure}}::h8d1966a8d6a15176
+   4:        0x108465b9c - std::panicking::default_hook::h9e61206a690d3893
+   5:        0x101529fc0 - rustc_driver::report_ice::he031b89daf683be2
+   6:        0x1084667ac - std::panicking::rust_panic_with_hook::hd1308496ca12fe75
+   7:        0x104f815b4 - std::panicking::begin_panic::{{closure}}::hcba543a8c5f1d08d
+   8:        0x104f81524 - std::sys_common::backtrace::__rust_end_short_backtrace::h362c2d8a9e8d5298
+   9:        0x105331b68 - std::panicking::begin_panic::h93e3158113bdbc60
+  10:        0x104f6ff2c - std::panic::panic_any::h726732c1e110a4ed
+  11:        0x104f75ed0 - rustc_errors::HandlerInner::bug::h3b8f241f53eaf369
+  12:        0x104f74844 - rustc_errors::Handler::bug::h8de1066ed91b927d
+  13:        0x104bfaea0 - rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}::h44d18bd8b9b96860
+  14:        0x104bfa4f4 - rustc_middle::ty::context::tls::with_opt::{{closure}}::h127e943ea1d82039
+  15:        0x104bfa4c4 - rustc_middle::ty::context::tls::with_opt::h15355bc739995ab5
+  16:        0x104bfadfc - rustc_middle::util::bug::opt_span_bug_fmt::hd81b691c1ebfe316
+  17:        0x10531cf90 - rustc_middle::util::bug::bug_fmt::hed974c89fe586787
+  18:        0x101854be4 - <rustc_codegen_llvm::context::CodegenCx as rustc_target::abi::LayoutOf>::spanned_layout_of::{{closure}}::hc33838b90d61229a
+  19:        0x101854ae8 - <rustc_codegen_llvm::context::CodegenCx as rustc_target::abi::LayoutOf>::spanned_layout_of::h1d6e88314f230529
+  20:        0x101819b88 - rustc_codegen_ssa::mir::analyze::non_ssa_locals::h7533078a57869e49
+  21:        0x1017a7b70 - rustc_codegen_ssa::mir::codegen_mir::he40696223aa51736
+  22:        0x1018295e8 - rustc_codegen_ssa::base::codegen_instance::h5db39f5bdef05836
+  23:        0x10186bc54 - <rustc_middle::mir::mono::MonoItem as rustc_codegen_ssa::mono_item::MonoItemExt>::define::h46f0ab8e9a6af95e
+  24:        0x101766420 - rustc_codegen_llvm::base::compile_codegen_unit::module_codegen::h8383c56c09ee28e5
+  25:        0x10187d154 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task::hb61eed6b6daccc43
+  26:        0x101765e54 - rustc_codegen_llvm::base::compile_codegen_unit::hc6ff00cd13bf2ad7
+  27:        0x101840568 - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::hc0cff821987c1e1a
+  28:        0x1016dd278 - rustc_interface::queries::Queries::ongoing_codegen::ha2a71002e07ad1b7
+  29:        0x10154aa30 - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::h79312bfd55dc88a9
+  30:        0x10152c7a4 - rustc_span::with_source_map::h6e88bbd7481b3eff
+  31:        0x101543f2c - scoped_tls::ScopedKey<T>::set::hae52353f87af177a
+  32:        0x10154ccbc - std::sys_common::backtrace::__rust_begin_short_backtrace::hd3d5294404312cd1
+  33:        0x1014e1094 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h6426353783274c03
+  34:        0x108472290 - std::sys::unix::thread::Thread::new::thread_start::h5458ae4a1bb3b8f6
+  35:        0x1a085e06c - _pthread_kill
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-nightly (9b471a3f5 2021-02-19) running on aarch64-apple-darwin
+
+query stack during panic:
+end of query stack
+error: aborting due to previous error; 1 warning emitted
+
+Bug Labels:
+A-layout, A-trait-system, C-bug, E-needs-test, I-ICE, P-medium, T-compiler, glacier, regression-from-stable-to-stable

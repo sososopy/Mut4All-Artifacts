@@ -1,0 +1,164 @@
+Issue Title:
+ICE when using Matching, Async and Indexing · Issue #78366 · rust-lang/rust · GitHub
+
+Rust Code:
+enum Status {
+    SystemOutage { issue_id: u32 },
+}
+
+#[tokio::main]
+async fn main() {
+    let issues: tokio::sync::RwLock<Vec<bool>> = Default::default();
+
+    let closure = |status: Status| {
+            async move {
+                match status {
+                    Status::SystemOutage { issue_id }
+                        if issues.read().await[issue_id as usize] => {}
+                    _ => {
+                        // Do nothing;
+                    }
+                }
+            }
+        };
+    closure(Status::SystemOutage { issue_id: 1 }).await;
+}
+
+Bug Trace:
+Compiling system_change v0.1.0 (/home/perikles/programming/system_change_ice)
+error: internal compiler error: compiler/rustc_mir/src/transform/generator.rs:751:13: Broken MIR: generator contains type &u32 in MIR, but typeck only knows about for<'r, 's, 't0> {ResumeTy, Status, u32, &'r tokio::sync::RwLock<Vec<bool>>, tokio::sync::RwLock<Vec<bool>>, impl std::future::Future, ()}
+  --> src/main.rs:10:24
+   |
+10 |               async move {
+   |  ________________________^
+11 | |                 match status {
+12 | |                     Status::SystemOutage { issue_id }
+13 | |                         if issues.read().await[issue_id as usize] => {}
+...  |
+17 | |                 }
+18 | |             }
+   | |_____________^
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/ffa2e7ae8fbf9badc035740db949b9dae271c29f/compiler/rustc_errors/src/lib.rs:891:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::span_bug
+   2: rustc_errors::Handler::span_bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::span_bug_fmt
+   8: <rustc_mir::transform::generator::StateTransform as rustc_mir::transform::MirPass>::run_pass
+   9: rustc_mir::transform::run_passes
+  10: rustc_mir::transform::run_optimization_passes
+  11: rustc_mir::transform::optimized_mir
+  12: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  14: rustc_data_structures::stack::ensure_sufficient_stack
+  15: rustc_query_system::query::plumbing::get_query_impl
+  16: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  17: rustc_middle::ty::layout::layout_raw
+  18: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  19: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  20: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  21: rustc_data_structures::stack::ensure_sufficient_stack
+  22: rustc_query_system::query::plumbing::get_query_impl
+  23: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  24: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  25: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  26: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  27: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  28: rustc_middle::ty::layout::layout_raw
+  29: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  30: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  35: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  36: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  37: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  38: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  39: rustc_middle::ty::layout::layout_raw
+  40: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  41: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  42: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  43: rustc_data_structures::stack::ensure_sufficient_stack
+  44: rustc_query_system::query::plumbing::get_query_impl
+  45: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  46: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  47: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  48: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  49: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  50: rustc_middle::ty::layout::layout_raw
+  51: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  52: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  53: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  54: rustc_data_structures::stack::ensure_sufficient_stack
+  55: rustc_query_system::query::plumbing::get_query_impl
+  56: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  57: <core::iter::adapters::Map<I,F> as core::iter::traits::iterator::Iterator>::try_fold
+  58: <core::iter::adapters::chain::Chain<A,B> as core::iter::traits::iterator::Iterator>::try_fold
+  59: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  60: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  61: rustc_middle::ty::layout::layout_raw
+  62: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  63: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  64: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  65: rustc_data_structures::stack::ensure_sufficient_stack
+  66: rustc_query_system::query::plumbing::get_query_impl
+  67: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  68: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  69: <core::iter::adapters::ResultShunt<I,E> as core::iter::traits::iterator::Iterator>::next
+  70: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  71: rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt>::layout_raw_uncached
+  72: rustc_middle::ty::layout::layout_raw
+  73: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+  74: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  75: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  76: rustc_data_structures::stack::ensure_sufficient_stack
+  77: rustc_query_system::query::plumbing::get_query_impl
+  78: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  79: <rustc_mir::transform::const_prop::ConstProp as rustc_mir::transform::MirPass>::run_pass
+  80: rustc_mir::transform::run_passes
+  81: rustc_mir::transform::run_optimization_passes
+  82: rustc_mir::transform::optimized_mir
+  83: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  84: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  85: rustc_data_structures::stack::ensure_sufficient_stack
+  86: rustc_query_system::query::plumbing::get_query_impl
+  87: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::instance_mir
+  88: rustc_mir::monomorphize::collector::collect_neighbours
+  89: rustc_mir::monomorphize::collector::collect_items_rec
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.49.0-nightly (ffa2e7ae8 2020-10-24) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [optimized_mir] optimizing MIR for `main::{closure#0}::{closure#0}::{closure#0}`
+#1 [layout_raw] computing layout of `[static generator@src/main.rs:10:24: 18:14 for<'r, 's> {std::future::ResumeTy, Status, u32, &'r tokio::sync::RwLock<std::vec::Vec<bool>>, tokio::sync::RwLock<std::vec::Vec<bool>>, std::future::from_generator::GenFuture<[static generator@tokio::sync::RwLock::<T>::read::{closure#0} for<'t0, 't1> {std::future::ResumeTy, &'t0 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, std::future::from_generator::GenFuture<[static generator@tokio::sync::rwlock::ReleasingPermit::<'a, T>::acquire::{closure#0} for<'t2, 't3, 't4> {std::future::ResumeTy, &'t2 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, tokio::sync::RwLock<std::vec::Vec<bool>>, &'t3 tokio::sync::batch_semaphore::Semaphore, tokio::sync::batch_semaphore::Semaphore, u32, tokio::sync::batch_semaphore::Acquire<'t4>, ()}]>, ()}]>, ()}]`
+#2 [layout_raw] computing layout of `std::future::from_generator::GenFuture<[static generator@src/main.rs:10:24: 18:14 for<'r, 's> {std::future::ResumeTy, Status, u32, &'r tokio::sync::RwLock<std::vec::Vec<bool>>, tokio::sync::RwLock<std::vec::Vec<bool>>, std::future::from_generator::GenFuture<[static generator@tokio::sync::RwLock::<T>::read::{closure#0} for<'t0, 't1> {std::future::ResumeTy, &'t0 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, std::future::from_generator::GenFuture<[static generator@tokio::sync::rwlock::ReleasingPermit::<'a, T>::acquire::{closure#0} for<'t2, 't3, 't4> {std::future::ResumeTy, &'t2 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, tokio::sync::RwLock<std::vec::Vec<bool>>, &'t3 tokio::sync::batch_semaphore::Semaphore, tokio::sync::batch_semaphore::Semaphore, u32, tokio::sync::batch_semaphore::Acquire<'t4>, ()}]>, ()}]>, ()}]>`
+#3 [layout_raw] computing layout of `std::mem::ManuallyDrop<std::future::from_generator::GenFuture<[static generator@src/main.rs:10:24: 18:14 for<'r, 's> {std::future::ResumeTy, Status, u32, &'r tokio::sync::RwLock<std::vec::Vec<bool>>, tokio::sync::RwLock<std::vec::Vec<bool>>, std::future::from_generator::GenFuture<[static generator@tokio::sync::RwLock::<T>::read::{closure#0} for<'t0, 't1> {std::future::ResumeTy, &'t0 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, std::future::from_generator::GenFuture<[static generator@tokio::sync::rwlock::ReleasingPermit::<'a, T>::acquire::{closure#0} for<'t2, 't3, 't4> {std::future::ResumeTy, &'t2 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, tokio::sync::RwLock<std::vec::Vec<bool>>, &'t3 tokio::sync::batch_semaphore::Semaphore, tokio::sync::batch_semaphore::Semaphore, u32, tokio::sync::batch_semaphore::Acquire<'t4>, ()}]>, ()}]>, ()}]>>`
+#4 [layout_raw] computing layout of `std::mem::MaybeUninit<std::future::from_generator::GenFuture<[static generator@src/main.rs:10:24: 18:14 for<'r, 's> {std::future::ResumeTy, Status, u32, &'r tokio::sync::RwLock<std::vec::Vec<bool>>, tokio::sync::RwLock<std::vec::Vec<bool>>, std::future::from_generator::GenFuture<[static generator@tokio::sync::RwLock::<T>::read::{closure#0} for<'t0, 't1> {std::future::ResumeTy, &'t0 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, std::future::from_generator::GenFuture<[static generator@tokio::sync::rwlock::ReleasingPermit::<'a, T>::acquire::{closure#0} for<'t2, 't3, 't4> {std::future::ResumeTy, &'t2 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, tokio::sync::RwLock<std::vec::Vec<bool>>, &'t3 tokio::sync::batch_semaphore::Semaphore, tokio::sync::batch_semaphore::Semaphore, u32, tokio::sync::batch_semaphore::Acquire<'t4>, ()}]>, ()}]>, ()}]>>`
+#5 [layout_raw] computing layout of `[static generator@src/main.rs:5:1: 5:15 {std::future::ResumeTy, tokio::sync::RwLock<std::vec::Vec<bool>>, [closure@src/main.rs:9:19: 19:10], u32, Status, std::future::from_generator::GenFuture<[static generator@src/main.rs:10:24: 18:14 for<'r, 's> {std::future::ResumeTy, Status, u32, &'r tokio::sync::RwLock<std::vec::Vec<bool>>, tokio::sync::RwLock<std::vec::Vec<bool>>, std::future::from_generator::GenFuture<[static generator@tokio::sync::RwLock::<T>::read::{closure#0} for<'t0, 't1> {std::future::ResumeTy, &'t0 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, std::future::from_generator::GenFuture<[static generator@tokio::sync::rwlock::ReleasingPermit::<'a, T>::acquire::{closure#0} for<'t2, 't3, 't4> {std::future::ResumeTy, &'t2 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, tokio::sync::RwLock<std::vec::Vec<bool>>, &'t3 tokio::sync::batch_semaphore::Semaphore, tokio::sync::batch_semaphore::Semaphore, u32, tokio::sync::batch_semaphore::Acquire<'t4>, ()}]>, ()}]>, ()}]>, ()}]`
+#6 [layout_raw] computing layout of `std::future::from_generator::GenFuture<[static generator@src/main.rs:5:1: 5:15 {std::future::ResumeTy, tokio::sync::RwLock<std::vec::Vec<bool>>, [closure@src/main.rs:9:19: 19:10], u32, Status, std::future::from_generator::GenFuture<[static generator@src/main.rs:10:24: 18:14 for<'r, 's> {std::future::ResumeTy, Status, u32, &'r tokio::sync::RwLock<std::vec::Vec<bool>>, tokio::sync::RwLock<std::vec::Vec<bool>>, std::future::from_generator::GenFuture<[static generator@tokio::sync::RwLock::<T>::read::{closure#0} for<'t0, 't1> {std::future::ResumeTy, &'t0 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, std::future::from_generator::GenFuture<[static generator@tokio::sync::rwlock::ReleasingPermit::<'a, T>::acquire::{closure#0} for<'t2, 't3, 't4> {std::future::ResumeTy, &'t2 tokio::sync::RwLock<std::vec::Vec<bool>>, u16, tokio::sync::RwLock<std::vec::Vec<bool>>, &'t3 tokio::sync::batch_semaphore::Semaphore, tokio::sync::batch_semaphore::Semaphore, u32, tokio::sync::batch_semaphore::Acquire<'t4>, ()}]>, ()}]>, ()}]>, ()}]>`
+#7 [optimized_mir] optimizing MIR for `main`
+#8 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+error: aborting due to previous error
+
+error: could not compile `system_change`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-async-await, C-bug, I-ICE, P-high, T-compiler

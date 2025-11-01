@@ -1,0 +1,79 @@
+Issue Title:
+ICE: `assertion failed: matches!(diagnostic.level, Error | Warning | Allow)` · Issue #126521 · rust-lang/rust · GitHub
+
+Rust Code:
+macro_rules! foo {
+    ($val:ident) => {
+        true;
+    };
+}
+
+fn main() {
+    #[expect(semicolon_in_expressions_from_macros)]
+    async {
+        let _ = foo!(allow_does_not_work);
+    };
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc --edition=2021
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc --edition=2021
+
+Bug Trace:
+//@ check-pass
+//@ edition:2018
+#![feature(stmt_expr_attributes)]
+#![warn(semicolon_in_expressions_from_macros)]
+
+#[allow(dead_code)]
+macro_rules! foo {
+    ($val:ident) => {
+        true; //~  WARN trailing semicolon in macro
+              //~| WARN this was previously accepted
+              //~| WARN trailing semicolon in macro
+              //~| WARN this was previously accepted
+              //~| WARN trailing semicolon in macro
+              //~| WARN this was previously accepted
+    }
+}
+
+#[allow(semicolon_in_expressions_from_macros)]
+async fn bar() {
+    foo!(first);
+}
+
+fn main() {
+    #[expect(reason = "I don't know what I'm waiting for")]
+    let _ = {
+        foo!(clippy)
+    };
+
+    #[allow(semicolon_in_expressions_from_macros)]
+    let _ = foo!(second);
+
+    #[allow(semicolon_in_expressions_from_macros)]
+    fn inner() {
+        let _ = foo!(third);
+    }
+
+    #[expect(semicolon_in_expressions_from_macros)]
+    async {
+        let _ = foo!(allow_does_not_work);
+    };
+
+    let _ = {
+        foo!(warn_in_block)
+    };
+
+    let _ = foo!(warn_in_expr);
+
+    // This `#[allow]` does not work, since the attribute gets dropped
+    // when we expand the macro
+    let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
+}
+
+Bug Labels:
+A-lints, C-bug, F-lint_reasons, I-ICE, L-semicolon_in_expressions_from_macros, S-bug-has-test, S-has-mcve, T-compiler

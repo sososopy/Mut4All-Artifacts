@@ -1,0 +1,44 @@
+Issue Title:
+Rust ICE when using for all binder (panics in MIR) on stable 1.34.0 and nightly 1.35.0 · Issue #60274 · rust-lang/rust · GitHub
+
+Rust Code:
+pub trait Generator<'this> {
+    type Yield: 'this;
+    
+    fn next(&'this mut self) -> Option<Self::Yield>;
+}
+
+pub trait FromGenerator<'gen, G: Generator<'gen>> {
+    fn from_generator(g: G) -> Self;
+}
+
+impl<T, G> FromGenerator<'_, G> for Vec<T>
+where G: for<'a> Generator<'a, Yield = T> {
+    fn from_generator(mut g: G) -> Self {
+        let mut vec = Self::new();
+
+        while let Some(x) = g.next() {
+            vec.push(x)
+        }
+
+        vec
+    }
+}
+
+pub struct Iter<I: ?Sized>(I);
+
+impl<'this, I: ?Sized + Iterator> Generator<'this> for Iter<I> where I::Item: 'this {
+    type Yield = I::Item;
+
+    fn next(&'this mut self) -> Option<Self::Yield> {
+        self.0.next()
+    }
+}
+
+fn main() {
+    let indicies = [];
+    Vec::<&u32>::from_generator(Iter(indicies.iter()));
+}
+
+Bug Labels:
+A-NLL, C-bug, I-ICE, T-compiler

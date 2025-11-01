@@ -1,0 +1,405 @@
+Issue Title:
+ICE with const generics canonicalisation: "assertion failed: !out_value.has_type_flags(TypeFlags::KEEP_IN_LOCAL_TCX)" · Issue #65623 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+
+pub struct Foo<T, const N: usize>([T; N]);
+
+impl<T, const N: usize> Foo<T, {N}> {
+    pub fn new() -> Self {
+        unimplemented!()
+    }
+}
+
+fn main() {
+    let _: Foo<u32, 0> = Foo::new();
+}
+
+Bug Trace:
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+ --> const-bug.rs:1:12
+  |
+1 | #![feature(const_generics)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+
+thread 'rustc' panicked at 'assertion failed: !out_value.has_type_flags(TypeFlags::KEEP_IN_LOCAL_TCX)', src/librustc/infer/canonical/canonicalizer.rs:548:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /home/lukas/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.37/src/backtrace/libunwind.rs:88
+   1: backtrace::backtrace::trace_unsynchronized
+             at /home/lukas/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.37/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:77
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:61
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1028
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1412
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:65
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:50
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:189
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:206
+  10: <alloc::boxed::Box<F> as core::ops::function::Fn<A>>::call
+             at /home/lukas/dev/rust/src/liballoc/boxed.rs:956
+  11: rustc_driver::report_ice
+             at src/librustc_driver/lib.rs:1188
+  12: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:473
+  13: std::panicking::begin_panic
+             at /home/lukas/dev/rust/src/libstd/panicking.rs:403
+  14: rustc::infer::canonical::canonicalizer::Canonicalizer::canonicalize
+             at /home/lukas/dev/rust/<::std::macros::panic macros>:3
+  15: rustc::infer::canonical::canonicalizer::<impl rustc::infer::InferCtxt>::canonicalize_response
+             at /home/lukas/dev/rust/src/librustc/infer/canonical/canonicalizer.rs:93
+  16: rustc::infer::canonical::query_response::<impl rustc::infer::InferCtxt>::make_query_response_ignoring_pending_obligations
+             at /home/lukas/dev/rust/src/librustc/infer/canonical/query_response.rs:133
+  17: rustc_typeck::check::method::probe::<impl rustc_typeck::check::FnCtxt>::probe_op::{{closure}}
+             at src/librustc_typeck/check/method/probe.rs:305
+  18: rustc::infer::InferCtxt::probe
+             at /home/lukas/dev/rust/src/librustc/infer/mod.rs:853
+  19: rustc_typeck::check::method::probe::<impl rustc_typeck::check::FnCtxt>::probe_op
+             at src/librustc_typeck/check/method/probe.rs:288
+  20: rustc_typeck::check::method::probe::<impl rustc_typeck::check::FnCtxt>::probe_for_name
+             at src/librustc_typeck/check/method/probe.rs:251
+  21: rustc_typeck::check::method::<impl rustc_typeck::check::FnCtxt>::resolve_ufcs
+             at src/librustc_typeck/check/method/mod.rs:450
+  22: rustc_typeck::check::FnCtxt::resolve_ty_and_res_ufcs
+             at src/librustc_typeck/check/mod.rs:3845
+  23: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_path
+             at src/librustc_typeck/check/expr.rs:472
+  24: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+             at src/librustc_typeck/check/expr.rs:243
+  25: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+             at src/librustc_typeck/check/expr.rs:173
+  26: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation
+             at src/librustc_typeck/check/expr.rs:122
+  27: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr
+             at src/librustc_typeck/check/expr.rs:126
+  28: rustc_typeck::check::callee::<impl rustc_typeck::check::FnCtxt>::check_call
+             at src/librustc_typeck/check/callee.rs:45
+  29: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+             at src/librustc_typeck/check/expr.rs:281
+  30: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+             at src/librustc_typeck/check/expr.rs:173
+  31: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation
+             at src/librustc_typeck/check/expr.rs:122
+  32: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_hint
+             at src/librustc_typeck/check/expr.rs:114
+  33: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_coercable_to_type
+             at src/librustc_typeck/check/expr.rs:104
+  34: rustc_typeck::check::FnCtxt::check_decl_initializer
+             at src/librustc_typeck/check/mod.rs:3897
+  35: rustc_typeck::check::FnCtxt::check_decl_local
+             at src/librustc_typeck/check/mod.rs:3906
+  36: rustc_typeck::check::FnCtxt::check_stmt
+             at src/librustc_typeck/check/mod.rs:3955
+  37: rustc_typeck::check::FnCtxt::check_block_with_expected::{{closure}}
+             at src/librustc_typeck/check/mod.rs:4068
+  38: rustc_typeck::check::FnCtxt::with_breakable_ctxt
+             at src/librustc_typeck/check/mod.rs:5023
+  39: rustc_typeck::check::FnCtxt::check_block_with_expected
+             at src/librustc_typeck/check/mod.rs:4066
+  40: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_kind
+             at src/librustc_typeck/check/expr.rs:278
+  41: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation_and_needs
+             at src/librustc_typeck/check/expr.rs:173
+  42: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_expectation
+             at src/librustc_typeck/check/expr.rs:122
+  43: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_expr_with_hint
+             at src/librustc_typeck/check/expr.rs:114
+  44: rustc_typeck::check::expr::<impl rustc_typeck::check::FnCtxt>::check_return_expr
+             at src/librustc_typeck/check/expr.rs:688
+  45: rustc_typeck::check::check_fn
+             at src/librustc_typeck/check/mod.rs:1187
+  46: rustc_typeck::check::typeck_tables_of::{{closure}}
+             at src/librustc_typeck/check/mod.rs:898
+  47: rustc_typeck::check::InheritedBuilder::enter::{{closure}}
+             at src/librustc_typeck/check/mod.rs:662
+  48: rustc::infer::InferCtxtBuilder::enter::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/infer/mod.rs:542
+  49: rustc::ty::context::GlobalCtxt::enter_local::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1632
+  50: rustc::ty::context::tls::enter_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1854
+  51: rustc::ty::context::tls::set_tlv
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1787
+  52: rustc::ty::context::tls::enter_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1853
+  53: rustc::ty::context::GlobalCtxt::enter_local::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1631
+  54: rustc::ty::context::tls::with_related_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1960
+  55: rustc::ty::context::tls::with_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+  56: rustc::ty::context::tls::with_context_opt
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1932
+  57: rustc::ty::context::tls::with_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+  58: rustc::ty::context::tls::with_related_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1956
+  59: rustc::ty::context::GlobalCtxt::enter_local
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1623
+  60: rustc::infer::InferCtxtBuilder::enter
+             at /home/lukas/dev/rust/src/librustc/infer/mod.rs:541
+  61: rustc_typeck::check::InheritedBuilder::enter
+             at src/librustc_typeck/check/mod.rs:662
+  62: rustc_typeck::check::typeck_tables_of
+             at src/librustc_typeck/check/mod.rs:877
+  63: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_tables_of>::compute::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:942
+  64: rustc::ty::query::__query_compute::typeck_tables_of
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:893
+  65: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_tables_of>::compute
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:934
+  66: rustc::dep_graph::graph::DepGraph::with_task_impl
+             at /home/lukas/dev/rust/src/librustc/dep_graph/graph.rs:322
+  67: rustc::dep_graph::graph::DepGraph::with_task
+             at /home/lukas/dev/rust/src/librustc/dep_graph/graph.rs:198
+  68: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:516
+  69: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:248
+  70: rustc::ty::context::tls::enter_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1854
+  71: rustc::ty::context::tls::set_tlv
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1787
+  72: rustc::ty::context::tls::enter_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1853
+  73: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:247
+  74: rustc::ty::context::tls::with_related_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1960
+  75: rustc::ty::context::tls::with_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+  76: rustc::ty::context::tls::with_context_opt
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1932
+  77: rustc::ty::context::tls::with_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+  78: rustc::ty::context::tls::with_related_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1956
+  79: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:236
+  80: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:508
+  81: rustc::ty::query::plumbing::with_diagnostics
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:181
+  82: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:507
+  83: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:344
+  84: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::ensure_query
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:565
+  85: rustc::ty::query::TyCtxtEnsure::typeck_tables_of
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:970
+  86: rustc_typeck::check::typeck_item_bodies::{{closure}}
+             at src/librustc_typeck/check/mod.rs:756
+  87: rustc::ty::<impl rustc::ty::context::TyCtxt>::par_body_owners::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/mod.rs:2792
+  88: core::iter::traits::iterator::Iterator::for_each::call::{{closure}}
+             at /home/lukas/dev/rust/src/libcore/iter/traits/iterator.rs:613
+  89: core::iter::traits::iterator::Iterator::fold::ok::{{closure}}
+             at /home/lukas/dev/rust/src/libcore/iter/traits/iterator.rs:1813
+  90: core::iter::traits::iterator::Iterator::try_fold
+             at /home/lukas/dev/rust/src/libcore/iter/traits/iterator.rs:1694
+  91: core::iter::traits::iterator::Iterator::fold
+             at /home/lukas/dev/rust/src/libcore/iter/traits/iterator.rs:1816
+  92: core::iter::traits::iterator::Iterator::for_each
+             at /home/lukas/dev/rust/src/libcore/iter/traits/iterator.rs:616
+  93: rustc::ty::<impl rustc::ty::context::TyCtxt>::par_body_owners
+             at /home/lukas/dev/rust/src/librustc/ty/mod.rs:2791
+  94: rustc_typeck::check::typeck_item_bodies
+             at src/librustc_typeck/check/mod.rs:755
+  95: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_item_bodies>::compute::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:942
+  96: rustc::ty::query::__query_compute::typeck_item_bodies
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:893
+  97: rustc::dep_graph::graph::DepGraph::with_task_impl
+             at /home/lukas/dev/rust/src/librustc/dep_graph/graph.rs:322
+  98: rustc::dep_graph::graph::DepGraph::with_task
+             at /home/lukas/dev/rust/src/librustc/dep_graph/graph.rs:198
+  99: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:516
+ 100: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:248
+ 101: rustc::ty::context::tls::enter_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1854
+ 102: rustc::ty::context::tls::set_tlv
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1787
+ 103: rustc::ty::context::tls::enter_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1853
+ 104: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:247
+ 105: rustc::ty::context::tls::with_related_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1960
+ 106: rustc::ty::context::tls::with_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+ 107: rustc::ty::context::tls::with_context_opt
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1932
+ 108: rustc::ty::context::tls::with_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+ 109: rustc::ty::context::tls::with_related_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1956
+ 110: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:236
+ 111: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:508
+ 112: rustc::ty::query::plumbing::with_diagnostics
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:181
+ 113: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:507
+ 114: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:344
+ 115: rustc::ty::query::TyCtxtAt::typeck_item_bodies
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:1019
+ 116: rustc::ty::query::<impl rustc::ty::context::TyCtxt>::typeck_item_bodies
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:1011
+ 117: rustc_typeck::check_crate::{{closure}}
+             at src/librustc_typeck/lib.rs:343
+ 118: rustc::util::common::time_ext
+             at /home/lukas/dev/rust/src/librustc/util/common.rs:55
+ 119: rustc::util::common::time
+             at /home/lukas/dev/rust/src/librustc/util/common.rs:49
+ 120: rustc_typeck::check_crate
+             at src/librustc_typeck/lib.rs:343
+ 121: rustc_interface::passes::analysis
+             at src/librustc_interface/passes.rs:920
+ 122: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::analysis>::compute::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:942
+ 123: rustc::ty::query::__query_compute::analysis
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:893
+ 124: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::analysis>::compute
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:934
+ 125: rustc::dep_graph::graph::DepGraph::with_task_impl
+             at /home/lukas/dev/rust/src/librustc/dep_graph/graph.rs:322
+ 126: rustc::dep_graph::graph::DepGraph::with_eval_always_task
+             at /home/lukas/dev/rust/src/librustc/dep_graph/graph.rs:374
+ 127: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:510
+ 128: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:248
+ 129: rustc::ty::context::tls::enter_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1854
+ 130: rustc::ty::context::tls::set_tlv
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1787
+ 131: rustc::ty::context::tls::enter_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1853
+ 132: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:247
+ 133: rustc::ty::context::tls::with_related_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1960
+ 134: rustc::ty::context::tls::with_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+ 135: rustc::ty::context::tls::with_context_opt
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1932
+ 136: rustc::ty::context::tls::with_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1943
+ 137: rustc::ty::context::tls::with_related_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1956
+ 138: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::start_query
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:236
+ 139: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:508
+ 140: rustc::ty::query::plumbing::with_diagnostics
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:181
+ 141: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::force_query_with_job
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:507
+ 142: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:344
+ 143: rustc::ty::query::TyCtxtAt::analysis
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:1019
+ 144: rustc::ty::query::<impl rustc::ty::context::TyCtxt>::analysis
+             at /home/lukas/dev/rust/src/librustc/ty/query/plumbing.rs:1011
+ 145: rustc_driver::run_compiler::{{closure}}::{{closure}}
+             at src/librustc_driver/lib.rs:378
+ 146: rustc_interface::passes::BoxedGlobalCtxt::enter::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/passes.rs:814
+ 147: rustc::ty::context::tls::enter_global::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1886
+ 148: rustc::ty::context::tls::enter_context::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1854
+ 149: rustc::ty::context::tls::set_tlv
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1787
+ 150: rustc::ty::context::tls::enter_context
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1853
+ 151: rustc::ty::context::tls::enter_global
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1885
+ 152: rustc_interface::passes::BoxedGlobalCtxt::enter::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/passes.rs:814
+ 153: rustc_interface::passes::BoxedGlobalCtxt::access::{{closure}}
+             at /home/lukas/dev/rust/<::rustc_data_structures::box_region::declare_box_region_type macros>:21
+ 154: rustc_interface::passes::create_global_ctxt::{{closure}}
+             at src/librustc_interface/passes.rs:878
+ 155: alloc::boxed::<impl core::ops::generator::Generator for core::pin::Pin<alloc::boxed::Box<G>>>::resume
+             at /home/lukas/dev/rust/src/liballoc/boxed.rs:1093
+ 156: rustc_data_structures::box_region::PinnedGenerator<I,A,R>::access
+             at /home/lukas/dev/rust/src/librustc_data_structures/box_region.rs:52
+ 157: rustc_interface::passes::BoxedGlobalCtxt::access
+             at /home/lukas/dev/rust/<::rustc_data_structures::box_region::declare_box_region_type macros>:24
+ 158: rustc_interface::passes::BoxedGlobalCtxt::enter
+             at /home/lukas/dev/rust/src/librustc_interface/passes.rs:814
+ 159: rustc_driver::run_compiler::{{closure}}
+             at src/librustc_driver/lib.rs:378
+ 160: rustc_interface::interface::run_compiler_in_existing_thread_pool
+             at /home/lukas/dev/rust/src/librustc_interface/interface.rs:117
+ 161: rustc_interface::interface::run_compiler::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/interface.rs:130
+ 162: rustc_interface::util::spawn_thread_pool::{{closure}}::{{closure}}::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/util.rs:192
+ 163: rustc::ty::context::tls::with_thread_locals::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1842
+ 164: std::thread::local::LocalKey<T>::try_with
+             at /home/lukas/dev/rust/src/libstd/thread/local.rs:262
+ 165: std::thread::local::LocalKey<T>::with
+             at /home/lukas/dev/rust/src/libstd/thread/local.rs:239
+ 166: rustc::ty::context::tls::with_thread_locals::{{closure}}
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1834
+ 167: std::thread::local::LocalKey<T>::try_with
+             at /home/lukas/dev/rust/src/libstd/thread/local.rs:262
+ 168: std::thread::local::LocalKey<T>::with
+             at /home/lukas/dev/rust/src/libstd/thread/local.rs:239
+ 169: rustc::ty::context::tls::with_thread_locals
+             at /home/lukas/dev/rust/src/librustc/ty/context.rs:1826
+ 170: rustc_interface::util::spawn_thread_pool::{{closure}}::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/util.rs:192
+ 171: scoped_tls::ScopedKey<T>::set
+             at /home/lukas/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137
+ 172: rustc_interface::util::spawn_thread_pool::{{closure}}::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/util.rs:188
+ 173: scoped_tls::ScopedKey<T>::set
+             at /home/lukas/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137
+ 174: syntax::with_globals::{{closure}}
+             at /home/lukas/dev/rust/src/libsyntax/lib.rs:84
+ 175: scoped_tls::ScopedKey<T>::set
+             at /home/lukas/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137
+ 176: syntax::with_globals
+             at /home/lukas/dev/rust/src/libsyntax/lib.rs:83
+ 177: rustc_interface::util::spawn_thread_pool::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/util.rs:187
+ 178: rustc_interface::util::scoped_thread::{{closure}}
+             at /home/lukas/dev/rust/src/librustc_interface/util.rs:164
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.40.0-dev running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [typeck_tables_of] processing `main`
+#1 [typeck_item_bodies] type-checking all item bodies
+#2 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, I-ICE, T-compiler, requires-nightly

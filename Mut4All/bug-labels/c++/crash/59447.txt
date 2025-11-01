@@ -1,0 +1,99 @@
+Issue Title:
+Clang crashes with consteval in front-end
+
+Source Code & Bug Trace:
+# clang -v
+clang version 15.0.6
+Target: x86_64-pc-linux
+Thread model: posix
+InstalledDir: /usr/lib/llvm/current/bin
+Configuration file: /etc/clang/clang.cfg
+System configuration file directory: /etc/clang
+
+# readelf --string-dump=.comment (which clang)
+File: /usr/lib/llvm/current/bin/clang
+Format: elf64-x86-64
+Arch: x86_64
+AddressSize: 64bit
+LoadName: <Not found>
+String dump of section '.comment':
+[     1] Linker: LLD 15.0.6
+[    14] clang version 15.0.6
+
+1.      <eof> parser at end of file
+ #0 0x00007fdf10358a33 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1e38a33)
+ #1 0x00007fdf10356bd0 llvm::sys::RunSignalHandlers() (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1e36bd0)
+ #2 0x00007fdf10358eda SignalHandler(int) Signals.cpp:0:0
+ #3 0x00007fdf0e0e28f0 __restore_rt sigaction.c:0:0
+ #4 0x00007fdf122a6dd2 llvm::X86TTIImpl::areInlineCompatible(llvm::Function const*, llvm::Function const*) const X86TargetTransformInfo.cpp:0:0
+ #5 0x00007fdf116621e5 llvm::getAttributeBasedInliningDecision(llvm::CallBase&, llvm::Function*, llvm::TargetTransformInfo&, llvm::function_ref<llvm::TargetLibraryInfo const& (llvm::Function&)>) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x31421e5)
+ #6 0x00007fdf1167121a llvm::InlineAdvisor::getAdvice(llvm::CallBase&, bool) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x315121a)
+ #7 0x00007fdf1137e725 llvm::InlinerPass::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x2e5e725)
+ #8 0x00007fdf113833dd llvm::detail::PassModel<llvm::LazyCallGraph::SCC, llvm::InlinerPass, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) Inliner.cpp:0:0
+ #9 0x00007fdf115d7d14 llvm::PassManager<llvm::LazyCallGraph::SCC, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x30b7d14)
+#10 0x00007fdf113837dd llvm::detail::PassModel<llvm::LazyCallGraph::SCC, llvm::PassManager<llvm::LazyCallGraph::SCC, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) Inliner.cpp:0:0
+#11 0x00007fdf115d9d94 llvm::DevirtSCCRepeatedPass::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x30b9d94)
+#12 0x00007fdf11383e3d llvm::detail::PassModel<llvm::LazyCallGraph::SCC, llvm::DevirtSCCRepeatedPass, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&>::run(llvm::LazyCallGraph::SCC&, llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>&, llvm::LazyCallGraph&, llvm::CGSCCUpdateResult&) Inliner.cpp:0:0
+#13 0x00007fdf115d92f5 llvm::ModuleToPostOrderCGSCCPassAdaptor::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x30b92f5)
+#14 0x00007fdf11383c5d llvm::detail::PassModel<llvm::Module, llvm::ModuleToPostOrderCGSCCPassAdaptor, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) Inliner.cpp:0:0
+#15 0x00007fdf104d2c4a llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1fb2c4a)
+#16 0x00007fdf1138044c llvm::ModuleInlinerWrapperPass::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x2e6044c)
+#17 0x00007fdf125df74d llvm::detail::PassModel<llvm::Module, llvm::ModuleInlinerWrapperPass, llvm::PreservedAnalyses, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) PassBuilder.cpp:0:0
+#18 0x00007fdf104d2c4a llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1fb2c4a)
+#19 0x00007fdf14e159f0 (anonymous namespace)::EmitAssemblyHelper::RunOptimizationPipeline(clang::BackendAction, std::__1::unique_ptr<llvm::raw_pwrite_stream, std::__1::default_delete<llvm::raw_pwrite_stream>>&, std::__1::unique_ptr<llvm::ToolOutputFile, std::__1::default_delete<llvm::ToolOutputFile>>&) BackendUtil.cpp:0:0
+#20 0x00007fdf14e0e7a4 clang::EmitBackendOutput(clang::DiagnosticsEngine&, clang::HeaderSearchOptions const&, clang::CodeGenOptions const&, clang::TargetOptions const&, clang::LangOptions const&, llvm::StringRef, llvm::Module*, clang::BackendAction, std::__1::unique_ptr<llvm::raw_pwrite_stream, std::__1::default_delete<llvm::raw_pwrite_stream>>) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x23ff7a4)
+#21 0x00007fdf15131300 clang::BackendConsumer::HandleTranslationUnit(clang::ASTContext&) CodeGenAction.cpp:0:0
+#22 0x00007fdf13fdc424 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x15cd424)
+#23 0x00007fdf15a0579f clang::FrontendAction::Execute() (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2ff679f)
+#24 0x00007fdf15989fb6 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2f7afb6)
+#25 0x00007fdf15a78692 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x3069692)
+#26 0x000055ec8c7d567b cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/lib/llvm/15/bin/clang-15+0x1567b)
+#27 0x000055ec8c7d3401 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#28 0x000055ec8c7d2ef6 clang_main(int, char**) (/usr/lib/llvm/15/bin/clang-15+0x12ef6)
+#29 0x00007fdf0e0cd7ed __libc_start_main (/lib64/libc.so.6+0x2017ed)
+#30 0x000055ec8c7d001a _start (/usr/lib/llvm/15/bin/clang-15+0x1001a)
+
+1.      <eof> parser at end of file
+2.      Per-file LLVM IR generation
+3.      /usr/include/c++/v1/__memory/allocate_at_least.h:53:65: Generating code for declaration 'std::__allocate_at_least'
+ #0 0x00007f3938410a33 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1e38a33)
+ #1 0x00007f393840ebd0 llvm::sys::RunSignalHandlers() (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1e36bd0)
+ #2 0x00007f3938335066 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f393619a8f0 __restore_rt sigaction.c:0:0
+ #4 0x00007f39361e66a9 _int_malloc malloc.c:0:0
+ #5 0x00007f39361e7aa2 _int_realloc malloc.c:0:0
+ #6 0x00007f39361e8d32 __libc_realloc (/lib64/libc.so.6+0x264d32)
+ #7 0x00007f39383a0420 llvm::SmallVectorBase<unsigned int>::grow_pod(void*, unsigned long, unsigned long) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1dc8420)
+ #8 0x00007f393834c8b2 llvm::BumpPtrAllocatorImpl<llvm::MallocAllocator, 4096ul, 4096ul, 128ul>::Allocate(unsigned long, llvm::Align) FoldingSet.cpp:0:0
+ #9 0x00007f3938439b7a llvm::AttributeList::getImpl(llvm::LLVMContext&, llvm::ArrayRef<llvm::AttributeSet>) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1e61b7a)
+#10 0x00007f393843ab68 llvm::AttributeList::setAttributesAtIndex(llvm::LLVMContext&, unsigned int, llvm::AttributeSet) const (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1e62b68)
+#11 0x00007f393843ad59 llvm::AttributeList::addAttributesAtIndex(llvm::LLVMContext&, unsigned int, llvm::AttrBuilder const&) const (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1e62d59)
+#12 0x00007f3938519a1b llvm::Function::addFnAttrs(llvm::AttrBuilder const&) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1f41a1b)
+#13 0x00007f393d2071dc clang::CodeGen::CodeGenModule::SetLLVMFunctionAttributesForDefinition(clang::Decl const*, llvm::Function*) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x27401dc)
+#14 0x00007f393d211876 clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x274a876)
+#15 0x00007f393d20b29d clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x274429d)
+#16 0x00007f393d1fff0b clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2738f0b)
+#17 0x00007f393d1ffe68 clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2738e68)
+#18 0x00007f393d1ffe68 clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2738e68)
+#19 0x00007f393d1ffe68 clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2738e68)
+#20 0x00007f393d1fe10e clang::CodeGen::CodeGenModule::Release() (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x273710e)
+#21 0x00007f393d299994 (anonymous namespace)::CodeGeneratorImpl::HandleTranslationUnit(clang::ASTContext&) ModuleBuilder.cpp:0:0
+#22 0x00007f393d1e8c39 clang::BackendConsumer::HandleTranslationUnit(clang::ASTContext&) CodeGenAction.cpp:0:0
+#23 0x00007f393c094424 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x15cd424)
+#24 0x00007f393dabd79f clang::FrontendAction::Execute() (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2ff679f)
+#25 0x00007f393da41fb6 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2f7afb6)
+#26 0x00007f393db30692 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x3069692)
+#27 0x0000564439ec567b cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/lib/llvm/current/bin/clang+++0x1567b)
+#28 0x0000564439ec3401 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#29 0x00007f393d71a962 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool*) const::$_1>(long) Job.cpp:0:0
+#30 0x00007f3938334daf llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/usr/lib/llvm/15/bin/../lib64/libLLVM-15libcxx.so+0x1d5cdaf)
+#31 0x00007f393d71a433 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef>>, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool*) const (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2c53433)
+#32 0x00007f393d6e45d7 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2c1d5d7)
+#33 0x00007f393d6e48de clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*>>&, bool) const (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2c1d8de)
+#34 0x00007f393d6fd55c clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::__1::pair<int, clang::driver::Command const*>>&) (/usr/lib/llvm/15/bin/../lib64/libclang-cpp.so.15libcxx+0x2c3655c)
+#35 0x0000564439ec2b60 clang_main(int, char**) (/usr/lib/llvm/current/bin/clang+++0x12b60)
+#36 0x00007f39361857ed __libc_start_main (/lib64/libc.so.6+0x2017ed)
+#37 0x0000564439ec001a _start (/usr/lib/llvm/current/bin/clang+++0x1001a)
+
+Bug Labels:
+clang:frontend, crash

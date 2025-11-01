@@ -1,0 +1,87 @@
+Issue Title:
+[Clang] [Sema] Crash on invalid conversion in lamda with explicit object parameter
+
+Source Code & Bug Trace:
+void f() {
+    auto l = [](this auto& self, int) -> void { self("j"); };
+    l(3);
+}
+
+source>:2:49: error: no matching function for call to object of type '(lambda at <source>:2:14)'
+    2 |     auto l = [](this auto& self, int) -> void { self("j"); };
+      |                                                 ^~~~
+<source>:3:6: note: in instantiation of function template specialization 'f()::(anonymous class)::operator()<(lambda at <source>:2:14)>' requested here
+    3 |     l(3);
+      |      
+
+
+clang-19: /root/llvm-project/clang/include/clang/Sema/Overload.h:644: 
+clang::ImplicitConversionSequence::Kind clang::ImplicitConversionSequence::getKind() const: 
+  Assertion `isInitialized() && "querying uninitialized conversion"' failed.
+
+
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -dumpdir /app/output.s- -disable-free -clear-ast-before-backend -main-file-name example.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/app -fcoverage-compilation-dir=/app -resource-dir /opt/compiler-explorer/clang-assertions-trunk-20240620/lib/clang/19 -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../include/c++/15.0.0 -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../include/c++/15.0.0/x86_64-linux-gnu -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../include/c++/15.0.0/backward -internal-isystem /opt/compiler-explorer/clang-assertions-trunk-20240620/lib/clang/19/include -internal-isystem /usr/local/include -internal-isystem /opt/compiler-explorer/gcc-snapshot/lib/gcc/x86_64-linux-gnu/15.0.0/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++23 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/example-b265b8.o -x c++ <source>
+1.	<source>:3:8: current parser token ')'
+2.	<source>:1:10: parsing function body 'f'
+3.	<source>:1:10: in compound statement ('{}')
+4.	<source>:2:14: instantiating function definition 'f()::(anonymous class)::operator()<(lambda at <source>:2:14)>'
+ #0 0x0000000003a24218 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x3a24218)
+ #1 0x0000000003a2196c SignalHandler(int) Signals.cpp:0:0
+ #2 0x00007ad61ee42520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #3 0x00007ad61ee969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #4 0x00007ad61ee42476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #5 0x00007ad61ee287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #6 0x00007ad61ee2871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #7 0x00007ad61ee39e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #8 0x0000000006d702f6 clang::OverloadCandidateSet::NoteCandidates(clang::Sema&, llvm::ArrayRef<clang::Expr*>, llvm::ArrayRef<clang::OverloadCandidate*>, llvm::StringRef, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6d702f6)
+ #9 0x0000000006d70871 clang::OverloadCandidateSet::NoteCandidates(std::pair<clang::SourceLocation, clang::PartialDiagnostic>, clang::Sema&, clang::OverloadCandidateDisplayKind, llvm::ArrayRef<clang::Expr*>, llvm::StringRef, clang::SourceLocation, llvm::function_ref<bool (clang::OverloadCandidate&)>) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6d70871)
+#10 0x0000000006d7c2bd clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6d7c2bd)
+#11 0x000000000697140a clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x697140a)
+#12 0x00000000069733ec clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x69733ec)
+#13 0x0000000006fee450 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) SemaTemplateInstantiate.cpp:0:0
+#14 0x0000000006fe235d clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#15 0x000000000701e8cf clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformStmt(clang::Stmt*, clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::StmtDiscardKind) SemaTemplateInstantiate.cpp:0:0
+#16 0x000000000701f6c4 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#17 0x0000000007026eaa clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x7026eaa)
+#18 0x000000000707f228 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x707f228)
+#19 0x000000000694ed9e void llvm::function_ref<void ()>::callback_fn<clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool)::'lambda'()>(long) SemaExpr.cpp:0:0
+#20 0x00000000064f3401 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x64f3401)
+#21 0x000000000694327f clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x694327f)
+#22 0x000000000694392d MarkExprReferenced(clang::Sema&, clang::SourceLocation, clang::Decl*, clang::Expr*, bool, llvm::DenseMap<clang::VarDecl const*, int, llvm::DenseMapInfo<clang::VarDecl const*, void>, llvm::detail::DenseMapPair<clang::VarDecl const*, int>>&) SemaExpr.cpp:0:0
+#23 0x0000000006d3cdd0 CreateFunctionRefExpr(clang::Sema&, clang::FunctionDecl*, clang::NamedDecl*, clang::Expr const*, bool, clang::SourceLocation, clang::DeclarationNameLoc const&) SemaOverload.cpp:0:0
+#24 0x0000000006d7c55a clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6d7c55a)
+#25 0x000000000697140a clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x697140a)
+#26 0x00000000069733ec clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x69733ec)
+#27 0x00000000064043dd clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x64043dd)
+#28 0x00000000063fba61 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x63fba61)
+#29 0x00000000063fed4a clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x63fed4a)
+#30 0x00000000063feee9 clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x63feee9)
+#31 0x0000000006403979 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6403979)
+#32 0x0000000006483da9 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6483da9)
+#33 0x000000000647a975 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x647a975)
+#34 0x000000000647b7d7 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x647b7d7)
+#35 0x000000000647c5e5 clang::Parser::ParseCompoundStatementBody(bool) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x647c5e5)
+#36 0x000000000647de4a clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x647de4a)
+#37 0x0000000006393ec3 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6393ec3)
+#38 0x00000000063c9aac clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x63c9aac)
+#39 0x00000000063878fe clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x63878fe)
+#40 0x000000000638815e clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x638815e)
+#41 0x000000000638e867 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x638e867)
+#42 0x000000000638f76f clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x638f76f)
+#43 0x000000000638fc30 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x638fc30)
+#44 0x0000000006382f3c clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x6382f3c)
+#45 0x00000000043055c8 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x43055c8)
+#46 0x000000000458a969 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x458a969)
+#47 0x00000000045115ce clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x45115ce)
+#48 0x0000000004671e2e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0x4671e2e)
+#49 0x0000000000c6ea1c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0xc6ea1c)
+#50 0x0000000000c67d7a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#51 0x0000000000c6b6ae clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0xc6b6ae)
+#52 0x0000000000b45924 main (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0xb45924)
+#53 0x00007ad61ee29d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#54 0x00007ad61ee29e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#55 0x0000000000c6782e _start (/opt/compiler-explorer/clang-assertions-trunk-20240620/bin/clang-19+0xc6782e)
+
+
+Bug Labels:
+clang:frontend, crash-on-invalid, lambda

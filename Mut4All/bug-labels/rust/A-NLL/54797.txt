@@ -1,0 +1,23 @@
+Issue Title:
+Compiler assertion failed: tcx.migrate_borrowck() when failing to move #[thread_local] static vars. · Issue #54797 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(thread_local)]
+
+pub struct CommandWriter {}
+
+#[thread_local] static mut TL_COMMAND_BUFFER_WRITER : Option<Box<CommandWriter>> = Option::None;
+static mut G_COMMAND_BUFFER_WRITER : Option<Box<CommandWriter>> = Option::None;
+
+impl CommandWriter {
+    pub fn with_this_thread<F: FnOnce(&CommandWriter)> (f: F) {
+        unsafe {
+            f(&TL_COMMAND_BUFFER_WRITER.unwrap()); // [1] Compiler panic: thread 'main' panicked at 'assertion failed: tcx.migrate_borrowck()', librustc_mir\transform\elaborate_drops.rs:52:17
+            //f(&G_COMMAND_BUFFER_WRITER.unwrap()); // [2] Proper compiler error:  "cannot move out of static item"
+            //f(&TL_COMMAND_BUFFER_WRITER.as_ref().unwrap()); // Builds fine
+        }
+    }
+}
+
+Bug Labels:
+A-NLL, I-ICE, NLL-sound, P-high

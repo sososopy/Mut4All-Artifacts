@@ -1,0 +1,80 @@
+Issue Title:
+async lambda with capture ICE · Issue #127012 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_closure)]
+
+use futures::future::join_all;
+
+async fn fun<'a>(param: &'a u32) {
+	let elems = vec![1, 2, 3];
+
+	let _ = join_all(elems.iter().map(async |v: &u32| {
+		format!("{}", param + v)
+	})).await;
+}
+
+fn main() {
+	futures::executor::block_on(fun(&1));
+}
+
+Bug Trace:
+thread 'rustc' panicked at compiler/rustc_mir_transform/src/shim.rs:1036:9:
+assertion `left == right` failed
+  left: (&'{erased} &'{erased} u32,)
+ right: ()
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/bcf94dec5ba6838e435902120c0384c360126a26/library/std/src/panicking.rs:661:5
+   1: core::panicking::panic_fmt
+             at /rustc/bcf94dec5ba6838e435902120c0384c360126a26/library/core/src/panicking.rs:74:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/bcf94dec5ba6838e435902120c0384c360126a26/library/core/src/panicking.rs:410:17
+   3: core::panicking::assert_failed::<rustc_middle::ty::Ty, rustc_middle::ty::Ty>
+   4: rustc_mir_transform::shim::make_shim
+      [... omitted 3 frames ...]
+   5: <rustc_middle::ty::context::TyCtxt>::instance_mir
+   6: rustc_monomorphize::collector::collect_items_rec::{closure#0}
+   7: rustc_monomorphize::collector::collect_items_rec
+   8: rustc_monomorphize::collector::collect_items_rec
+   9: rustc_monomorphize::collector::collect_items_rec
+  10: rustc_monomorphize::collector::collect_items_rec
+  11: rustc_monomorphize::collector::collect_items_rec
+  12: rustc_monomorphize::collector::collect_items_rec
+  13: rustc_monomorphize::collector::collect_items_rec
+  14: rustc_monomorphize::collector::collect_items_rec
+  15: rustc_monomorphize::collector::collect_items_rec
+  16: rustc_monomorphize::collector::collect_items_rec
+  17: rustc_monomorphize::collector::collect_items_rec
+  18: rustc_monomorphize::collector::collect_items_rec
+  19: rustc_monomorphize::collector::collect_items_rec
+  20: rustc_monomorphize::collector::collect_items_rec
+  21: rustc_monomorphize::collector::collect_items_rec
+  22: rustc_monomorphize::partitioning::collect_and_partition_mono_items
+      [... omitted 2 frames ...]
+  23: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  24: rustc_interface::passes::start_codegen
+  25: <rustc_interface::queries::Queries>::codegen_and_build_linker
+  26: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/home/facundovilla/development/error/error/rustc-ice-2024-06-27T03_41_44-61947.txt` to your bug report
+
+note: compiler flags: --crate-type bin -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_shims] generating MIR shim for `fun::{closure#0}::{closure#0}`
+#1 [collect_and_partition_mono_items] collect_and_partition_mono_items
+end of query stack
+error: could not compile `error` (bin "error")
+
+Bug Labels:
+C-bug, F-async_closure, I-ICE, T-compiler

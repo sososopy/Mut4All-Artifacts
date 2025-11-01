@@ -1,0 +1,67 @@
+Issue Title:
+LLVM ERROR `Attribute 'align' exceed the max size 2^14` · Issue #121444 · rust-lang/rust · GitHub
+
+Rust Code:
+// #45662
+
+#[repr(align(536870912))]
+pub struct A(i64);
+
+pub extern "C" fn foo(x: A) {}
+
+fn main() {
+    foo(A(0));
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zincremental-verify-ich=yes -Cincremental=<dir> -Cdebuginfo=2
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zincremental-verify-ich=yes -Cincremental=<dir> -Cdebuginfo=2
+
+Bug Trace:
+warning: unused variable: `x`
+ --> /tmp/icemaker_global_tempdir.YLDguKS9zOCA/rustc_testrunner_tmpdir_reporting.HqYrVsxsA6S8/mvce.rs:6:23
+  |
+6 | pub extern "C" fn foo(x: A) {}
+  |                       ^ help: if this is intentional, prefix it with an underscore: `_x`
+  |
+  = note: `#[warn(unused_variables)]` on by default
+
+warning: field `0` is never read
+ --> /tmp/icemaker_global_tempdir.YLDguKS9zOCA/rustc_testrunner_tmpdir_reporting.HqYrVsxsA6S8/mvce.rs:4:14
+  |
+4 | pub struct A(i64);
+  |            - ^^^
+  |            |
+  |            field in this struct
+  |
+  = note: `#[warn(dead_code)]` on by default
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+  |
+4 | pub struct A(());
+  |              ~~
+
+warning: `extern` fn uses type `A`, which is not FFI-safe
+ --> /tmp/icemaker_global_tempdir.YLDguKS9zOCA/rustc_testrunner_tmpdir_reporting.HqYrVsxsA6S8/mvce.rs:6:26
+  |
+6 | pub extern "C" fn foo(x: A) {}
+  |                          ^ not FFI-safe
+  |
+  = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+  = note: this struct has unspecified layout
+note: the type is defined here
+ --> /tmp/icemaker_global_tempdir.YLDguKS9zOCA/rustc_testrunner_tmpdir_reporting.HqYrVsxsA6S8/mvce.rs:4:1
+  |
+4 | pub struct A(i64);
+  | ^^^^^^^^^^^^
+  = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+Attribute 'align' exceed the max size 2^14
+ptr @_ZN4mvce3foo17h02ccc75a6bd1c329E
+in function _ZN4mvce3foo17h02ccc75a6bd1c329E
+LLVM ERROR: Broken function found, compilation aborted!
+
+Bug Labels:
+A-LLVM, C-bug, I-ICE, S-bug-has-test, S-has-mcve, T-compiler, llvm-fixed-upstream, regression-from-stable-to-stable

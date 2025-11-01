@@ -1,0 +1,97 @@
+Issue Title:
+ICE when using associated types with lifetimes · Issue #124563 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::marker::PhantomData;
+
+pub trait Trait {}
+
+pub trait Foo {
+    type Trait: Trait;
+    type Bar: Bar;
+    fn foo(&mut self);
+}
+
+pub struct FooImpl<'a, 'b, A: Trait>(PhantomData<&'a &'b A>);
+
+impl<'a, 'b, T> Foo for FooImpl<'a, 'b, T>
+where
+    T: Trait,
+{
+    type Trait = T;
+    type Bar = BarImpl<'a, 'b, T>;
+
+    fn foo(&mut self) {
+        self.enter_scope(|ctx| {
+            BarImpl(ctx);
+        });
+    }
+}
+
+impl<'a, 'b, T> FooImpl<'a, 'b, T>
+where
+    T: Trait,
+{
+    fn enter_scope(&mut self, _scope: impl FnOnce(&mut Self)) {}
+}
+pub trait Bar {
+    type Foo: Foo;
+}
+
+pub struct BarImpl<'a, 'b, T: Trait>(&'b mut FooImpl<'a, 'b, T>);
+
+impl<'a, 'b, T> Bar for BarImpl<'a, 'b, T>
+where
+    T: Trait,
+{
+    type Foo = FooImpl<'a, 'b, T>;
+}
+
+Bug Trace:
+thread 'rustc' panicked at compiler/rustc_middle/src/ty/generic_args.rs:836:13:
+Box<dyn Any>
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: <rustc_errors::diagnostic::BugAbort as rustc_errors::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+   2: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+   3: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}
+   4: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+   5: rustc_middle::util::bug::bug_fmt
+   6: <rustc_middle::ty::generic_args::ArgFolder as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_region::region_param_invalid
+   7: <rustc_middle::ty::generic_args::ArgFolder as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_ty
+   8: <rustc_middle::ty::generic_args::ArgFolder as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_ty
+   9: <rustc_middle::ty::generic_args::ArgFolder as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_ty
+  10: <rustc_middle::ty::predicate::Clause as rustc_type_ir::fold::TypeFoldable<rustc_middle::ty::context::TyCtxt>>::try_fold_with::<rustc_middle::ty::generic_args::ArgFolder>
+  11: <rustc_middle::ty::generics::GenericPredicates>::instantiate_into
+  12: <rustc_middle::ty::generics::GenericPredicates>::instantiate
+  13: <rustc_borrowck::MirBorrowckCtxt>::report_general_error
+  14: <rustc_borrowck::MirBorrowckCtxt>::report_region_error
+  15: rustc_borrowck::do_mir_borrowck
+  16: rustc_borrowck::mir_borrowck
+      [... omitted 5 frames ...]
+  17: rustc_interface::passes::analysis
+      [... omitted 1 frame ...]
+  18: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: please attach the file at `/home/alex/Projects/Rust/rustyui/rustc-ice-2024-04-30T17_49_51-67262.txt` to your bug report
+
+note: compiler flags: --crate-type lib -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `<impl at rustyui/src/lib.rs:13:1: 15:14>::foo::{closure#0}`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+there was a panic while trying to force a dep node
+try_mark_green dep node stack:
+#0 mir_borrowck(rustyui[c9e2]::{impl#0}::foo)
+end of try_mark_green dep node stack
+
+Bug Labels:
+A-diagnostics, C-bug, I-ICE, S-bug-has-test, T-compiler

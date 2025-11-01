@@ -1,0 +1,97 @@
+Issue Title:
+ICE: `Size::sub: 0 - 1 would result in negative size` · Issue #123693 · rust-lang/rust · GitHub
+
+Rust Code:
+mod assert {
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
+
+    pub fn is_transmutable<Src, Dst>()
+    where
+        Dst: BikeshedIntrinsicFrom<Src>,
+    {
+    }
+}
+
+#[repr(C)]
+struct Zst;
+
+#[repr(u8)]
+enum V0 {
+    V = 0,
+}
+
+enum V2 {
+    V = 2,
+}
+
+enum Lopsided {
+    Smol(Zst),
+    Lorg(V0),
+}
+
+#[repr(C)]
+#[repr(C)]
+struct Dst(Lopsided, V2);
+
+fn should_pad_variants() {
+    assert::is_transmutable::<Src, Dst>();
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc
+
+Bug Trace:
+//! The variants of an enum must be padded with uninit bytes such that they have
+//! the same length (in bytes).
+
+#![crate_type = "lib"]
+#![feature(transmutability)]
+#![allow(dead_code)]
+
+mod assert {
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
+
+    pub fn is_transmutable<Src, Dst>()
+    where
+        Dst: BikeshedIntrinsicFrom<Src, {
+            Assume::ALIGNMENT
+                .and(Assume::LIFETIMES)
+                .and(Assume::SAFETY)
+                .and(Assume::LIFETIMES)
+                .and(Assume::SAFETY)
+                .and(Assume::SAFETY)
+                .and(Assume::ALIGNMENT)
+        }>
+    {}
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)] struct Zst;
+
+#[derive(Clone, Copy)]
+#[repr(u8)] enum V0 { V = 0 }
+
+#[derive(Clone, Copy)]
+#[repr(u8)] enum V2 { V = 2 }
+
+#[repr(transmutability)]
+enum Lopsided {
+    Smol(Zst),
+    Lorg(V0),
+}
+
+#[repr(C)] struct Src(V0, Zst V2);
+#[repr(C)] struct Dst(Lopsided, V2);
+
+fn should_pad_variants() {
+    // If the implementation (incorrectly) fails to pad `Lopsided::Smol` with
+    // an uninitialized byte, this transmutation might be (wrongly) accepted:
+    assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot be safely transmuted
+}
+
+Bug Labels:
+A-ABI, A-layout, C-bug, I-ICE, S-bug-has-test, S-has-mcve, T-compiler

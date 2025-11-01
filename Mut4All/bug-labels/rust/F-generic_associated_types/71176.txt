@@ -1,0 +1,129 @@
+Issue Title:
+GAT ICEs: different parameter counts, cat_expr Errd, broken MIR, debuginfo · Issue #71176 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+trait Provider {
+    type A<'a>;
+}
+
+impl Provider for () {
+    type A<'a> = ();
+}
+
+struct Holder<B> {
+  inner: Box<dyn Provider<A = B>>,
+}
+
+fn main() {
+    Holder {
+        inner: Box::new(()),
+    };
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+ --> src/main.rs:1:12
+  |
+1 | #![feature(generic_associated_types)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+
+warning: field is never read: `inner`
+  --> src/main.rs:12:3
+   |
+12 |   inner: Box<dyn Provider<A = B>>,
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 2 warnings emitted
+
+error: internal compiler error: impl item and trait item have different parameter counts
+
+error: internal compiler error: cat_expr Errd
+  --> src/main.rs:16:5
+   |
+16 | /     Holder {
+17 | |         inner: Box::new(()),
+18 | |     };
+   | |_____^
+
+error: internal compiler error: broken MIR in DefId(0:12 ~ playground[bef7]::main[0]) (LocalDecl { mutability: Not, local_info: Other, internal: false, is_block_tail: None, ty: Holder<[type error]>, user_ty: UserTypeProjections { contents: [] }, source_info: SourceInfo { span: src/main.rs:16:5: 18:6, scope: scope[0] } }): bad type Holder<[type error]>
+  --> src/main.rs:15:1
+   |
+15 | / fn main() {
+16 | |     Holder {
+17 | |         inner: Box::new(()),
+18 | |     };
+19 | | }
+   | |_^
+
+error: internal compiler error: broken MIR in DefId(0:12 ~ playground[bef7]::main[0]) (LocalDecl { mutability: Mut, local_info: Other, internal: false, is_block_tail: None, ty: std::boxed::Box<dyn Provider<A = [type error]>>, user_ty: UserTypeProjections { contents: [] }, source_info: SourceInfo { span: src/main.rs:17:16: 17:28, scope: scope[0] } }): bad type std::boxed::Box<dyn Provider<A = [type error]>>
+  --> src/main.rs:15:1
+   |
+15 | / fn main() {
+16 | |     Holder {
+17 | |         inner: Box::new(()),
+18 | |     };
+19 | | }
+   | |_^
+
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', src/librustc_errors/lib.rs:366:17
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1069
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1504
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: rustc_driver::report_ice
+  11: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:515
+  12: std::panicking::begin_panic
+  13: <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop
+  14: core::ptr::drop_in_place
+  15: <alloc::rc::Rc<T> as core::ops::drop::Drop>::drop
+  16: core::ptr::drop_in_place
+  17: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  18: scoped_tls::ScopedKey<T>::set
+  19: rustc_ast::attr::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.44.0-nightly (edc02580e 2020-04-14) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C opt-level=3 -C codegen-units=1 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+error: could not compile `playground`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-GATs, A-MIR, A-debuginfo, C-bug, E-needs-test, F-generic_associated_types, I-ICE, T-compiler, glacier, regression-from-stable-to-stable, requires-nightly

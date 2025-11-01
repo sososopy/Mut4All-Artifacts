@@ -1,0 +1,45 @@
+Issue Title:
+[clang] ICE on handling reference to consteval function in initializer
+
+Source Code & Bug Trace:
+namespace ns
+{
+    consteval int foo(int x) { return 1; }
+}
+
+template <class A>
+struct T {
+    static constexpr auto xx = ns::foo(A{});
+};
+
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++20 <source> -isystem/opt/compiler-explorer/libs/catch2/v3.0.1/src
+1.	<source>:9:44: current parser token ';'
+2.	<source>:8:1: parsing struct/union/class body 'T'
+ #0 0x00000000033cba18 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x33cba18)
+ #1 0x00000000033c9b44 llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x33c9b44)
+ #2 0x0000000003318b68 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007fc4f42c7420 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x14420)
+ #4 0x0000000000ad8e28 clang::Sema::MarkExpressionAsImmediateEscalating(clang::Expr*) (.cold) SemaExpr.cpp:0:0
+ #5 0x0000000005f39f3d clang::Sema::PopExpressionEvaluationContext() (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5f39f3d)
+ #6 0x0000000005a025e4 clang::Parser::ParseCXXMemberInitializer(clang::Decl*, bool, clang::SourceLocation&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a025e4)
+ #7 0x0000000005a15a5f clang::Parser::ParseCXXClassMemberDeclaration(clang::AccessSpecifier, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo const&, clang::ParsingDeclRAIIObject*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a15a5f)
+ #8 0x0000000005a16d34 clang::Parser::ParseCXXClassMemberDeclarationWithPragmas(clang::AccessSpecifier&, clang::ParsedAttributes&, clang::TypeSpecifierType, clang::Decl*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a16d34)
+ #9 0x0000000005a173a6 clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributes&, unsigned int, clang::Decl*) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a173a6)
+#10 0x0000000005a19679 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributes&) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x5a19679)
+#11 0x00000000059e9414 clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*, clang::ImplicitTypenameContext) (/opt/compiler-explorer/clang-trunk/bin/clang+++0x59e9414)
+....
+
+
+<source>:9:32: error: cannot take address of consteval function 'foo' outside of an immediate invocation
+    static constexpr auto xx = ns::foo(A{});
+                               ^
+<source>:4:19: note: declared here
+    consteval int foo(int x) { return 1; }
+
+
+ Actions.ExprEvalContexts.back().InImmediateEscalatingFunctionContext = true;
+
+
+Bug Labels:
+clang:frontend, consteval, crash

@@ -1,0 +1,91 @@
+Issue Title:
+ICE: `where` clause with const evaluation on `fn` crashes, but on `impl` gives normal error · Issue #82835 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+#![feature(const_evaluatable_checked)]
+
+use std::sync::Arc;
+
+pub enum Predicate<const EXPRESSION: bool> {}
+pub trait Satisfied {}
+impl Satisfied for Predicate<true> {}
+
+pub trait Depth { const DEPTH: usize; }
+
+/// Make it impossible to have cyclic Arc references.
+pub struct AcArc<T: Depth, const D: usize> {
+    #[allow(dead_code)]
+    inner: Arc<T>,
+}
+
+impl<T: Depth, const D: usize> AcArc<T, D> {
+    pub fn new(item: T) -> Self
+        where Predicate<{T::DEPTH <= D}>: Satisfied, // crashes with == too.
+    {
+        Self {
+            inner: Arc::new(item),
+        }
+    }
+}
+
+// With the predicate on the impl instead of on the function, it gives a "normal" error.
+// Though I still feel like main() should typecheck.
+// impl<T: Depth, const D: usize> AcArc<T, D>
+//     where Predicate<{T::DEPTH == D}>: Satisfied,
+// {
+//     pub fn new(item: T) -> Self
+//     {
+//         Self {
+//             inner: Arc::new(item),
+//         }
+//     }
+// }
+
+// this is where the depth increment is enforced.
+// But compiler crashes without this.
+// impl<T, const D: usize> Depth for AcArc<T, D>
+// where
+//     T: Depth,
+// {
+//     const DEPTH: usize = D + 1;
+// }
+
+impl Depth for u8 { const DEPTH: usize = 0; }
+
+fn main() {
+    let arc : AcArc<u8, 0> = AcArc::new(42_u8); // comment this out and it compiles just fine.
+
+    println!("Hello, world!");
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', compiler\rustc_errors\src\lib.rs:1012:13
+stack backtrace:
+   0:     0x7ffadc18879e - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h804aacc93092d135
+   1:     0x7ffadc1b404c - core::fmt::write::h2daf2a210ae0d5f0
+   2:     0x7ffadc17c158 - <std::io::IoSlice as core::fmt::Debug>::fmt::hfa239d9348f09840
+   3:     0x7ffadc18c93d - std::panicking::take_hook::h930d1e1d0a893a3f
+   4:     0x7ffadc18c409 - std::panicking::take_hook::h930d1e1d0a893a3f
+   5:     0x7ffadc6b23d5 - rustc_driver::report_ice::h5f2d10e8face884a
+   6:     0x7ffadc18d1a5 - std::panicking::rust_panic_with_hook::h291b58940b8c1567
+   7:     0x7ffadc18cd01 - rust_begin_unwind
+   8:     0x7ffadc1890ef - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h804aacc93092d135
+   9:     0x7ffadc18cc59 - rust_begin_unwind
+  10:     0x7ffadc1e583c - std::panicking::begin_panic_fmt::h21676d8d2c928240
+  11:     0x7ffae0914c24 - rustc_errors::HandlerInner::delay_as_bug::h84ea15161c493c2b
+  12:     0x7ffae09101d7 - <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop::h2aadc8469749ba5c
+  13:     0x7ffadc6bda87 - rustc_errors::snippet::MultilineAnnotation::increase_depth::h0d6a408d57c96b60
+  14:     0x7ffadc6c46ba - rustc_errors::snippet::MultilineAnnotation::increase_depth::h0d6a408d57c96b60
+  15:     0x7ffadc6bf46c - rustc_errors::snippet::MultilineAnnotation::increase_depth::h0d6a408d57c96b60
+  16:     0x7ffadc6b481d - <rustc_driver::Compilation as core::fmt::Debug>::fmt::h34129260871bdb31
+  17:     0x7ffadc6cccc6 - <rustc_middle::ty::SymbolName as core::fmt::Debug>::fmt::h7de05d943e0a531e
+  18:     0x7ffadc6c7d24 - rustc_errors::snippet::MultilineAnnotation::increase_depth::h0d6a408d57c96b60
+  19:     0x7ffadc6cddbd - <rustc_middle::ty::SymbolName as core::fmt::Debug>::fmt::h7de05d943e0a531e
+  20:     0x7ffadc6f101d - <tracing_subscriber::util::TryInitError as core::fmt::Display>::fmt::hc634bfbe27699956
+  21:     0x7ffadc19c83a - std::sys::windows::thread::Thread::new::h13c38e7cd538470c
+  22:     0x7ffb374c7034 - BaseThreadInitThunk
+  23:     0x7ffb375fd241 - RtlUserThreadStart
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, glacier, requires-nightly

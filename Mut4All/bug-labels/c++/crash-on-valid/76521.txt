@@ -1,0 +1,100 @@
+Issue Title:
+[Clang] Template Instantiation ICE on Attributed Lambdas
+
+Source Code & Bug Trace:
+template <typename T>
+void foo() {
+  auto l = []() __attribute__((pcs("aapcs-vfp"))) {};
+}
+
+int main() {
+  foo<int>();
+}
+
+
+Stack dump:
+0.      Program arguments: /home/ychen/llvm-project/build/bin/clang-18 -cc1 -triple x86_64-redhat-linux-gnu -emit-obj -mrelax-all -dumpdir bad- -disable-free -clear-ast-before-backend -main-file-name bad.cc -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/home/ychen/workspace/llvm-workspace/clang/bug/T173374606_tempinst_crash -fcoverage-compilation-dir=/home/ychen/workspace/llvm-workspace/clang/bug/T173374606_tempinst_crash -resource-dir /home/ychen/llvm-project/build/lib/clang/18 -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../include/c++/13.2.1 -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../include/c++/13.2.1/x86_64-pc-linux-gnu -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../include/c++/13.2.1/backward -internal-isystem /home/ychen/llvm-project/build/lib/clang/18/include -internal-isystem /usr/local/include -internal-isystem /usr/lib64/gcc/x86_64-pc-linux-gnu/13.2.1/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/bad-f583de.o -x c++ bad.cc
+1.      <eof> parser at end of file
+2.      bad.cc:2:6: instantiating function definition 'foo<int>'
+ #0 0x00005627615f8c5d llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /home/ychen/llvm-project/llvm/lib/Support/Unix/Signals.inc:723:11
+ #1 0x00005627615f924b PrintStackTraceSignalHandler(void*) /home/ychen/llvm-project/llvm/lib/Support/Unix/Signals.inc:798:1
+ #2 0x00005627615f6ef3 llvm::sys::RunSignalHandlers() /home/ychen/llvm-project/llvm/lib/Support/Signals.cpp:105:5
+ #3 0x00005627615f9a11 SignalHandler(int) /home/ychen/llvm-project/llvm/lib/Support/Unix/Signals.inc:413:1
+ #4 0x00007f6a4885c710 (/usr/lib/libc.so.6+0x3e710)
+ #5 0x00007f6a488ac83c (/usr/lib/libc.so.6+0x8e83c)
+ #6 0x00007f6a4885c668 gsignal (/usr/lib/libc.so.6+0x3e668)
+ #7 0x00007f6a488444b8 abort (/usr/lib/libc.so.6+0x264b8)
+ #8 0x00007f6a488443dc (/usr/lib/libc.so.6+0x263dc)
+ #9 0x00007f6a48854d26 (/usr/lib/libc.so.6+0x36d26)
+#10 0x000056276196ddba llvm::isa_impl_cl<clang::FunctionType, clang::Type const*>::doit(clang::Type const*) /home/ychen/llvm-project/llvm/include/llvm/Support/Casting.h:110:38
+#11 0x000056276196dd48 llvm::isa_impl_wrap<clang::FunctionType, clang::Type const*, clang::Type const*>::doit(clang::Type const* const&) /home/ychen/llvm-project/llvm/include/llvm/Support/Casting.h:137:5
+#12 0x000056276196dcff llvm::isa_impl_wrap<clang::FunctionType, clang::Type const* const, clang::Type const*>::doit(clang::Type const* const&) /home/ychen/llvm-project/llvm/include/llvm/Support/Casting.h:127:12
+#13 0x000056276196dcc5 llvm::CastIsPossible<clang::FunctionType, clang::Type const*, void>::isPossible(clang::Type const* const&) /home/ychen/llvm-project/llvm/include/llvm/Support/Casting.h:255:5
+#14 0x000056276196dc7f llvm::CastInfo<clang::FunctionType, clang::Type const* const, void>::isPossible(clang::Type const* const&) /home/ychen/llvm-project/llvm/include/llvm/Support/Casting.h:509:12
+#15 0x000056276196dc25 bool llvm::isa<clang::FunctionType, clang::Type const*>(clang::Type const* const&) /home/ychen/llvm-project/llvm/include/llvm/Support/Casting.h:549:3
+#16 0x000056276196db82 decltype(auto) llvm::cast<clang::FunctionType, clang::Type const>(clang::Type const*) /home/ychen/llvm-project/llvm/include/llvm/Support/Casting.h:578:3
+#17 0x000056276196d8fd clang::ConcreteTypeLoc<clang::UnqualTypeLoc, clang::FunctionTypeLoc, clang::FunctionType, clang::FunctionLocInfo>::getTypePtr() const /home/ychen/llvm-project/clang/include/clang/AST/TypeLoc.h:416:5
+#18 0x000056276196e7e5 clang::InheritingConcreteTypeLoc<clang::FunctionTypeLoc, clang::FunctionProtoTypeLoc, clang::FunctionProtoType>::getTypePtr() const /home/ychen/llvm-project/clang/include/clang/AST/TypeLoc.h:509:34
+#19 0x0000562767c09985 clang::QualType clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformFunctionProtoType<clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformLambdaExpr(clang::LambdaExpr*)::'lambda'(clang::FunctionProtoType::ExceptionSpecInfo&, bool&)>(clang::TypeLocBuilder&, clang::FunctionProtoTypeLoc, clang::CXXRecordDecl*, clang::Qualifiers, clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformLambdaExpr(clang::LambdaExpr*)::'lambda'(clang::FunctionProtoType::ExceptionSpecInfo&, bool&)) /home/ychen/llvm-project/clang/lib/Sema/TreeTransform.h:6104:28
+#20 0x0000562767c08b33 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformLambdaExpr(clang::LambdaExpr*) /home/ychen/llvm-project/clang/lib/Sema/TreeTransform.h:13610:30
+#21 0x0000562767bf4558 (anonymous namespace)::TemplateInstantiator::TransformLambdaExpr(clang::LambdaExpr*) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:1454:38
+#22 0x0000562767be26cb clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) /home/ychen/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:1232:1
+#23 0x0000562767be3346 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformInitializer(clang::Expr*, bool) /home/ychen/llvm-project/clang/lib/Sema/TreeTransform.h:4104:25
+#24 0x0000562767bdd6f6 clang::Sema::SubstInitializer(clang::Expr*, clang::MultiLevelTemplateArgumentList const&, bool) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:4111:23
+#25 0x0000562767c78ac3 clang::Sema::InstantiateVariableInitializer(clang::VarDecl*, clang::VarDecl*, clang::MultiLevelTemplateArgumentList const&) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:5443:14
+#26 0x0000562767c694fe clang::Sema::BuildVariableInstantiation(clang::VarDecl*, clang::VarDecl*, clang::MultiLevelTemplateArgumentList const&, llvm::SmallVector<clang::Sema::LateInstantiatedAttribute, 16u>*, clang::DeclContext*, clang::LocalInstantiationScope*, bool, clang::VarTemplateSpecializationDecl*) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:5401:3
+#27 0x0000562767c68a36 clang::TemplateDeclInstantiator::VisitVarDecl(clang::VarDecl*, bool, llvm::ArrayRef<clang::BindingDecl*>*) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:1192:7
+#28 0x0000562767c68c93 clang::TemplateDeclInstantiator::VisitVarDecl(clang::VarDecl*) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:1143:3
+#29 0x0000562767aa94bf clang::declvisitor::Base<std::add_pointer, clang::TemplateDeclInstantiator, clang::Decl*>::Visit(clang::Decl*) /home/ychen/llvm-project/build/tools/clang/include/clang/AST/DeclNodes.inc:480:1
+#30 0x0000562767cec8b4 clang::Sema::SubstDecl(clang::Decl*, clang::DeclContext*, clang::MultiLevelTemplateArgumentList const&)::$_0::operator()() const /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:4057:27
+#31 0x0000562767cec885 void llvm::function_ref<void ()>::callback_fn<clang::Sema::SubstDecl(clang::Decl*, clang::DeclContext*, clang::MultiLevelTemplateArgumentList const&)::$_0>(long) /home/ychen/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:45:5
+#32 0x0000562760097639 llvm::function_ref<void ()>::operator()() const /home/ychen/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:68:5
+#33 0x00005627665be56a clang::runWithSufficientStackSpace(llvm::function_ref<void ()>, llvm::function_ref<void ()>) /home/ychen/llvm-project/clang/include/clang/Basic/Stack.h:52:3
+#34 0x00005627665a9c05 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) /home/ychen/llvm-project/clang/lib/Sema/Sema.cpp:514:1
+#35 0x0000562767c7af15 clang::Sema::SubstDecl(clang::Decl*, clang::DeclContext*, clang::MultiLevelTemplateArgumentList const&) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:4059:10
+#36 0x0000562767c34574 (anonymous namespace)::TemplateInstantiator::TransformDefinition(clang::SourceLocation, clang::Decl*) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:1621:9
+#37 0x0000562767c2c1e4 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformDeclStmt(clang::DeclStmt*) /home/ychen/llvm-project/clang/lib/Sema/TreeTransform.h:7933:11
+#38 0x0000562767bdf770 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformStmt(clang::Stmt*, clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::StmtDiscardKind) /home/ychen/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:98:1
+#39 0x0000562767c10d06 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) /home/ychen/llvm-project/clang/lib/Sema/TreeTransform.h:7517:38
+#40 0x0000562767c2b307 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*) /home/ychen/llvm-project/clang/lib/Sema/TreeTransform.h:7499:23
+#41 0x0000562767bdf6ac clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformStmt(clang::Stmt*, clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::StmtDiscardKind) /home/ychen/llvm-project/build/tools/clang/include/clang/AST/StmtNodes.inc:74:1
+#42 0x0000562767bdf480 clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiate.cpp:4070:23
+#43 0x0000562767c7d46c clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:5180:14
+#44 0x0000562767c8012d clang::Sema::PerformPendingInstantiations(bool) /home/ychen/llvm-project/clang/lib/Sema/SemaTemplateInstantiateDecl.cpp:6441:13
+#45 0x00005627665ab7a5 clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) /home/ychen/llvm-project/clang/lib/Sema/Sema.cpp:1089:3
+#46 0x00005627665abc10 clang::Sema::ActOnEndOfTranslationUnit() /home/ychen/llvm-project/clang/lib/Sema/Sema.cpp:1124:5
+#47 0x00005627663dd74d clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /home/ychen/llvm-project/clang/lib/Parse/Parser.cpp:724:5
+#48 0x00005627663d810b clang::ParseAST(clang::Sema&, bool, bool) /home/ychen/llvm-project/clang/lib/Parse/ParseAST.cpp:163:16
+#49 0x0000562762b9099b clang::ASTFrontendAction::ExecuteAction() /home/ychen/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1185:1
+#50 0x00005627625f256f clang::CodeGenAction::ExecuteAction() /home/ychen/llvm-project/clang/lib/CodeGen/CodeGenAction.cpp:1154:5
+#51 0x0000562762b902d9 clang::FrontendAction::Execute() /home/ychen/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1073:7
+#52 0x0000562762a9d71a clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /home/ychen/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:1057:23
+#53 0x0000562762d81f75 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /home/ychen/llvm-project/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:272:8
+#54 0x000056275f56f584 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /home/ychen/llvm-project/clang/tools/driver/cc1_main.cpp:294:13
+#55 0x000056275f560494 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) /home/ychen/llvm-project/clang/tools/driver/driver.cpp:366:5
+#56 0x000056275f55f14b clang_main(int, char**, llvm::ToolContext const&) /home/ychen/llvm-project/clang/tools/driver/driver.cpp:407:5
+#57 0x000056275f594466 main /home/ychen/llvm-project/build/tools/clang/tools/driver/clang-driver.cpp:15:10
+#58 0x00007f6a48845cd0 (/usr/lib/libc.so.6+0x27cd0)
+#59 0x00007f6a48845d8a __libc_start_main (/usr/lib/libc.so.6+0x27d8a)
+#60 0x000056275f55eae5 _start (/home/ychen/llvm-project/build/bin/clang-18+0x5398ae5)
+clang++: error: unable to execute command: Aborted (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 18.0.0git
+Target: x86_64-redhat-linux-gnu
+Thread model: posix
+InstalledDir: /home/ychen/llvm-project/build/bin
+clang++: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/bad-0c5e89.cpp
+clang++: note: diagnostic msg: /tmp/bad-0c5e89.sh
+clang++: note: diagnostic msg:
+
+********************
+make: *** [Makefile:4: all] Error 1
+
+
+Bug Labels:
+clang:frontend, crash-on-valid

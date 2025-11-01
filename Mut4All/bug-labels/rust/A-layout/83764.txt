@@ -1,0 +1,70 @@
+Issue Title:
+Stable ICE with fieldless enums and dyn traits · Issue #83764 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(dead_code)]
+
+pub fn main() {
+    // Instantiating Foo with a concrete type will not fail
+    let _ = Foo::<dyn FooTrait>::new();
+}
+
+pub struct Foo<T: FooTrait + ?Sized> {
+    base: FooBase,
+    value: T,
+}
+
+impl<T: FooTrait + ?Sized> Foo<T> {
+    pub fn new() -> Box<Foo<T>> {
+        todo!()
+    }
+}
+
+pub trait FooTrait {}
+
+pub struct FooBase {
+    cls: Bar,
+}
+
+// Bar *must* be a fieldless enum
+pub enum Bar {}
+
+Bug Trace:
+0: rust_begin_unwind
+             at /rustc/2fd73fabe469357a12c2c974c140f67e7cdd76d0/library/std/src/panicking.rs:493:5
+   1: core::panicking::panic_fmt
+             at /rustc/2fd73fabe469357a12c2c974c140f67e7cdd76d0/library/core/src/panicking.rs:92:14
+   2: core::panicking::panic
+             at /rustc/2fd73fabe469357a12c2c974c140f67e7cdd76d0/library/core/src/panicking.rs:50:5
+   3: rustc_middle::ty::layout::layout_raw
+   4: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::layout_raw>::compute
+   5: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+   6: rustc_data_structures::stack::ensure_sufficient_stack
+   7: rustc_query_system::query::plumbing::force_query_with_job
+   8: rustc_query_system::query::plumbing::get_query_impl
+   9: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+  10: <rustc_codegen_llvm::context::CodegenCx as rustc_target::abi::LayoutOf>::spanned_layout_of
+  11: rustc_middle::ty::layout::<impl rustc_target::abi::TyAndLayoutMethods<C> for &rustc_middle::ty::TyS>::pointee_info_at
+  12: rustc_middle::ty::layout::<impl rustc_target::abi::TyAndLayoutMethods<C> for &rustc_middle::ty::TyS>::pointee_info_at
+  13: <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_middle::ty::layout::FnAbiExt<C>>::new_internal::{{closure}}::{{closure}}
+  14: rustc_target::abi::call::ArgAbi<Ty>::new
+  15: core::ops::function::impls::<impl core::ops::function::FnMut<A> for &mut F>::call_mut
+  16: <core::iter::adapters::chain::Chain<A,B> as core::iter::traits::iterator::Iterator>::fold
+  17: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  18: <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_middle::ty::layout::FnAbiExt<C>>::new_internal
+  19: rustc_codegen_llvm::mono_item::<impl rustc_codegen_ssa::traits::declare::PreDefineMethods for rustc_codegen_llvm::context::CodegenCx>::predefine_fn
+  20: rustc_codegen_llvm::base::compile_codegen_unit::module_codegen
+  21: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  22: rustc_codegen_llvm::base::compile_codegen_unit
+  23: rustc_codegen_ssa::base::codegen_crate
+  24: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  25: rustc_session::utils::<impl rustc_session::session::Session>::time
+  26: rustc_interface::passes::QueryContext::enter
+  27: rustc_interface::queries::Queries::ongoing_codegen
+  28: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  29: rustc_span::with_source_map
+  30: rustc_interface::interface::create_compiler_and_run
+  31: rustc_span::with_session_globals
+
+Bug Labels:
+A-layout, C-bug, I-ICE, P-medium, T-compiler, glacier

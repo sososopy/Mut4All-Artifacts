@@ -1,0 +1,119 @@
+Issue Title:
+rustdoc json ice: assertion failure: different Output: Generics · Issue #98009 · rust-lang/rust · GitHub
+
+Rust Code:
+// run-rustfix
+#![allow(dead_code)]
+
+struct Events<R>(R);
+
+struct Other;
+
+pub trait Trait<T> {
+    fn handle(value: T) -> Self;
+}
+
+// Blanket impl. (If you comment this out, compiler figures out that it
+// is passing an `&mut` to a method that must be expecting an `&mut`,
+// and injects an auto-reborrow.)
+impl<T, U> Trait<U> for T where T: From<U> {
+    fn handle(_: U) -> Self { unimplemented!() }
+}
+
+impl<'a, R> Trait<&'a mut Events<R>> for Other {
+    fn handle(_: &'a mut Events<R>) -> Self { unimplemented!() }
+}
+
+fn this_compiles<'a, R>(value: &'a mut Events<R>) {
+    for _ in 0..3 {
+        Other::handle(&mut *value);
+    }
+}
+
+fn this_does_not<'a, R>(value: &'a mut Events<R>) {
+    for _ in 0..3 {
+        Other::handle(value); //~ ERROR use of moved value: `value`
+    }
+}
+
+fn main() {}
+
+Bug Trace:
+thread 'rustc' panicked at 'assertion failed: `(left == right)`
+  left: `Item { id: Id("0:15:1520"), crate_id: 0, name: Some("handle"), span: Some(Span { filename: "./src/test/ui/borrowck/mut-borrow-in-loop-2.rs", begin: (16, 4), end: (16, 48) }), visibility: Default, docs: None, links: {}, attrs: [], deprecation: None, inner: Method(Method { decl: FnDecl { inputs: [("", Generic("U"))], output: Some(Generic("T")), c_variadic: false }, generics: Generics { params: [], where_predicates: [] }, header: Header { const_: false, unsafe_: false, async_: false, abi: Rust }, has_body: true }) }`,
+ right: `Item { id: Id("0:15:1520"), crate_id: 0, name: Some("handle"), span: Some(Span { filename: "./src/test/ui/borrowck/mut-borrow-in-loop-2.rs", begin: (16, 4), end: (16, 48) }), visibility: Default, docs: None, links: {}, attrs: [], deprecation: None, inner: Method(Method { decl: FnDecl { inputs: [("_", Generic("U"))], output: Some(Generic("Self")), c_variadic: false }, generics: Generics { params: [], where_predicates: [] }, header: Header { const_: false, unsafe_: false, async_: false, abi: Rust }, has_body: true }) }`', src/librustdoc/json/mod.rs:202:17
+stack backtrace:
+   0:     0x7f1041a9e24d - std::backtrace_rs::backtrace::libunwind::trace::hbda756d3a5f7793b
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5
+   1:     0x7f1041a9e24d - std::backtrace_rs::backtrace::trace_unsynchronized::he406e69cad63dc23
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f1041a9e24d - std::sys_common::backtrace::_print_fmt::haf02d0db8ce964ea
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/sys_common/backtrace.rs:66:5
+   3:     0x7f1041a9e24d - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h593e23fa276ab7eb
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/sys_common/backtrace.rs:45:22
+   4:     0x7f1041afa03c - core::fmt::write::h15ae908cdc2b7057
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/core/src/fmt/mod.rs:1196:17
+   5:     0x7f1041a8f9e1 - std::io::Write::write_fmt::hd05fda0f86262a57
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/io/mod.rs:1654:15
+   6:     0x7f1041aa0f25 - std::sys_common::backtrace::_print::h56e00569a093de7b
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/sys_common/backtrace.rs:48:5
+   7:     0x7f1041aa0f25 - std::sys_common::backtrace::print::h154890ec5be15427
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/sys_common/backtrace.rs:35:9
+   8:     0x7f1041aa0f25 - std::panicking::default_hook::{{closure}}::h956bfa0e86fe51f6
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/panicking.rs:295:22
+   9:     0x7f1041aa0c46 - std::panicking::default_hook::h6043872de872daf7
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/panicking.rs:314:9
+  10:     0x7f10422fac61 - rustc_driver[887956d0deaa6d7a]::DEFAULT_HOOK::{closure#0}::{closure#0}
+  11:     0x7f1041aa15fa - std::panicking::rust_panic_with_hook::h06a4e01a02150fc1
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/panicking.rs:702:17
+  12:     0x7f1041aa1437 - std::panicking::begin_panic_handler::{{closure}}::h376c0b0d176b15fb
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/panicking.rs:588:13
+  13:     0x7f1041a9e704 - std::sys_common::backtrace::__rust_end_short_backtrace::hb6064a5b72d04bd2
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/sys_common/backtrace.rs:138:18
+  14:     0x7f1041aa1169 - rust_begin_unwind
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/panicking.rs:584:5
+  15:     0x7f1041a66373 - core::panicking::panic_fmt::h18f352cc18da6352
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/core/src/panicking.rs:142:14
+  16:     0x7f1041af6de8 - core::panicking::assert_failed_inner::hc3f9e178e607f850
+  17:     0x55892f4c6174 - core[47d7e3b58a64b363]::panicking::assert_failed::<rustdoc_json_types[8c03fa6f039a8cd6]::Item, rustdoc_json_types[8c03fa6f039a8cd6]::Item>
+  18:     0x55892f7c2780 - <rustdoc[325768d69b163fb7]::json::JsonRenderer as rustdoc[325768d69b163fb7]::formats::renderer::FormatRenderer>::item
+  19:     0x55892f7bc4a9 - <rustdoc[325768d69b163fb7]::json::JsonRenderer as rustdoc[325768d69b163fb7]::formats::renderer::FormatRenderer>::item
+  20:     0x55892f52c914 - <core[47d7e3b58a64b363]::iter::adapters::map::Map<core[47d7e3b58a64b363]::slice::iter::Iter<rustdoc[325768d69b163fb7]::formats::Impl>, <rustdoc[325768d69b163fb7]::json::JsonRenderer>::get_trait_implementors::{closure#0}::{closure#0}> as core[47d7e3b58a64b363]::iter::traits::iterator::Iterator>::fold::<(), core[47d7e3b58a64b363]::iter::traits::iterator::Iterator::for_each::call<rustdoc_json_types[8c03fa6f039a8cd6]::Id, <alloc[fa3387b59f42e0d8]::vec::Vec<rustdoc_json_types[8c03fa6f039a8cd6]::Id> as alloc[fa3387b59f42e0d8]::vec::spec_extend::SpecExtend<rustdoc_json_types[8c03fa6f039a8cd6]::Id, core[47d7e3b58a64b363]::iter::adapters::map::Map<core[47d7e3b58a64b363]::slice::iter::Iter<rustdoc[325768d69b163fb7]::formats::Impl>, <rustdoc[325768d69b163fb7]::json::JsonRenderer>::get_trait_implementors::{closure#0}::{closure#0}>>>::spec_extend::{closure#0}>::{closure#0}>
+  21:     0x55892f6966a6 - <alloc[fa3387b59f42e0d8]::vec::Vec<rustdoc_json_types[8c03fa6f039a8cd6]::Id> as alloc[fa3387b59f42e0d8]::vec::spec_from_iter::SpecFromIter<rustdoc_json_types[8c03fa6f039a8cd6]::Id, core[47d7e3b58a64b363]::iter::adapters::map::Map<core[47d7e3b58a64b363]::slice::iter::Iter<rustdoc[325768d69b163fb7]::formats::Impl>, <rustdoc[325768d69b163fb7]::json::JsonRenderer>::get_trait_implementors::{closure#0}::{closure#0}>>>::from_iter
+  22:     0x55892f7bf01a - <rustdoc[325768d69b163fb7]::json::JsonRenderer as rustdoc[325768d69b163fb7]::formats::renderer::FormatRenderer>::item
+  23:     0x55892f7bc4a9 - <rustdoc[325768d69b163fb7]::json::JsonRenderer as rustdoc[325768d69b163fb7]::formats::renderer::FormatRenderer>::item
+  24:     0x55892f737cca - rustdoc[325768d69b163fb7]::formats::renderer::run_format::<rustdoc[325768d69b163fb7]::json::JsonRenderer>
+  25:     0x55892f511e32 - rustdoc[325768d69b163fb7]::run_renderer::<rustdoc[325768d69b163fb7]::json::JsonRenderer>
+  26:     0x55892f7644bb - <rustc_session[350565c454728d1f]::session::Session>::time::<core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>, rustdoc[325768d69b163fb7]::main_options::{closure#0}::{closure#0}::{closure#1}::{closure#2}>
+  27:     0x55892f6fdcc7 - <rustc_interface[823eb738556b78ea]::passes::QueryContext>::enter::<rustdoc[325768d69b163fb7]::main_options::{closure#0}::{closure#0}::{closure#1}, core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>>
+  28:     0x55892f60083a - <rustc_interface[823eb738556b78ea]::interface::Compiler>::enter::<rustdoc[325768d69b163fb7]::main_options::{closure#0}::{closure#0}, core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>>
+  29:     0x55892f7faaf6 - rustc_span[b519e1d6b7be61e8]::with_source_map::<core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>, rustc_interface[823eb738556b78ea]::interface::create_compiler_and_run<core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>, rustdoc[325768d69b163fb7]::main_options::{closure#0}>::{closure#1}>
+  30:     0x55892f629bc1 - rustc_interface[823eb738556b78ea]::interface::create_compiler_and_run::<core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>, rustdoc[325768d69b163fb7]::main_options::{closure#0}>
+  31:     0x55892f4dfb07 - <scoped_tls[dfe53452cd62d879]::ScopedKey<rustc_span[b519e1d6b7be61e8]::SessionGlobals>>::set::<rustdoc[325768d69b163fb7]::main_args::{closure#0}, core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>>
+  32:     0x55892f62ae7f - std[8de092468d8aceba]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[823eb738556b78ea]::util::run_in_thread_pool_with_globals<rustdoc[325768d69b163fb7]::main_args::{closure#0}, core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>>::{closure#0}, core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>>
+  33:     0x55892f719699 - <<std[8de092468d8aceba]::thread::Builder>::spawn_unchecked_<rustc_interface[823eb738556b78ea]::util::run_in_thread_pool_with_globals<rustdoc[325768d69b163fb7]::main_args::{closure#0}, core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>>::{closure#0}, core[47d7e3b58a64b363]::result::Result<(), rustc_errors[61501852ee8eeabe]::ErrorGuaranteed>>::{closure#1} as core[47d7e3b58a64b363]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  34:     0x7f1041aab523 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h68a1c90dcd11ebd9
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/alloc/src/boxed.rs:1951:9
+  35:     0x7f1041aab523 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::he92bdcacbb726b3b
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/alloc/src/boxed.rs:1951:9
+  36:     0x7f1041aab523 - std::sys::unix::thread::Thread::new::thread_start::hb6f32585ac3785d3
+                               at /rustc/c08b235a5ce10167632bb0fddcd0c5d67f2d42e3/library/std/src/sys/unix/thread.rs:108:17
+  37:     0x7f104187f54d - <unknown>
+  38:     0x7f1041904b14 - clone
+  39:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.63.0-nightly (c08b235a5 2022-06-11) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z unstable-options
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+A-rustdoc-json, C-bug, I-ICE, T-rustdoc, glacier

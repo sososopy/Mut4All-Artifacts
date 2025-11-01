@@ -1,0 +1,109 @@
+Issue Title:
+`impl Trait` in return position with lifetimes and `const_evaluatable_checked` gives ICE · Issue #86068 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+#![feature(const_evaluatable_checked)]
+
+trait SomeTrait {}    
+
+struct SomeStruct<const S: bool>;     
+
+impl<const S: bool> SomeTrait for SomeStruct<S> {}
+
+fn func<'a>() -> impl 'a + SomeTrait
+{
+    SomeStruct::<{true}>
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_middle/src/ich/impls_ty.rs:94:17: StableHasher: unexpected region '_#0r
+
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:1007:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_middle::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::RegionKind>::hash_stable
+   8: std::thread::local::LocalKey<T>::with
+   9: <(T1,T2) as rustc_data_structures::stable_hasher::HashStable<CTX>>::hash_stable
+  10: <T as rustc_query_system::dep_graph::dep_node::DepNodeParams<Ctxt>>::to_fingerprint
+  11: rustc_query_system::dep_graph::dep_node::DepNode<K>::construct
+  12: rustc_query_system::query::plumbing::get_query_impl
+  13: rustc_query_system::query::plumbing::get_query
+  14: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_unify_abstract_consts
+  15: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  16: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  17: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  18: rustc_infer::infer::canonical::query_response::<impl rustc_infer::infer::InferCtxt>::make_canonicalized_query_response
+  19: <rustc_infer::infer::InferCtxtBuilder as rustc_trait_selection::infer::InferCtxtBuilderExt>::enter_canonical_trait_query
+  20: rustc_traits::type_op::type_op_ascribe_user_type
+  21: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::type_op_ascribe_user_type>::compute
+  22: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  23: rustc_data_structures::stack::ensure_sufficient_stack
+  24: rustc_query_system::query::plumbing::get_query_impl
+  25: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_op_ascribe_user_type
+  26: rustc_trait_selection::traits::query::type_op::ascribe_user_type::<impl rustc_trait_selection::traits::query::type_op::QueryTypeOp for rustc_middle::traits::query::type_op::AscribeUserType>::perform_query
+  27: rustc_trait_selection::traits::query::type_op::QueryTypeOp::fully_perform_into
+  28: <rustc_middle::ty::ParamEnvAnd<Q> as rustc_trait_selection::traits::query::type_op::TypeOp>::fully_perform
+  29: rustc_mir::borrow_check::type_check::type_check
+  30: rustc_mir::borrow_check::nll::compute_regions
+  31: rustc_mir::borrow_check::do_mir_borrowck
+  32: rustc_infer::infer::InferCtxtBuilder::enter
+  33: rustc_mir::borrow_check::mir_borrowck
+  34: core::ops::function::FnOnce::call_once
+  35: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  36: rustc_data_structures::stack::ensure_sufficient_stack
+  37: rustc_query_system::query::plumbing::force_query_with_job
+  38: rustc_query_system::query::plumbing::get_query_impl
+  39: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_borrowck
+  40: rustc_typeck::collect::type_of::type_of
+  41: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  42: rustc_data_structures::stack::ensure_sufficient_stack
+  43: rustc_query_system::query::plumbing::force_query_with_job
+  44: rustc_query_system::query::plumbing::get_query_impl
+  45: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::type_of
+  46: rustc_typeck::check::check::check_item_type
+  47: rustc_middle::hir::map::Map::visit_item_likes_in_module
+  48: rustc_typeck::check::check::check_mod_item_types
+  49: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  50: rustc_data_structures::stack::ensure_sufficient_stack
+  51: rustc_query_system::query::plumbing::force_query_with_job
+  52: rustc_query_system::query::plumbing::get_query_impl
+  53: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::check_mod_item_types
+  54: rustc_session::utils::<impl rustc_session::session::Session>::time
+  55: rustc_typeck::check_crate
+  56: rustc_interface::passes::analysis
+  57: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  58: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  59: rustc_query_system::dep_graph::graph::DepGraph<K>::with_eval_always_task
+  60: rustc_data_structures::stack::ensure_sufficient_stack
+  61: rustc_query_system::query::plumbing::force_query_with_job
+  62: rustc_query_system::query::plumbing::get_query_impl
+  63: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  64: rustc_interface::passes::QueryContext::enter
+  65: rustc_span::with_session_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.54.0-nightly (6c2dd251b 2021-06-05) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C incremental --crate-type lib
+
+query stack during panic:
+#0 [type_op_ascribe_user_type] evaluating `type_op_ascribe_user_type` `Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing }, value: AscribeUserType { mir_ty: SomeStruct<{}>, def_id: DefId(0:5 ~ foo[cf51]::SomeStruct::{constructor#0}), user_substs: UserSubsts { substs: [Const { ty: (), val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:12 ~ foo[cf51]::func::{constant#0}), const_param_did: Some(DefId(0:6 ~ foo[cf51]::SomeStruct::S)) }, substs: [ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1) })], promoted: None }) }], user_self_ty: None } } } }`
+#1 [mir_borrowck] borrow-checking `func`
+#2 [type_of] computing type of `func::{opaque#0}`
+#3 [check_mod_item_types] checking item types in top-level module
+#4 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+A-const-generics, A-incr-comp, C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, requires-nightly

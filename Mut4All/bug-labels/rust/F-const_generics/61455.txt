@@ -1,0 +1,217 @@
+Issue Title:
+transmute const generic parameter · Issue #61455 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+
+use std::mem::transmute;
+
+struct Bug<const N: fn(usize)>;
+
+fn main() {
+    let x = Bug::<{
+        unsafe { transmute(|x: u8| {}) }
+        
+    }>;
+}
+
+Bug Trace:
+Standard Error
+
+   Compiling playground v0.0.1 (/playground)
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+ --> src/main.rs:1:12
+  |
+1 | #![feature(const_generics)]
+  |            ^^^^^^^^^^^^^^
+
+error[E0658]: The use of std::mem::transmute() is gated in constants
+ --> src/main.rs:9:18
+  |
+9 |         unsafe { transmute(|x: u8| {}) }
+  |                  ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: for more information, see https://github.com/rust-lang/rust/issues/53605
+  = help: add #![feature(const_transmute)] to the crate attributes to enable
+
+thread 'rustc' panicked at 'Size mismatch when transmuting!
+src: OpTy {
+    op: Immediate(
+        Scalar(
+            <ZST>,
+        ),
+    ),
+    layout: TyLayout {
+        ty: [closure@src/main.rs:9:28: 9:38],
+        details: LayoutDetails {
+            variants: Single {
+                index: 0,
+            },
+            fields: Arbitrary {
+                offsets: [],
+                memory_index: [],
+            },
+            abi: Aggregate {
+                sized: true,
+            },
+            align: AbiAndPrefAlign {
+                abi: Align {
+                    pow2: 0,
+                },
+                pref: Align {
+                    pow2: 3,
+                },
+            },
+            size: Size {
+                raw: 0,
+            },
+        },
+    },
+}
+dest: PlaceTy {
+    place: Ptr(
+        MemPlace {
+            ptr: AllocId(0).0x0,
+            align: Align {
+                pow2: 3,
+            },
+            meta: None,
+        },
+    ),
+    layout: TyLayout {
+        ty: fn(usize),
+        details: LayoutDetails {
+            variants: Single {
+                index: 0,
+            },
+            fields: Union(
+                0,
+            ),
+            abi: Scalar(
+                Scalar {
+                    value: Pointer,
+                    valid_range: 1..=18446744073709551615,
+                },
+            ),
+            align: AbiAndPrefAlign {
+                abi: Align {
+                    pow2: 3,
+                },
+                pref: Align {
+                    pow2: 3,
+                },
+            },
+            size: Size {
+                raw: 8,
+            },
+        },
+    },
+}', src/librustc_mir/interpret/place.rs:865:9
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.25/src/backtrace/libunwind.rs:97
+   1: backtrace::backtrace::trace_unsynchronized
+             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.25/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:47
+   3: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:36
+   4: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:197
+   5: std::panicking::default_hook
+             at src/libstd/panicking.rs:211
+   6: rustc::util::common::panic_hook
+   7: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:478
+   8: std::panicking::continue_panic_fmt
+             at src/libstd/panicking.rs:381
+   9: std::panicking::begin_panic_fmt
+             at src/libstd/panicking.rs:336
+  10: rustc_mir::interpret::place::<impl rustc_mir::interpret::eval_context::InterpretCx<M>>::copy_op_transmute
+  11: rustc_mir::interpret::intrinsics::<impl rustc_mir::interpret::eval_context::InterpretCx<M>>::emulate_intrinsic
+  12: <rustc_mir::const_eval::CompileTimeInterpreter as rustc_mir::interpret::machine::Machine>::call_intrinsic
+  13: rustc_mir::interpret::terminator::<impl rustc_mir::interpret::eval_context::InterpretCx<M>>::eval_fn_call
+  14: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpretCx<M>>::run
+  15: rustc_mir::const_eval::eval_body_using_ecx
+  16: rustc_mir::const_eval::const_eval_raw_provider
+  17: rustc::ty::query::__query_compute::const_eval_raw
+  18: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::const_eval_raw>::compute
+  19: rustc::dep_graph::graph::DepGraph::with_task_impl
+  20: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  21: rustc_mir::const_eval::const_eval_provider
+  22: rustc::ty::query::__query_compute::const_eval
+  23: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::const_eval>::compute
+  24: rustc::dep_graph::graph::DepGraph::with_task_impl
+  25: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  26: <rustc::traits::project::AssocTypeNormalizer as rustc::ty::fold::TypeFolder>::fold_const
+  27: <smallvec::SmallVec<A> as core::iter::traits::collect::FromIterator<<A as smallvec::Array>::Item>>::from_iter
+  28: rustc::ty::fold::TypeFoldable::fold_with
+  29: rustc::ty::structural_impls::<impl rustc::ty::fold::TypeFoldable for &rustc::ty::TyS>::super_fold_with
+  30: <rustc::traits::project::AssocTypeNormalizer as rustc::ty::fold::TypeFolder>::fold_ty
+  31: rustc::traits::project::normalize
+  32: rustc_typeck::check::FnCtxt::instantiate_value_path
+  33: rustc_typeck::check::FnCtxt::check_expr_kind
+  34: rustc_typeck::check::FnCtxt::check_expr_with_expectation_and_needs
+  35: rustc_typeck::check::FnCtxt::check_decl_initializer
+  36: rustc_typeck::check::FnCtxt::check_decl_local
+  37: rustc_typeck::check::FnCtxt::check_stmt
+  38: rustc_typeck::check::FnCtxt::check_block_with_expected
+  39: rustc_typeck::check::FnCtxt::check_expr_kind
+  40: rustc_typeck::check::FnCtxt::check_expr_with_expectation_and_needs
+  41: rustc_typeck::check::FnCtxt::check_return_expr
+  42: rustc_typeck::check::check_fn
+  43: rustc::ty::context::GlobalCtxt::enter_local
+  44: rustc_typeck::check::typeck_tables_of
+  45: rustc::ty::query::__query_compute::typeck_tables_of
+  46: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_tables_of>::compute
+  47: rustc::dep_graph::graph::DepGraph::with_task_impl
+  48: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  49: rustc::ty::<impl rustc::ty::context::TyCtxt>::par_body_owners
+  50: rustc_typeck::check::typeck_item_bodies
+  51: rustc::ty::query::__query_compute::typeck_item_bodies
+  52: rustc::ty::query::<impl rustc::ty::query::config::QueryAccessors for rustc::ty::query::queries::typeck_item_bodies>::compute
+  53: rustc::dep_graph::graph::DepGraph::with_task_impl
+  54: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  55: rustc::util::common::time
+  56: rustc_typeck::check_crate
+  57: rustc_interface::passes::analysis
+  58: rustc::ty::query::__query_compute::analysis
+  59: rustc::dep_graph::graph::DepGraph::with_task_impl
+  60: rustc::ty::query::plumbing::<impl rustc::ty::context::TyCtxt>::get_query
+  61: rustc::ty::context::tls::enter_global
+  62: rustc_interface::passes::BoxedGlobalCtxt::access::{{closure}}
+  63: rustc_interface::passes::create_global_ctxt::{{closure}}
+  64: rustc_interface::interface::run_compiler_in_existing_thread_pool
+  65: std::thread::local::LocalKey<T>::with
+  66: scoped_tls::ScopedKey<T>::set
+  67: syntax::with_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+query stack during panic:
+#0 [const_eval_raw] const-evaluating `main::{{constant}}#0`
+#1 [const_eval] const-evaluating + checking `main::{{constant}}#0`
+#2 [typeck_tables_of] processing `main`
+#3 [typeck_item_bodies] type-checking all item bodies
+#4 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc 1.37.0-nightly (03ee55bb1 2019-06-01) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+error: Could not compile `playground`.
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-const-generics, C-bug, F-const_generics, I-ICE, T-compiler, glacier, requires-nightly

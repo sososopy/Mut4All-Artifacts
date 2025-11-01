@@ -1,0 +1,205 @@
+Issue Title:
+ICE when calling syn::parse_macro_input! in proc macro applied to a function with a doc comment in a declarative macro · Issue #81007 · rust-lang/rust · GitHub
+
+Rust Code:
+macro_rules! test_fixtures {
+    ($($item:item)*) => {
+        $(
+            #[async_std::test] // This serves the role of calling syn::parse_macro_input!
+            $item
+        )*
+    }
+}
+
+test_fixtures! {
+    // Normal comments work fine.
+    /// Doc comments cause a panic.
+    async fn test() {
+        eprintln!("Hello world!");
+    }
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'internal error: entered unreachable code', compiler/rustc_expand/src/proc_macro_server.rs:193:20
+stack backtrace:
+   0: rust_begin_unwind
+             at /tmp/rust/library/std/src/panicking.rs:493:5
+   1: core::panicking::panic_fmt
+             at /tmp/rust/library/core/src/panicking.rs:92:14
+   2: core::panicking::panic
+             at /tmp/rust/library/core/src/panicking.rs:50:5
+   3: <proc_macro::bridge::TokenTree<rustc_expand::proc_macro_server::Group,rustc_expand::proc_macro_server::Punct,rustc_expand::proc_macro_server::Ident,rustc_expand::proc_macro_server::Literal> as rustc_expand::proc_macro_server::FromInternal<((rustc_ast::tokenstream::TokenTree,rustc_ast::tokenstream::Spacing),&rustc_session::parse::ParseSess,&mut alloc::vec::Vec<proc_macro::bridge::TokenTree<rustc_expand::proc_macro_server::Group,rustc_expand::proc_macro_server::Punct,rustc_expand::proc_macro_server::Ident,rustc_expand::proc_macro_server::Literal>>)>>::from_internal
+             at /tmp/rust/compiler/rustc_expand/src/proc_macro_server.rs:193:20
+   4: <rustc_expand::proc_macro_server::Rustc as proc_macro::bridge::server::TokenStreamIter>::next::{{closure}}
+             at /tmp/rust/compiler/rustc_expand/src/proc_macro_server.rs:449:22
+   5: core::option::Option<T>::or_else
+             at /tmp/rust/library/core/src/option.rs:784:21
+   6: <rustc_expand::proc_macro_server::Rustc as proc_macro::bridge::server::TokenStreamIter>::next
+             at /tmp/rust/compiler/rustc_expand/src/proc_macro_server.rs:447:24
+   7: <proc_macro::bridge::server::MarkedTypes<S> as proc_macro::bridge::server::TokenStreamIter>::next
+             at /tmp/rust/library/proc_macro/src/bridge/server.rs:72:34
+   8: <proc_macro::bridge::server::Dispatcher<proc_macro::bridge::server::MarkedTypes<S>> as proc_macro::bridge::server::DispatcherTrait>::dispatch::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/server.rs:106:33
+   9: core::ops::function::FnOnce::call_once
+             at /tmp/rust/library/core/src/ops/function.rs:227:5
+  10: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+             at /tmp/rust/library/std/src/panic.rs:322:9
+  11: std::panicking::try::do_call
+             at /tmp/rust/library/std/src/panicking.rs:379:40
+  12: std::panicking::try
+             at /tmp/rust/library/std/src/panicking.rs:343:19
+  13: std::panic::catch_unwind
+             at /tmp/rust/library/std/src/panic.rs:396:14
+  14: <proc_macro::bridge::server::Dispatcher<proc_macro::bridge::server::MarkedTypes<S>> as proc_macro::bridge::server::DispatcherTrait>::dispatch
+             at /tmp/rust/library/proc_macro/src/bridge/server.rs:115:33
+  15: <proc_macro::bridge::server::SameThread as proc_macro::bridge::server::ExecutionStrategy>::run_bridge_and_client::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/server.rs:153:32
+  16: <proc_macro::bridge::closure::Closure<A,R> as core::convert::From<&mut F>>::from::call
+             at /tmp/rust/library/proc_macro/src/bridge/closure.rs:19:13
+  17: proc_macro::bridge::closure::Closure<A,R>::call
+             at /tmp/rust/library/proc_macro/src/bridge/closure.rs:27:18
+  18: proc_macro::bridge::client::TokenStreamIter::next::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:244:25
+  19: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::with::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:336:47
+  20: proc_macro::bridge::client::BridgeState::with::{{closure}}::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:293:17
+  21: proc_macro::bridge::scoped_cell::ScopedCell<T>::replace
+             at /tmp/rust/library/proc_macro/src/bridge/scoped_cell.rs:75:9
+  22: proc_macro::bridge::client::BridgeState::with::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:291:13
+  23: std::thread::local::LocalKey<T>::try_with
+             at /tmp/rust/library/std/src/thread/local.rs:272:16
+  24: std::thread::local::LocalKey<T>::with
+             at /tmp/rust/library/std/src/thread/local.rs:248:9
+  25: proc_macro::bridge::client::BridgeState::with
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:290:9
+  26: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::with
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:329:9
+  27: proc_macro::bridge::client::TokenStreamIter::next
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:237:17
+  28: <proc_macro::token_stream::IntoIter as core::iter::traits::iterator::Iterator>::next
+             at /tmp/rust/library/proc_macro/src/lib.rs:240:13
+  29: <proc_macro2::imp::TokenTreeIter as core::iter::traits::iterator::Iterator>::next
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.24/src/wrapper.rs:304:46
+  30: <proc_macro2::token_stream::IntoIter as core::iter::traits::iterator::Iterator>::next
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.24/src/lib.rs:1213:13
+  31: syn::buffer::TokenBuffer::inner_new
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.58/src/buffer.rs:53:19
+  32: syn::buffer::TokenBuffer::new2
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.58/src/buffer.rs:112:9
+  33: <F as syn::parse::Parser>::parse2
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.58/src/parse.rs:1207:19
+  34: syn::parse::Parser::parse
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.58/src/parse.rs:1161:9
+  35: syn::parse_macro_input::parse
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.58/src/parse_macro_input.rs:139:5
+  36: async_attributes::test
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/async-attributes-1.1.1/src/lib.rs:99:17
+  37: core::ops::function::FnOnce::call_once
+             at /tmp/rust/library/core/src/ops/function.rs:227:5
+  38: proc_macro::bridge::client::Client<fn(proc_macro::TokenStream,proc_macro::TokenStream) .> proc_macro::TokenStream>::expand2::run::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:426:17
+  39: proc_macro::bridge::client::run_client::{{closure}}::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:377:26
+  40: proc_macro::bridge::scoped_cell::ScopedCell<T>::set::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/scoped_cell.rs:80:33
+  41: proc_macro::bridge::scoped_cell::ScopedCell<T>::replace
+             at /tmp/rust/library/proc_macro/src/bridge/scoped_cell.rs:75:9
+  42: proc_macro::bridge::scoped_cell::ScopedCell<T>::set
+             at /tmp/rust/library/proc_macro/src/bridge/scoped_cell.rs:80:9
+  43: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:325:35
+  44: std::thread::local::LocalKey<T>::try_with
+             at /tmp/rust/library/std/src/thread/local.rs:272:16
+  45: std::thread::local::LocalKey<T>::with
+             at /tmp/rust/library/std/src/thread/local.rs:248:9
+  46: proc_macro::bridge::client::<impl proc_macro::bridge::Bridge>::enter
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:325:9
+  47: proc_macro::bridge::client::run_client::{{closure}}
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:370:9
+  48: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+             at /tmp/rust/library/std/src/panic.rs:322:9
+  49: std::panicking::try::do_call
+             at /tmp/rust/library/std/src/panicking.rs:379:40
+  50: __rust_try
+  51: std::panicking::try
+             at /tmp/rust/library/std/src/panicking.rs:343:19
+  52: std::panic::catch_unwind
+             at /tmp/rust/library/std/src/panic.rs:396:14
+  53: proc_macro::bridge::client::run_client
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:369:5
+  54: proc_macro::bridge::client::Client<fn(proc_macro::TokenStream,proc_macro::TokenStream) .> proc_macro::TokenStream>::expand2::run
+             at /tmp/rust/library/proc_macro/src/bridge/client.rs:425:13
+  55: <proc_macro::bridge::server::SameThread as proc_macro::bridge::server::ExecutionStrategy>::run_bridge_and_client
+             at /tmp/rust/library/proc_macro/src/bridge/server.rs:155:9
+  56: proc_macro::bridge::server::run_server
+             at /tmp/rust/library/proc_macro/src/bridge/server.rs:291:9
+  57: proc_macro::bridge::server::<impl proc_macro::bridge::client::Client<fn(proc_macro::TokenStream,proc_macro::TokenStream) .> proc_macro::TokenStream>>::run
+             at /tmp/rust/library/proc_macro/src/bridge/server.rs:334:9
+  58: <rustc_expand::proc_macro::AttrProcMacro as rustc_expand::base::AttrProcMacro>::expand
+             at /tmp/rust/compiler/rustc_expand/src/proc_macro.rs:53:9
+  59: rustc_expand::expand::MacroExpander::expand_invoc
+             at /tmp/rust/compiler/rustc_expand/src/expand.rs:753:44
+  60: rustc_expand::expand::MacroExpander::fully_expand_fragment
+             at /tmp/rust/compiler/rustc_expand/src/expand.rs:497:53
+  61: rustc_expand::expand::MacroExpander::expand_crate
+             at /tmp/rust/compiler/rustc_expand/src/expand.rs:390:15
+  62: rustc_interface::passes::configure_and_expand_inner::{{closure}}::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/passes.rs:302:50
+  63: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at /tmp/rust/compiler/rustc_data_structures/src/profiling.rs:570:9
+  64: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at /tmp/rust/compiler/rustc_session/src/utils.rs:9:9
+  65: rustc_interface::passes::configure_and_expand_inner::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/passes.rs:302:21
+  66: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at /tmp/rust/compiler/rustc_data_structures/src/profiling.rs:570:9
+  67: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at /tmp/rust/compiler/rustc_session/src/utils.rs:9:9
+  68: rustc_interface::passes::configure_and_expand_inner
+             at /tmp/rust/compiler/rustc_interface/src/passes.rs:254:13
+  69: rustc_interface::passes::configure_and_expand::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/passes.rs:118:19
+  70: alloc::boxed::<impl core::ops::generator::Generator<R> for core::pin::Pin<alloc::boxed::Box<G,A>>>::resume
+             at /tmp/rust/library/alloc/src/boxed.rs:1606:9
+  71: rustc_data_structures::box_region::PinnedGenerator<I,A,R>::new
+             at /tmp/rust/compiler/rustc_data_structures/src/box_region.rs:44:26
+  72: rustc_interface::passes::BoxedResolver::new
+             at /tmp/rust/compiler/rustc_data_structures/src/box_region.rs:101:41
+  73: rustc_interface::passes::configure_and_expand
+             at /tmp/rust/compiler/rustc_interface/src/passes.rs:114:30
+  74: rustc_interface::queries::Queries::expansion::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/queries.rs:180:13
+  75: rustc_interface::queries::Query<T>::compute
+             at /tmp/rust/compiler/rustc_interface/src/queries.rs:39:28
+  76: rustc_interface::queries::Queries::expansion
+             at /tmp/rust/compiler/rustc_interface/src/queries.rs:176:9
+  77: rustc_driver::run_compiler::{{closure}}::{{closure}}
+             at /tmp/rust/compiler/rustc_driver/src/lib.rs:393:13
+  78: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+             at /tmp/rust/compiler/rustc_interface/src/queries.rs:418:19
+  79: rustc_driver::run_compiler::{{closure}}
+             at /tmp/rust/compiler/rustc_driver/src/lib.rs:341:22
+  80: rustc_interface::interface::create_compiler_and_run::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/interface.rs:197:13
+  81: rustc_span::with_source_map
+             at /tmp/rust/compiler/rustc_span/src/lib.rs:787:5
+  82: rustc_interface::interface::create_compiler_and_run
+             at /tmp/rust/compiler/rustc_interface/src/interface.rs:191:5
+  83: rustc_interface::interface::run_compiler::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/interface.rs:213:12
+  84: rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/util.rs:152:13
+  85: scoped_tls::ScopedKey<T>::set
+             at /home/dimitar/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+  86: rustc_span::with_session_globals
+             at /tmp/rust/compiler/rustc_span/src/lib.rs:103:5
+  87: rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/util.rs:150:9
+  88: rustc_interface::util::scoped_thread::{{closure}}
+             at /tmp/rust/compiler/rustc_interface/src/util.rs:125:24
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+A-proc-macros, C-bug, I-ICE, T-compiler

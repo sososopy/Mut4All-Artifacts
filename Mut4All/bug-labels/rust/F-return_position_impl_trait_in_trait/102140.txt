@@ -1,0 +1,145 @@
+Issue Title:
+ICE: Calling a non-dispatchable function with RPITIT in impl dyn Trait · Issue #102140 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(return_position_impl_trait_in_trait)]
+
+trait Marker {}
+impl Marker for u32 {}
+
+trait MyTrait {
+    fn foo(&self) -> impl Marker
+        where Self: Sized;
+}
+
+struct Outer;
+
+impl MyTrait for Outer {
+    fn foo(&self) -> impl Marker {
+        42
+    }
+}
+
+impl dyn MyTrait {
+    fn other(&self) -> impl Marker {
+        MyTrait::foo(&self)
+    }
+}
+
+Bug Trace:
+warning: the feature `return_position_impl_trait_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/lib.rs:1:12
+  |
+1 | #![feature(return_position_impl_trait_in_trait)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+
+thread 'rustc' panicked at 'assertion failed: `(left == right)`
+  left: `AssocFn`,
+ right: `Trait`', compiler/rustc_middle/src/ty/sty.rs:1137:9
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/9062b780b32d2eab060b4432863e085d9504ca5c/library/std/src/panicking.rs:556:5
+   1: core::panicking::panic_fmt
+             at /rustc/9062b780b32d2eab060b4432863e085d9504ca5c/library/core/src/panicking.rs:142:14
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<rustc_hir::def::DefKind, rustc_hir::def::DefKind>
+   4: <rustc_middle::ty::sty::ProjectionTy>::trait_ref
+   5: rustc_trait_selection::traits::project::normalize_to_error
+   6: rustc_trait_selection::traits::project::opt_normalize_projection_type
+   7: <rustc_infer::infer::InferCtxt>::commit_if_ok::<rustc_trait_selection::traits::project::ProjectAndUnifyResult, rustc_infer::traits::project::MismatchedProjectionTypes, rustc_trait_selection::traits::project::poly_project_and_unify_type::{closure#0}>
+   8: <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation
+   9: <rustc_data_structures::obligation_forest::ObligationForest<rustc_trait_selection::traits::fulfill::PendingPredicateObligation>>::process_obligations::<rustc_trait_selection::traits::fulfill::FulfillProcessor, rustc_data_structures::obligation_forest::Outcome<rustc_trait_selection::traits::fulfill::PendingPredicateObligation, rustc_infer::traits::FulfillmentErrorCode>>
+  10: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  11: <rustc_typeck::check::fn_ctxt::FnCtxt>::check_argument_types
+  12: <rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  13: <rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+  14: <rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  15: <rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+  16: <rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  17: rustc_typeck::check::check::check_fn
+  18: <rustc_infer::infer::InferCtxtBuilder>::enter::<&rustc_middle::ty::context::TypeckResults, <rustc_typeck::check::inherited::InheritedBuilder>::enter<rustc_typeck::check::typeck_with_fallback<rustc_typeck::check::typeck::{closure#0}>::{closure#1}, &rustc_middle::ty::context::TypeckResults>::{closure#0}>
+  19: rustc_typeck::check::typeck
+  20: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId, &rustc_middle::ty::context::TypeckResults>
+  21: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, &rustc_middle::ty::context::TypeckResults>>
+  22: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  23: <rustc_middle::ty::context::TyCtxt>::typeck_opt_const_arg
+  24: rustc_mir_build::thir::cx::thir_body
+  25: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, core::result::Result<(&rustc_data_structures::steal::Steal<rustc_middle::thir::Thir>, rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed>>
+  26: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, core::result::Result<(&rustc_data_structures::steal::Steal<rustc_middle::thir::Thir>, rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed>>>
+  27: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::thir_body
+  28: rustc_mir_build::build::mir_built
+  29: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>
+  30: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>>
+  31: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_built
+  32: rustc_mir_transform::check_unsafety::unsafety_check_result
+  33: <rustc_mir_transform::check_unsafety::provide::{closure#0} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+  34: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId, &rustc_middle::mir::query::UnsafetyCheckResult>
+  35: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, &rustc_middle::mir::query::UnsafetyCheckResult>>
+  36: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::unsafety_check_result
+  37: rustc_mir_transform::mir_const
+  38: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>
+  39: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>>
+  40: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_const
+  41: rustc_mir_transform::mir_promoted
+  42: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, (&rustc_data_structures::steal::Steal<rustc_middle::mir::Body>, &rustc_data_structures::steal::Steal<rustc_index::vec::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body>>)>
+  43: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, (&rustc_data_structures::steal::Steal<rustc_middle::mir::Body>, &rustc_data_structures::steal::Steal<rustc_index::vec::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body>>)>>
+  44: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_promoted
+  45: rustc_borrowck::mir_borrowck
+  46: <rustc_borrowck::provide::{closure#0} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId)>>::call_once
+  47: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId, &rustc_middle::mir::query::BorrowCheckResult>
+  48: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, &rustc_middle::mir::query::BorrowCheckResult>>
+  49: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_borrowck
+  50: rustc_typeck::collect::type_of::type_of
+  51: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId, rustc_middle::ty::Ty>
+  52: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::type_of, rustc_query_impl::plumbing::QueryCtxt>
+  53: rustc_typeck::check::check::check_item_type
+  54: rustc_typeck::check::check::check_mod_item_types
+  55: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, rustc_span::def_id::LocalDefId, ()>
+  56: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalDefId, ()>>
+  57: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::check_mod_item_types, rustc_query_impl::plumbing::QueryCtxt>
+  58: <rustc_middle::hir::map::Map>::for_each_module::<rustc_typeck::check_crate::{closure#6}::{closure#0}>
+  59: rustc_typeck::check_crate
+  60: rustc_interface::passes::analysis
+  61: <rustc_query_system::dep_graph::graph::DepGraph<rustc_middle::dep_graph::dep_node::DepKind>>::with_task::<rustc_middle::ty::context::TyCtxt, (), core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+  62: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<(), core::result::Result<(), rustc_errors::ErrorGuaranteed>>>
+  63: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  64: <rustc_interface::passes::QueryContext>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}::{closure#3}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+  65: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>
+  66: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.66.0-nightly (9062b780b 2022-09-21) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type lib -C embed-bitcode=no -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck] type-checking `<impl at src/lib.rs:20:1: 20:17>::foo`
+#1 [thir_body] building THIR for `<impl at src/lib.rs:20:1: 20:17>::foo`
+#2 [mir_built] building MIR for `<impl at src/lib.rs:20:1: 20:17>::foo`
+#3 [unsafety_check_result] unsafety-checking `<impl at src/lib.rs:20:1: 20:17>::foo`
+#4 [mir_const] processing MIR for `<impl at src/lib.rs:20:1: 20:17>::foo`
+#5 [mir_promoted] processing `<impl at src/lib.rs:20:1: 20:17>::foo`
+#6 [mir_borrowck] borrow-checking `<impl at src/lib.rs:20:1: 20:17>::foo`
+#7 [type_of] computing type of `<impl at src/lib.rs:20:1: 20:17>::foo::{opaque#0}`
+#8 [check_mod_item_types] checking item types in top-level module
+#9 [analysis] running analysis passes on this crate
+end of query stack
+error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+
+error: internal compiler error: VecMap([(OpaqueTypeKey { def_id: DefId(0:15 ~ ice_2022_09_22[569e]::{impl#2}::foo::{opaque#0}), substs: [] }, OpaqueTypeDecl { hidden_type: OpaqueHiddenType { span: src/lib.rs:21:22: 21:33 (#6), ty: _ }, origin: FnReturn(DefId(0:14 ~ ice_2022_09_22[569e]::{impl#2}::foo)) })])
+  |
+  = note: delayed at compiler/rustc_infer/src/infer/opaque_types/table.rs:50:26
+
+Bug Labels:
+C-bug, F-return_position_impl_trait_in_trait, I-ICE, T-compiler, glacier

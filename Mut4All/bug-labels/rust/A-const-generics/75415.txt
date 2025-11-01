@@ -1,0 +1,90 @@
+Issue Title:
+[nightly] ICE when using GATs with const generics · Issue #75415 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(generic_associated_types)]
+#![feature(const_generics)]
+
+pub trait Buffer<const T: usize> {}
+
+pub trait Device {
+    type Buffer<const T: usize>: Buffer<{ T }>;
+
+    fn create_buffer<const T: usize>(&self) -> Option<Self::Buffer<{ T }>>;
+}
+
+fn main() {}
+
+Bug Trace:
+error: internal compiler error: src/librustc_typeck/collect/type_of.rs:82:26: unexpected const parent path Ty(Ty { hir_id: HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 13 }, kind: Path(TypeRelative(Ty { hir_id: HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 15 }, kind: Path(Resolved(None, Path { span: gfx/src/device.rs:15:66: 15:91 (#0), res: SelfTy(Some(DefId(0:30 ~ gfx[85a5]::device[0]::Device[0])), None), segments: [PathSegment { ident: Self#0, hir_id: Some(HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 14 }), res: Some(SelfTy(Some(DefId(0:30 ~ gfx[85a5]::device[0]::Device[0])), None)), args: None, infer_args: false }] })), span: gfx/src/device.rs:15:66: 15:91 (#0) }, PathSegment { ident: Buffer#0, hir_id: Some(HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 23 }), res: Some(Err), args: Some(GenericArgs { args: [Type(Ty { hir_id: HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 16 }, kind: Path(Resolved(None, Path { span: gfx/src/device.rs:15:79: 15:80 (#0), res: Def(TyParam, DefId(0:38 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]::T[0])), segments: [PathSegment { ident: T#0, hir_id: Some(HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 17 }), res: Some(Def(TyParam, DefId(0:38 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]::T[0]))), args: None, infer_args: false }] })), span: gfx/src/device.rs:15:79: 15:80 (#0) }), Const(ConstArg { value: AnonConst { hir_id: HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 18 }, body: BodyId { hir_id: HirId { owner: DefId(0:37 ~ gfx[85a5]::device[0]::Device[0]::create_buffer[0]), local_id: 22 } } }, span: gfx/src/device.rs:15:82: 15:90 (#0) })], bindings: [], parenthesized: false }), infer_args: false })), span: gfx/src/device.rs:15:66: 15:91 (#0) })
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/6c8927b0cf80ceee19386026cf9d7fd4fd9d486f/src/libstd/macros.rs:13:23
+stack backtrace:
+   0: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+   1: core::fmt::write
+   2: std::io::Write::write_fmt
+   3: std::panicking::default_hook::{{closure}}
+   4: std::panicking::default_hook
+   5: rustc_driver::report_ice
+   6: std::panicking::rust_panic_with_hook
+   7: std::panicking::begin_panic
+   8: rustc_errors::HandlerInner::span_bug
+   9: rustc_errors::Handler::span_bug
+  10: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+  11: rustc_middle::ty::context::tls::with_opt::{{closure}}
+  12: rustc_middle::ty::context::tls::with_opt
+  13: rustc_middle::util::bug::opt_span_bug_fmt
+  14: rustc_middle::util::bug::span_bug_fmt
+  15: rustc_typeck::collect::type_of::opt_const_param_of
+  16: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::opt_const_param_of>::compute
+  17: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  18: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  19: rustc_data_structures::stack::ensure_sufficient_stack
+  20: rustc_query_system::query::plumbing::get_query_impl
+  21: rustc_typeck::check::typeck
+  22: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck>::compute
+  23: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  24: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  25: rustc_data_structures::stack::ensure_sufficient_stack
+  26: rustc_query_system::query::plumbing::get_query_impl
+  27: rustc_query_system::query::plumbing::ensure_query_impl
+  28: rustc_typeck::check::typeck_item_bodies
+  29: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck_item_bodies>::compute
+  30: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: rustc_typeck::check_crate
+  35: rustc_interface::passes::analysis
+  36: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  37: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  38: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  39: rustc_query_system::query::plumbing::get_query_impl
+  40: rustc_middle::ty::context::tls::enter_global
+  41: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  42: rustc_span::with_source_map
+  43: rustc_interface::interface::create_compiler_and_run
+  44: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.47.0-nightly (6c8927b0c 2020-07-26) running on x86_64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [opt_const_param_of] computing the optional const parameter of `device::Device::create_buffer::{{constant}}#0`
+#1 [typeck] type-checking `device::Device::create_buffer::{{constant}}#0`
+#2 [typeck_item_bodies] type-checking all item bodies
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-GATs, A-const-generics, C-bug, F-generic_associated_types, I-ICE, T-compiler, glacier, requires-nightly

@@ -1,0 +1,72 @@
+Issue Title:
+[Interp] Clang crash on valid code with new constant interpreter
+
+Source Code & Bug Trace:
+namespace DeclRefs {
+  struct A{ int m; const int &f = m; };
+  struct B {
+    A a = A{100};
+  };
+  constexpr B b = B{};
+  static_assert(b.a.f == 100, "");
+}
+
+clang++: /root/llvm-project/llvm/include/llvm/Support/Casting.h:566: decltype(auto) llvm::cast(const From&) [with To = clang::RecordType; From = clang::QualType]: Assertion `isa<To>(Val) && "cast<Ty>() argument of incompatible type!"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++14 -fexperimental-new-constant-interpreter <source>
+1.	<source>:8:1: current parser token '}'
+2.	<source>:1:1: parsing namespace 'DeclRefs'
+ #0 0x0000000003a30b48 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3a30b48)
+ #1 0x0000000003a2e82c llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3a2e82c)
+ #2 0x00000000039745c8 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x00007f0dae442520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x00007f0dae4969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x00007f0dae442476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x00007f0dae4287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x00007f0dae42871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x00007f0dae439e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x0000000003ed224e decltype(auto) llvm::cast<clang::RecordType, clang::QualType>(clang::QualType const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3ed224e)
+#10 0x0000000007712a7b CheckEvaluationResult(CheckEvaluationResultKind, (anonymous namespace)::EvalInfo&, clang::SourceLocation, clang::QualType, clang::APValue const&, clang::Expr::ConstantExprKind, clang::FieldDecl const*, llvm::SmallPtrSet<clang::MaterializeTemporaryExpr const*, 8u>&) ExprConstant.cpp:0:0
+#11 0x000000000771422a CheckConstantExpression((anonymous namespace)::EvalInfo&, clang::SourceLocation, clang::QualType, clang::APValue const&, clang::Expr::ConstantExprKind) ExprConstant.cpp:0:0
+#12 0x000000000772ee22 EvaluateAsRValue((anonymous namespace)::EvalInfo&, clang::Expr const*, clang::APValue&) ExprConstant.cpp:0:0
+#13 0x0000000007730fb1 clang::Expr::EvaluateAsRValue(clang::Expr::EvalResult&, clang::ASTContext const&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x7730fb1)
+#14 0x00000000065d20c7 GetExprRange(clang::ASTContext&, clang::Expr const*, unsigned int, bool, bool) SemaChecking.cpp:0:0
+#15 0x00000000065e5074 CheckTautologicalComparison(clang::Sema&, clang::BinaryOperator*, clang::Expr*, clang::Expr*, llvm::APSInt const&, bool) SemaChecking.cpp:0:0
+#16 0x00000000065fefce AnalyzeImplicitConversions(clang::Sema&, clang::Expr*, clang::SourceLocation, bool) (.constprop.0) SemaChecking.cpp:0:0
+#17 0x00000000065ffbc5 clang::Sema::CheckCompletedExpr(clang::Expr*, clang::SourceLocation, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x65ffbc5)
+#18 0x0000000006abb5ac clang::Sema::ActOnFinishFullExpr(clang::Expr*, clang::SourceLocation, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6abb5ac)
+#19 0x000000000680c346 clang::Sema::BuildStaticAssertDeclaration(clang::SourceLocation, clang::Expr*, clang::Expr*, clang::SourceLocation, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x680c346)
+#20 0x0000000006412ede clang::Parser::ParseStaticAssertDeclaration(clang::SourceLocation&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6412ede)
+#21 0x00000000064025c9 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x64025c9)
+#22 0x00000000063be341 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63be341)
+#23 0x000000000641b7d4 clang::Parser::ParseInnerNamespace(llvm::SmallVector<clang::Parser::InnerNamespaceInfo, 4u> const&, unsigned int, clang::SourceLocation&, clang::ParsedAttributes&, clang::BalancedDelimiterTracker&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x641b7d4)
+#24 0x000000000641deca clang::Parser::ParseNamespace(clang::DeclaratorContext, clang::SourceLocation&, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x641deca)
+#25 0x0000000006402687 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::ParsedAttributes&, clang::SourceLocation*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6402687)
+#26 0x00000000063be341 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63be341)
+#27 0x00000000063bf1df clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63bf1df)
+#28 0x00000000063bf6a0 clang::Parser::ParseFirstTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63bf6a0)
+#29 0x00000000063b29ac clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x63b29ac)
+#30 0x000000000431c728 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x431c728)
+#31 0x00000000045a3859 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x45a3859)
+#32 0x000000000452952e clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x452952e)
+#33 0x000000000468bd5e clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x468bd5e)
+#34 0x0000000000c700b5 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc700b5)
+#35 0x0000000000c692da ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#36 0x000000000435fec9 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#37 0x0000000003974a74 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3974a74)
+#38 0x00000000043604bf clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#39 0x0000000004325f05 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4325f05)
+#40 0x000000000432696d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x432696d)
+#41 0x000000000432e385 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x432e385)
+#42 0x0000000000c6d485 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc6d485)
+#43 0x0000000000b45944 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xb45944)
+#44 0x00007f0dae429d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#45 0x00007f0dae429e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#46 0x0000000000c68d8e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc68d8e)
+clang++: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Compiler returned: 134
+
+
+Bug Labels:
+clang:frontend, crash

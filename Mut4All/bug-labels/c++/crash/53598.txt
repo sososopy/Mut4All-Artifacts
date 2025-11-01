@@ -1,0 +1,96 @@
+Issue Title:
+[clang] crash when parsing function body
+
+Source Code & Bug Trace:
+struct Vec {
+  double x;
+};
+
+template <typename T>
+struct Foo {
+  int bar() {
+    auto& [min_x] = min;
+    return min_x;
+  }
+
+  Vec min;
+};
+
+# Crash reproducer for clang version 15.0.0 (https://github.com/llvm/llvm-project.git fc604825ec0a6ed164e9d047ca1489eb7f0fbf39)
+# Driver args: "--driver-mode=g++" "-c" "/home/user/dev/tmp/source/main.cpp" "-std=c++20"
+# Original command:  "/tmp/test-clang-ast-crash/build/bin/clang-13" "-cc1" "-triple" "x86_64-unknown-linux-gnu" "-emit-obj" "-mrelax-all" "--mrelax-relocations" "-disable-free" "-clear-ast-before-backend" "-main-file-name" "main.cpp" "-mrelocation-model" "static" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-mllvm" "-treat-scalable-fixed-error-as-warning" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/tmp/test-clang-ast-crash/build" "-resource-dir" "/tmp/test-clang-ast-crash/build/lib/clang/15.0.0" "-internal-isystem" "/usr/lib64/gcc/x86_64-pc-linux-gnu/11.1.0/../../../../include/c++/11.1.0" "-internal-isystem" "/usr/lib64/gcc/x86_64-pc-linux-gnu/11.1.0/../../../../include/c++/11.1.0/x86_64-pc-linux-gnu" "-internal-isystem" "/usr/lib64/gcc/x86_64-pc-linux-gnu/11.1.0/../../../../include/c++/11.1.0/backward" "-internal-isystem" "/tmp/test-clang-ast-crash/build/lib/clang/15.0.0/include" "-internal-isystem" "/usr/local/include" "-internal-isystem" "/usr/lib64/gcc/x86_64-pc-linux-gnu/11.1.0/../../../../x86_64-pc-linux-gnu/include" "-internal-externc-isystem" "/include" "-internal-externc-isystem" "/usr/include" "-std=c++20" "-fdeprecated-macro" "-fdebug-compilation-dir=/tmp/test-clang-ast-crash/build" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fno-implicit-modules" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-o" "main.o" "-x" "c++" "/home/user/dev/tmp/source/main.cpp"
+ "/tmp/test-clang-ast-crash/build/bin/clang-13" "-cc1" "-triple" "x86_64-unknown-linux-gnu" "-emit-obj" "-mrelax-all" "--mrelax-relocations" "-disable-free" "-clear-ast-before-backend" "-main-file-name" "main.cpp" "-mrelocation-model" "static" "-mframe-pointer=all" "-fmath-errno" "-ffp-contract=on" "-fno-rounding-math" "-mconstructor-aliases" "-funwind-tables=2" "-target-cpu" "x86-64" "-tune-cpu" "generic" "-mllvm" "-treat-scalable-fixed-error-as-warning" "-debugger-tuning=gdb" "-fcoverage-compilation-dir=/tmp/test-clang-ast-crash/build" "-std=c++20" "-fdeprecated-macro" "-fdebug-compilation-dir=/tmp/test-clang-ast-crash/build" "-ferror-limit" "19" "-fgnuc-version=4.2.1" "-fno-implicit-modules" "-fcxx-exceptions" "-fexceptions" "-fcolor-diagnostics" "-faddrsig" "-D__GCC_HAVE_DWARF2_CFI_ASM=1" "-x" "c++" "main-4e7a5b.cpp"
+
+
+clang++: /tmp/test-clang-ast-crash/clang/lib/AST/ExprConstant.cpp:3314: bool evaluateVarDeclInit((anonymous namespace)::EvalInfo &, const clang::Expr *, const clang::VarDecl *, (anonymous namespace)::CallStackFrame *, unsigned int, clang::APValue *&): Assertion `!VD->mightBeUsableInConstantExpressions(Info.Ctx)' failed.
+PLEASE submit a bug report to https://bugs.llvm.org/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: ./bin/clang++ -c /home/user/dev/tmp/source/main.cpp -std=c++20
+1.      /home/user/dev/tmp/source/main.cpp:121:17: current parser token ';'
+2.      /home/user/dev/tmp/source/main.cpp:118:1: parsing struct/union/class body 'Foo'
+3.      /home/user/dev/tmp/source/main.cpp:119:13: parsing function body 'Foo::bar'
+4.      /home/user/dev/tmp/source/main.cpp:119:13: in compound statement ('{}')
+ #0 0x0000000001d47af3 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (./bin/clang+++0x1d47af3)
+ #1 0x0000000001d4589e llvm::sys::RunSignalHandlers() (./bin/clang+++0x1d4589e)
+ #2 0x0000000001cc2fe3 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) CrashRecoveryContext.cpp:0:0
+ #3 0x0000000001cc318e CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #4 0x00007fe9b9a1a870 __restore_rt sigaction.c:0:0
+ #5 0x00007fe9b9461d22 raise (/usr/lib/libc.so.6+0x3cd22)
+ #6 0x00007fe9b944b862 abort (/usr/lib/libc.so.6+0x26862)
+ #7 0x00007fe9b944b747 _nl_load_domain.cold loadmsgcat.c:0:0
+ #8 0x00007fe9b945a616 (/usr/lib/libc.so.6+0x35616)
+ #9 0x00000000045d73d3 (./bin/clang+++0x45d73d3)
+#10 0x000000000462e33b (anonymous namespace)::LValueExprEvaluator::VisitVarDecl(clang::Expr const*, clang::VarDecl const*) ExprConstant.cpp:0:0
+#11 0x00000000045d1f65 (anonymous namespace)::LValueExprEvaluator::VisitMemberExpr(clang::MemberExpr const*) ExprConstant.cpp:0:0
+#12 0x00000000045c2f91 EvaluateLValue(clang::Expr const*, (anonymous namespace)::LValue&, (anonymous namespace)::EvalInfo&, bool) ExprConstant.cpp:0:0
+#13 0x00000000045c92a0 Evaluate(clang::APValue&, (anonymous namespace)::EvalInfo&, clang::Expr const*) ExprConstant.cpp:0:0
+#14 0x00000000045c6561 EvaluateAsRValue((anonymous namespace)::EvalInfo&, clang::Expr const*, clang::APValue&) ExprConstant.cpp:0:0
+#15 0x00000000045c1bd7 clang::Expr::EvaluateAsRValue(clang::Expr::EvalResult&, clang::ASTContext const&, bool) const (./bin/clang+++0x45c1bd7)
+#16 0x00000000045c2976 clang::Expr::EvaluateAsFloat(llvm::APFloat&, clang::ASTContext const&, clang::Expr::SideEffectsKind, bool) const (./bin/clang+++0x45c2976)
+#17 0x0000000003a4a00f DiagnoseFloatingImpCast(clang::Sema&, clang::Expr*, clang::QualType, clang::SourceLocation) SemaChecking.cpp:0:0
+#18 0x0000000003a4875e CheckImplicitConversion(clang::Sema&, clang::Expr*, clang::QualType, clang::SourceLocation, bool*, bool) SemaChecking.cpp:0:0
+#19 0x0000000003a3d0da AnalyzeImplicitConversions(clang::Sema&, clang::Expr*, clang::SourceLocation, bool) SemaChecking.cpp:0:0
+#20 0x0000000003a400b0 clang::Sema::CheckCompletedExpr(clang::Expr*, clang::SourceLocation, bool) (./bin/clang+++0x3a400b0)
+#21 0x0000000003d72c86 clang::Sema::ActOnFinishFullExpr(clang::Expr*, clang::SourceLocation, bool, bool) (./bin/clang+++0x3d72c86)
+#22 0x0000000003f9d593 clang::Sema::BuildReturnStmt(clang::SourceLocation, clang::Expr*, bool) (./bin/clang+++0x3f9d593)
+#23 0x0000000003f9ca02 clang::Sema::ActOnReturnStmt(clang::SourceLocation, clang::Expr*, clang::Scope*) (./bin/clang+++0x3f9ca02)
+#24 0x0000000003989388 clang::Parser::ParseReturnStatement() (./bin/clang+++0x3989388)
+#25 0x00000000039825c0 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributesWithRange&) (./bin/clang+++0x39825c0)
+#26 0x0000000003981dd3 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (./bin/clang+++0x3981dd3)
+#27 0x000000000398b611 clang::Parser::ParseCompoundStatementBody(bool) (./bin/clang+++0x398b611)
+#28 0x000000000398c4b0 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (./bin/clang+++0x398c4b0)
+#29 0x00000000038dad0f clang::Parser::ParseLexedMethodDef(clang::Parser::LexedMethod&) (./bin/clang+++0x38dad0f)
+#30 0x00000000038d915a clang::Parser::ParseLexedMethodDefs(clang::Parser::ParsingClass&) (./bin/clang+++0x38d915a)
+#31 0x000000000390f47a clang::Parser::ParseCXXMemberSpecification(clang::SourceLocation, clang::SourceLocation, clang::ParsedAttributesWithRange&, unsigned int, clang::Decl*) (./bin/clang+++0x390f47a)
+#32 0x000000000390c6c5 clang::Parser::ParseClassSpecifier(clang::tok::TokenKind, clang::SourceLocation, clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, bool, clang::Parser::DeclSpecContext, clang::ParsedAttributesWithRange&) (./bin/clang+++0x390c6c5)
+#33 0x00000000038e98aa clang::Parser::ParseDeclarationSpecifiers(clang::DeclSpec&, clang::Parser::ParsedTemplateInfo const&, clang::AccessSpecifier, clang::Parser::DeclSpecContext, clang::Parser::LateParsedAttrList*) (./bin/clang+++0x38e98aa)
+#34 0x0000000003994aa5 clang::Parser::ParseSingleDeclarationAfterTemplate(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::ParsingDeclRAIIObject&, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (./bin/clang+++0x3994aa5)
+#35 0x0000000003993bc7 clang::Parser::ParseTemplateDeclarationOrSpecialization(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (./bin/clang+++0x3993bc7)
+#36 0x000000000399346e clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) (./bin/clang+++0x399346e)
+#37 0x00000000038e87e5 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributesWithRange&, clang::SourceLocation*) (./bin/clang+++0x38e87e5)
+#38 0x00000000038cbf9a clang::Parser::ParseExternalDeclaration(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (./bin/clang+++0x38cbf9a)
+#39 0x00000000038ca7a8 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, bool) (./bin/clang+++0x38ca7a8)
+#40 0x00000000038c4bbd clang::ParseAST(clang::Sema&, bool, bool) (./bin/clang+++0x38c4bbd)
+#41 0x00000000026dcb00 clang::FrontendAction::Execute() (./bin/clang+++0x26dcb00)
+#42 0x0000000002654d8f clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (./bin/clang+++0x2654d8f)
+#43 0x000000000279d7e3 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (./bin/clang+++0x279d7e3)
+#44 0x0000000000a12e81 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (./bin/clang+++0xa12e81)
+#45 0x0000000000a10880 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) driver.cpp:0:0
+#46 0x00000000024e08f2 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::$_1>(long) Job.cpp:0:0
+#47 0x0000000001cc2ef7 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (./bin/clang+++0x1cc2ef7)
+#48 0x00000000024e0330 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const (./bin/clang+++0x24e0330)
+#49 0x00000000024a73e8 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const (./bin/clang+++0x24a73e8)
+#50 0x00000000024a76b7 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const (./bin/clang+++0x24a76b7)
+#51 0x00000000024c18e1 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) (./bin/clang+++0x24c18e1)
+#52 0x0000000000a10131 main (./bin/clang+++0xa10131)
+#53 0x00007fe9b944cb25 __libc_start_main (/usr/lib/libc.so.6+0x27b25)
+#54 0x0000000000a0d61e _start (./bin/clang+++0xa0d61e)
+clang-13: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 15.0.0 (https://github.com/llvm/llvm-project.git fc604825ec0a6ed164e9d047ca1489eb7f0fbf39)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /tmp/test-clang-ast-crash/build/./bin
+
+
+Bug Labels:
+clang:frontend, crash

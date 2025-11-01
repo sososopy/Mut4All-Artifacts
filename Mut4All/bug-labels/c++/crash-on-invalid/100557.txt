@@ -1,0 +1,101 @@
+Issue Title:
+Clang crashes on incorrect code with -std=c++20
+
+Source Code & Bug Trace:
+#include <iostream>
+#include <variant>
+#include <vector>
+#include <tuple>
+#include <optional>
+
+struct X { std::variant< std::variant< int, std::string >, int > name; };
+
+using var_array = std::vector<X>;
+using var_tuple = std::tuple<int, int>;
+
+void f( const var_array& );
+void f( const var_tuple& );
+void f( const X& );
+
+int main() {
+    f( std::make_tuple<int, double>( 0, "test" ) );
+}
+
+void f( const var_array& ) { }
+void f( const var_tuple& ) { }
+void f( const X& ) { }
+
+clang++ -std=c++20  outputs/full_run/g++/79101.fuzz
+
+
+outputs/full_run/g++/79101.fuzz:18:8: error: no matching function for call to 'make_tuple'
+   18 |     f( std::make_tuple<int, double>( 0, "test" ) );
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /home/clang/bin/clang-17 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -mrelax-all -dumpdir /tmp/out1721368079.2865567- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name 79101.fuzz -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fcoverage-compilation-dir=/home/Fuzz4All -resource-dir /home/clang/lib/clang/17 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/9/../../../../include/x86_64-linux-gnu/c++/9 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/9/../../../../include/c++/9/backward -internal-isystem /home/clang/lib/clang/17/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/9/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++23 -fdeprecated-macro -fdebug-compilation-dir=/home/Fuzz4All -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/79101-1ccafe.o -x c++ outputs/full_run/g++/79101.fuzz
+1.      outputs/full_run/g++/79101.fuzz:18:48: current parser token ')'
+2.      outputs/full_run/g++/79101.fuzz:17:12: parsing function body 'main'
+3.      outputs/full_run/g++/79101.fuzz:17:12: in compound statement ('{}')
+ #0 0x00005623391118b8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/home/clang/bin/clang-17+0x2bbf8b8)
+ #1 0x000056233910f86e llvm::sys::RunSignalHandlers() (/home/clang/bin/clang-17+0x2bbd86e)
+ #2 0x0000562339111f48 SignalHandler(int) Signals.cpp:0:0
+ #3 0x00007f61b3e58520 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x000056233b5788d6 clang::OverloadCandidateSet::NoteCandidates(clang::Sema&, llvm::ArrayRef<clang::Expr*>, llvm::ArrayRef<clang::OverloadCandidate*>, llvm::StringRef, clang::SourceLocation) (/home/clang/bin/clang-17+0x50268d6)
+ #5 0x000056233b58e87f clang::OverloadCandidateSet::NoteCandidates(std::pair<clang::SourceLocation, clang::PartialDiagnostic>, clang::Sema&, clang::OverloadCandidateDisplayKind, llvm::ArrayRef<clang::Expr*>, llvm::StringRef, clang::SourceLocation, llvm::function_ref<bool (clang::OverloadCandidate&)>) (/home/clang/bin/clang-17+0x503c87f)
+ #6 0x000056233b5943df FinishOverloadedCallExpr(clang::Sema&, clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, clang::OverloadCandidateSet*, clang::OverloadCandidate**, clang::OverloadingResult, bool) SemaOverload.cpp:0:0
+ #7 0x000056233b593d3e clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/home/clang/bin/clang-17+0x5041d3e)
+ #8 0x000056233b2a7be8 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/home/clang/bin/clang-17+0x4d55be8)
+ #9 0x000056233b2bf5da clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/home/clang/bin/clang-17+0x4d6d5da)
+#10 0x000056233af65ef7 clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) (/home/clang/bin/clang-17+0x4a13ef7)
+#11 0x000056233af67442 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/home/clang/bin/clang-17+0x4a15442)
+#12 0x000056233af69812 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/home/clang/bin/clang-17+0x4a17812)
+#13 0x000056233af631df clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/home/clang/bin/clang-17+0x4a111df)
+#14 0x000056233af6edfa clang::Parser::ParseExpressionList(llvm::SmallVectorImpl<clang::Expr*>&, llvm::function_ref<void ()>, bool, bool) (/home/clang/bin/clang-17+0x4a1cdfa)
+#15 0x000056233af65dde clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) (/home/clang/bin/clang-17+0x4a13dde)
+#16 0x000056233af67442 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) (/home/clang/bin/clang-17+0x4a15442)
+#17 0x000056233af631df clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) (/home/clang/bin/clang-17+0x4a111df)
+#18 0x000056233af630e9 clang::Parser::ParseExpression(clang::Parser::TypeCastState) (/home/clang/bin/clang-17+0x4a110e9)
+#19 0x000056233afc1741 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) (/home/clang/bin/clang-17+0x4a6f741)
+#20 0x000056233afbfcb7 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) (/home/clang/bin/clang-17+0x4a6dcb7)
+#21 0x000056233afbf66f clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) (/home/clang/bin/clang-17+0x4a6d66f)
+#22 0x000056233afc79f1 clang::Parser::ParseCompoundStatementBody(bool) (/home/clang/bin/clang-17+0x4a759f1)
+#23 0x000056233afc8944 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/home/clang/bin/clang-17+0x4a76944)
+#24 0x000056233af1b01e clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/home/clang/bin/clang-17+0x49c901e)
+#25 0x000056233af3386f clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/home/clang/bin/clang-17+0x49e186f)
+#26 0x000056233af19c7c clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/home/clang/bin/clang-17+0x49c7c7c)
+#27 0x000056233af196c1 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/home/clang/bin/clang-17+0x49c76c1)
+#28 0x000056233af189c1 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) (/home/clang/bin/clang-17+0x49c69c1)
+#29 0x000056233af16ef4 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/home/clang/bin/clang-17+0x49c4ef4)
+#30 0x000056233af12f0e clang::ParseAST(clang::Sema&, bool, bool) (/home/clang/bin/clang-17+0x49c0f0e)
+#31 0x0000562339977b17 clang::FrontendAction::Execute() (/home/clang/bin/clang-17+0x3425b17)
+#32 0x00005623398eb024 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/home/clang/bin/clang-17+0x3399024)
+#33 0x0000562339a2efdf clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/home/clang/bin/clang-17+0x34dcfdf)
+#34 0x0000562337331342 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/home/clang/bin/clang-17+0xddf342)
+#35 0x000056233732edf1 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#36 0x000056233732dd9e clang_main(int, char**, llvm::ToolContext const&) (/home/clang/bin/clang-17+0xddbd9e)
+#37 0x000056233733c061 main (/home/clang/bin/clang-17+0xdea061)
+#38 0x00007f61b3e3fd90 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#39 0x00007f61b3e3fe40 __libc_start_main (/usr/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#40 0x000056233732b515 _start (/home/clang/bin/clang-17+0xdd9515)
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 17.0.6 (https://github.com/llvm/llvm-project 6009708b4367171ccdbf4b5905cb6a803753fe18)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /home/clang/bin
+clang++: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/79101-cf9c5d.cpp
+clang++: note: diagnostic msg: /tmp/79101-cf9c5d.sh
+clang++: note: diagnostic msg:
+
+********************
+
+
+
+Bug Labels:
+c++20, clang:frontend, crash-on-invalid

@@ -1,0 +1,102 @@
+Issue Title:
+[clang] [frontend] crash when instantiating a parameter pack in a lambda constraint
+
+Source Code & Bug Trace:
+#include <concepts>
+
+template <typename... Ts>
+struct Overloaded : Ts... {
+    using Ts::operator()...;
+};
+
+template <typename... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
+
+template <typename... Ts>
+auto foo() {
+    return Overloaded{
+        [](std::same_as<Ts> auto) {} ...
+    };
+}
+
+int main() {
+    foo<int, double*>()(42);
+    return 0;
+}
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: clang++ -std=c++20 main.cpp -c
+1.      main.cpp:19:27: current parser token ')'
+2.      main.cpp:18:12: parsing function body 'main'
+3.      main.cpp:18:12: in compound statement ('{}')
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  clang++   0x000055b65c67da28 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 40
+1  clang++   0x000055b65c67b9ee llvm::sys::RunSignalHandlers() + 238
+2  clang++   0x000055b65c5fbee9
+3  libc.so.6 0x00007fe1ad93f520
+4  clang++   0x000055b65f187d78
+5  clang++   0x000055b65f1413cb
+6  clang++   0x000055b65f13d876
+7  clang++   0x000055b65f13d2ef clang::Expr::EvaluateAsConstantExpr(clang::Expr::EvalResult&, clang::ASTContext const&, clang::Expr::ConstantExprKind) const + 991
+8  clang++   0x000055b65e6617b3
+9  clang++   0x000055b65e65ba4f
+10 clang++   0x000055b65e65b7e0 clang::Sema::CheckConstraintSatisfaction(clang::NamedDecl const*, llvm::ArrayRef<clang::Expr const*>, llvm::SmallVectorImpl<clang::Expr*>&, clang::MultiLevelTemplateArgumentList const&, clang::SourceRange, clang::ConstraintSatisfaction&) + 624
+11 clang++   0x000055b65e65e79f clang::Sema::CheckInstantiatedFunctionTemplateConstraints(clang::SourceLocation, clang::FunctionDecl*, llvm::ArrayRef<clang::TemplateArgument>, clang::ConstraintSatisfaction&) + 767
+12 clang++   0x000055b65ec021c6 clang::Sema::FinishTemplateArgumentDeduction(clang::FunctionTemplateDecl*, llvm::SmallVectorImpl<clang::DeducedTemplateArgument>&, unsigned int, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, llvm::SmallVectorImpl<clang::Sema::OriginalCallArg> const*, bool, llvm::function_ref<bool ()>) + 3190
+13 clang++   0x000055b65ec55029
+14 clang++   0x000055b65e5801cf clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 47
+15 clang++   0x000055b65ec03832 clang::Sema::DeduceTemplateArguments(clang::FunctionTemplateDecl*, clang::TemplateArgumentListInfo*, llvm::ArrayRef<clang::Expr*>, clang::FunctionDecl*&, clang::sema::TemplateDeductionInfo&, bool, bool, llvm::function_ref<bool (llvm::ArrayRef<clang::QualType>)>) + 2274
+16 clang++   0x000055b65eadeb69 clang::Sema::AddMethodTemplateCandidate(clang::FunctionTemplateDecl*, clang::DeclAccessPair, clang::CXXRecordDecl*, clang::TemplateArgumentListInfo*, clang::QualType, clang::Expr::Classification, llvm::ArrayRef<clang::Expr*>, clang::OverloadCandidateSet&, bool, bool, clang::OverloadCandidateParamOrder) + 633
+17 clang++   0x000055b65eaf78bf clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) + 1183
+18 clang++   0x000055b65e80499a clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 2938
+19 clang++   0x000055b65e81bf4a clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 58
+20 clang++   0x000055b65e4c23b2 clang::Parser::ParsePostfixExpressionSuffix(clang::ActionResult<clang::Expr*, true>) + 5138
+21 clang++   0x000055b65e4c39c2 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) + 2194
+22 clang++   0x000055b65e4bf68f clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) + 223
+23 clang++   0x000055b65e4bf599 clang::Parser::ParseExpression(clang::Parser::TypeCastState) + 9
+24 clang++   0x000055b65e51d931 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) + 49
+25 clang++   0x000055b65e51bea7 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 1047
+26 clang++   0x000055b65e51b85f clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 303
+27 clang++   0x000055b65e523be1 clang::Parser::ParseCompoundStatementBody(bool) + 1905
+28 clang++   0x000055b65e524b34 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) + 164
+29 clang++   0x000055b65e4778de clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) + 4094
+30 clang++   0x000055b65e48ff1f clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 4863
+31 clang++   0x000055b65e47653c clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) + 988
+32 clang++   0x000055b65e475f81 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 417
+33 clang++   0x000055b65e475281 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) + 1969
+34 clang++   0x000055b65e4737b4 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 1476
+35 clang++   0x000055b65e46f7ce clang::ParseAST(clang::Sema&, bool, bool) + 782
+36 clang++   0x000055b65cedf847 clang::FrontendAction::Execute() + 87
+37 clang++   0x000055b65ce53274 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 788
+38 clang++   0x000055b65cf9688f clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 639
+39 clang++   0x000055b65a89a2b6 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 2582
+40 clang++   0x000055b65a897e81
+41 clang++   0x000055b65ccbf139
+42 clang++   0x000055b65c5fbccc llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) + 140
+43 clang++   0x000055b65ccbeb76 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const + 326
+44 clang++   0x000055b65cc81e7c clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const + 460
+45 clang++   0x000055b65cc8231e clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const + 142
+46 clang++   0x000055b65cc9fab0 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) + 912
+47 clang++   0x000055b65a8974bd clang_main(int, char**, llvm::ToolContext const&) + 11549
+48 clang++   0x000055b65a8a4f11 main + 33
+49 libc.so.6 0x00007fe1ad926d90
+50 libc.so.6 0x00007fe1ad926e40 __libc_start_main + 128
+51 clang++   0x000055b65a894495 _start + 37
+clang++: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+clang version 17.0.6 (https://github.com/llvm/llvm-project 6009708b4367171ccdbf4b5905cb6a803753fe18)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /home/md/bin
+clang++: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/main-568d09.cpp
+clang++: note: diagnostic msg: /tmp/main-568d09.sh
+clang++: note: diagnostic msg:
+
+
+Bug Labels:
+clang:frontend, crash, lambda

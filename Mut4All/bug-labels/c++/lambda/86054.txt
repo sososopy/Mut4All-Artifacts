@@ -1,0 +1,59 @@
+Issue Title:
+[Clang] Crash when using deducing this and references in lambda captures
+
+Source Code & Bug Trace:
+template<typename M>
+struct unique_lock {
+    unique_lock(M&) {}
+};
+int main() {
+    struct mutex {} cursor_guard;
+    [&cursor_guard](this auto self) { 
+        unique_lock a(cursor_guard); 
+    }();
+}
+
+Stack dump:
+0.      Program arguments: /usr/bin/clang-18 -cc1 -triple x86_64-redhat-linux-gnu -emit-obj -mrelax-all -dumpdir a- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name test.cpp -mrelocation-model static -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/home/link1j/Repos/awning -fcoverage-compilation-dir=/home/link1j/Repos/awning -resource-dir /usr/bin/../lib/clang/18 -internal-isystem /usr/bin/../lib/gcc/x86_64-redhat-linux/14/../../../../include/c++/14 -internal-isystem /usr/bin/../lib/gcc/x86_64-redhat-linux/14/../../../../include/c++/14/x86_64-redhat-linux -internal-isystem /usr/bin/../lib/gcc/x86_64-redhat-linux/14/../../../../include/c++/14/backward -internal-isystem /usr/bin/../lib/clang/18/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib/gcc/x86_64-redhat-linux/14/../../../../x86_64-redhat-linux/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++23 -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/test-a127ed.o -x c++ ./test.cpp
+1.      <eof> parser at end of file
+2.      Per-file LLVM IR generation
+3.      ./test.cpp:7:5: Generating code for declaration 'main()::(anonymous class)::operator()'
+ #0 0x00007fb2fe00915a llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/lib64/libLLVM.so.18.1+0x60915a)
+ #1 0x00007fb2fe006904 llvm::sys::RunSignalHandlers() (/lib64/libLLVM.so.18.1+0x606904)
+ #2 0x00007fb2fe0099eb (/lib64/libLLVM.so.18.1+0x6099eb)
+ #3 0x00007fb2fd453710 __restore_rt (/lib64/libc.so.6+0x40710)
+ #4 0x00007fb305e3e735 clang::ASTContext::getTypeInfoImpl(clang::Type const*) const (/lib64/libclang-cpp.so.18.1+0x123e735)
+ #5 0x00007fb305e3f5d4 clang::ASTContext::getTypeInfo(clang::Type const*) const (/lib64/libclang-cpp.so.18.1+0x123f5d4)
+ #6 0x00007fb305e3e740 clang::ASTContext::getTypeInfoImpl(clang::Type const*) const (/lib64/libclang-cpp.so.18.1+0x123e740)
+ #7 0x00007fb305e3f5d4 clang::ASTContext::getTypeInfo(clang::Type const*) const (/lib64/libclang-cpp.so.18.1+0x123f5d4)
+ #8 0x00007fb305e3efd2 clang::ASTContext::getPreferredTypeAlign(clang::Type const*) const (/lib64/libclang-cpp.so.18.1+0x123efd2)
+ #9 0x00007fb305e3dde1 clang::ASTContext::getDeclAlign(clang::Decl const*, bool) const (/lib64/libclang-cpp.so.18.1+0x123dde1)
+#10 0x00007fb306f9147d clang::CodeGen::CodeGenFunction::EmitAutoVarAlloca(clang::VarDecl const&) (/lib64/libclang-cpp.so.18.1+0x239147d)
+#11 0x00007fb306f8e14e clang::CodeGen::CodeGenFunction::EmitVarDecl(clang::VarDecl const&) (/lib64/libclang-cpp.so.18.1+0x238e14e)
+#12 0x00007fb306f8dcf0 clang::CodeGen::CodeGenFunction::EmitDecl(clang::Decl const&) (/lib64/libclang-cpp.so.18.1+0x238dcf0)
+#13 0x00007fb30710b60b clang::CodeGen::CodeGenFunction::EmitSimpleStmt(clang::Stmt const*, llvm::ArrayRef<clang::Attr const*>) (/lib64/libclang-cpp.so.18.1+0x250b60b)
+#14 0x00007fb30710aab3 clang::CodeGen::CodeGenFunction::EmitStmt(clang::Stmt const*, llvm::ArrayRef<clang::Attr const*>) (/lib64/libclang-cpp.so.18.1+0x250aab3)
+#15 0x00007fb307116a7c clang::CodeGen::CodeGenFunction::EmitCompoundStmtWithoutScope(clang::CompoundStmt const&, bool, clang::CodeGen::AggValueSlot) (/lib64/libclang-cpp.so.18.1+0x2516a7c)
+#16 0x00007fb307173ca3 clang::CodeGen::CodeGenFunction::EmitFunctionBody(clang::Stmt const*) (/lib64/libclang-cpp.so.18.1+0x2573ca3)
+#17 0x00007fb30717494c clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) (/lib64/libclang-cpp.so.18.1+0x257494c)
+#18 0x00007fb30719632c clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/lib64/libclang-cpp.so.18.1+0x259632c)
+#19 0x00007fb30718f966 clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/lib64/libclang-cpp.so.18.1+0x258f966)
+#20 0x00007fb307182683 clang::CodeGen::CodeGenModule::EmitDeferred() (/lib64/libclang-cpp.so.18.1+0x2582683)
+#21 0x00007fb30718021e clang::CodeGen::CodeGenModule::Release() (/lib64/libclang-cpp.so.18.1+0x258021e)
+#22 0x00007fb30722e5bc (/lib64/libclang-cpp.so.18.1+0x262e5bc)
+#23 0x00007fb307164744 clang::BackendConsumer::HandleTranslationUnit(clang::ASTContext&) (/lib64/libclang-cpp.so.18.1+0x2564744)
+#24 0x00007fb305d540b6 clang::ParseAST(clang::Sema&, bool, bool) (/lib64/libclang-cpp.so.18.1+0x11540b6)
+#25 0x00007fb307bf4879 clang::FrontendAction::Execute() (/lib64/libclang-cpp.so.18.1+0x2ff4879)
+#26 0x00007fb307b6d544 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/lib64/libclang-cpp.so.18.1+0x2f6d544)
+#27 0x00007fb307c72132 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/lib64/libclang-cpp.so.18.1+0x3072132)
+#28 0x0000000000214c42 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/bin/clang-18+0x214c42)
+#29 0x0000000000211915 (/usr/bin/clang-18+0x211915)
+#30 0x0000000000210a74 clang_main(int, char**, llvm::ToolContext const&) (/usr/bin/clang-18+0x210a74)
+#31 0x000000000021ffba main (/usr/bin/clang-18+0x21ffba)
+#32 0x00007fb2fd43d088 __libc_start_call_main (/lib64/libc.so.6+0x2a088)
+#33 0x00007fb2fd43d14b __libc_start_main@GLIBC_2.2.5 (/lib64/libc.so.6+0x2a14b)
+#34 0x000000000020e335 _start (/usr/bin/clang-18+0x20e335)
+
+
+Bug Labels:
+clang:frontend, crash, lambda

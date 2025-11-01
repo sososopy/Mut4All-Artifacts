@@ -1,0 +1,38 @@
+Issue Title:
+ICE with specialization + associated types: &[T] was a subtype of &[u8] but now is not? · Issue #39124 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(specialization)]
+
+trait Deserializer {
+    type Error;
+    fn deserialize_bytes<V: Visitor>(self, visitor: V) -> Result<V::Value, Self::Error>;
+    fn deserialize<V: Visitor>(self, visitor: V) -> Result<V::Value, Self::Error>;
+}
+
+trait Visitor {
+    type Value;
+    type Error;
+    fn visit_bytes(self, &[u8]) -> Result<Self::Value, Self::Error>;
+}
+
+impl<'a, T> Deserializer for &'a [T] {
+    type Error = ();
+    default fn deserialize_bytes<V: Visitor>(self, visitor: V) -> Result<V::Value, Self::Error> {
+        self.deserialize(visitor)
+    }
+    fn deserialize<V: Visitor>(self, visitor: V) -> Result<V::Value, Self::Error> {
+        unimplemented!()
+    }
+}
+
+impl<'a> Deserializer for &'a [u8] {
+    fn deserialize_bytes<V: Visitor>(self, visitor: V) -> Result<V::Value, Self::Error> {
+        visitor.visit_bytes(self)
+    }
+}
+
+fn main() {}
+
+Bug Labels:
+A-specialization, C-bug, I-ICE, T-compiler

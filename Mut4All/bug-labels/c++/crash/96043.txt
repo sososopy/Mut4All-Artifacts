@@ -1,0 +1,140 @@
+Issue Title:
+Clang-tidy crashes when defining default operator== outside of struct
+
+Source Code & Bug Trace:
+#include <vector>
+
+struct Foo
+{
+	std::vector<Foo> bar;
+
+	// bool operator==(const Foo& other) const = default;  // 1. ok
+
+	bool operator==(const Foo& other) const;  // 2.
+};
+
+bool Foo::operator==(const Foo& other) const = default;  // 2. causes segfault
+
+$ clang-tidy -p build-release/compile_commands.json -checks=-*,misc-* bug_example.cpp
+
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+Stack dump:
+0.	Program arguments: clang-tidy -p build-release/compile_commands.json -checks=-*,misc-* generator/mwCreateWrapperAntlr/Converter/min.h
+1.	<eof> parser at end of file
+2.	/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/bits/stl_vector.h:2050:5: instantiating function definition 'std::operator==<Foo, std::allocator<Foo>>'
+3.	/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/bits/stl_algobase.h:1576:5: instantiating function definition 'std::equal<__gnu_cxx::__normal_iterator<const Foo *, std::vector<Foo>>, __gnu_cxx::__normal_iterator<const Foo *, std::vector<Foo>>>'
+4.	/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/bits/stl_algobase.h:1248:5: instantiating function definition 'std::__equal_aux<__gnu_cxx::__normal_iterator<const Foo *, std::vector<Foo>>, __gnu_cxx::__normal_iterator<const Foo *, std::vector<Foo>>>'
+5.	/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/bits/stl_algobase.h:1236:5: instantiating function definition 'std::__equal_aux1<const Foo *, const Foo *>'
+6.	/usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/14.1.1/../../../../include/c++/14.1.1/bits/stl_algobase.h:1190:2: instantiating function definition 'std::__equal<false>::equal<const Foo *, const Foo *>'
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  clang-tidy 0x00005e999ff4564c llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 60
+1  clang-tidy 0x00005e999ff42b4b
+2  libc.so.6  0x0000725d1a050ae0
+3  clang-tidy 0x00005e999df5cbd9
+4  clang-tidy 0x00005e999df73e63
+5  clang-tidy 0x00005e999dfea905 clang::Sema::EvaluateImplicitExceptionSpec(clang::SourceLocation, clang::FunctionDecl*) + 1237
+6  clang-tidy 0x00005e999e0269f5 clang::Sema::ResolveExceptionSpec(clang::SourceLocation, clang::FunctionProtoType const*) + 405
+7  clang-tidy 0x00005e999e0d8487 clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) + 1047
+8  clang-tidy 0x00005e999e0d9ae1
+9  clang-tidy 0x00005e999e49b033
+10 clang-tidy 0x00005e999e4e74d6 clang::Sema::CreateOverloadedBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, clang::Expr*, bool, bool, clang::FunctionDecl*) + 1814
+11 clang-tidy 0x00005e999e719e3e
+12 clang-tidy 0x00005e999e760bf5
+13 clang-tidy 0x00005e999e73a475
+14 clang-tidy 0x00005e999e761066
+15 clang-tidy 0x00005e999e7335a0
+16 clang-tidy 0x00005e999e771309
+17 clang-tidy 0x00005e999e7719b0
+18 clang-tidy 0x00005e999e76c1c4
+19 clang-tidy 0x00005e999e77233f clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 95
+20 clang-tidy 0x00005e999e7c1e07 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 3159
+21 clang-tidy 0x00005e999dcadd07 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 71
+22 clang-tidy 0x00005e999e0d87f7 clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) + 1927
+23 clang-tidy 0x00005e999e0d9ae1
+24 clang-tidy 0x00005e999e0d9f52 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) + 274
+25 clang-tidy 0x00005e999e4ae973 clang::Sema::FixOverloadedFunctionReference(clang::Expr*, clang::DeclAccessPair, clang::FunctionDecl*) + 1411
+26 clang-tidy 0x00005e999e4e5513
+27 clang-tidy 0x00005e999e4e6863 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 1363
+28 clang-tidy 0x00005e999e10b73b clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 2827
+29 clang-tidy 0x00005e999e10de41 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 81
+30 clang-tidy 0x00005e999e73c909
+31 clang-tidy 0x00005e999e734477
+32 clang-tidy 0x00005e999e76c1c4
+33 clang-tidy 0x00005e999e77233f clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 95
+34 clang-tidy 0x00005e999e7c1e07 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 3159
+35 clang-tidy 0x00005e999dcadd07 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 71
+36 clang-tidy 0x00005e999e0d87f7 clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) + 1927
+37 clang-tidy 0x00005e999e0d9ae1
+38 clang-tidy 0x00005e999e0d9f52 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) + 274
+39 clang-tidy 0x00005e999e4ae973 clang::Sema::FixOverloadedFunctionReference(clang::Expr*, clang::DeclAccessPair, clang::FunctionDecl*) + 1411
+40 clang-tidy 0x00005e999e4e5513
+41 clang-tidy 0x00005e999e4e6863 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 1363
+42 clang-tidy 0x00005e999e10b73b clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 2827
+43 clang-tidy 0x00005e999e10de41 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 81
+44 clang-tidy 0x00005e999e73c909
+45 clang-tidy 0x00005e999e734477
+46 clang-tidy 0x00005e999e76c1c4
+47 clang-tidy 0x00005e999e77233f clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 95
+48 clang-tidy 0x00005e999e7c1e07 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 3159
+49 clang-tidy 0x00005e999dcadd07 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 71
+50 clang-tidy 0x00005e999e0d87f7 clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) + 1927
+51 clang-tidy 0x00005e999e0d9ae1
+52 clang-tidy 0x00005e999e0d9f52 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) + 274
+53 clang-tidy 0x00005e999e4ae973 clang::Sema::FixOverloadedFunctionReference(clang::Expr*, clang::DeclAccessPair, clang::FunctionDecl*) + 1411
+54 clang-tidy 0x00005e999e4e5513
+55 clang-tidy 0x00005e999e4e6863 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 1363
+56 clang-tidy 0x00005e999e10b73b clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 2827
+57 clang-tidy 0x00005e999e10de41 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 81
+58 clang-tidy 0x00005e999e73c909
+59 clang-tidy 0x00005e999e734477
+60 clang-tidy 0x00005e999e76c1c4
+61 clang-tidy 0x00005e999e77233f clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 95
+62 clang-tidy 0x00005e999e7c1e07 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 3159
+63 clang-tidy 0x00005e999dcadd07 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 71
+64 clang-tidy 0x00005e999e0d87f7 clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) + 1927
+65 clang-tidy 0x00005e999e0d9ae1
+66 clang-tidy 0x00005e999e0d9f52 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) + 274
+67 clang-tidy 0x00005e999e4ae973 clang::Sema::FixOverloadedFunctionReference(clang::Expr*, clang::DeclAccessPair, clang::FunctionDecl*) + 1411
+68 clang-tidy 0x00005e999e4e5513
+69 clang-tidy 0x00005e999e4e6863 clang::Sema::BuildOverloadedCallExpr(clang::Scope*, clang::Expr*, clang::UnresolvedLookupExpr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 1363
+70 clang-tidy 0x00005e999e10b73b clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) + 2827
+71 clang-tidy 0x00005e999e10de41 clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) + 81
+72 clang-tidy 0x00005e999e73c909
+73 clang-tidy 0x00005e999e73e6c9
+74 clang-tidy 0x00005e999e73a475
+75 clang-tidy 0x00005e999e734477
+76 clang-tidy 0x00005e999e76c1c4
+77 clang-tidy 0x00005e999e77233f clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) + 95
+78 clang-tidy 0x00005e999e7c1e07 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) + 3159
+79 clang-tidy 0x00005e999dcadd07 clang::Sema::runWithSufficientStackSpace(clang::SourceLocation, llvm::function_ref<void ()>) + 71
+80 clang-tidy 0x00005e999e0d87f7 clang::Sema::MarkFunctionReferenced(clang::SourceLocation, clang::FunctionDecl*, bool) + 1927
+81 clang-tidy 0x00005e999e0d9ae1
+82 clang-tidy 0x00005e999e49b033
+83 clang-tidy 0x00005e999e4e74d6 clang::Sema::CreateOverloadedBinOp(clang::SourceLocation, clang::BinaryOperatorKind, clang::UnresolvedSetImpl const&, clang::Expr*, clang::Expr*, bool, bool, clang::FunctionDecl*) + 1814
+84 clang-tidy 0x00005e999df51f24
+85 clang-tidy 0x00005e999df5d663
+86 clang-tidy 0x00005e999df73e63
+87 clang-tidy 0x00005e999dfb985e clang::Sema::DefineDefaultedComparison(clang::SourceLocation, clang::FunctionDecl*, clang::Sema::DefaultedComparisonKind) + 894
+88 clang-tidy 0x00005e999d9cca5f clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) + 3599
+89 clang-tidy 0x00005e999da148b6 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::Parser::ParsedTemplateInfo&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 5206
+90 clang-tidy 0x00005e999d9c4d51 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) + 881
+91 clang-tidy 0x00005e999d9c5aed clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 925
+92 clang-tidy 0x00005e999d9cebdd clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) + 493
+93 clang-tidy 0x00005e999d9cfcd5 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 613
+94 clang-tidy 0x00005e999d9bf16a clang::ParseAST(clang::Sema&, bool, bool) + 602
+95 clang-tidy 0x00005e999d6d9ad9 clang::FrontendAction::Execute() + 201
+96 clang-tidy 0x00005e999d6518ab clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 1435
+97 clang-tidy 0x00005e999ceaa817 clang::tooling::FrontendActionFactory::runInvocation(std::shared_ptr<clang::CompilerInvocation>, clang::FileManager*, std::shared_ptr<clang::PCHContainerOperations>, clang::DiagnosticConsumer*) + 359
+98 clang-tidy 0x00005e999ce3ee19
+99 clang-tidy 0x00005e999cea30d6 clang::tooling::ToolInvocation::runInvocation(char const*, clang::driver::Compilation*, std::shared_ptr<clang::CompilerInvocation>, std::shared_ptr<clang::PCHContainerOperations>) + 118
+100 clang-tidy 0x00005e999cea610f clang::tooling::ToolInvocation::run() + 1327
+101 clang-tidy 0x00005e999cea8004 clang::tooling::ClangTool::run(clang::tooling::ToolAction*) + 2900
+102 clang-tidy 0x00005e999ce459b3 clang::tidy::runClangTidy(clang::tidy::ClangTidyContext&, clang::tooling::CompilationDatabase const&, llvm::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, llvm::IntrusiveRefCntPtr<llvm::vfs::OverlayFileSystem>, bool, bool, llvm::StringRef) + 963
+103 clang-tidy 0x00005e999c009197 clang::tidy::clangTidyMain(int, char const**) + 4151
+104 libc.so.6  0x0000725d1a039c88
+105 libc.so.6  0x0000725d1a039d4c __libc_start_main + 140
+106 clang-tidy 0x00005e999bffec85 _start + 37
+Segmentation fault (core dumped)
+
+Bug Labels:
+clang:frontend, crash

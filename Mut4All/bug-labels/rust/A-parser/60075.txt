@@ -1,0 +1,67 @@
+Issue Title:
+Compiler panic: 'internal error: entered unreachable code' in src/libsyntax/parse/parser.rs · Issue #60075 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::convert::{TryInto, TryFrom};
+use std::io;
+use byteorder::{LittleEndian, ReadBytesExt};
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum DataWidth {
+    One,
+    Two,
+    Four,
+    Eight,
+}
+
+impl TryFrom<u8> for DataWidth {
+    type Error = &'static str;
+
+    fn try_from(from: u8) -> Result<Self, Self::Error> {
+        use DataWidth::*;
+
+        match from {
+            1 => Ok(One),
+            2 => Ok(Two),
+            4 => Ok(Four),
+            8 => Ok(Eight),
+            _ => Err("Unsupported datawidth")
+        }
+    }
+}
+
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct QValue {
+    pub value: u64,
+    pub width: DataWidth,
+}
+
+
+impl QValue {
+fn parse<R: io::Read>(bytes: &mut R, width: DataWidth) -> Option<QValue> {
+    use DataWidth::*;
+
+    let value = match width {
+        One => {
+            bytes.read_u8().ok()? as u64
+        },
+        Two => {
+            bytes.read_u16::<LittleEndian>().ok()? as u64
+        },
+        Four => {
+            bytes.read_u32::<LittleEndian>().ok()? as u64
+        },
+        Eight => { 
+            bytes.read_u64::<LittleEndian>().ok()? as u64
+        }
+    });
+
+    Some(QValue {
+        value: value,
+        width: width,
+    })
+}
+
+Bug Labels:
+A-parser, C-bug, I-ICE, P-high, T-compiler

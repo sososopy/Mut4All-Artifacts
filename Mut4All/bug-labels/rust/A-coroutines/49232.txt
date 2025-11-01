@@ -1,0 +1,42 @@
+Issue Title:
+Broken MIR with immovable generators · Issue #49232 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(conservative_impl_trait)]
+#![feature(generators)]
+#![feature(generator_trait)]
+
+use std::ops::Generator;
+
+#[derive(Debug)]
+pub struct Beacon;
+
+fn listen() -> impl Iterator<Item=Beacon> {
+    Some(Beacon).into_iter()
+}
+
+pub fn main() -> impl Generator<Yield=(), Return=Result<(), ()>> {
+    #[allow(unused_unsafe)]
+    unsafe {
+        static move || {
+            let mut stream = listen();
+
+            loop {
+                let beacon = {
+                    match stream.next() {
+                        Some(e) => e,
+                        None => break,
+                    }
+                };
+                println!("Saw beacon {:?}", beacon);
+            }
+
+            loop {
+                yield ();
+            }
+        }
+    }
+}
+
+Bug Labels:
+A-coroutines, C-bug, I-ICE, T-compiler

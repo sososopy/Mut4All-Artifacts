@@ -1,0 +1,157 @@
+Issue Title:
+ICE'd during const eval of generic with DST · Issue #80742 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_evaluatable_checked)]
+#![feature(const_generics)]
+
+use core::fmt::Debug;
+use core::marker::PhantomData;
+
+struct Inline<T>
+where [u8; ::core::mem::size_of::<T>() + 1]: 
+{
+    _phantom: PhantomData<T>,
+    buf: [u8; ::core::mem::size_of::<T>() + 1]
+}
+
+impl<T> Inline<T>  where [u8; ::core::mem::size_of::<T>() + 1]: {
+    pub fn new(val: T) -> Inline<T> {
+        todo!()
+    }
+}
+
+fn main() {
+    // let dst = Inline::<usize>::new(0); OK
+    let dst = Inline::<dyn Debug>::new(0);  // BANG!
+}
+
+Bug Trace:
+Compiling icey v0.1.0 (/tmp/icey)
+warning: the feature `const_evaluatable_checked` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/main.rs:1:12
+  |
+1 | #![feature(const_evaluatable_checked)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+
+warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/main.rs:2:12
+  |
+2 | #![feature(const_generics)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+
+thread 'rustc' panicked at 'SizeOf nullary MIR operator called for unsized type', compiler/rustc_mir/src/interpret/step.rs:267:17
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+   2: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::run
+   3: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+   4: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_allocation_raw>::compute
+   5: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+   6: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+   7: rustc_data_structures::stack::ensure_sufficient_stack
+   8: rustc_query_system::query::plumbing::get_query_impl
+   9: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+  10: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::eval_to_const_value_raw>::compute
+  11: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  12: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  13: rustc_data_structures::stack::ensure_sufficient_stack
+  14: rustc_query_system::query::plumbing::get_query_impl
+  15: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+  16: rustc_infer::infer::InferCtxt::const_eval_resolve
+  17: rustc_trait_selection::traits::const_evaluatable::is_const_evaluatable
+  18: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively::{{closure}}
+  19: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively
+  20: rustc_infer::infer::InferCtxt::probe
+  21: rustc_trait_selection::traits::select::SelectionContext::evaluate_root_obligation
+  22: rustc_infer::infer::InferCtxtBuilder::enter_with_canonical
+  23: rustc_traits::evaluate_obligation::evaluate_obligation
+  24: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::evaluate_obligation>::compute
+  25: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  26: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  27: rustc_data_structures::stack::ensure_sufficient_stack
+  28: rustc_query_system::query::plumbing::get_query_impl
+  29: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation
+  30: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+  31: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::predicate_may_hold
+  32: rustc_infer::infer::InferCtxt::probe
+  33: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  34: rustc_typeck::check::method::probe::ProbeContext::pick_method
+  35: rustc_typeck::check::method::probe::ProbeContext::pick_core
+  36: rustc_typeck::check::method::probe::ProbeContext::pick
+  37: rustc_infer::infer::InferCtxt::probe
+  38: rustc_typeck::check::method::probe::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::probe_for_name
+  39: rustc_typeck::check::method::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_ufcs
+  40: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_ty_and_res_ufcs
+  41: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  42: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  43: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  44: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  45: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  46: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_initializer
+  47: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_local
+  48: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  49: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  50: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  51: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  52: rustc_typeck::check::check::check_fn
+  53: rustc_infer::infer::InferCtxtBuilder::enter
+  54: rustc_typeck::check::typeck
+  55: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck>::compute
+  56: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  57: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  58: rustc_data_structures::stack::ensure_sufficient_stack
+  59: rustc_query_system::query::plumbing::get_query_impl
+  60: rustc_query_system::query::plumbing::ensure_query_impl
+  61: rustc_typeck::check::typeck_item_bodies
+  62: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck_item_bodies>::compute
+  63: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  64: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  65: rustc_data_structures::stack::ensure_sufficient_stack
+  66: rustc_query_system::query::plumbing::get_query_impl
+  67: rustc_typeck::check_crate
+  68: rustc_interface::passes::analysis
+  69: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  70: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  71: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  72: rustc_data_structures::stack::ensure_sufficient_stack
+  73: rustc_query_system::query::plumbing::get_query_impl
+  74: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  75: rustc_span::with_source_map
+  76: rustc_interface::interface::create_compiler_and_run
+  77: rustc_span::with_session_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.51.0-nightly (61f5a0092 2021-01-04) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `Inline::<T>::{constant#0}`
+#1 [eval_to_const_value_raw] simplifying constant for the type system `Inline::<T>::{constant#0}`
+#2 [evaluate_obligation] evaluating trait selection obligation `the constant `Inline::<dyn std::fmt::Debug>::{constant#0}` can be evaluated`
+#3 [typeck] type-checking `main`
+#4 [typeck_item_bodies] type-checking all item bodies
+#5 [analysis] running analysis passes on this crate
+end of query stack
+warning: 2 warnings emitted
+
+error: could not compile `icey`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, glacier

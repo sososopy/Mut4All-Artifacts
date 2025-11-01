@@ -1,0 +1,123 @@
+Issue Title:
+ICE using `const_generics` feature · Issue #82956 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics, const_evaluatable_checked, array_map)]
+
+pub struct ConstCheck<const CHECK: bool>;
+
+pub trait True {}
+impl True for ConstCheck<true> {}
+
+pub trait OrdesDec {
+    type Newlen;
+    type Output;
+
+    fn pop(self) -> (Self::Newlen, Self::Output);
+}
+
+impl<T, const N: usize> OrdesDec for [T; N]
+where
+    ConstCheck<{N > 1}>: True,
+    [T; N - 1]: Sized,
+{
+    type Newlen = [T; N - 1];
+    type Output = T;
+
+    fn pop(self) -> (Self::Newlen, Self::Output) {
+        let mut iter = IntoIter::new(self);
+        let end = iter.next_back().unwrap();
+        let new = [(); N - 1].map(move |()| iter.next().unwrap());
+        (new, end)
+    }
+}
+
+Bug Trace:
+error: constant expression depends on a generic parameter
+  |
+  = note: this may fail depending on what value the parameter takes
+
+error: internal compiler error: compiler/rustc_traits/src/normalize_erasing_regions.rs:43:32: could not fully normalize `(<[T; N] as ordes::OrdesDec>::Newlen, <[T; N] as ordes::OrdesDec>::Output)`
+
+thread 'rustc' panicked at 'Box<Any>', /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/panic.rs:59:5
+stack backtrace:
+   0:     0x7f4cd4c2eeb0 - std::backtrace_rs::backtrace::libunwind::trace::h9d49145f95eb5894
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/../../backtrace/src/backtrace/libunwind.rs:90:5
+   1:     0x7f4cd4c2eeb0 - std::backtrace_rs::backtrace::trace_unsynchronized::hab1d020365bb6864
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f4cd4c2eeb0 - std::sys_common::backtrace::_print_fmt::h7659588431e304bd
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/sys_common/backtrace.rs:67:5
+   3:     0x7f4cd4c2eeb0 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h09f4a9e3befae3c7
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/sys_common/backtrace.rs:46:22
+   4:     0x7f4cd4c9f5dc - core::fmt::write::hf3fdfde304b9a088
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/core/src/fmt/mod.rs:1092:17
+   5:     0x7f4cd4c221f2 - std::io::Write::write_fmt::h1cb850689c7116f0
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/io/mod.rs:1567:15
+   6:     0x7f4cd4c32d55 - std::sys_common::backtrace::_print::hdbccd5aa093ba544
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/sys_common/backtrace.rs:49:5
+   7:     0x7f4cd4c32d55 - std::sys_common::backtrace::print::hc639c4f320222558
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/sys_common/backtrace.rs:36:9
+   8:     0x7f4cd4c32d55 - std::panicking::default_hook::{{closure}}::hdb012dd7a485bb5d
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/panicking.rs:208:50
+   9:     0x7f4cd4c32803 - std::panicking::default_hook::h75facbce77b6ba91
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/panicking.rs:225:9
+  10:     0x7f4cd5425d4b - rustc_driver::report_ice::h01b4629c250edc77
+  11:     0x7f4cd4c33656 - std::panicking::rust_panic_with_hook::hbcaa5de2cb5e22d5
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/panicking.rs:595:17
+  12:     0x7f4cd663dede - std::panicking::begin_panic::{{closure}}::h63e7681549a10239
+  13:     0x7f4cd663de39 - std::sys_common::backtrace::__rust_end_short_backtrace::h55cc8bd5fcc0db45
+  14:     0x7f4cd663de82 - std::panicking::begin_panic::h86a3b23efd0bb448
+  15:     0x7f4cd661f100 - std::panic::panic_any::hb1b2c5d1a3cfa2c4
+  16:     0x7f4cd662244a - rustc_errors::HandlerInner::bug::hcfa29b039dbceeb3
+  17:     0x7f4cd6621f23 - rustc_errors::Handler::bug::h42757b5aa01edd2a
+  18:     0x7f4cd6565d1c - rustc_middle::ty::context::tls::with_opt::h2f706dbac3fd19ed
+  19:     0x7f4cd7bb7370 - rustc_middle::util::bug::opt_span_bug_fmt::h877f93abd5e75e9d
+  20:     0x7f4cd6565ec6 - rustc_middle::util::bug::bug_fmt::h8668d235609a7e98
+  21:     0x7f4cd67e47f2 - rustc_infer::infer::InferCtxtBuilder::enter::h941ddd8cd42a23f3
+  22:     0x7f4cd67e946a - rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions::h2f2bca8f8f195236
+  23:     0x7f4cd6ab8387 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h78ffdcf789152c46
+  24:     0x7f4cd6a9a1b1 - rustc_data_structures::stack::ensure_sufficient_stack::ha5c2c6bf605d7ba3
+  25:     0x7f4cd6a73d4e - rustc_query_system::query::plumbing::force_query_with_job::h2ef22bfd2f0dd140
+  26:     0x7f4cd6a63b6c - rustc_query_system::query::plumbing::get_query_impl::hc0e55cbf7636eade
+  27:     0x7f4cd6acd1c9 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::normalize_generic_arg_after_erasing_regions::h6a1e8c2a1ab72f4a
+  28:     0x7f4cd709cc52 - <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_ty::h997f94575c7076ec
+  29:     0x7f4cd702fe2b - rustc_middle::ty::fold::TypeFoldable::fold_with::hd3808b12bd935bb9
+  30:     0x7f4cd709bd1e - rustc_middle::ty::layout::<impl rustc_middle::ty::instance::Instance>::fn_sig_for_fn_abi::h05e54f8e6b014b8a
+  31:     0x7f4cd67a7c12 - <rustc_target::abi::call::FnAbi<&rustc_middle::ty::TyS> as rustc_middle::ty::layout::FnAbiExt<C>>::of_instance::hb5a6d4852d31ff73
+  32:     0x7f4cd679d63e - rustc_codegen_llvm::mono_item::<impl rustc_codegen_ssa::traits::declare::PreDefineMethods for rustc_codegen_llvm::context::CodegenCx>::predefine_fn::hdecae27e6d220717
+  33:     0x7f4cd67a4a16 - rustc_codegen_llvm::base::compile_codegen_unit::module_codegen::h7eaf0dacc0c82f75
+  34:     0x7f4cd71d968d - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task::hcef8469810a45dd1
+  35:     0x7f4cd7213784 - rustc_codegen_llvm::base::compile_codegen_unit::hed73fb3f05d56057
+  36:     0x7f4cd71e785f - <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate::h3fe294a8f0735589
+  37:     0x7f4cd7177ac9 - rustc_interface::queries::Queries::ongoing_codegen::hea0e157f127bf881
+  38:     0x7f4cd712b72e - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::h0f61eb416f22a566
+  39:     0x7f4cd715c621 - rustc_span::with_source_map::h4a0dc647038ad76f
+  40:     0x7f4cd712c6da - rustc_interface::interface::create_compiler_and_run::h4b294c33113a1bc7
+  41:     0x7f4cd712a888 - scoped_tls::ScopedKey<T>::set::h3d50179f272e16d1
+  42:     0x7f4cd712aee4 - std::sys_common::backtrace::__rust_begin_short_backtrace::h7cf87b5fc59a6baa
+  43:     0x7f4cd714a0fa - core::ops::function::FnOnce::call_once{{vtable.shim}}::h8b483ac32d974368
+  44:     0x7f4cd4c4383a - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hdc51fe7e73bc86bf
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/alloc/src/boxed.rs:1546:9
+  45:     0x7f4cd4c4383a - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::he605738a76b56d9d
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/alloc/src/boxed.rs:1546:9
+  46:     0x7f4cd4c4383a - std::sys::unix::thread::Thread::new::thread_start::he44b12fd83e74919
+                               at /rustc/35dbef235048f9a2939dc20effe083ca483c37ff/library/std/src/sys/unix/thread.rs:71:17
+  47:     0x7f4cd4b3df5e - start_thread
+  48:     0x7f4cd4a631ef - clone
+  49:                0x0 - <unknown>
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-nightly (35dbef235 2021-03-02) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C codegen-units=1 -C embed-bitcode=no --crate-type bin
+
+query stack during panic:
+#0 [normalize_generic_arg_after_erasing_regions] normalizing `(<[T; N] as ordes::OrdesDec>::Newlen, <[T; N] as ordes::OrdesDec>::Output)`
+end of query stack
+error: aborting due to 2 previous errors
+
+Bug Labels:
+A-const-generics, C-bug, E-needs-test, I-ICE, T-compiler, glacier

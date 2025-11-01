@@ -1,0 +1,116 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Struct_With_Impl_Trait_In_Field_400;
+
+impl Mutator for Struct_With_Impl_Trait_In_Field_400 {
+    fn name(&self) -> &str {
+        "Struct_With_Impl_Trait_In_Field_400"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut rng = thread_rng();
+        let mut trait_candidates = HashSet::new();
+
+        // Collect all traits used in the file
+        struct TraitCollector<'a> {
+            trait_candidates: &'a mut HashSet<Ident>,
+        }
+
+        impl<'a> Visit<'_> for TraitCollector<'a> {
+            fn visit_item_trait(&mut self, node: &ItemTrait) {
+                self.trait_candidates.insert(node.ident.clone());
+            }
+        }
+
+        let mut collector = TraitCollector {
+            trait_candidates: &mut trait_candidates,
+        };
+        collector.visit_file(file);
+
+        for item in &mut file.items {
+            if let Item::Struct(item_struct) = item {
+                let struct_name = &item_struct.ident;
+                let mut selected_field = None;
+
+                for field in &mut item_struct.fields {
+                    if let Type::Path(type_path) = &field.ty {
+                        if rng.gen_bool(0.5) {
+                            selected_field = Some(field);
+                            break;
+                        }
+                    }
+                }
+
+                if selected_field.is_none() {
+                    if let Some(trait_ident) = trait_candidates.iter().choose(&mut rng) {
+                        let new_field_ident = Ident::new(
+                            &format!("new_field_{}", rng.gen::<u32>()),
+                            Span::call_site(),
+                        );
+                        item_struct.fields.push(Field {
+                            attrs: Vec::new(),
+                            vis: syn::Visibility::Inherited,
+                            ident: Some(new_field_ident),
+                            colon_token: Some(token::Colon::default()),
+                            ty: Type::ImplTrait(TypeImplTrait {
+                                impl_token: token::Impl::default(),
+                                bounds: vec![TypeParamBound::Trait(TraitBound {
+                                    paren_token: None,
+                                    modifier: TraitBoundModifier::None,
+                                    lifetimes: None,
+                                    path: SynPath {
+                                        leading_colon: None,
+                                        segments: Punctuated::from_iter(vec![PathSegment {
+                                            ident: trait_ident.clone(),
+                                            arguments: PathArguments::None,
+                                        }]),
+                                    }
+                                })].into_iter().collect(),
+                            }),
+                        });
+                    }
+                } else if let Some(trait_ident) = trait_candidates.iter().choose(&mut rng) {
+                    if let Some(field) = selected_field {
+                        field.ty = Type::ImplTrait(TypeImplTrait {
+                            impl_token: token::Impl::default(),
+                            bounds: vec![TypeParamBound::Trait(TraitBound {
+                                paren_token: None,
+                                modifier: TraitBoundModifier::None,
+                                lifetimes: None,
+                                path: SynPath {
+                                    leading_colon: None,
+                                    segments: Punctuated::from_iter(vec![PathSegment {
+                                        ident: trait_ident.clone(),
+                                        arguments: PathArguments::None,
+                                    }]),
+                                }
+                            })].into_iter().collect(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "This mutation operator targets struct definitions, aiming to introduce or modify a field to use `impl Trait`. It first collects all traits defined in the program. Then, for each struct, it either modifies an existing field or introduces a new one with a type of `impl Trait`, where `Trait` is randomly selected from the collected traits. This mutation tests the compiler's handling of trait bounds and associated types without explicit implementations within the struct."
+    }
+}

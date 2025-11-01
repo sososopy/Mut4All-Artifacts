@@ -1,0 +1,89 @@
+Issue Title:
+[OpenMP] C++ OpenMP parser crash with structured bindings
+
+Source Code & Bug Trace:
+#include <array>
+
+int main() {
+  const std::array<double, 1> a{0.0};
+  const std::array<std::array<double, 1>, 1> b{a};
+
+#ifndef MAKE_IT_WORK
+  const auto& [c] = b;
+#else
+  const auto& c = b[0];
+#endif
+
+  #pragma omp parallel for
+  for (int i=0; i<10; i++) c[0];
+}
+
+/opt/homebrew/opt/llvm/bin/clang++ -fopenmp=libomp -std=c++20 llvm_bug.cc
+
+/opt/homebrew/opt/llvm/bin/clang++ -fopenmp=libomp -std=c++20 -DMAKE_IT_WORK llvm_bug.cc
+
+PLEASE submit a bug report to https://github.com/Homebrew/homebrew-core/issues and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: /opt/homebrew/Cellar/llvm/16.0.1/bin/clang-16 -cc1 -triple arm64-apple-macosx13.0.0 -Wundef-prefix=TARGET_OS_ -Werror=undef-prefix -Wdeprecated-objc-isa-usage -Werror=deprecated-objc-isa-usage -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name llvm_bug.cc -mrelocation-model pic -pic-level 2 -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -funwind-tables=1 -fcompatibility-qualified-id-block-type-checking -fvisibility-inlines-hidden-static-local-var -target-cpu apple-m1 -target-feature +v8.5a -target-feature +crc -target-feature +crypto -target-feature +dotprod -target-feature +fp-armv8 -target-feature +fp16fml -target-feature +lse -target-feature +ras -target-feature +rcpc -target-feature +rdm -target-feature +neon -target-feature +zcm -target-feature +zcz -target-feature +fullfp16 -target-feature +sm4 -target-feature +sha3 -target-feature +sha2 -target-feature +aes -target-abi darwinpcs -mllvm -treat-scalable-fixed-error-as-warning -debugger-tuning=lldb -target-linker-version 820.1 -fcoverage-compilation-dir=/Users/richard/Work/llvm_bug -resource-dir /opt/homebrew/Cellar/llvm/16.0.1/lib/clang/16 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk -internal-isystem /opt/homebrew/opt/llvm/bin/../include/c++/v1 -internal-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk/usr/local/include -internal-isystem /opt/homebrew/Cellar/llvm/16.0.1/lib/clang/16/include -internal-externc-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk/usr/include -std=c++20 -fdeprecated-macro -fdebug-compilation-dir=/Users/richard/Work/llvm_bug -ferror-limit 19 -fopenmp -stack-protector 1 -fblocks -fencode-extended-block-signature -fregister-global-dtors-with-atexit -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -fmax-type-align=16 -fcolor-diagnostics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /var/folders/f3/lbqfb9995vz1w5dqj9pyc55c0000gp/T/llvm_bug-29c97e.o -x c++ llvm_bug.cc
+1.	llvm_bug.cc:14:29: current parser token '['
+2.	llvm_bug.cc:3:12: parsing function body 'main'
+3.	llvm_bug.cc:3:12: in compound statement ('{}')
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM.dylib            0x0000000113a25fa4 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 56
+1  libLLVM.dylib            0x000000011786dfd4 SignalHandler(int) + 304
+2  libsystem_platform.dylib 0x0000000199a5ea84 _sigtramp + 56
+3  libclang-cpp.dylib       0x0000000107df3690 clang::Sema::isOpenMPPrivateDecl(clang::ValueDecl*, unsigned int, unsigned int) const + 260
+4  libclang-cpp.dylib       0x0000000107df3690 clang::Sema::isOpenMPPrivateDecl(clang::ValueDecl*, unsigned int, unsigned int) const + 260
+5  libclang-cpp.dylib       0x0000000107c14780 clang::Sema::tryCaptureVariable(clang::ValueDecl*, clang::SourceLocation, clang::Sema::TryCaptureKind, clang::SourceLocation, bool, clang::QualType&, clang::QualType&, unsigned int const*) + 1480
+6  libclang-cpp.dylib       0x0000000107b9f9f8 clang::Sema::BuildDeclRefExpr(clang::ValueDecl*, clang::QualType, clang::ExprValueKind, clang::DeclarationNameInfo const&, clang::NestedNameSpecifierLoc, clang::NamedDecl*, clang::SourceLocation, clang::TemplateArgumentListInfo const*) + 160
+7  libclang-cpp.dylib       0x0000000107bb835c clang::Sema::BuildDeclarationNameExpr(clang::CXXScopeSpec const&, clang::DeclarationNameInfo const&, clang::NamedDecl*, clang::NamedDecl*, clang::TemplateArgumentListInfo const*, bool) + 1960
+8  libclang-cpp.dylib       0x0000000107009370 clang::Parser::tryParseCXXIdExpression(clang::CXXScopeSpec&, bool, clang::Token&) + 820
+9  libclang-cpp.dylib       0x0000000106ff44e4 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) + 1944
+10 libclang-cpp.dylib       0x0000000106fee44c clang::Parser::ParseExpression(clang::Parser::TypeCastState) + 108
+11 libclang-cpp.dylib       0x00000001070796d0 clang::Parser::ParseExprStatement(clang::Parser::ParsedStmtContext) + 52
+12 libclang-cpp.dylib       0x0000000107074a10 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 1616
+13 libclang-cpp.dylib       0x0000000107073a24 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 272
+14 libclang-cpp.dylib       0x000000010707e548 clang::Parser::ParseForStatement(clang::SourceLocation*) + 3100
+15 libclang-cpp.dylib       0x00000001070753a0 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 4064
+16 libclang-cpp.dylib       0x0000000107073a24 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 272
+17 libclang-cpp.dylib       0x000000010704d504 clang::Parser::ParseOpenMPDeclarativeOrExecutableDirective(clang::Parser::ParsedStmtContext, bool) + 1832
+18 libclang-cpp.dylib       0x0000000107074d68 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 2472
+19 libclang-cpp.dylib       0x0000000107073a24 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 272
+20 libclang-cpp.dylib       0x0000000107083d78 clang::Parser::ParseCompoundStatementBody(bool) + 2512
+21 libclang-cpp.dylib       0x0000000107085af4 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) + 172
+22 libclang-cpp.dylib       0x00000001070ac938 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) + 4124
+23 libclang-cpp.dylib       0x0000000106fa7be0 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 3440
+24 libclang-cpp.dylib       0x00000001070ab224 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) + 832
+25 libclang-cpp.dylib       0x00000001070aa8ac clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 352
+26 libclang-cpp.dylib       0x00000001070a8fe4 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) + 2896
+27 libclang-cpp.dylib       0x00000001070a6398 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 1544
+28 libclang-cpp.dylib       0x0000000106f87d6c clang::ParseAST(clang::Sema&, bool, bool) + 476
+29 libclang-cpp.dylib       0x0000000108bd0854 clang::FrontendAction::Execute() + 96
+30 libclang-cpp.dylib       0x0000000108b52238 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 580
+31 libclang-cpp.dylib       0x0000000108c1f4dc clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 512
+32 clang-16                 0x0000000102806270 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 1772
+33 clang-16                 0x0000000102803dc4 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) + 1092
+34 clang-16                 0x0000000102802870 clang_main(int, char**) + 9432
+35 dyld                     0x00000001996d7f28 start + 2236
+clang-16: error: unable to execute command: Segmentation fault: 11
+clang-16: error: clang frontend command failed due to signal (use -v to see invocation)
+Homebrew clang version 16.0.1
+Target: arm64-apple-darwin22.4.0
+Thread model: posix
+InstalledDir: /opt/homebrew/opt/llvm/bin
+clang-16: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang-16: note: diagnostic msg: /var/folders/f3/lbqfb9995vz1w5dqj9pyc55c0000gp/T/llvm_bug-f47377.cpp
+clang-16: note: diagnostic msg: /var/folders/f3/lbqfb9995vz1w5dqj9pyc55c0000gp/T/llvm_bug-f47377.sh
+clang-16: note: diagnostic msg: Crash backtrace is located in
+clang-16: note: diagnostic msg: /Users/richard/Library/Logs/DiagnosticReports/clang-16_<YYYY-MM-DD-HHMMSS>_<hostname>.crash
+clang-16: note: diagnostic msg: (choose the .crash file that corresponds to your crash)
+clang-16: note: diagnostic msg: 
+
+********************
+
+Bug Labels:
+clang:frontend, crash, openmp

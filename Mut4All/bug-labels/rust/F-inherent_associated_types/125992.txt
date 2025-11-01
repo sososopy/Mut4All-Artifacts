@@ -1,0 +1,148 @@
+Issue Title:
+ICE: `polonius loan scopes differ from NLL borrow scopes` · Issue #125992 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(inherent_associated_types)]
+
+type Function = for<'a> fn(&'a i32) -> S<'a>::P;
+
+struct S<'a>(&'a ());
+
+impl<'a> S {
+    type P = &'a i32;
+}
+
+fn ret_ref_local<'e>() -> &'e i32 {
+    let f: Function = |x| x;
+
+    let local = 0;
+    f(&local)
+}
+
+Version Information:
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zpolonius=next
+
+Command:
+/home/matthias/.rustup/toolchains/master/bin/rustc -Zpolonius=next
+
+Bug Trace:
+error[E0726]: implicit elided lifetime not allowed here
+ --> /tmp/icemaker_global_tempdir.j09zTpiMeB10/rustc_testrunner_tmpdir_reporting.6BA5IqLroDn9/mvce.rs:7:10
+  |
+7 | impl<'a> S {
+  |          ^ expected lifetime parameter
+  |
+help: indicate the anonymous lifetime
+  |
+7 | impl<'a> S<'_> {
+  |           ++++
+
+warning: the feature `inherent_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> /tmp/icemaker_global_tempdir.j09zTpiMeB10/rustc_testrunner_tmpdir_reporting.6BA5IqLroDn9/mvce.rs:1:12
+  |
+1 | #![feature(inherent_associated_types)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+  = note: `#[warn(incomplete_features)]` on by default
+
+error[E0601]: `main` function not found in crate `mvce`
+  --> /tmp/icemaker_global_tempdir.j09zTpiMeB10/rustc_testrunner_tmpdir_reporting.6BA5IqLroDn9/mvce.rs:16:2
+   |
+16 | }
+   |  ^ consider adding a `main` function to `/tmp/icemaker_global_tempdir.j09zTpiMeB10/rustc_testrunner_tmpdir_reporting.6BA5IqLroDn9/mvce.rs`
+
+error: lifetime may not live long enough
+  --> /tmp/icemaker_global_tempdir.j09zTpiMeB10/rustc_testrunner_tmpdir_reporting.6BA5IqLroDn9/mvce.rs:12:27
+   |
+12 |     let f: Function = |x| x;
+   |                        -- ^ returning this value requires that `'1` must outlive `'2`
+   |                        ||
+   |                        |return type of closure is &'2 i32
+   |                        has type `&'1 i32`
+
+thread 'rustc' panicked at compiler/rustc_borrowck/src/dataflow.rs:418:13:
+assertion `left == right` failed: polonius loan scopes differ from NLL borrow scopes, for body /tmp/icemaker_global_tempdir.j09zTpiMeB10/rustc_testrunner_tmpdir_reporting.6BA5IqLroDn9/mvce.rs:11:1: 16:2 (#0)
+  left: {bb0[16]: [bw0]}
+ right: {bb2[0]: [bw0], bb1[0]: [bw0]}
+stack backtrace:
+   0:     0x78e818c02d45 - std::backtrace_rs::backtrace::libunwind::trace::he27724ab9ba077ae
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/../../backtrace/src/backtrace/libunwind.rs:116:5
+   1:     0x78e818c02d45 - std::backtrace_rs::backtrace::trace_unsynchronized::h8e764d5b7d96c928
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x78e818c02d45 - std::sys_common::backtrace::_print_fmt::h3b015d1dd0132d35
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x78e818c02d45 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h5d1014338738062e
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x78e818c534eb - core::fmt::rt::Argument::fmt::h60a123cf0371ab3c
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/core/src/fmt/rt.rs:165:63
+   5:     0x78e818c534eb - core::fmt::write::h83e73de2f751b956
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/core/src/fmt/mod.rs:1168:21
+   6:     0x78e818bf7acf - std::io::Write::write_fmt::hc31dd1d0eb90cbf9
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/io/mod.rs:1835:15
+   7:     0x78e818c02b1e - std::sys_common::backtrace::_print::hc36ef09893adcde7
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x78e818c02b1e - std::sys_common::backtrace::print::hff629cd88cbfd188
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x78e818c05559 - std::panicking::default_hook::{{closure}}::h9d71a1d8151e4423
+  10:     0x78e818c052fa - std::panicking::default_hook::h8b6ebfe091a035c5
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/panicking.rs:298:9
+  11:     0x78e81537c3ff - std[b127da73d53c36b6]::panicking::update_hook::<alloc[38d31d85db1a046c]::boxed::Box<rustc_driver_impl[45af4acf2cc78f06]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x78e818c05c8b - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::hae8bef6fc4aacccb
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/alloc/src/boxed.rs:2077:9
+  13:     0x78e818c05c8b - std::panicking::rust_panic_with_hook::h1bc8a1911adf5d38
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/panicking.rs:799:13
+  14:     0x78e818c05a04 - std::panicking::begin_panic_handler::{{closure}}::hd4b966e58e008e0c
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/panicking.rs:664:13
+  15:     0x78e818c03209 - std::sys_common::backtrace::__rust_end_short_backtrace::hef31567bf2c1bb30
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/sys_common/backtrace.rs:171:18
+  16:     0x78e818c05737 - rust_begin_unwind
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/panicking.rs:652:5
+  17:     0x78e818c4fa83 - core::panicking::panic_fmt::h00800dd6c6e334a4
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/core/src/panicking.rs:72:14
+  18:     0x78e818c5007f - core::panicking::assert_failed_inner::h377882419abf48f3
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/core/src/panicking.rs:403:23
+  19:     0x78e8150b5347 - core[680d2829b3045f23]::panicking::assert_failed::<indexmap[18e14f81f0668936]::map::IndexMap<rustc_middle[349545b1af2ab62b]::mir::Location, alloc[38d31d85db1a046c]::vec::Vec<rustc_borrowck[46ee65c78ca61b43]::dataflow::BorrowIndex>, core[680d2829b3045f23]::hash::BuildHasherDefault<rustc_hash[338ae66e5de4b634]::FxHasher>>, indexmap[18e14f81f0668936]::map::IndexMap<rustc_middle[349545b1af2ab62b]::mir::Location, alloc[38d31d85db1a046c]::vec::Vec<rustc_borrowck[46ee65c78ca61b43]::dataflow::BorrowIndex>, core[680d2829b3045f23]::hash::BuildHasherDefault<rustc_hash[338ae66e5de4b634]::FxHasher>>>
+  20:     0x78e817759932 - rustc_borrowck[46ee65c78ca61b43]::do_mir_borrowck
+  21:     0x78e81773dbbe - rustc_query_impl[b18d7974ec639165]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[b18d7974ec639165]::query_impl::mir_borrowck::dynamic_query::{closure#2}::{closure#0}, rustc_middle[349545b1af2ab62b]::query::erase::Erased<[u8; 8usize]>>
+  22:     0x78e816b867b1 - rustc_query_system[6a27861ca80f3c7f]::query::plumbing::try_execute_query::<rustc_query_impl[b18d7974ec639165]::DynamicConfig<rustc_query_system[6a27861ca80f3c7f]::query::caches::VecCache<rustc_span[97aaaa995e2f92fe]::def_id::LocalDefId, rustc_middle[349545b1af2ab62b]::query::erase::Erased<[u8; 8usize]>>, false, false, false>, rustc_query_impl[b18d7974ec639165]::plumbing::QueryCtxt, false>
+  23:     0x78e816b8620d - rustc_query_impl[b18d7974ec639165]::query_impl::mir_borrowck::get_query_non_incr::__rust_end_short_backtrace
+  24:     0x78e816b64904 - rustc_interface[411eb75ca6615201]::passes::analysis
+  25:     0x78e816b63a95 - rustc_query_impl[b18d7974ec639165]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[b18d7974ec639165]::query_impl::analysis::dynamic_query::{closure#2}::{closure#0}, rustc_middle[349545b1af2ab62b]::query::erase::Erased<[u8; 1usize]>>
+  26:     0x78e8175da965 - rustc_query_system[6a27861ca80f3c7f]::query::plumbing::try_execute_query::<rustc_query_impl[b18d7974ec639165]::DynamicConfig<rustc_query_system[6a27861ca80f3c7f]::query::caches::SingleCache<rustc_middle[349545b1af2ab62b]::query::erase::Erased<[u8; 1usize]>>, false, false, false>, rustc_query_impl[b18d7974ec639165]::plumbing::QueryCtxt, false>
+  27:     0x78e8175da6cf - rustc_query_impl[b18d7974ec639165]::query_impl::analysis::get_query_non_incr::__rust_end_short_backtrace
+  28:     0x78e8173db092 - rustc_interface[411eb75ca6615201]::interface::run_compiler::<core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>, rustc_driver_impl[45af4acf2cc78f06]::run_compiler::{closure#0}>::{closure#1}
+  29:     0x78e8173c8589 - std[b127da73d53c36b6]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[411eb75ca6615201]::util::run_in_thread_with_globals<rustc_interface[411eb75ca6615201]::util::run_in_thread_pool_with_globals<rustc_interface[411eb75ca6615201]::interface::run_compiler<core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>, rustc_driver_impl[45af4acf2cc78f06]::run_compiler::{closure#0}>::{closure#1}, core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>>::{closure#0}, core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>>
+  30:     0x78e8173c8342 - <<std[b127da73d53c36b6]::thread::Builder>::spawn_unchecked_<rustc_interface[411eb75ca6615201]::util::run_in_thread_with_globals<rustc_interface[411eb75ca6615201]::util::run_in_thread_pool_with_globals<rustc_interface[411eb75ca6615201]::interface::run_compiler<core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>, rustc_driver_impl[45af4acf2cc78f06]::run_compiler::{closure#0}>::{closure#1}, core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>>::{closure#0}, core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[680d2829b3045f23]::result::Result<(), rustc_span[97aaaa995e2f92fe]::ErrorGuaranteed>>::{closure#2} as core[680d2829b3045f23]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  31:     0x78e818c0fc7b - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h4ef5945c2429999c
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/alloc/src/boxed.rs:2063:9
+  32:     0x78e818c0fc7b - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h5dd441b71d9c7ff9
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/alloc/src/boxed.rs:2063:9
+  33:     0x78e818c0fc7b - std::sys::pal::unix::thread::Thread::new::thread_start::hac40c46ba02b627e
+                               at /rustc/44701e070c8453df10df1984944258018ac21610/library/std/src/sys/pal/unix/thread.rs:108:17
+  34:     0x78e8120a6ded - <unknown>
+  35:     0x78e81212a0dc - <unknown>
+  36:                0x0 - <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.80.0-nightly (44701e070 2024-06-04) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z polonius=next -Z dump-mir-dir=dir
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `ret_ref_local`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0601, E0726.
+For more information about an error, try `rustc --explain E0601`.
+
+Bug Labels:
+C-bug, F-inherent_associated_types, I-ICE, NLL-polonius, S-bug-has-test, T-compiler

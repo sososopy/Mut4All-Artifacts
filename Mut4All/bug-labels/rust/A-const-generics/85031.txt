@@ -1,0 +1,84 @@
+Issue Title:
+ICE with `const_evaluatable_checked` and lifetime parameter · Issue #85031 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(const_generics, const_evaluatable_checked)]
+
+pub struct Ref<'a, const NUM: usize>(&'a i32);
+
+impl<'a, const NUM: usize> Ref<'a, NUM> {
+    pub fn foo<const A: usize>(r: Ref<'a, A>) -> Self
+    where
+        ([(); NUM - A], [(); A - NUM]): Sized,
+    {
+        Self::bar(r)
+    }
+
+    pub fn bar<const A: usize>(r: Ref<'a, A>) -> Self
+    where
+        ([(); NUM - A], [(); A - NUM]): Sized,
+    {
+        Self(r.0)
+    }
+}
+
+Bug Trace:
+0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::bug
+   3: rustc_errors::Handler::bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::bug_fmt
+   7: rustc_middle::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::RegionKind>::hash_stable
+   8: std::thread::local::LocalKey<T>::with
+   9: rustc_query_system::dep_graph::dep_node::DepNode<K>::construct
+  10: rustc_query_system::query::plumbing::get_query_impl
+  11: rustc_query_system::query::plumbing::get_query
+  12: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::try_unify_abstract_consts
+  13: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+  14: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+  15: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  16: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::resolve_vars_with_obligations
+  17: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::structurally_resolved_type
+  18: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  19: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  20: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  21: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  22: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  23: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  24: rustc_typeck::check::check::check_fn
+  25: rustc_typeck::check::inherited::InheritedBuilder::enter
+  26: rustc_typeck::check::typeck
+  27: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  28: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  29: rustc_data_structures::stack::ensure_sufficient_stack
+  30: rustc_query_system::query::plumbing::force_query_with_job
+  31: rustc_query_system::query::plumbing::get_query_impl
+  32: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  33: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  34: rustc_typeck::check::typeck_item_bodies
+  35: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  36: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  37: rustc_data_structures::stack::ensure_sufficient_stack
+  38: rustc_query_system::query::plumbing::force_query_with_job
+  39: rustc_query_system::query::plumbing::get_query_impl
+  40: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck_item_bodies
+  41: rustc_session::utils::<impl rustc_session::session::Session>::time
+  42: rustc_typeck::check_crate
+  43: rustc_interface::passes::analysis
+  44: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  45: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  46: rustc_data_structures::stack::ensure_sufficient_stack
+  47: rustc_query_system::query::plumbing::force_query_with_job
+  48: rustc_query_system::query::plumbing::get_query_impl
+  49: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  50: rustc_interface::passes::QueryContext::enter
+  51: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  52: rustc_span::with_source_map
+  53: rustc_interface::interface::create_compiler_and_run
+  54: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-const-generics, A-incr-comp, C-bug, F-const_generics, F-generic_const_exprs, I-ICE, T-compiler, glacier, requires-nightly

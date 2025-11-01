@@ -1,0 +1,45 @@
+Issue Title:
+Compiler crash in definition of trait method that takes and returns an associated type with generics. · Issue #67754 · rust-lang/rust · GitHub
+
+Rust Code:
+#![features(generic_associated_types,proc_macro_hygiene)]
+
+use core::ops::Deref;
+#[doc(hidden)]
+pub use high_mem_utils::{DontDrop, DontDropOpt, DropBy};
+#[doc(hidden)]
+pub use std::{hint::unreachable_unchecked, mem::transmute_copy};
+#[doc(hidden)]
+pub use std::mem::{MaybeUninit, transmute};
+#[doc(hidden)]
+pub use macro_helper::{expansion_bucle, expansion_bucle_counted};
+#[doc(hidden)]
+pub use compile_ops::{add, sub};
+
+pub trait VectorForMapLit {
+    type Vect<T>: Deref<Target = [T]>;
+
+    #[inline]
+    fn gen<'a, T, C: Fn()>(map: &'a mut Self::Vect, code: C, len: usize) -> &'a mut Self::Vect {
+        let mut actual_len = DontDrop(map.len());
+        let actual_ptr = &actual_len.0 as *const usize;
+        map.reserve(len);
+        let mut map = DropBy::new(map, |mut v| unsafe { v.set_len(actual_ptr.read()) });
+
+        unsafe {
+            let map_ptr: *mut T = match map.value {
+                            Some(ref mut a) => a.as_mut_ptr(),
+                            None => unreachable_unchecked(),
+                        };
+
+            code();
+        }
+
+        let mut vec1 = map.take().unwrap_or_else(|| unsafe { unreachable_unchecked() });
+        unsafe { vec1.set_len(actual_len.0) };
+        vec1
+    }
+}
+
+Bug Labels:
+A-GATs, C-bug, E-needs-mcve, F-generic_associated_types, I-ICE, T-compiler, requires-nightly

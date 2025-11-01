@@ -1,0 +1,105 @@
+Issue Title:
+Crash on code with StmtExpr and atomic char load in  Expr::EvaluateAsRValue
+
+Source Code & Bug Trace:
+typedef _Atomic char atomic_char;
+
+atomic_char counter;
+
+char load_plus_one() {
+  return ({counter;}) + 1;
+}
+
+$ clang-18 -fsyntax-only minimal.c
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: clang-18 -fsyntax-only minimal.c
+1.	minimal.c:6:26: current parser token ';'
+2.	minimal.c:5:22: parsing function body 'load_plus_one'
+3.	minimal.c:5:22: in compound statement ('{}')
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM-18.so.18.1   0x000079cec1794716 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 54
+1  libLLVM-18.so.18.1   0x000079cec17926d0 llvm::sys::RunSignalHandlers() + 80
+2  libLLVM-18.so.18.1   0x000079cec16e41f0
+3  libc.so.6            0x000079cec0242520
+4  libclang-cpp.so.18.1 0x000079cec90da059
+5  libclang-cpp.so.18.1 0x000062b1379df1f8
+clang-18: error: clang frontend command failed with exit code 139 (use -v to see invocation)
+Ubuntu clang version 18.1.8 (++20240731024944+3b5b5c1ec4a3-1~exp1~20240731145000.144)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang-18: note: diagnostic msg: 
+
+
+$ clang-16 -fsyntax-only minimal.c
+*** stack smashing detected ***: terminated
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.	Program arguments: clang-16 -fsyntax-only minimal.c
+1.	minimal.c:6:26: current parser token ';'
+2.	minimal.c:5:22: parsing function body 'load_plus_one'
+3.	minimal.c:5:22: in compound statement ('{}')
+Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+0  libLLVM-16.so.1    0x0000794646bbec16 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 54
+1  libLLVM-16.so.1    0x0000794646bbcdb0 llvm::sys::RunSignalHandlers() + 80
+2  libLLVM-16.so.1    0x0000794646afd600
+3  libc.so.6          0x0000794645442520
+4  libc.so.6          0x00007946454969fc pthread_kill + 300
+5  libc.so.6          0x0000794645442476 raise + 22
+6  libc.so.6          0x00007946454287f3 abort + 211
+7  libc.so.6          0x0000794645489676
+8  libc.so.6          0x000079464553659a __fortify_fail + 42
+9  libc.so.6          0x0000794645536566
+10 libclang-cpp.so.16 0x000079464e2f1cde
+11 libclang-cpp.so.16 0x000079464e2daf1b
+12 libclang-cpp.so.16 0x000079464e2f1307
+13 libclang-cpp.so.16 0x000079464e2af018
+14 libclang-cpp.so.16 0x000079464e2d67a2
+15 libclang-cpp.so.16 0x000079464e2af018
+16 libclang-cpp.so.16 0x000079464e2acaf0
+17 libclang-cpp.so.16 0x000079464e2a8bca clang::Expr::EvaluateAsRValue(clang::Expr::EvalResult&, clang::ASTContext const&, bool) const + 602
+18 libclang-cpp.so.16 0x000079464e7e5412
+19 libclang-cpp.so.16 0x000079464e7e2255
+20 libclang-cpp.so.16 0x000079464e7d6995
+21 libclang-cpp.so.16 0x000079464e7d901f clang::Sema::CheckCompletedExpr(clang::Expr*, clang::SourceLocation, bool) + 207
+22 libclang-cpp.so.16 0x000079464eb14604 clang::Sema::ActOnFinishFullExpr(clang::Expr*, clang::SourceLocation, bool, bool, bool) + 324
+23 libclang-cpp.so.16 0x000079464ecf0db5 clang::Sema::BuildReturnStmt(clang::SourceLocation, clang::Expr*, bool) + 2485
+24 libclang-cpp.so.16 0x000079464ecf033e clang::Sema::ActOnReturnStmt(clang::SourceLocation, clang::Expr*, clang::Scope*) + 94
+25 libclang-cpp.so.16 0x000079464e0748b6 clang::Parser::ParseReturnStatement() + 326
+26 libclang-cpp.so.16 0x000079464e06eee9 clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributes&, clang::ParsedAttributes&) + 2649
+27 libclang-cpp.so.16 0x000079464e06e25d clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) + 349
+28 libclang-cpp.so.16 0x000079464e0766f0 clang::Parser::ParseCompoundStatementBody(bool) + 1600
+29 libclang-cpp.so.16 0x000079464e0777af clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) + 175
+30 libclang-cpp.so.16 0x000079464e091910 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) + 3376
+31 libclang-cpp.so.16 0x000079464dfe1832 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, clang::DeclaratorContext, clang::ParsedAttributes&, clang::SourceLocation*, clang::Parser::ForRangeInit*) + 4802
+32 libclang-cpp.so.16 0x000079464e090a47 clang::Parser::ParseDeclOrFunctionDefInternal(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec&, clang::AccessSpecifier) + 1031
+33 libclang-cpp.so.16 0x000079464e090469 clang::Parser::ParseDeclarationOrFunctionDefinition(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*, clang::AccessSpecifier) + 457
+34 libclang-cpp.so.16 0x000079464e08f707 clang::Parser::ParseExternalDeclaration(clang::ParsedAttributes&, clang::ParsedAttributes&, clang::ParsingDeclSpec*) + 1943
+35 libclang-cpp.so.16 0x000079464e08daae clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) + 1182
+36 libclang-cpp.so.16 0x000079464dfcd75e clang::ParseAST(clang::Sema&, bool, bool) + 718
+37 libclang-cpp.so.16 0x000079464fbe5565 clang::FrontendAction::Execute() + 85
+38 libclang-cpp.so.16 0x000079464fb62754 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) + 724
+39 libclang-cpp.so.16 0x000079464fc5dfe4 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) + 660
+40 clang-16           0x000057ac82bf7f4c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) + 2348
+41 clang-16           0x000057ac82bf51f0
+42 libclang-cpp.so.16 0x000079464f83e9a2
+43 libLLVM-16.so.1    0x0000794646afd39c llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) + 140
+44 libclang-cpp.so.16 0x000079464f83e0c3 clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const + 355
+45 libclang-cpp.so.16 0x000079464f809922 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const + 866
+46 libclang-cpp.so.16 0x000079464f809b7e clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const + 142
+47 libclang-cpp.so.16 0x000079464f8242fd clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) + 349
+48 clang-16           0x000057ac82bf48b5 clang_main(int, char**) + 11541
+49 libc.so.6          0x0000794645429d90
+50 libc.so.6          0x0000794645429e40 __libc_start_main + 128
+51 clang-16           0x000057ac82bf1855 _start + 37
+clang: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+Ubuntu clang version 16.0.6 (++20231112100510+7cbf1a259152-1~exp1~20231112100554.106)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang: note: diagnostic msg: 
+
+
+Bug Labels:
+clang:frontend, crash, good first issue

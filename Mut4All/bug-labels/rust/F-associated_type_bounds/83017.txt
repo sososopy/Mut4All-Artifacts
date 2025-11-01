@@ -1,0 +1,89 @@
+Issue Title:
+Escaping bound vars in predicate with `associated_type_bounds` · Issue #83017 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(associated_type_bounds)]
+trait TraitA<'a> { type AsA; }
+trait TraitB<'a, 'b> { type AsB; }
+trait TraitC<'a, 'b, 'c> {}
+struct X;
+impl<'a, 'b, 'c> TraitC<'a, 'b, 'c> for X {}
+struct Y;
+impl<'a, 'b> TraitB<'a, 'b> for Y { type AsB = X; }
+struct Z;
+impl<'a> TraitA<'a> for Z { type AsA = Y; }
+fn foo<T>() where for<'a> T: TraitA<'a, AsA: for<'b> TraitB<'a, 'b, AsB: for<'c> TraitC<'a, 'b, 'c>>> {}
+fn main() {
+    foo::<Z>();
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', /rustc/f98721f886ab52d32d622ad0a46216ad03f3e525/library/std/src/panic.rs:59:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: std::panic::panic_any
+   2: rustc_errors::HandlerInner::span_bug
+   3: rustc_errors::Handler::span_bug
+   4: rustc_middle::ty::context::tls::with_opt
+   5: rustc_middle::util::bug::opt_span_bug_fmt
+   6: rustc_middle::util::bug::span_bug_fmt
+   7: rustc_typeck::check::inherited::Inherited::register_predicate
+   8: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::add_required_obligations
+   9: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::instantiate_value_path
+  10: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  11: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  12: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+  13: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  14: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  15: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  16: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  17: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  18: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  19: rustc_typeck::check::check::check_fn
+  20: rustc_infer::infer::InferCtxtBuilder::enter
+  21: rustc_typeck::check::typeck
+  22: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  23: rustc_data_structures::stack::ensure_sufficient_stack
+  24: rustc_query_system::query::plumbing::force_query_with_job
+  25: rustc_query_system::query::plumbing::get_query_impl
+  26: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck
+  27: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+  28: rustc_typeck::check::typeck_item_bodies
+  29: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  30: rustc_data_structures::stack::ensure_sufficient_stack
+  31: rustc_query_system::query::plumbing::force_query_with_job
+  32: rustc_query_system::query::plumbing::get_query_impl
+  33: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck_item_bodies
+  34: rustc_session::utils::<impl rustc_session::session::Session>::time
+  35: rustc_typeck::check_crate
+  36: rustc_interface::passes::analysis
+  37: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+  38: rustc_data_structures::stack::ensure_sufficient_stack
+  39: rustc_query_system::query::plumbing::force_query_with_job
+  40: rustc_query_system::query::plumbing::get_query_impl
+  41: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  42: rustc_interface::passes::QueryContext::enter
+  43: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  44: rustc_span::with_source_map
+  45: rustc_interface::interface::create_compiler_and_run
+  46: rustc_span::with_session_globals
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-nightly (f98721f88 2021-03-10) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck] type-checking `main`
+#1 [typeck_item_bodies] type-checking all item bodies
+#2 [analysis] running analysis passes on this crate
+end of query stack
+
+Bug Labels:
+C-bug, E-needs-test, F-associated_type_bounds, I-ICE, T-compiler, glacier, requires-nightly

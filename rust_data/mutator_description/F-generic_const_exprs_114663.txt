@@ -1,0 +1,36 @@
+Mutation Operator: Apply Undefined SizeOf Operator to Unsized Type
+
+Target: Struct definitions that involve unsized types in generic parameters, specifically targeting `PhantomData` use.
+
+Mutation Rule:
+1. Identify a struct that uses a generic parameter involving a type, `T`, and `PhantomData<T>`.
+2. For the given struct, ensure that it includes a `where` clause that attempts to use a `size_of` operation on a potentially unsized type, such as a trait object.
+3. Modify the `where` clause by attempting to calculate the size of a dynamically sized type (e.g., a trait object) using `core::mem::size_of::<dyn Trait>()` or similar constructs.
+
+Example:
+Original Code:
+```rust
+struct Container<T>
+where
+    [u8; ::core::mem::size_of::<T>()]:,
+{
+    _marker: PhantomData<T>,
+}
+```
+
+Mutated Code:
+```rust
+struct Container<T>
+where
+    [u8; ::core::mem::size_of::<dyn SomeTrait>()]:,
+{
+    _marker: PhantomData<T>,
+}
+```
+
+Steps:
+- Identify the original struct `Container` that uses a generic parameter and includes a `PhantomData<T>`.
+- In the `where` clause of the struct, replace `T` in the `size_of` calculation with a trait object like `dyn SomeTrait`.
+- This mutation should result in a compile-time error if the trait does not have a defined size, potentially leading to the crashing behavior observed in the bug report.
+
+The mutation aims to mimic conditions that trigger internal compiler errors related to undefined or unsized types, thus enhancing test coverage and highlighting latent issues in compiler handling of generic constants with trait objects.

@@ -1,0 +1,114 @@
+Issue Title:
+Assertion `!Unexpanded.empty() && "Unable to find unexpanded parameter packs"' failed.
+
+Source Code & Bug Trace:
+#include <cstdint>
+#include <tuple>
+#include <utility>
+
+template <typename T> int DefaultValue();
+
+// Invoke DefaultValue() on all members of the tuple.
+template <typename T, std::size_t... Is>
+T DefaultValueTupleImpl(std::index_sequence<Is...>) {
+  return std::tuple{[&]() {
+    using Type = std::tuple_element_t<Is, T>;
+    return DefaultValue<Type>();
+  }()...};
+}
+
+
+$ g++ -c -std=c++17 t.cc
+$ clang++ -c -std=c++17 t.cc
+
+
+ bin/clang -c -std=c++17 -o /tmp/t.o /tmp/t.cc
+clang: /usr/local/llvm-project/clang/lib/Sema/SemaTemplateVariadic.cpp:406: bool clang::Sema::DiagnoseUnexpandedParameterPack(clang::Expr*, clang::Sema::UnexpandedParameterPackContext): Assertion `!Unexpanded.empty() && "Unable to find unexpanded parameter packs"' failed.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: bin/clang -c -std=c++17 -o /tmp/t.o /tmp/t.cc
+1.      /tmp/t.cc:12:32: current parser token ';'
+2.      /tmp/t.cc:9:53: parsing function body 'DefaultValueTupleImpl'
+3.      /tmp/t.cc:9:53: in compound statement ('{}')
+4.      /tmp/t.cc:10:21: lambda expression parsing
+5.      /tmp/t.cc:10:27: in compound statement ('{}')
+ #0 0x00005602926f6231 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) /usr/local/llvm-project/llvm/lib/Support/Unix/Signals.inc:565:22
+ #1 0x00005602926f62f4 PrintStackTraceSignalHandler(void*) /usr/local/llvm-project/llvm/lib/Support/Unix/Signals.inc:632:1
+ #2 0x00005602926f4239 llvm::sys::RunSignalHandlers() /usr/local/llvm-project/llvm/lib/Support/Signals.cpp:94:20
+ #3 0x00005602926f5b6a llvm::sys::CleanupOnSignal(unsigned long) /usr/local/llvm-project/llvm/lib/Support/Unix/Signals.inc:361:31
+ #4 0x0000560292609834 (anonymous namespace)::CrashRecoveryContextImpl::HandleCrash(int, unsigned long) /usr/local/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:76:5
+ #5 0x0000560292609ce9 CrashRecoverySignalHandler(int) /usr/local/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:390:1
+ #6 0x00007f1c20326200 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x13200)
+ #7 0x00007f1c1fdc7891 raise ./signal/../sysdeps/unix/sysv/linux/raise.c:50:1
+ #8 0x00007f1c1fdb1536 abort ./stdlib/abort.c:81:7
+ #9 0x00007f1c1fdb141f get_sysdep_segment_value ./intl/loadmsgcat.c:509:8
+#10 0x00007f1c1fdb141f _nl_load_domain ./intl/loadmsgcat.c:970:34
+#11 0x00007f1c1fdc0212 (/lib/x86_64-linux-gnu/libc.so.6+0x35212)
+#12 0x0000560296ad6d24 clang::Sema::DiagnoseUnexpandedParameterPack(clang::Expr*, clang::Sema::UnexpandedParameterPackContext) /usr/local/llvm-project/clang/lib/Sema/SemaTemplateVariadic.cpp:406:3
+#13 0x00005602967922ca clang::Sema::BuildReturnStmt(clang::SourceLocation, clang::Expr*, bool) /usr/local/llvm-project/clang/lib/Sema/SemaStmt.cpp:3922:17
+#14 0x00005602967920bf clang::Sema::ActOnReturnStmt(clang::SourceLocation, clang::Expr*, clang::Scope*) /usr/local/llvm-project/clang/lib/Sema/SemaStmt.cpp:3889:22
+#15 0x0000560295b3a193 clang::Parser::ParseReturnStatement() /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:2322:67
+#16 0x0000560295b3258c clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributesWithRange&) /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:291:31
+#17 0x0000560295b31af7 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:113:62
+#18 0x0000560295b3563f clang::Parser::ParseCompoundStatementBody(bool) /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:1111:38
+#19 0x0000560295b44d5f clang::Parser::ParseLambdaExpressionAfterIntroducer(clang::LambdaIntroducer&) /usr/local/llvm-project/clang/lib/Parse/ParseExprCXX.cpp:1472:45
+#20 0x0000560295b41a92 clang::Parser::ParseLambdaExpression() /usr/local/llvm-project/clang/lib/Parse/ParseExprCXX.cpp:743:46
+#21 0x0000560295b05064 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:1756:34
+#22 0x0000560295b009cb clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:681:39
+#23 0x0000560295afe29e clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:173:39
+#24 0x0000560295acd698 clang::Parser::ParseInitializer() /usr/local/llvm-project/clang/include/clang/Parse/Parser.h:2011:40
+#25 0x0000560295b3e530 clang::Parser::ParseBraceInitializer() /usr/local/llvm-project/clang/lib/Parse/ParseInit.cpp:497:32
+#26 0x0000560295b46490 clang::Parser::ParseCXXTypeConstructExpression(clang::DeclSpec const&) /usr/local/llvm-project/clang/lib/Parse/ParseExprCXX.cpp:1861:44
+#27 0x0000560295b04729 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:1569:42
+#28 0x0000560295b02b04 clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, bool&, clang::Parser::TypeCastState, bool, bool*) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:1139:37
+#29 0x0000560295b009cb clang::Parser::ParseCastExpression(clang::Parser::CastParseKind, bool, clang::Parser::TypeCastState, bool, bool*) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:681:39
+#30 0x0000560295afe29e clang::Parser::ParseAssignmentExpression(clang::Parser::TypeCastState) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:173:39
+#31 0x0000560295afe05c clang::Parser::ParseExpression(clang::Parser::TypeCastState) /usr/local/llvm-project/clang/lib/Parse/ParseExpr.cpp:124:43
+#32 0x0000560295b3a0e2 clang::Parser::ParseReturnStatement() /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:2314:26
+#33 0x0000560295b3258c clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*, clang::ParsedAttributesWithRange&) /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:291:31
+#34 0x0000560295b31af7 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, clang::Parser::ParsedStmtContext, clang::SourceLocation*) /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:113:62
+#35 0x0000560295b3563f clang::Parser::ParseCompoundStatementBody(bool) /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:1111:38
+#36 0x0000560295b3a4f3 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) /usr/local/llvm-project/clang/lib/Parse/ParseStmt.cpp:2379:47
+#37 0x0000560295a9d6d0 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) /usr/local/llvm-project/clang/lib/Parse/Parser.cpp:1401:36
+#38 0x0000560295b13b01 clang::Parser::ParseSingleDeclarationAfterTemplate(clang::DeclaratorContext, clang::Parser::ParsedTemplateInfo const&, clang::ParsingDeclRAIIObject&, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/llvm-project/clang/lib/Parse/ParseTemplate.cpp:345:35
+#39 0x0000560295b12ee0 clang::Parser::ParseTemplateDeclarationOrSpecialization(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/llvm-project/clang/lib/Parse/ParseTemplate.cpp:169:45
+#40 0x0000560295b12a16 clang::Parser::ParseDeclarationStartingWithTemplate(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributes&, clang::AccessSpecifier) /usr/local/llvm-project/clang/lib/Parse/ParseTemplate.cpp:46:50
+#41 0x0000560295ab4162 clang::Parser::ParseDeclaration(clang::DeclaratorContext, clang::SourceLocation&, clang::ParsedAttributesWithRange&, clang::SourceLocation*) /usr/local/llvm-project/clang/lib/Parse/ParseDecl.cpp:1777:54
+#42 0x0000560295a9b83c clang::Parser::ParseExternalDeclaration(clang::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) /usr/local/llvm-project/clang/lib/Parse/Parser.cpp:933:30
+#43 0x0000560295a9ab46 clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) /usr/local/llvm-project/clang/lib/Parse/Parser.cpp:727:36
+#44 0x0000560295a96030 clang::ParseAST(clang::Sema&, bool, bool) /usr/local/llvm-project/clang/lib/Parse/ParseAST.cpp:162:37
+#45 0x000056029368c729 clang::ASTFrontendAction::ExecuteAction() /usr/local/llvm-project/clang/lib/Frontend/FrontendAction.cpp:1083:11
+#46 0x000056029382a9b7 clang::CodeGenAction::ExecuteAction() /usr/local/llvm-project/clang/lib/CodeGen/CodeGenAction.cpp:1107:5
+#47 0x000056029368c047 clang::FrontendAction::Execute() /usr/local/llvm-project/clang/lib/Frontend/FrontendAction.cpp:980:38
+#48 0x00005602935cdeeb clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) /usr/local/llvm-project/clang/lib/Frontend/CompilerInstance.cpp:1036:42
+#49 0x00005602938197b3 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) /usr/local/llvm-project/clang/lib/FrontendTool/ExecuteCompilerInvocation.cpp:263:38
+#50 0x000056028f259e72 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) /usr/local/llvm-project/clang/tools/driver/cc1_main.cpp:248:40
+#51 0x000056028f24e8d0 ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&) /usr/local/llvm-project/clang/tools/driver/driver.cpp:317:20
+#52 0x00005602934a789b clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()::operator()() const /usr/local/llvm-project/clang/lib/Driver/Job.cpp:407:32
+#53 0x00005602934a7e00 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const::'lambda'()>(long) /usr/local/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:46:40
+#54 0x00005602925fdd46 llvm::function_ref<void ()>::operator()() const /usr/local/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:68:62
+#55 0x0000560292609eb1 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) /usr/local/llvm-project/llvm/lib/Support/CrashRecoveryContext.cpp:426:10
+#56 0x00005602934a7a86 clang::driver::CC1Command::Execute(llvm::ArrayRef<llvm::Optional<llvm::StringRef> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, bool*) const /usr/local/llvm-project/clang/lib/Driver/Job.cpp:407:7
+#57 0x0000560293454460 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&) const /usr/local/llvm-project/clang/lib/Driver/Compilation.cpp:196:22
+#58 0x0000560293454785 clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) const /usr/local/llvm-project/clang/lib/Driver/Compilation.cpp:249:53
+#59 0x0000560293463e80 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*> >&) /usr/local/llvm-project/clang/lib/Driver/Driver.cpp:1617:28
+#60 0x000056028f24f9ab main /usr/local/llvm-project/clang/tools/driver/driver.cpp:489:39
+#61 0x00007f1c1fdb27ed __libc_start_main ./csu/../csu/libc-start.c:332:16
+#62 0x000056028f24d19a _start (bin/clang+0x98fe19a)
+clang-15: error: clang frontend command failed with exit code 134 (use -v to see invocation)
+clang version 15.0.0 (https://github.com/llvm/llvm-project.git 83413bb617aa5a54f6f8f71029c251c709602e1f)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/local/llvm-project/build/bin
+clang-15: note: diagnostic msg:
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang-15: note: diagnostic msg: /tmp/t-1fcaa5.cpp
+clang-15: note: diagnostic msg: /tmp/t-1fcaa5.sh
+clang-15: note: diagnostic msg:
+
+
+Bug Labels:
+clang:frontend, crash

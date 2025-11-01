@@ -1,0 +1,68 @@
+Issue Title:
+[Clang] Crash on  diagnose_if  attribute if first argument is an unexpanded pack
+
+Source Code & Bug Trace:
+template <bool... vals>
+void f() {
+    [] () __attribute((diagnose_if(vals, "message", "error"))) {}();
+}
+
+void g() { f<>(); }
+
+clang++: /root/llvm-project/clang/lib/AST/ExprConstant.cpp:15855: 
+bool clang::Expr::EvaluateAsBooleanCondition(bool&, const clang::ASTContext&, bool) const: 
+Assertion `!isValueDependent() && "Expression evaluator can't be called on a dependent expression."' failed.
+
+Stack dump:
+0.	Program arguments: /opt/compiler-explorer/clang-assertions-trunk/bin/clang++ -gdwarf-4 -g -o /app/output.s -mllvm --x86-asm-syntax=intel -S --gcc-toolchain=/opt/compiler-explorer/gcc-snapshot -fcolor-diagnostics -fno-crash-diagnostics -std=c++23 -O3 <source>
+1.	<eof> parser at end of file
+2.	<source>:2:6: instantiating function definition 'f<>'
+ #0 0x00000000039c0fc8 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x39c0fc8)
+ #1 0x00000000039becac llvm::sys::CleanupOnSignal(unsigned long) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x39becac)
+ #2 0x000000000390fe78 CrashRecoverySignalHandler(int) CrashRecoveryContext.cpp:0:0
+ #3 0x000079ef51c42520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #4 0x000079ef51c969fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #5 0x000079ef51c42476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #6 0x000079ef51c287f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #7 0x000079ef51c2871b (/lib/x86_64-linux-gnu/libc.so.6+0x2871b)
+ #8 0x000079ef51c39e96 (/lib/x86_64-linux-gnu/libc.so.6+0x39e96)
+ #9 0x00000000075d5bc1 (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x75d5bc1)
+#10 0x0000000006c6a5dd bool diagnoseDiagnoseIfAttrsWith<clang::Sema::diagnoseArgIndependentDiagnoseIfAttrs(clang::NamedDecl const*, clang::SourceLocation)::'lambda'(clang::DiagnoseIfAttr const*)>(clang::Sema&, clang::NamedDecl const*, bool, clang::SourceLocation, clang::Sema::diagnoseArgIndependentDiagnoseIfAttrs(clang::NamedDecl const*, clang::SourceLocation)::'lambda'(clang::DiagnoseIfAttr const*)&&) (.constprop.0) SemaOverload.cpp:0:0
+#11 0x0000000006c6a9a3 clang::Sema::diagnoseArgIndependentDiagnoseIfAttrs(clang::NamedDecl const*, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6c6a9a3)
+#12 0x00000000068689d6 clang::Sema::DiagnoseUseOfDecl(clang::NamedDecl*, llvm::ArrayRef<clang::SourceLocation>, clang::ObjCInterfaceDecl const*, bool, bool, clang::ObjCInterfaceDecl*, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x68689d6)
+#13 0x0000000006c5bf07 CreateFunctionRefExpr(clang::Sema&, clang::FunctionDecl*, clang::NamedDecl*, clang::Expr const*, bool, clang::SourceLocation, clang::DeclarationNameLoc const&) SemaOverload.cpp:0:0
+#14 0x0000000006c9b168 clang::Sema::BuildCallToObjectOfClassType(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6c9b168)
+#15 0x00000000068d4717 clang::Sema::BuildCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x68d4717)
+#16 0x00000000068d663c clang::Sema::ActOnCallExpr(clang::Scope*, clang::Expr*, clang::SourceLocation, llvm::MutableArrayRef<clang::Expr*>, clang::SourceLocation, clang::Expr*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x68d663c)
+#17 0x0000000006ef16b0 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCallExpr(clang::CallExpr*) SemaTemplateInstantiate.cpp:0:0
+#18 0x0000000006ee523f clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformExpr(clang::Expr*) SemaTemplateInstantiate.cpp:0:0
+#19 0x0000000006f2295f clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformStmt(clang::Stmt*, clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::StmtDiscardKind) SemaTemplateInstantiate.cpp:0:0
+#20 0x0000000006f23734 clang::TreeTransform<(anonymous namespace)::TemplateInstantiator>::TransformCompoundStmt(clang::CompoundStmt*, bool) SemaTemplateInstantiate.cpp:0:0
+#21 0x0000000006f2adca clang::Sema::SubstStmt(clang::Stmt*, clang::MultiLevelTemplateArgumentList const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6f2adca)
+#22 0x0000000006f824b8 clang::Sema::InstantiateFunctionDefinition(clang::SourceLocation, clang::FunctionDecl*, bool, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6f824b8)
+#23 0x0000000006f8071f clang::Sema::PerformPendingInstantiations(bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x6f8071f)
+#24 0x000000000647d6cf clang::Sema::ActOnEndOfTranslationUnitFragment(clang::Sema::TUFragmentKind) (.part.0) Sema.cpp:0:0
+#25 0x000000000647deca clang::Sema::ActOnEndOfTranslationUnit() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x647deca)
+#26 0x00000000062f700a clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&, clang::Sema::ModuleImportState&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x62f700a)
+#27 0x00000000062ea72a clang::ParseAST(clang::Sema&, bool, bool) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x62ea72a)
+#28 0x000000000428f418 clang::CodeGenAction::ExecuteAction() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x428f418)
+#29 0x0000000004513249 clang::FrontendAction::Execute() (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4513249)
+#30 0x000000000449a83e clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x449a83e)
+#31 0x00000000045fa0de clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x45fa0de)
+#32 0x0000000000c5451c cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc5451c)
+#33 0x0000000000c4d87a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#34 0x00000000042d2639 void llvm::function_ref<void ()>::callback_fn<clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const::'lambda'()>(long) Job.cpp:0:0
+#35 0x0000000003910324 llvm::CrashRecoveryContext::RunSafely(llvm::function_ref<void ()>) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x3910324)
+#36 0x00000000042d2c2f clang::driver::CC1Command::Execute(llvm::ArrayRef<std::optional<llvm::StringRef>>, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>*, bool*) const (.part.0) Job.cpp:0:0
+#37 0x0000000004298ce5 clang::driver::Compilation::ExecuteCommand(clang::driver::Command const&, clang::driver::Command const*&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x4298ce5)
+#38 0x000000000429974d clang::driver::Compilation::ExecuteJobs(clang::driver::JobList const&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&, bool) const (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x429974d)
+#39 0x00000000042a1445 clang::driver::Driver::ExecuteCompilation(clang::driver::Compilation&, llvm::SmallVectorImpl<std::pair<int, clang::driver::Command const*>>&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0x42a1445)
+#40 0x0000000000c51a25 clang_main(int, char**, llvm::ToolContext const&) (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc51a25)
+#41 0x0000000000b33244 main (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xb33244)
+#42 0x000079ef51c29d90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#43 0x000079ef51c29e40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#44 0x0000000000c4d32e _start (/opt/compiler-explorer/clang-assertions-trunk/bin/clang+++0xc4d32e)
+
+
+Bug Labels:
+clang:frontend, crash-on-invalid

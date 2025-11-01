@@ -1,0 +1,245 @@
+Issue Title:
+ICE when lambda captures unsized local. · Issue #88212 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(unsized_locals)]
+
+trait Example {}
+
+struct Foo();
+
+impl Example for Foo {}
+
+fn example() -> Box<dyn Example> {
+    Box::new(Foo())
+}
+
+fn main() {
+    let x: dyn Example = *example();
+    (move || {  // ERROR
+        let _y = x;
+    })();
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<dyn Any>', /home/jesyspa/dev/rust/compiler/rustc_errors/src/lib.rs:1061:9
+stack backtrace:
+   0: std::panicking::begin_panic
+             at /home/jesyspa/dev/rust/library/std/src/panicking.rs:543:12
+   1: std::panic::panic_any
+             at /home/jesyspa/dev/rust/library/std/src/panic.rs:53:5
+   2: rustc_errors::HandlerInner::span_bug
+             at /home/jesyspa/dev/rust/compiler/rustc_errors/src/lib.rs:1061:9
+   3: rustc_errors::Handler::span_bug
+             at /home/jesyspa/dev/rust/compiler/rustc_errors/src/lib.rs:775:9
+   4: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/util/bug.rs:33:40
+   5: rustc_middle::ty::context::tls::with_opt::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1847:40
+   6: rustc_middle::ty::context::tls::with_context_opt
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1799:22
+   7: rustc_middle::ty::context::tls::with_opt
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1847:9
+   8: rustc_middle::util::bug::opt_span_bug_fmt
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/util/bug.rs:30:5
+   9: rustc_middle::util::bug::span_bug_fmt
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/util/bug.rs:21:5
+  10: rustc_mir::interpret::eval_context::InterpCx<M>::size_and_align_of
+  11: rustc_mir::interpret::place::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::force_allocation_maybe_sized
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/interpret/place.rs:921:45
+  12: rustc_mir::interpret::place::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::force_allocation
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/interpret/place.rs:953:12
+  13: rustc_mir::interpret::place::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::place_field
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/interpret/place.rs:547:22
+  14: rustc_mir::interpret::place::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::place_projection
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/interpret/place.rs:585:32
+  15: rustc_mir::interpret::place::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_place
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/interpret/place.rs:610:24
+  16: rustc_mir::interpret::step::<impl rustc_mir::interpret::eval_context::InterpCx<M>>::eval_rvalue_into_place
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/interpret/step.rs:160:20
+  17: rustc_mir::transform::const_prop::ConstPropagator::const_prop::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/const_prop.rs:730:33
+  18: rustc_mir::transform::const_prop::ConstPropagator::use_ecx
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/const_prop.rs:451:15
+  19: rustc_mir::transform::const_prop::ConstPropagator::const_prop
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/const_prop.rs:730:13
+  20: <rustc_mir::transform::const_prop::ConstPropagator as rustc_middle::mir::visit::MutVisitor>::visit_statement
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/const_prop.rs:1099:31
+  21: rustc_middle::mir::visit::MutVisitor::super_basic_block_data
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/mir/visit.rs:312:21
+  22: rustc_middle::mir::visit::MutVisitor::visit_basic_block_data
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/mir/visit.rs:84:17
+  23: <rustc_mir::transform::const_prop::ConstPropagator as rustc_middle::mir::visit::MutVisitor>::visit_body
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/const_prop.rs:1073:13
+  24: <rustc_mir::transform::const_prop::ConstProp as rustc_mir::transform::MirPass>::run_pass
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/const_prop.rs:151:9
+  25: rustc_mir::transform::run_passes::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/mod.rs:195:9
+  26: rustc_mir::transform::run_passes
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/mod.rs:211:13
+  27: rustc_mir::transform::run_optimization_passes
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/mod.rs:558:5
+  28: rustc_mir::transform::inner_optimized_mir
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/mod.rs:595:5
+  29: rustc_mir::transform::optimized_mir
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/transform/mod.rs:573:21
+  30: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_query_impl/src/plumbing.rs:137:17
+  31: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1782:50
+  32: rustc_middle::ty::context::tls::set_tlv
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1766:9
+  33: rustc_middle::ty::context::tls::enter_context
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1782:9
+  34: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_query_impl/src/plumbing.rs:136:13
+  35: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1826:13
+  36: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1810:40
+  37: rustc_middle::ty::context::tls::with_context_opt
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1799:22
+  38: rustc_middle::ty::context::tls::with_context
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1810:9
+  39: rustc_middle::ty::context::tls::with_related_context
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1823:9
+  40: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /home/jesyspa/dev/rust/compiler/rustc_query_impl/src/plumbing.rs:125:9
+  41: rustc_query_system::query::plumbing::try_execute_query
+             at /home/jesyspa/dev/rust/compiler/rustc_query_system/src/query/plumbing.rs:462:22
+  42: rustc_query_system::query::plumbing::get_query_impl
+             at /home/jesyspa/dev/rust/compiler/rustc_query_system/src/query/plumbing.rs:730:5
+  43: rustc_query_system::query::plumbing::get_query
+             at /home/jesyspa/dev/rust/compiler/rustc_query_system/src/query/plumbing.rs:853:17
+  44: rustc_middle::ty::query::TyCtxtAt::optimized_mir
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/query.rs:203:17
+  45: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::optimized_mir
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/query.rs:184:17
+  46: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::instance_mir
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/mod.rs:1857:21
+  47: rustc_mir::monomorphize::collector::collect_neighbours
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/monomorphize/collector.rs:1394:16
+  48: rustc_mir::monomorphize::collector::collect_items_rec::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/monomorphize/collector.rs:426:17
+  49: stacker::maybe_grow
+             at /home/jesyspa/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  50: rustc_data_structures::stack::ensure_sufficient_stack
+             at /home/jesyspa/dev/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+  51: rustc_mir::monomorphize::collector::collect_items_rec
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/monomorphize/collector.rs:425:13
+  52: rustc_mir::monomorphize::collector::collect_crate_mono_items::{{closure}}::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/monomorphize/collector.rs:307:17
+  53: core::iter::traits::iterator::Iterator::for_each::call::{{closure}}
+             at /home/jesyspa/dev/rust/library/core/src/iter/traits/iterator.rs:730:29
+  54: core::iter::traits::iterator::Iterator::fold
+             at /home/jesyspa/dev/rust/library/core/src/iter/traits/iterator.rs:2170:21
+  55: core::iter::traits::iterator::Iterator::for_each
+             at /home/jesyspa/dev/rust/library/core/src/iter/traits/iterator.rs:733:9
+  56: rustc_mir::monomorphize::collector::collect_crate_mono_items::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/monomorphize/collector.rs:305:13
+  57: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at /home/jesyspa/dev/rust/compiler/rustc_data_structures/src/profiling.rs:611:9
+  58: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at /home/jesyspa/dev/rust/compiler/rustc_session/src/utils.rs:16:9
+  59: rustc_mir::monomorphize::collector::collect_crate_mono_items
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/monomorphize/collector.rs:304:9
+  60: rustc_mir::monomorphize::partitioning::collect_and_partition_mono_items
+             at /home/jesyspa/dev/rust/compiler/rustc_mir/src/monomorphize/partitioning/mod.rs:344:33
+  61: rustc_query_system::query::plumbing::try_execute_query::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_query_system/src/query/plumbing.rs:462:55
+  62: stacker::maybe_grow
+             at /home/jesyspa/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  63: rustc_data_structures::stack::ensure_sufficient_stack
+             at /home/jesyspa/dev/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+  64: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_query_impl/src/plumbing.rs:137:17
+  65: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1782:50
+  66: rustc_middle::ty::context::tls::set_tlv
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1766:9
+  67: rustc_middle::ty::context::tls::enter_context
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1782:9
+  68: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_query_impl/src/plumbing.rs:136:13
+  69: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1826:13
+  70: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1810:40
+  71: rustc_middle::ty::context::tls::with_context_opt
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1799:22
+  72: rustc_middle::ty::context::tls::with_context
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1810:9
+  73: rustc_middle::ty::context::tls::with_related_context
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1823:9
+  74: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /home/jesyspa/dev/rust/compiler/rustc_query_impl/src/plumbing.rs:125:9
+  75: rustc_query_system::query::plumbing::try_execute_query
+             at /home/jesyspa/dev/rust/compiler/rustc_query_system/src/query/plumbing.rs:462:22
+  76: rustc_query_system::query::plumbing::get_query_impl
+             at /home/jesyspa/dev/rust/compiler/rustc_query_system/src/query/plumbing.rs:730:5
+  77: rustc_query_system::query::plumbing::get_query
+             at /home/jesyspa/dev/rust/compiler/rustc_query_system/src/query/plumbing.rs:853:17
+  78: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::collect_and_partition_mono_items
+             at /home/jesyspa/dev/rust/compiler/rustc_query_impl/src/plumbing.rs:563:17
+  79: rustc_middle::ty::query::TyCtxtAt::collect_and_partition_mono_items
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/query.rs:203:17
+  80: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::collect_and_partition_mono_items
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/query.rs:184:17
+  81: rustc_codegen_ssa::base::codegen_crate
+             at /home/jesyspa/dev/rust/compiler/rustc_codegen_ssa/src/base.rs:518:25
+  82: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+             at /home/jesyspa/dev/rust/compiler/rustc_codegen_llvm/src/lib.rs:256:18
+  83: rustc_interface::passes::start_codegen::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/passes.rs:1053:9
+  84: rustc_data_structures::profiling::VerboseTimingGuard::run
+             at /home/jesyspa/dev/rust/compiler/rustc_data_structures/src/profiling.rs:611:9
+  85: rustc_session::utils::<impl rustc_session::session::Session>::time
+             at /home/jesyspa/dev/rust/compiler/rustc_session/src/utils.rs:16:9
+  86: rustc_interface::passes::start_codegen
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/passes.rs:1052:19
+  87: rustc_interface::queries::Queries::ongoing_codegen::{{closure}}::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/queries.rs:254:20
+  88: rustc_interface::passes::QueryContext::enter::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/passes.rs:779:42
+  89: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1782:50
+  90: rustc_middle::ty::context::tls::set_tlv
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1766:9
+  91: rustc_middle::ty::context::tls::enter_context
+             at /home/jesyspa/dev/rust/compiler/rustc_middle/src/ty/context.rs:1782:9
+  92: rustc_interface::passes::QueryContext::enter
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/passes.rs:779:9
+  93: rustc_interface::queries::Queries::ongoing_codegen::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/queries.rs:245:13
+  94: rustc_interface::queries::Query<T>::compute
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/queries.rs:38:28
+  95: rustc_interface::queries::Queries::ongoing_codegen
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/queries.rs:243:9
+  96: rustc_driver::run_compiler::{{closure}}::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_driver/src/lib.rs:407:13
+  97: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/queries.rs:390:19
+  98: rustc_driver::run_compiler::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_driver/src/lib.rs:312:22
+  99: rustc_interface::interface::create_compiler_and_run::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/interface.rs:209:13
+ 100: rustc_span::with_source_map
+             at /home/jesyspa/dev/rust/compiler/rustc_span/src/lib.rs:911:5
+ 101: rustc_interface::interface::create_compiler_and_run
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/interface.rs:203:5
+ 102: rustc_interface::interface::run_compiler::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/interface.rs:225:12
+ 103: rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/util.rs:157:13
+ 104: scoped_tls::ScopedKey<T>::set
+             at /home/jesyspa/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+ 105: rustc_span::create_session_globals_then
+             at /home/jesyspa/dev/rust/compiler/rustc_span/src/lib.rs:105:5
+ 106: rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/util.rs:155:9
+ 107: rustc_interface::util::scoped_thread::{{closure}}
+             at /home/jesyspa/dev/rust/compiler/rustc_interface/src/util.rs:130:24
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+Bug Labels:
+C-bug, E-needs-test, F-unsized_locals, I-ICE, T-compiler, glacier, requires-nightly

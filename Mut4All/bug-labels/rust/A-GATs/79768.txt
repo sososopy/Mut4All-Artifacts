@@ -1,0 +1,89 @@
+Issue Title:
+Internal Compiler Error caused by Generic Associated Types · Issue #79768 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_associated_types)]
+
+trait Monad /* : Applicative (for pure/return, doesn't matter for this example) */ {
+    // Self is like the "f a" in haskell
+
+    /// extract the "a" from "f a"
+    type Unplug;
+
+    /// exchange the "a" in "f a" in the type of Self with B
+    type Plug<B>: Monad;
+
+    fn bind<B, F>(self, f: F) -> Self::Plug<B>
+    where
+        F: Fn(Self::Unplug) -> Self::Plug<B>;
+}
+
+impl<A> Monad for Option<A> {
+    type Unplug = A;
+    type Plug<B> = Option<B>;
+    fn bind<B, F>(self, f: F) -> Option<B>
+    where
+        F: Fn(A) -> Option<B>,
+    {
+        self.and_then(f)
+    }
+}
+
+// This function causes the compiler error, specifically, when i added the Plug = P constraint.
+fn stringify<T, M1, P>(m: M1) -> M1::Plug<P>
+where
+    T: core::fmt::Display,
+    M1: Monad<Unplug = T, Plug = P>,
+{
+    m.bind(|x| format!("{}", x))
+}
+
+fn main() {
+    let x = Some(1).bind(|x| Some(x * 2));
+    println!("{:?}", x);
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'Box<Any>', /rustc/1c389ffeff814726dec325f0f2b0c99107df2673/compiler/rustc_errors/src/lib.rs:904:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::span_bug
+   2: rustc_errors::Handler::span_bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::span_bug_fmt
+   8: <rustc_middle::ty::subst::SubstFolder as rustc_middle::ty::fold::TypeFolder>::fold_ty
+   9: rustc_middle::ty::fold::TypeFoldable::fold_with
+  10: rustc_middle::ty::fold::TypeFoldable::fold_with
+  11: rustc_middle::ty::subst::Subst::subst
+  12: rustc_middle::ty::GenericPredicates::instantiate_into
+  13: rustc_middle::ty::GenericPredicates::instantiate
+  14: rustc_trait_selection::traits::wf::WfPredicates::nominal_obligations
+  15: rustc_trait_selection::traits::wf::WfPredicates::compute_projection
+  16: rustc_trait_selection::traits::wf::predicate_obligations
+  17: rustc_typeck::check::wfcheck::check_where_clauses
+  18: rustc_typeck::check::wfcheck::check_fn_or_method
+  19: rustc_infer::infer::InferCtxtBuilder::enter
+  20: rustc_typeck::check::wfcheck::check_item_well_formed
+  21: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::check_item_well_formed>::compute
+  22: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  23: rustc_data_structures::stack::ensure_sufficient_stack
+  24: rustc_query_system::query::plumbing::get_query_impl
+  25: rustc_query_system::query::plumbing::ensure_query_impl
+  26: <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+  27: rustc_hir::hir::Crate::par_visit_all_item_likes
+  28: rustc_typeck::check_crate
+  29: rustc_interface::passes::analysis
+  30: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::analysis>::compute
+  31: rustc_query_system::dep_graph::graph::DepGraph<K>::with_eval_always_task
+  32: rustc_data_structures::stack::ensure_sufficient_stack
+  33: rustc_query_system::query::plumbing::get_query_impl
+  34: rustc_interface::passes::QueryContext::enter
+  35: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  36: rustc_span::with_source_map
+  37: scoped_tls::ScopedKey<T>::set
+
+Bug Labels:
+A-GATs, C-bug, E-needs-test, F-generic_associated_types, I-ICE, T-compiler, glacier, requires-nightly

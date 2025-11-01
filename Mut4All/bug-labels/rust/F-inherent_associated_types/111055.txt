@@ -1,0 +1,95 @@
+Issue Title:
+ICE after using const for const generic param · Issue #111055 · rust-lang/rust · GitHub
+
+Rust Code:
+const DEFAULT_CHUNK_SIZE: usize = 65536;
+[...]
+pub struct Writer<'a, W, A, const C: usize = DEFAULT_CHUNK_SIZE>
+[...]
+
+Bug Trace:
+$ RUST_BACKTRACE=1 cargo test --features std -- --nocapture
+   Compiling stream v0.1.0 (/Users/eric/git/stream-rs)
+error: internal compiler error: compiler/rustc_middle/src/ty/subst.rs:915:9: const parameter `C/#3` (Const { ty: usize, kind: Param(C/#3) }/3) out of range when substituting substs=['_#38r, _, chacha20poly1305::ChaChaPoly1305<aes::cipher::StreamCipherCoreWrapper<chacha20::xchacha::XChaChaCore<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UTerm, aead::consts::B1>, aead::consts::B0>, aead::consts::B1>, aead::consts::B0>>>, aead::generic_array::typenum::UInt<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UInt<aead::generic_array::typenum::UTerm, aead::consts::B1>, aead::consts::B1>, aead::consts::B0>, aead::consts::B0>, aead::consts::B0>>]
+
+thread 'rustc' panicked at 'Box<dyn Any>', /rustc/b628260df0587ae559253d8640ecb8738d3de613/compiler/rustc_errors/src/lib.rs:1643:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: <rustc_errors::HandlerInner>::bug::<&alloc::string::String>
+   2: <rustc_errors::Handler>::bug::<&alloc::string::String>
+   3: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+   4: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}
+   5: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+   6: rustc_middle::util::bug::bug_fmt
+   7: <rustc_middle::ty::subst::SubstFolder>::const_param_out_of_range
+   8: <rustc_middle::ty::subst::SubstFolder as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_const
+   9: rustc_middle::ty::util::fold_list::<rustc_middle::ty::subst::SubstFolder, rustc_middle::ty::subst::GenericArg, <&rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg> as rustc_type_ir::fold::TypeFoldable<rustc_middle::ty::context::TyCtxt>>::try_fold_with<rustc_middle::ty::subst::SubstFolder>::{closure#0}>
+  10: <rustc_middle::ty::consts::kind::ConstKind as rustc_type_ir::fold::TypeFoldable<rustc_middle::ty::context::TyCtxt>>::try_fold_with::<rustc_middle::ty::subst::SubstFolder>
+  11: <rustc_middle::ty::subst::SubstFolder as rustc_type_ir::fold::TypeFolder<rustc_middle::ty::context::TyCtxt>>::fold_const
+  12: <rustc_middle::ty::Ty as rustc_type_ir::fold::TypeSuperFoldable<rustc_middle::ty::context::TyCtxt>>::super_fold_with::<rustc_middle::ty::subst::SubstFolder>
+  13: <rustc_middle::ty::PredicateKind as rustc_type_ir::fold::TypeFoldable<rustc_middle::ty::context::TyCtxt>>::try_fold_with::<rustc_middle::ty::subst::SubstFolder>
+  14: <alloc::vec::Vec<rustc_middle::ty::Predicate> as alloc::vec::spec_extend::SpecExtend<rustc_middle::ty::Predicate, core::iter::adapters::map::Map<core::slice::iter::Iter<(rustc_middle::ty::Predicate, rustc_span::span_encoding::Span)>, <rustc_middle::ty::generics::GenericPredicates>::instantiate_into::{closure#0}>>>::spec_extend
+  15: <rustc_middle::ty::generics::GenericPredicates>::instantiate_into
+  16: <rustc_middle::ty::generics::GenericPredicates>::instantiate
+  17: <rustc_trait_selection::traits::wf::WfPredicates>::nominal_obligations_inner
+  18: <rustc_trait_selection::traits::wf::WfPredicates>::compute
+  19: rustc_trait_selection::traits::wf::obligations
+  20: <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation
+  21: <rustc_data_structures::obligation_forest::ObligationForest<rustc_trait_selection::traits::fulfill::PendingPredicateObligation>>::process_obligations::<rustc_trait_selection::traits::fulfill::FulfillProcessor>
+  22: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+  23: <rustc_hir_typeck::fn_ctxt::FnCtxt>::resolve_vars_with_obligations
+  24: <rustc_hir_typeck::fn_ctxt::FnCtxt>::structurally_resolved_type
+  25: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_call
+  26: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_expr_kind
+  27: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+  28: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_expr_kind
+  29: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+  30: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_decl
+  31: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_stmt
+  32: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_block_with_expected
+  33: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_expr_kind
+  34: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_expr_with_expectation_and_args
+  35: <rustc_hir_typeck::fn_ctxt::FnCtxt>::check_return_expr
+  36: rustc_hir_typeck::check::check_fn
+  37: rustc_hir_typeck::typeck
+  38: <std::thread::local::LocalKey<core::cell::Cell<*const ()>>>::with::<rustc_middle::ty::context::tls::enter_context<rustc_query_system::query::plumbing::execute_job_incr<rustc_query_impl::queries::typeck, rustc_query_impl::plumbing::QueryCtxt>::{closure#2}, (rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::dep_graph::graph::DepNodeIndex)>::{closure#0}, (rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::dep_graph::graph::DepNodeIndex)>
+  39: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::typeck, rustc_query_impl::plumbing::QueryCtxt>
+  40: rustc_query_system::query::plumbing::force_query::<rustc_query_impl::queries::typeck, rustc_query_impl::plumbing::QueryCtxt>
+  41: <rustc_query_impl::plumbing::query_callback<rustc_query_impl::queries::typeck>::{closure#0} as core::ops::function::FnOnce<(rustc_middle::ty::context::TyCtxt, rustc_query_system::dep_graph::dep_node::DepNode<rustc_middle::dep_graph::dep_node::DepKind>)>>::call_once
+  42: <rustc_query_system::dep_graph::graph::DepGraphData<rustc_middle::dep_graph::dep_node::DepKind>>::try_mark_previous_green::<rustc_query_impl::plumbing::QueryCtxt>
+  43: <rustc_query_system::dep_graph::graph::DepGraphData<rustc_middle::dep_graph::dep_node::DepKind>>::try_mark_green::<rustc_query_impl::plumbing::QueryCtxt>
+  44: <std::thread::local::LocalKey<core::cell::Cell<*const ()>>>::with::<rustc_middle::ty::context::tls::enter_context<rustc_query_system::query::plumbing::execute_job_incr<rustc_query_impl::queries::typeck_item_bodies, rustc_query_impl::plumbing::QueryCtxt>::{closure#1}, core::option::Option<(rustc_middle::query::erase::Erased<[u8; 0]>, rustc_query_system::dep_graph::graph::DepNodeIndex)>>::{closure#0}, core::option::Option<(rustc_middle::query::erase::Erased<[u8; 0]>, rustc_query_system::dep_graph::graph::DepNodeIndex)>>
+  45: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::typeck_item_bodies, rustc_query_impl::plumbing::QueryCtxt>
+  46: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::typeck_item_bodies
+  47: rustc_hir_analysis::check_crate
+  48: rustc_interface::passes::analysis
+  49: <std::thread::local::LocalKey<core::cell::Cell<*const ()>>>::with::<rustc_middle::ty::context::tls::enter_context<rustc_query_system::query::plumbing::execute_job_incr<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>::{closure#2}, (rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::dep_graph::graph::DepNodeIndex)>::{closure#0}, (rustc_middle::query::erase::Erased<[u8; 1]>, rustc_query_system::dep_graph::graph::DepNodeIndex)>
+  50: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::analysis, rustc_query_impl::plumbing::QueryCtxt>
+  51: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::analysis
+  52: <rustc_middle::ty::context::GlobalCtxt>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}::{closure#4}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+  53: <rustc_interface::interface::Compiler>::enter::<rustc_driver_impl::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+  54: rustc_span::set_source_map::<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}::{closure#0}>
+  55: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.71.0-nightly (b628260df 2023-04-22) running on aarch64-apple-darwin
+
+note: compiler flags: -C embed-bitcode=no -C split-debuginfo=unpacked -C debuginfo=2 -C incremental=[REDACTED]
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [typeck] type-checking `test_basic`
+#1 [typeck_item_bodies] type-checking all item bodies
+#2 [analysis] running analysis passes on this crate
+end of query stack
+there was a panic while trying to force a dep node
+try_mark_green dep node stack:
+#0 typeck_item_bodies(0-0)
+end of try_mark_green dep node stack
+error: could not compile `stream` (test "lib")
+
+Bug Labels:
+C-bug, F-generic_const_exprs, F-inherent_associated_types, I-ICE, T-compiler, requires-nightly

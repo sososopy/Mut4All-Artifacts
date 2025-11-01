@@ -1,0 +1,89 @@
+Issue Title:
+Clang crash when using std::unordered_map with std::array and empty initialization
+
+Source Code & Bug Trace:
+#include <array>
+#include <unordered_map>
+
+void foo() {
+  std::array<std::unordered_map<int, int>, 5> v = {}; 
+}
+
+# 1 "unordered_map" 1 3
+namespace std {
+
+template<typename _Tp, int _Nm>
+struct __array_traits {
+  typedef _Tp _Type[_Nm];
+};
+  
+template<typename _Tp, int _Nm>
+struct array {
+  typedef std::__array_traits<_Tp, _Nm> _AT_Type;
+  typename _AT_Type::_Type              _M_elems;
+};
+
+template<class _Key, class _Tp>
+class unordered_map {
+  explicit unordered_map() { }
+
+};
+
+} // namespace std
+
+# 1 "foo.cc" 1
+
+void Foo() {
+  std::array<std::unordered_map<int,int>, 5> v = {};
+}
+
+clang -cc1 -std=c++11 c.cpp
+
+lib/Sema/SemaInit.cpp:
+ 443	        if (!VerifyOnly) {
+ 444	          SemaRef.Diag(CtorDecl->getLocation(),
+ 445	                       diag::warn_invalid_initializer_from_system_header);
+>446	          SemaRef.Diag(Entity.getDecl()->getLocation(),
+ 447	                       diag::note_used_in_initialization_here);
+ 448	        }
+On line 446, Entity.getDecl() returns a null pointer, leading to a null dereference in getLocation()
+
+Backtrace:
+#&#8203;0 0x16003aa llvm::sys::PrintStackTrace(llvm::raw_ostream&) (/usr/local/bin/clang-3.5+0x16003aa)
+#&#8203;1 0x160173b SignalHandler(int) (/usr/local/bin/clang-3.5+0x160173b)
+#&#8203;2 0x7f0eb742c340 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x10340)
+#&#8203;3 0x2448132 (anonymous namespace)::InitListChecker::PerformEmptyInit(clang::Sema&, clang::SourceLocation, clang::InitializedEntity const&, bool) (/usr/local/bin/clang-3.5+0x2448132)
+#&#8203;4 0x2441ccb (anonymous namespace)::InitListChecker::FillInEmptyInitializations(clang::InitializedEntity const&, clang::InitListExpr*, bool&, bool) (/usr/local/bin/clang-3.5+0x2441ccb)
+#&#8203;5 0x2439646 (anonymous namespace)::InitListChecker::InitListChecker(clang::Sema&, clang::InitializedEntity const&, clang::InitListExpr*, clang::QualType&, bool) (/usr/local/bin/clang-3.5+0x2439646)
+#&#8203;6 0x2430556 clang::InitializationSequence::Perform(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::QualType*) (/usr/local/bin/clang-3.5+0x2430556)
+#&#8203;7 0x24481e0 (anonymous namespace)::InitListChecker::PerformEmptyInit(clang::Sema&, clang::SourceLocation, clang::InitializedEntity const&, bool) (/usr/local/bin/clang-3.5+0x24481e0)
+#&#8203;8 0x244d0f3 (anonymous namespace)::InitListChecker::FillInEmptyInitForField(unsigned int, clang::FieldDecl*, clang::InitializedEntity const&, clang::InitListExpr*, bool&, bool) (/usr/local/bin/clang-3.5+0x244d0f3)
+#&#8203;9 0x2441fdb (anonymous namespace)::InitListChecker::FillInEmptyInitializations(clang::InitializedEntity const&, clang::InitListExpr*, bool&, bool) (/usr/local/bin/clang-3.5+0x2441fdb)
+#&#8203;10 0x2439646 (anonymous namespace)::InitListChecker::InitListChecker(clang::Sema&, clang::InitializedEntity const&, clang::InitListExpr*, clang::QualType&, bool) (/usr/local/bin/clang-3.5+0x2439646)
+#&#8203;11 0x2430556 clang::InitializationSequence::Perform(clang::Sema&, clang::InitializedEntity const&, clang::InitializationKind const&, llvm::MutableArrayRef<clang::Expr*>, clang::QualType*) (/usr/local/bin/clang-3.5+0x2430556)
+#&#8203;12 0x2260936 clang::Sema::AddInitializerToDecl(clang::Decl*, clang::Expr*, bool, bool) (/usr/local/bin/clang-3.5+0x2260936)
+#&#8203;13 0x1ff0524 clang::Parser::ParseDeclarationAfterDeclaratorAndAttributes(clang::Declarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::ForRangeInit*) (/usr/local/bin/clang-3.5+0x1ff0524)
+#&#8203;14 0x1fee198 clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, unsigned int, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/usr/local/bin/clang-3.5+0x1fee198)
+#&#8203;15 0x1fe9df7 clang::Parser::ParseSimpleDeclaration(unsigned int, clang::SourceLocation&, clang::Parser::ParsedAttributesWithRange&, bool, clang::Parser::ForRangeInit*) (/usr/local/bin/clang-3.5+0x1fe9df7)
+#&#8203;16 0x1fe9a3a clang::Parser::ParseDeclaration(unsigned int, clang::SourceLocation&, clang::Parser::ParsedAttributesWithRange&) (/usr/local/bin/clang-3.5+0x1fe9a3a)
+#&#8203;17 0x20539bd clang::Parser::ParseStatementOrDeclarationAfterAttributes(llvm::SmallVector<clang::Stmt*, 32u>&, bool, clang::SourceLocation*, clang::Parser::ParsedAttributesWithRange&) (/usr/local/bin/clang-3.5+0x20539bd)
+#&#8203;18 0x2053651 clang::Parser::ParseStatementOrDeclaration(llvm::SmallVector<clang::Stmt*, 32u>&, bool, clang::SourceLocation*) (/usr/local/bin/clang-3.5+0x2053651)
+#&#8203;19 0x205ac6f clang::Parser::ParseCompoundStatementBody(bool) (/usr/local/bin/clang-3.5+0x205ac6f)
+#&#8203;20 0x205b4b3 clang::Parser::ParseFunctionStatementBody(clang::Decl*, clang::Parser::ParseScope&) (/usr/local/bin/clang-3.5+0x205b4b3)
+#&#8203;21 0x1fdc980 clang::Parser::ParseFunctionDefinition(clang::ParsingDeclarator&, clang::Parser::ParsedTemplateInfo const&, clang::Parser::LateParsedAttrList*) (/usr/local/bin/clang-3.5+0x1fdc980)
+#&#8203;22 0x1fee09f clang::Parser::ParseDeclGroup(clang::ParsingDeclSpec&, unsigned int, clang::SourceLocation*, clang::Parser::ForRangeInit*) (/usr/local/bin/clang-3.5+0x1fee09f)
+#&#8203;23 0x1fdbfed clang::Parser::ParseDeclOrFunctionDefInternal(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec&, clang::AccessSpecifier) (/usr/local/bin/clang-3.5+0x1fdbfed)
+#&#8203;24 0x1fdba3c clang::Parser::ParseDeclarationOrFunctionDefinition(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*, clang::AccessSpecifier) (/usr/local/bin/clang-3.5+0x1fdba3c)
+#&#8203;25 0x1fdab6b clang::Parser::ParseExternalDeclaration(clang::Parser::ParsedAttributesWithRange&, clang::ParsingDeclSpec*) (/usr/local/bin/clang-3.5+0x1fdab6b)
+#&#8203;26 0x1fda09b clang::Parser::ParseTopLevelDecl(clang::OpaquePtr<clang::DeclGroupRef>&) (/usr/local/bin/clang-3.5+0x1fda09b)
+#&#8203;27 0x1fd60b6 clang::ParseAST(clang::Sema&, bool, bool) (/usr/local/bin/clang-3.5+0x1fd60b6)
+#&#8203;28 0x17ac19e clang::FrontendAction::Execute() (/usr/local/bin/clang-3.5+0x17ac19e)
+#&#8203;29 0x177b86c clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/local/bin/clang-3.5+0x177b86c)
+#&#8203;30 0x18292e8 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/local/bin/clang-3.5+0x18292e8)
+#&#8203;31 0x7040ec cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/local/bin/clang-3.5+0x7040ec)
+#&#8203;32 0x702f70 main (/usr/local/bin/clang-3.5+0x702f70)
+#&#8203;33 0x7f0eb6943ec5 __libc_start_main /build/buildd/eglibc-2.19/csu/libc-start.c:321:0
+#&#8203;34 0x70014c _start (/usr/local/bin/clang-3.5+0x70014c)
+
+Bug Labels:
+bugzilla, clang:frontend, crash-on-valid

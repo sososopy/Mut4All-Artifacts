@@ -1,0 +1,51 @@
+Issue Title:
+GAT + Generic Const Exprs causes "unexpected bound ty in binder: BoundTy" · Issue #99029 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(generic_const_exprs)]
+#![feature(generic_associated_types)]
+use std::marker::PhantomData;
+
+trait Foo {
+    const N: usize;
+    type Bar;
+
+    fn foo() -> [usize; Self::N];
+}
+
+trait Owner {
+    type LendingFooIter<'a, F: Foo>: Iterator<Item = F::Bar>
+    where
+        [(); F::N]:;
+}
+
+struct OwnerImpl {}
+
+impl Owner for OwnerImpl {
+    type LendingFooIter<'a, F: Foo> = LendingFooIterImpl<'a, F>
+    where
+        [(); F::N]:;
+}
+
+struct LendingFooIterImpl<'a, F: Foo> {
+    _owner: &'a OwnerImpl,
+    _phantom: PhantomData<F>,
+}
+
+impl<'a, F: Foo> Iterator for LendingFooIterImpl<'a, F>
+where
+    [(); F::N]:,
+{
+    type Item = F::Bar;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // * This line requires the `[(); F::N]:` bounds added throughout the above.
+        // * Adding those bounds causes the compiler crash.
+        // * Removing this line and the requisite, above bounds, results in successful compile
+        let _x = F::foo();
+        None
+    }
+}
+
+Bug Labels:
+A-GATs, C-bug, F-generic_associated_types, F-generic_const_exprs, I-ICE, T-compiler

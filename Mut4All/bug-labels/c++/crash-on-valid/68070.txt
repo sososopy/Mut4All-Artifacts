@@ -1,0 +1,98 @@
+Issue Title:
+ICE in forward from deduced this in lambda
+
+Source Code & Bug Trace:
+#include <utility>
+
+auto f = [x = 3]<typename Self>(this Self&& self)
+  {
+    return std::forward_like<Self>(x);
+  };
+
+int main()
+{
+  return std::move(f)();
+}
+
+bf@pteranodon /tmp > /opt/llvm-p0847r7/bin/clang++ -std=c++2c /tmp/t.cpp -stdlib=libc++
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace, preprocessed source, and associated run script.
+Stack dump:
+0.      Program arguments: /opt/llvm-p0847r7/bin/clang-18 -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -mrelax-all -dumpdir a- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name t.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/tmp -fcoverage-compilation-dir=/tmp -resource-dir /opt/llvm-p0847r7/lib/clang/18 -internal-isystem /opt/llvm-p0847r7/bin/../include/x86_64-unknown-linux-gnu/c++/v1 -internal-isystem /opt/llvm-p0847r7/bin/../include/c++/v1 -internal-isystem /opt/llvm-p0847r7/lib/clang/18/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c++2c -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fno-implicit-modules -fcxx-exceptions -fexceptions -fcolor-diagnostics -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o /tmp/t-442d5d.o -x c++ /tmp/t.cpp
+1.      <eof> parser at end of file
+2.      /tmp/t.cpp:8:5: LLVM IR generation of declaration 'main'
+3.      /tmp/t.cpp:8:5: Generating code for declaration 'main'
+ #0 0x0000558ec0661ef2 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/opt/llvm-p0847r7/bin/clang-18+0x3621ef2)
+ #1 0x0000558ec065f37b SignalHandler(int) Signals.cpp:0:0
+ #2 0x00007f5494e3c4b0 (/lib/x86_64-linux-gnu/libc.so.6+0x3c4b0)
+ #3 0x0000558ec359a919 (anonymous namespace)::LValueExprEvaluator::VisitVarDecl(clang::Expr const*, clang::VarDecl const*) ExprConstant.cpp:0:0
+ #4 0x0000558ec35d9bf8 (anonymous namespace)::IntExprEvaluator::VisitCastExpr(clang::CastExpr const*) ExprConstant.cpp:0:0
+ #5 0x0000558ec35920a0 Evaluate(clang::APValue&, (anonymous namespace)::EvalInfo&, clang::Expr const*) ExprConstant.cpp:0:0
+ #6 0x0000558ec35ab61d EvaluateStmt((anonymous namespace)::StmtResult&, (anonymous namespace)::EvalInfo&, clang::Stmt const*, clang::SwitchCase const*) ExprConstant.cpp:0:0
+ #7 0x0000558ec35aaaaf EvaluateStmt((anonymous namespace)::StmtResult&, (anonymous namespace)::EvalInfo&, clang::Stmt const*, clang::SwitchCase const*) ExprConstant.cpp:0:0
+ #8 0x0000558ec35b2a38 HandleFunctionCall(clang::SourceLocation, clang::FunctionDecl const*, (anonymous namespace)::LValue const*, clang::Expr const*, llvm::ArrayRef<clang::Expr const*>, (anonymous namespace)::CallRef, clang::Stmt const*, (anonymous namespace)::EvalInfo&, clang::APValue&, (anonymous namespace)::LValue const*) (.isra.0) ExprConstant.cpp:0:0
+ #9 0x0000558ec35e056f (anonymous namespace)::IntExprEvaluator::VisitCallExpr(clang::CallExpr const*) ExprConstant.cpp:0:0
+#10 0x0000558ec35920a0 Evaluate(clang::APValue&, (anonymous namespace)::EvalInfo&, clang::Expr const*) ExprConstant.cpp:0:0
+#11 0x0000558ec359b478 EvaluateAsRValue((anonymous namespace)::EvalInfo&, clang::Expr const*, clang::APValue&) ExprConstant.cpp:0:0
+#12 0x0000558ec359cdc9 clang::Expr::EvaluateAsRValue(clang::Expr::EvalResult&, clang::ASTContext const&, bool) const (/opt/llvm-p0847r7/bin/clang-18+0x655cdc9)
+#13 0x0000558ec359cf26 clang::Expr::isEvaluatable(clang::ASTContext const&, clang::Expr::SideEffectsKind) const (/opt/llvm-p0847r7/bin/clang-18+0x655cf26)
+#14 0x0000558ec0932f5d clang::CodeGen::CodeGenFunction::EmitReturnStmt(clang::ReturnStmt const&) (/opt/llvm-p0847r7/bin/clang-18+0x38f2f5d)
+#15 0x0000558ec0940629 clang::CodeGen::CodeGenFunction::EmitCompoundStmtWithoutScope(clang::CompoundStmt const&, bool, clang::CodeGen::AggValueSlot) (/opt/llvm-p0847r7/bin/clang-18+0x3900629)
+#16 0x0000558ec099979b clang::CodeGen::CodeGenFunction::EmitFunctionBody(clang::Stmt const*) (/opt/llvm-p0847r7/bin/clang-18+0x395979b)
+#17 0x0000558ec09ab3d5 clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) (/opt/llvm-p0847r7/bin/clang-18+0x396b3d5)
+#18 0x0000558ec09f4b9a clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/llvm-p0847r7/bin/clang-18+0x39b4b9a)
+#19 0x0000558ec09f0b6c clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/opt/llvm-p0847r7/bin/clang-18+0x39b0b6c)
+#20 0x0000558ec09f1263 clang::CodeGen::CodeGenModule::EmitGlobal(clang::GlobalDecl) (/opt/llvm-p0847r7/bin/clang-18+0x39b1263)
+#21 0x0000558ec09f7dd7 clang::CodeGen::CodeGenModule::EmitTopLevelDecl(clang::Decl*) (.part.0) CodeGenModule.cpp:0:0
+#22 0x0000558ec180a238 (anonymous namespace)::CodeGeneratorImpl::HandleTopLevelDecl(clang::DeclGroupRef) ModuleBuilder.cpp:0:0
+#23 0x0000558ec17fac77 clang::BackendConsumer::HandleTopLevelDecl(clang::DeclGroupRef) (/opt/llvm-p0847r7/bin/clang-18+0x47bac77)
+#24 0x0000558ec2641304 clang::ParseAST(clang::Sema&, bool, bool) (/opt/llvm-p0847r7/bin/clang-18+0x5601304)
+#25 0x0000558ec10e1a49 clang::FrontendAction::Execute() (/opt/llvm-p0847r7/bin/clang-18+0x40a1a49)
+#26 0x0000558ec1065fb9 clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/opt/llvm-p0847r7/bin/clang-18+0x4025fb9)
+#27 0x0000558ec11a581b clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/opt/llvm-p0847r7/bin/clang-18+0x416581b)
+#28 0x0000558ebde1c481 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/opt/llvm-p0847r7/bin/clang-18+0xddc481)
+#29 0x0000558ebde14e0a ExecuteCC1Tool(llvm::SmallVectorImpl<char const*>&, llvm::ToolContext const&) driver.cpp:0:0
+#30 0x0000558ebde18c91 clang_main(int, char**, llvm::ToolContext const&) (/opt/llvm-p0847r7/bin/clang-18+0xdd8c91)
+#31 0x0000558ebdd1ab33 main (/opt/llvm-p0847r7/bin/clang-18+0xcdab33)
+#32 0x00007f5494e23a90 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#33 0x00007f5494e23b49 call_init ./csu/../csu/libc-start.c:128:20
+#34 0x00007f5494e23b49 __libc_start_main ./csu/../csu/libc-start.c:347:5
+#35 0x0000558ebde14285 _start (/opt/llvm-p0847r7/bin/clang-18+0xdd4285)
+clang++: error: unable to execute command: Segmentation fault (core dumped)
+clang++: error: clang frontend command failed due to signal (use -v to see invocation)
+clang version 18.0.0 (https://github.com/llvm/llvm-project f58d54ab969b2f342a882dfb03334f18f4ec1dcc)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /opt/llvm-p0847r7/bin
+clang++: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+Preprocessed source(s) and associated run script(s) are located at:
+clang++: note: diagnostic msg: /tmp/t-4a6752.cpp
+clang++: note: diagnostic msg: /tmp/t-4a6752.sh
+clang++: note: diagnostic msg: 
+
+********************
+
+
+#include <utility>
+
+struct S
+{
+  int x = 3;
+  template <typename Self>
+  auto operator()(this Self&& self)
+  {
+    return std::forward_like<Self>(self.x);
+  }
+};
+
+
+int main()
+{
+  S s;
+  return std::move(s)();
+}
+
+Bug Labels:
+clang:frontend, crash-on-valid

@@ -1,0 +1,697 @@
+Issue Title:
+ICE: deadlock detected · Issue #119785 · rust-lang/rust · GitHub
+
+Rust Code:
+// known-bug: #110395
+// Broken until we have `&T: const Deref` impl in stdlib
+
+#![allow(incomplete_features)]
+#![feature(
+    associated_type_bounds,
+    const_trait_impl,
+    effects,
+    const_cmp,
+)]
+
+use std::marker::Destruct;
+
+const fn cmp(a: &impl ~const PartialEq) -> bool {
+    a == a
+}
+
+const fn wrap(x: impl ~const PartialEq + ~const Destruct)
+    -> impl ~const PartialEq + ~const Destruct
+{
+    x
+}
+
+#[const_trait]
+trait Foo {
+    fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;
+}
+
+impl const Foo for () {
+    fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
+        123
+    }
+}
+
+const _: () = {
+    assert!(cmp(&0xDEADBEEFu32));
+    assert!(cmp(&()));
+    assert!(wrap(123) == wrap(123));
+    assert!(wrap(123) != wrap(456));
+    let x = <() as Foo>::huh();
+    assert!(x == x);
+};
+
+#[const_trait]
+trait T {}
+struct S;
+impl const T for S {}
+
+const fn rpit() -> impl ~const T { S }
+
+const fn apit(_: impl ~const T + ~const Destruct) {}
+
+const fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
+
+const fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T> + ~From Destruct) {}
+
+fn main() {}
+
+Bug Trace:
+error: expected `const`, found `From`
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:55:67
+   |
+55 | const fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T> + ~From Destruct) {}
+   |                                                                   ^^^^ expected `const`
+
+error[E0407]: method `huh` is not a member of trait `Foo`
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:30:5
+   |
+30 | /     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
+31 | |         123
+32 | |     }
+   | |_____^ not a member of trait `Foo`
+
+error[E0405]: cannot find trait `Index` in this scope
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:26:35
+   |
+26 |     fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;
+   |                                   ^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+12 + use std::ops::Index;
+   |
+
+error[E0405]: cannot find trait `Index` in this scope
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:26:63
+   |
+26 |     fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;
+   |                                                               ^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+12 + use std::ops::Index;
+   |
+
+error[E0576]: cannot find method or associated constant `huh` in trait `Foo`
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:40:26
+   |
+26 |     fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;
+   |     ------------------------------------------------------------------------- associated function `foo` defined here
+...
+40 |     let x = <() as Foo>::huh();
+   |                          ^^^
+   |                          |
+   |                          not found in `Foo`
+   |                          help: maybe you meant this associated function: `foo`
+
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1
+   |
+26 |     fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;
+   |     ------------------------------------------------------------------------- `foo` from trait
+...
+29 | impl const Foo for () {
+   | ^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error[E0277]: can't compare `()` with `()`
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:37:17
+   |
+37 |     assert!(cmp(&()));
+   |             --- ^^^ no implementation for `() == ()`
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `const PartialEq` is not implemented for `()`
+   = help: the trait `PartialEq` is implemented for `()`
+note: required by a bound in `cmp`
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:14:23
+   |
+14 | const fn cmp(a: &impl ~const PartialEq) -> bool {
+   |                       ^^^^^^^^^^^^^^^^ required by this bound in `cmp`
+
+thread '<unnamed>' panicked at compiler/rustc_query_system/src/query/job.rs:545:13:
+deadlock detected! current query map:
+{
+    QueryJobId(
+        10992,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "const checking `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh`",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        549,
+                    ),
+                    hi: BytePos(
+                        607,
+                    ),
+                    ctxt: #0,
+                },
+            ),
+            def_id: Some(
+                DefId(0:9),
+            ),
+            def_kind: Some(
+                AssocFn,
+            ),
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 45,
+            },
+            hash: 8699547114231343970,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                10992,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    10991,
+                ),
+            ),
+            latch: None,
+        },
+    },
+    QueryJobId(
+        7895,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "computing type of opaque `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh::{opaque#0}`",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        561,
+                    ),
+                    hi: BytePos(
+                        607,
+                    ),
+                    ctxt: #86,
+                },
+            ),
+            def_id: Some(
+                DefId(0:39),
+            ),
+            def_kind: Some(
+                OpaqueTy,
+            ),
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 21,
+            },
+            hash: 16807666808200203142,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                7895,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    7894,
+                ),
+            ),
+            latch: Some(
+                QueryLatch {
+                    info: Mutex {
+                        data: QueryLatchInfo {
+                            complete: false,
+                            waiters: [],
+                        },
+                    },
+                },
+            ),
+        },
+    },
+    QueryJobId(
+        7879,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "checking that types are well-formed in top-level module",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        80,
+                    ),
+                    hi: BytePos(
+                        1163,
+                    ),
+                    ctxt: #0,
+                },
+            ),
+            def_id: Some(
+                DefId(0:0),
+            ),
+            def_kind: Some(
+                Mod,
+            ),
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 109,
+            },
+            hash: 16775145953318437362,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                7879,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    7278,
+                ),
+            ),
+            latch: None,
+        },
+    },
+    QueryJobId(
+        7892,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "checking that `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh::{opaque#0}` is well-formed",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        561,
+                    ),
+                    hi: BytePos(
+                        607,
+                    ),
+                    ctxt: #86,
+                },
+            ),
+            def_id: Some(
+                DefId(0:39),
+            ),
+            def_kind: Some(
+                OpaqueTy,
+            ),
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 194,
+            },
+            hash: 2189457530623612364,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                7892,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    7879,
+                ),
+            ),
+            latch: None,
+        },
+    },
+    QueryJobId(
+        10990,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "borrow-checking `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh`",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        549,
+                    ),
+                    hi: BytePos(
+                        607,
+                    ),
+                    ctxt: #0,
+                },
+            ),
+            def_id: Some(
+                DefId(0:9),
+            ),
+            def_kind: Some(
+                AssocFn,
+            ),
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 117,
+            },
+            hash: 13633633490565634905,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                10990,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    7895,
+                ),
+            ),
+            latch: None,
+        },
+    },
+    QueryJobId(
+        7278,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "running analysis passes on this crate",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        0,
+                    ),
+                    hi: BytePos(
+                        0,
+                    ),
+                    ctxt: #0,
+                },
+            ),
+            def_id: None,
+            def_kind: None,
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 26,
+            },
+            hash: 18287991069702943258,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                7278,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: None,
+            latch: None,
+        },
+    },
+    QueryJobId(
+        11000,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "computing whether `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh::{opaque#0}` is freeze",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        0,
+                    ),
+                    hi: BytePos(
+                        0,
+                    ),
+                    ctxt: #0,
+                },
+            ),
+            def_id: None,
+            def_kind: None,
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 168,
+            },
+            hash: 5251820354377322535,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                11000,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    10992,
+                ),
+            ),
+            latch: None,
+        },
+    },
+    QueryJobId(
+        10991,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "promoting constants in MIR for `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh`",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        549,
+                    ),
+                    hi: BytePos(
+                        607,
+                    ),
+                    ctxt: #0,
+                },
+            ),
+            def_id: Some(
+                DefId(0:9),
+            ),
+            def_kind: Some(
+                AssocFn,
+            ),
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 51,
+            },
+            hash: 3558702604434690802,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                10991,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    10990,
+                ),
+            ),
+            latch: None,
+        },
+    },
+    QueryJobId(
+        11001,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "evaluating trait selection obligation `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh::{opaque#0}: core::marker::Freeze`",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        0,
+                    ),
+                    hi: BytePos(
+                        0,
+                    ),
+                    ctxt: #0,
+                },
+            ),
+            def_id: None,
+            def_kind: None,
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 261,
+            },
+            hash: 10114917453428915902,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                11001,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    11000,
+                ),
+            ),
+            latch: None,
+        },
+    },
+    QueryJobId(
+        7894,
+    ): QueryJobInfo {
+        query: QueryStackFrame {
+            description: "computing type of `<impl at D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:29:1: 29:22>::huh::{opaque#0}`",
+            span: Some(
+                Span {
+                    lo: BytePos(
+                        561,
+                    ),
+                    hi: BytePos(
+                        607,
+                    ),
+                    ctxt: #86,
+                },
+            ),
+            def_id: Some(
+                DefId(0:39),
+            ),
+            def_kind: Some(
+                OpaqueTy,
+            ),
+            ty_adt_id: None,
+            dep_kind: DepKind {
+                variant: 20,
+            },
+            hash: 8891233886168280798,
+        },
+        job: QueryJob {
+            id: QueryJobId(
+                7894,
+            ),
+            span: Span {
+                lo: BytePos(
+                    0,
+                ),
+                hi: BytePos(
+                    0,
+                ),
+                ctxt: #0,
+            },
+            parent: Some(
+                QueryJobId(
+                    7892,
+                ),
+            ),
+            latch: None,
+        },
+    },
+}
+stack backtrace:
+   0:     0x7f90343807e6 - std::backtrace_rs::backtrace::libunwind::trace::h92488e4bb2264071
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/../../backtrace/src/backtrace/libunwind.rs:104:5
+   1:     0x7f90343807e6 - std::backtrace_rs::backtrace::trace_unsynchronized::h97e02be157039c96
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f90343807e6 - std::sys_common::backtrace::_print_fmt::h89a2b01cb3c33339
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/sys_common/backtrace.rs:68:5
+   3:     0x7f90343807e6 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::ha79772b33774e7af
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/sys_common/backtrace.rs:44:22
+   4:     0x7f90343d2ed0 - core::fmt::rt::Argument::fmt::h6d2228239beb9437
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/core/src/fmt/rt.rs:142:9
+   5:     0x7f90343d2ed0 - core::fmt::write::h9bcb8c2e898ce4b2
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/core/src/fmt/mod.rs:1120:17
+   6:     0x7f90343741df - std::io::Write::write_fmt::he7ba80727a5f8d75
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/io/mod.rs:1810:15
+   7:     0x7f90343805c4 - std::sys_common::backtrace::_print::h9bd2ce6833902b42
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/sys_common/backtrace.rs:47:5
+   8:     0x7f90343805c4 - std::sys_common::backtrace::print::h09be6e715f2e0cc6
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/sys_common/backtrace.rs:34:9
+   9:     0x7f9034383357 - std::panicking::default_hook::{{closure}}::h81ac1ebc9ea0357f
+  10:     0x7f90343830b9 - std::panicking::default_hook::hfc7d2f2254fbbaf6
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/panicking.rs:292:9
+  11:     0x7f903114e03c - std[e13db6861558cd66]::panicking::update_hook::<alloc[74e4b4cff019550b]::boxed::Box<rustc_driver_impl[f3f951fd75793e59]::install_ice_hook::{closure#0}>>::{closure#0}
+  12:     0x7f9034383aa6 - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h864b8f962a42f35c
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/alloc/src/boxed.rs:2030:9
+  13:     0x7f9034383aa6 - std::panicking::rust_panic_with_hook::he5915ec9da668475
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/panicking.rs:783:13
+  14:     0x7f90343837f2 - std::panicking::begin_panic_handler::{{closure}}::h8912c4af58ae3d2d
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/panicking.rs:657:13
+  15:     0x7f9034380ce6 - std::sys_common::backtrace::__rust_end_short_backtrace::hfbc35781d5527627
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/sys_common/backtrace.rs:171:18
+  16:     0x7f9034383550 - rust_begin_unwind
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/panicking.rs:645:5
+  17:     0x7f90343cf5d5 - core::panicking::panic_fmt::hc3a8fce14bfb5d21
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/core/src/panicking.rs:72:14
+  18:     0x7f90319c3ddc - rustc_query_system[60e151975146506c]::query::job::deadlock
+  19:     0x7f903114930c - std[e13db6861558cd66]::sys_common::backtrace::__rust_begin_short_backtrace::<rustc_interface[1dfaeeba2be2315d]::util::run_in_thread_pool_with_globals<rustc_interface[1dfaeeba2be2315d]::interface::run_compiler<core[6f83431ac1278f74]::result::Result<(), rustc_span[b49aba93e0aaec5a]::ErrorGuaranteed>, rustc_driver_impl[f3f951fd75793e59]::run_compiler::{closure#0}>::{closure#0}, core[6f83431ac1278f74]::result::Result<(), rustc_span[b49aba93e0aaec5a]::ErrorGuaranteed>>::{closure#2}::{closure#1}, ()>
+  20:     0x7f903114fbc1 - <<std[e13db6861558cd66]::thread::Builder>::spawn_unchecked_<rustc_interface[1dfaeeba2be2315d]::util::run_in_thread_pool_with_globals<rustc_interface[1dfaeeba2be2315d]::interface::run_compiler<core[6f83431ac1278f74]::result::Result<(), rustc_span[b49aba93e0aaec5a]::ErrorGuaranteed>, rustc_driver_impl[f3f951fd75793e59]::run_compiler::{closure#0}>::{closure#0}, core[6f83431ac1278f74]::result::Result<(), rustc_span[b49aba93e0aaec5a]::ErrorGuaranteed>>::{closure#2}::{closure#1}, ()>::{closure#1} as core[6f83431ac1278f74]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  21:     0x7f903438d9d5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hb53ed9031b4e247a
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/alloc/src/boxed.rs:2016:9
+  22:     0x7f903438d9d5 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hfb9a49e9b795584d
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/alloc/src/boxed.rs:2016:9
+  23:     0x7f903438d9d5 - std::sys::unix::thread::Thread::new::thread_start::h4db5c6ec45610220
+                               at /rustc/ca663b06c5492ac2dde5e53cd11579fa8e4d68bd/library/std/src/sys/unix/thread.rs:108:17
+  24:     0x7f902e26d9eb - <unknown>
+  25:     0x7f902e2f17cc - <unknown>
+  26:                0x0 - <unknown>
+
+error[E0277]: can't compare `&impl ~const PartialEq` with `&impl ~const PartialEq`
+  --> D4396908C70E5FEBD7661D6290321F85F26A60EE114BB51C715ABE0E77D4095C.rs:15:7
+   |
+15 |     a == a
+   |       ^^ no implementation for `&impl ~const PartialEq == &impl ~const PartialEq`
+   |
+   = help: the trait `~const PartialEq<&impl ~const PartialEq>` is not implemented for `&impl ~const PartialEq`
+help: consider dereferencing both sides of the expression
+   |
+15 |     *a == *a
+   |     +     +
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please attach the file at `/tmp/deadlock/rustc-ice-2024-01-09T21_39_57-1360080.txt` to your bug report
+
+note: compiler flags: -Z threads=200
+
+query stack during panic:
+end of query stack
+deadlock handler panicked, aborting process
+
+Bug Labels:
+C-bug, F-associated_type_bounds, F-const_trait_impl, F-effects, I-ICE, P-low, T-compiler, WG-compiler-parallel, requires-nightly

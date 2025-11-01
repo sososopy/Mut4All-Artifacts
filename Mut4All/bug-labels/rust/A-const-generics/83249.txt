@@ -1,0 +1,1245 @@
+Issue Title:
+ICE during type inference with const_evaluatable_checked · Issue #83249 · rust-lang/rust · GitHub
+
+Rust Code:
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+trait Foo {
+    const N: usize;
+}
+
+impl Foo for u8 {
+    const N: usize = 1;
+}
+
+fn foo<T: Foo>(_: [u8; T::N]) -> T {
+    todo!()
+}
+
+pub fn bar() {
+    // This equivalent line does not ICE
+    //foo::<u8>([0; 1]);
+    let _: u8 = foo([0; 1]);
+}
+
+fn main() {}
+
+Bug Trace:
+error: internal compiler error: Encountered error `Unimplemented` selecting `Binder(<^0 as Foo>)` during codegen
+
+thread 'rustc' panicked at 'aborting due to `-Z treat-err-as-bug=1`', compiler/rustc_errors/src/lib.rs:1028:27
+stack backtrace:
+   0: std::panicking::begin_panic
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:519:12
+   1: rustc_errors::HandlerInner::panic_if_treat_err_as_bug
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:1028:27
+   2: rustc_errors::HandlerInner::bump_err_count
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:1018:9
+   3: rustc_errors::HandlerInner::emit_diagnostic
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:834:13
+   4: rustc_errors::HandlerInner::emit_diag_at_span
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:946:9
+   5: rustc_errors::HandlerInner::span_bug
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:941:9
+   6: rustc_errors::HandlerInner::delay_span_bug
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:956:13
+   7: rustc_errors::Handler::delay_span_bug
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:671:9
+   8: rustc_session::session::Session::delay_span_bug
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_session/src/session.rs:499:9
+   9: rustc_trait_selection::traits::codegen::codegen_fulfill_obligation::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/codegen.rs:68:17
+  10: rustc_infer::infer::InferCtxtBuilder::enter
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:583:9
+  11: rustc_trait_selection::traits::codegen::codegen_fulfill_obligation
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/codegen.rs:39:5
+  12: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::codegen_fulfill_obligation>::compute
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+  13: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+  14: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+  15: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+  16: stacker::maybe_grow
+             at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  17: rustc_data_structures::stack::ensure_sufficient_stack
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+  18: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+  19: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+  20: rustc_middle::ty::context::tls::set_tlv
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+  21: rustc_middle::ty::context::tls::enter_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+  22: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+  23: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+  24: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+  25: rustc_middle::ty::context::tls::with_context_opt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+  26: rustc_middle::ty::context::tls::with_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+  27: rustc_middle::ty::context::tls::with_related_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+  28: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+  29: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+  30: rustc_query_system::query::plumbing::with_diagnostics
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+  31: rustc_query_system::query::plumbing::force_query_with_job
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+  32: rustc_query_system::query::plumbing::try_execute_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+  33: rustc_query_system::query::plumbing::get_query_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+  34: rustc_query_system::query::plumbing::get_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+  35: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::codegen_fulfill_obligation
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+  36: rustc_middle::ty::query::TyCtxtAt::codegen_fulfill_obligation
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+  37: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::codegen_fulfill_obligation
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+  38: rustc_ty_utils::instance::resolve_associated_item
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_ty_utils/src/instance.rs:118:16
+  39: rustc_ty_utils::instance::inner_resolve_instance
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_ty_utils/src/instance.rs:52:9
+  40: rustc_ty_utils::instance::resolve_instance
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_ty_utils/src/instance.rs:25:5
+  41: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance>::compute
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+  42: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+  43: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+  44: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+  45: stacker::maybe_grow
+             at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  46: rustc_data_structures::stack::ensure_sufficient_stack
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+  47: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+  48: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+  49: rustc_middle::ty::context::tls::set_tlv
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+  50: rustc_middle::ty::context::tls::enter_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+  51: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+  52: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+  53: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+  54: rustc_middle::ty::context::tls::with_context_opt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+  55: rustc_middle::ty::context::tls::with_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+  56: rustc_middle::ty::context::tls::with_related_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+  57: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+  58: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+  59: rustc_query_system::query::plumbing::with_diagnostics
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+  60: rustc_query_system::query::plumbing::force_query_with_job
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+  61: rustc_query_system::query::plumbing::try_execute_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+  62: rustc_query_system::query::plumbing::get_query_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+  63: rustc_query_system::query::plumbing::get_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+  64: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::resolve_instance
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+  65: rustc_middle::ty::query::TyCtxtAt::resolve_instance
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+  66: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::resolve_instance
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+  67: rustc_middle::ty::instance::Instance::resolve_opt_const_arg
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/instance.rs:371:13
+  68: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/mir/interpret/queries.rs:43:15
+  69: rustc_middle::ty::consts::kind::ConstKind::try_eval
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/consts/kind.rs:126:19
+  70: rustc_middle::ty::consts::Const::eval
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/consts.rs:179:28
+  71: <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/query/normalize.rs:216:9
+  72: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::consts::Const>::fold_with
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/structural_impls.rs:1016:9
+  73: <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::fold::TypeFoldable>::super_fold_with
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/subst.rs:159:42
+  74: rustc_middle::ty::fold::TypeFoldable::fold_with
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/fold.rs:49:9
+  75: <rustc_infer::infer::at::At as rustc_trait_selection::traits::query::normalize::AtExt>::normalize
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/query/normalize.rs:65:22
+  76: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_traits/src/normalize_erasing_regions.rs:24:15
+  77: rustc_infer::infer::InferCtxtBuilder::enter
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:583:9
+  78: rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_traits/src/normalize_erasing_regions.rs:22:5
+  79: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+  80: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+  81: stacker::maybe_grow
+             at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  82: rustc_data_structures::stack::ensure_sufficient_stack
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+  83: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+  84: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+  85: rustc_middle::ty::context::tls::set_tlv
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+  86: rustc_middle::ty::context::tls::enter_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+  87: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+  88: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+  89: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+  90: rustc_middle::ty::context::tls::with_context_opt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+  91: rustc_middle::ty::context::tls::with_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+  92: rustc_middle::ty::context::tls::with_related_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+  93: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+  94: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+  95: rustc_query_system::query::plumbing::with_diagnostics
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+  96: rustc_query_system::query::plumbing::force_query_with_job
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+  97: rustc_query_system::query::plumbing::try_execute_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+  98: rustc_query_system::query::plumbing::get_query_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+  99: rustc_query_system::query::plumbing::get_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 100: rustc_middle::ty::query::TyCtxtAt::normalize_generic_arg_after_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 101: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::normalize_generic_arg_after_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+ 102: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_const
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:102:9
+ 103: rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::consts::Const>::fold_with
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/structural_impls.rs:1016:9
+ 104: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::normalize_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:37:13
+ 105: rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::subst_and_normalize_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:81:9
+ 106: rustc_middle::ty::instance::Instance::subst_mir_and_normalize_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/instance.rs:495:13
+ 107: rustc_mir::interpret::eval_context::InterpCx<M>::subst_from_frame_and_normalize_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/interpret/eval_context.rs:509:9
+ 108: rustc_mir::interpret::eval_context::InterpCx<M>::subst_from_current_frame_and_normalize_erasing_regions
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/interpret/eval_context.rs:499:9
+ 109: rustc_mir::interpret::eval_context::InterpCx<M>::push_stack_frame
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/interpret/eval_context.rs:691:17
+ 110: rustc_mir::const_eval::eval_queries::eval_body_using_ecx
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:56:5
+ 111: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:307:31
+ 112: core::result::Result<T,E>::and_then
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/result.rs:704:22
+ 113: rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:307:11
+ 114: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_allocation_raw>::compute
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+ 115: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 116: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+ 117: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+ 118: stacker::maybe_grow
+             at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 119: rustc_data_structures::stack::ensure_sufficient_stack
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 120: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 121: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 122: rustc_middle::ty::context::tls::set_tlv
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 123: rustc_middle::ty::context::tls::enter_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 124: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 125: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 126: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 127: rustc_middle::ty::context::tls::with_context_opt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 128: rustc_middle::ty::context::tls::with_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 129: rustc_middle::ty::context::tls::with_related_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 130: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 131: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 132: rustc_query_system::query::plumbing::with_diagnostics
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 133: rustc_query_system::query::plumbing::force_query_with_job
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 134: rustc_query_system::query::plumbing::try_execute_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 135: rustc_query_system::query::plumbing::get_query_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 136: rustc_query_system::query::plumbing::get_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 137: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_allocation_raw
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+ 138: rustc_middle::ty::query::TyCtxtAt::eval_to_allocation_raw
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 139: rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::eval_to_allocation_raw
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+ 140: rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:238:5
+ 141: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_const_value_raw>::compute
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+ 142: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 143: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+ 144: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+ 145: stacker::maybe_grow
+             at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 146: rustc_data_structures::stack::ensure_sufficient_stack
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 147: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 148: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 149: rustc_middle::ty::context::tls::set_tlv
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 150: rustc_middle::ty::context::tls::enter_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 151: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 152: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 153: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 154: rustc_middle::ty::context::tls::with_context_opt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 155: rustc_middle::ty::context::tls::with_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 156: rustc_middle::ty::context::tls::with_related_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 157: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 158: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 159: rustc_query_system::query::plumbing::with_diagnostics
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 160: rustc_query_system::query::plumbing::force_query_with_job
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 161: rustc_query_system::query::plumbing::try_execute_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 162: rustc_query_system::query::plumbing::get_query_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 163: rustc_query_system::query::plumbing::get_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 164: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_const_value_raw
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+ 165: rustc_middle::ty::query::TyCtxtAt::eval_to_const_value_raw
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 166: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/mir/interpret/queries.rs:73:13
+ 167: rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/mir/interpret/queries.rs:46:17
+ 168: rustc_infer::infer::InferCtxt::const_eval_resolve
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:1515:9
+ 169: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:545:35
+ 170: rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:568:28
+ 171: <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:309:9
+ 172: rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/obligation_forest/mod.rs:448:19
+ 173: rustc_trait_selection::traits::fulfill::FulfillmentContext::select
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:135:17
+ 174: <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:237:9
+ 175: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::select_obligations_where_possible
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/_impl.rs:705:22
+ 176: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_argument_types
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:300:17
+ 177: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::confirm_builtin_call
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/callee.rs:439:9
+ 178: rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call
+ 179: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:276:45
+ 180: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:187:18
+ 181: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_hint
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:118:9
+ 182: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_coercable_to_type
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:108:18
+ 183: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_initializer
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:513:13
+ 184: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_local
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:525:27
+ 185: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:557:17
+ 186: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:637:17
+ 187: rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::with_breakable_ctxt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/_impl.rs:1522:22
+ 188: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:635:26
+ 189: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:275:41
+ 190: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:187:18
+ 191: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_hint
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:118:9
+ 192: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:714:30
+ 193: rustc_typeck::check::check::check_fn
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/check.rs:210:9
+ 194: rustc_typeck::check::typeck_with_fallback::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:524:23
+ 195: rustc_typeck::check::inherited::InheritedBuilder::enter::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/inherited.rs:105:34
+ 196: rustc_infer::infer::InferCtxtBuilder::enter
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:583:9
+ 197: rustc_typeck::check::inherited::InheritedBuilder::enter
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/inherited.rs:105:9
+ 198: rustc_typeck::check::typeck_with_fallback
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:493:26
+ 199: rustc_typeck::check::typeck
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:458:9
+ 200: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 201: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}
+ 202: stacker::maybe_grow
+             at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 203: rustc_data_structures::stack::ensure_sufficient_stack
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 204: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 205: rustc_middle::ty::context::tls::enter_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 206: rustc_middle::ty::context::tls::set_tlv
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 207: rustc_middle::ty::context::tls::enter_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 208: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 209: rustc_middle::ty::context::tls::with_related_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 210: rustc_middle::ty::context::tls::with_context::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 211: rustc_middle::ty::context::tls::with_context_opt
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 212: rustc_middle::ty::context::tls::with_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 213: rustc_middle::ty::context::tls::with_related_context
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 214: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 215: rustc_query_system::query::plumbing::force_query_with_job::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 216: rustc_query_system::query::plumbing::with_diagnostics
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 217: rustc_query_system::query::plumbing::force_query_with_job
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 218: rustc_query_system::query::plumbing::try_execute_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 219: rustc_query_system::query::plumbing::get_query_impl
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 220: rustc_query_system::query::plumbing::get_query
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 221: rustc_middle::ty::query::TyCtxtEnsure::typeck
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:176:17
+ 222: rustc_typeck::check::typeck_item_bodies::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:1147:9
+ 223: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners::{{closure}}
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/mod.rs:2788:34
+ 224: <core::slice::iter::Iter<T> as core::iter::traits::iterator::Iterator>::for_each
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/slice/iter/macros.rs:203:21
+ 225: rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners
+             at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/mod.rs:2787:9
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z treat-err-as-bug
+
+query stack during panic:
+thread 'rustc' panicked at 'substs of instance DefId(0:4 ~ main[317d]::Foo::N) not normalized for codegen: [^0]', compiler/rustc_middle/src/ty/instance.rs:284:9
+stack backtrace:
+   0:     0x7f6924f61111 - std::backtrace_rs::backtrace::libunwind::trace::h7d25219a5cb45309
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/../../backtrace/src/backtrace/libunwind.rs:90:5
+   1:     0x7f6924f61111 - std::backtrace_rs::backtrace::trace_unsynchronized::hb8655efd4a50e0b7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5
+   2:     0x7f6924f61111 - std::sys_common::backtrace::_print_fmt::hf012206734266eb1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys_common/backtrace.rs:67:5
+   3:     0x7f6924f61111 - <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h00281a8d508f8d85
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys_common/backtrace.rs:46:22
+   4:     0x7f6924fe90f7 - core::fmt::write::hab0f6bc5bb3217b9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/fmt/mod.rs:1092:17
+   5:     0x7f6924f593c4 - std::io::Write::write_fmt::h7cda3864da52d282
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/io/mod.rs:1568:15
+   6:     0x7f6924f60f4b - std::sys_common::backtrace::_print::hdc58576ff4cd0147
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys_common/backtrace.rs:49:5
+   7:     0x7f6924f60f4b - std::sys_common::backtrace::print::h3474698835b0aa8e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys_common/backtrace.rs:36:9
+   8:     0x7f6924f56527 - std::panicking::default_hook::{{closure}}::h762e940b8710b3e2
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:208:50
+   9:     0x7f6924f562b5 - std::panicking::default_hook::h7d8113fe69ae5c2e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:225:9
+  10:     0x7f692567858d - <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call::h706e43906c833c02
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/alloc/src/boxed.rs:1560:9
+  11:     0x7f692567858d - rustc_driver::report_ice::h927275800470128d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_driver/src/lib.rs:1184:5
+  12:     0x7f6924f56a77 - std::panicking::rust_panic_with_hook::h9582e068ac9b1361
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:595:17
+  13:     0x7f6924f57337 - std::panicking::begin_panic_handler::{{closure}}::hbf12d062b67e60de
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:497:13
+  14:     0x7f6924f5729c - std::sys_common::backtrace::__rust_end_short_backtrace::h5f8d14ab3c9d8b6c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys_common/backtrace.rs:141:18
+  15:     0x7f6924f56622 - rust_begin_unwind
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:493:5
+  16:     0x7f6924f565db - std::panicking::begin_panic_fmt::hc8a68f600336a8a2
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:435:5
+  17:     0x7f69279d54a2 - rustc_middle::ty::instance::Instance::new::h9cb60a987e15789d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/instance.rs:284:9
+  18:     0x7f6926551d50 - rustc_query_impl::plumbing::<impl rustc_query_system::query::config::QueryDescription<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance>::describe::{{closure}}::h533c66fd1422ff7c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:616:1
+  19:     0x7f6926551d50 - rustc_middle::ty::print::pretty::with_no_trimmed_paths::{{closure}}::h6211c978b7e123df
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/print/pretty.rs:107:22
+  20:     0x7f6926551d50 - std::thread::local::LocalKey<T>::try_with::h986ab971a5e45e5e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/thread/local.rs:272:16
+  21:     0x7f6926551d50 - std::thread::local::LocalKey<T>::with::hc4fcf9a8eda92857
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/thread/local.rs:248:9
+  22:     0x7f69267a20a7 - rustc_middle::ty::print::pretty::with_no_trimmed_paths::he407bda36f2f5e76
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/print/pretty.rs:105:5
+  23:     0x7f69267a20a7 - rustc_query_impl::plumbing::<impl rustc_query_system::query::config::QueryDescription<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance>::describe::hd9e627145dc03309
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/query/mod.rs:12:1
+  24:     0x7f692655589d - rustc_query_impl::make_query::resolve_instance::{{closure}}::h333486754791548b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:328:24
+  25:     0x7f692655589d - rustc_middle::ty::print::pretty::with_forced_impl_filename_line::{{closure}}::hf4bba0597983d13a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/print/pretty.rs:85:22
+  26:     0x7f692655589d - std::thread::local::LocalKey<T>::try_with::h3295685a0966851d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/thread/local.rs:272:16
+  27:     0x7f692655589d - std::thread::local::LocalKey<T>::with::hee58626cb4e89d39
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/thread/local.rs:248:9
+  28:     0x7f69262deea8 - rustc_middle::ty::print::pretty::with_forced_impl_filename_line::h616f65b863078386
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/print/pretty.rs:83:5
+  29:     0x7f69262deea8 - rustc_query_impl::make_query::resolve_instance::hb9efda5af677bdc5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:326:35
+  30:     0x7f69262bdbd2 - rustc_query_system::query::plumbing::QueryState<D,K>::try_collect_active_jobs::{{closure}}::{{closure}}::heac197ef39833520
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:138:67
+  31:     0x7f69262bdbd2 - core::iter::adapters::filter_map::filter_map_fold::{{closure}}::h308d44ee5da1a3bd
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/filter_map.rs:36:28
+  32:     0x7f69262bdbd2 - core::iter::traits::iterator::Iterator::fold::hb3150553c3622f4a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/traits/iterator.rs:2122:21
+  33:     0x7f69262bdbd2 - <core::iter::adapters::filter_map::FilterMap<I,F> as core::iter::traits::iterator::Iterator>::fold::h56bdca98899e294a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/filter_map.rs:85:9
+  34:     0x7f69262bdbd2 - <core::iter::adapters::flatten::FlattenCompat<I,U> as core::iter::traits::iterator::Iterator>::fold::flatten::{{closure}}::hbbc1dbac3ee7c36b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/flatten.rs:336:27
+  35:     0x7f69262bdbd2 - core::iter::adapters::map::map_fold::{{closure}}::h8c6750874c8c40f8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/map.rs:81:21
+  36:     0x7f69262bdbd2 - <core::iter::adapters::enumerate::Enumerate<I> as core::iter::traits::iterator::Iterator>::fold::enumerate::{{closure}}::h1d9232cb648058d2
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/enumerate.rs:104:27
+  37:     0x7f69262bdbd2 - core::iter::traits::iterator::Iterator::fold::ha619b91c65c6ad1d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/traits/iterator.rs:2122:21
+  38:     0x7f69262bdbd2 - <core::iter::adapters::enumerate::Enumerate<I> as core::iter::traits::iterator::Iterator>::fold::h79bef7a210d5e7d1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/enumerate.rs:110:9
+  39:     0x7f69262bdbd2 - <core::iter::adapters::map::Map<I,F> as core::iter::traits::iterator::Iterator>::fold::h477c9f91f1d29cbe
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/map.rs:121:9
+  40:     0x7f692619bc91 - <core::iter::adapters::fuse::Fuse<I> as core::iter::adapters::fuse::FuseImpl<I>>::fold::he581640f9cc076ba
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/fuse.rs:458:9
+  41:     0x7f692619bc91 - <core::iter::adapters::fuse::Fuse<I> as core::iter::traits::iterator::Iterator>::fold::h9c9c9e4030d7a9d8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/fuse.rs:105:9
+  42:     0x7f692619bc91 - <core::iter::adapters::flatten::FlattenCompat<I,U> as core::iter::traits::iterator::Iterator>::fold::h54e0d2fc95d14cdb
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/flatten.rs:343:16
+  43:     0x7f692619bc91 - <core::iter::adapters::flatten::FlatMap<I,U,F> as core::iter::traits::iterator::Iterator>::fold::h33db97e95af9b7c5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/adapters/flatten.rs:74:9
+  44:     0x7f692619bc91 - core::iter::traits::iterator::Iterator::for_each::h6819ed53fd9beb4e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/iter/traits/iterator.rs:774:9
+  45:     0x7f692619bc91 - <hashbrown::map::HashMap<K,V,S> as core::iter::traits::collect::Extend<(K,V)>>::extend::h0ed67eff71db9a71
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/hashbrown-0.9.0/src/map.rs:3041:9
+  46:     0x7f69266b5f5c - <std::collections::hash::map::HashMap<K,V,S> as core::iter::traits::collect::Extend<(K,V)>>::extend::h40a3d5f33c4ecb10
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/collections/hash/map.rs:2714:9
+  47:     0x7f69266b5f5c - rustc_query_system::query::plumbing::QueryState<D,K>::try_collect_active_jobs::he77222de0c76e37c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:134:9
+  48:     0x7f69261e4bcd - rustc_query_impl::Queries::try_collect_active_jobs::ha96d6d290270addd
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:539:21
+  49:     0x7f69261d0781 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::try_collect_active_jobs::h10ea15aeb7abb192
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:54:9
+  50:     0x7f69261d0781 - rustc_query_system::query::job::print_query_stack::h9d6c09441078d655
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/job.rs:631:21
+  51:     0x7f69258002e4 - rustc_interface::interface::try_print_query_stack::{{closure}}::h7317d442ee6f73a6
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/interface.rs:225:13
+  52:     0x7f69258002e4 - rustc_middle::ty::context::tls::with_context_opt::hcae1ad6545c94c21
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+  53:     0x7f69258002e4 - rustc_interface::interface::try_print_query_stack::h7003b21463e788e7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/interface.rs:223:13
+  54:     0x7f6925678daa - rustc_driver::report_ice::h927275800470128d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_driver/src/lib.rs:1234:5
+  55:     0x7f6924f56a77 - std::panicking::rust_panic_with_hook::h9582e068ac9b1361
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:595:17
+  56:     0x7f6927b77144 - std::panicking::begin_panic::{{closure}}::h94dc0d0f94693db5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:520:9
+  57:     0x7f6927b770dc - std::sys_common::backtrace::__rust_end_short_backtrace::h5d3adc272a7fbf3d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys_common/backtrace.rs:141:18
+  58:     0x7f6927ba29fc - std::panicking::begin_panic::h4e7ce20161a5eba4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:519:12
+  59:     0x7f6927ba1778 - rustc_errors::HandlerInner::panic_if_treat_err_as_bug::h4096758f22f1de0c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:1028:27
+  60:     0x7f6927ba1778 - rustc_errors::HandlerInner::bump_err_count::h440fb5ac4b5b7e04
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:1018:9
+  61:     0x7f6927ba1778 - rustc_errors::HandlerInner::emit_diagnostic::hbaba63ad2a22530b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:834:13
+  62:     0x7f69275a2f14 - rustc_errors::HandlerInner::emit_diag_at_span::h79500b66fc091e93
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:946:9
+  63:     0x7f69275a2f70 - rustc_errors::HandlerInner::span_bug::h36954efd84d89491
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:941:9
+  64:     0x7f69275a3196 - rustc_errors::HandlerInner::delay_span_bug::h9ae6a59970b29893
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:956:13
+  65:     0x7f69275a3196 - rustc_errors::Handler::delay_span_bug::hf7044e3826c9d0f2
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_errors/src/lib.rs:671:9
+  66:     0x7f69274e823e - rustc_session::session::Session::delay_span_bug::hdf96c8dc5b3d83c1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_session/src/session.rs:499:9
+  67:     0x7f69274e823e - rustc_trait_selection::traits::codegen::codegen_fulfill_obligation::{{closure}}::hfe2fc1d81cd50b92
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/codegen.rs:68:17
+  68:     0x7f69274e823e - rustc_infer::infer::InferCtxtBuilder::enter::h6f0cabb783a18940
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:583:9
+  69:     0x7f69275e9824 - rustc_trait_selection::traits::codegen::codegen_fulfill_obligation::hb2027cad9975e512
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/codegen.rs:39:5
+  70:     0x7f692671547c - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::codegen_fulfill_obligation>::compute::hedd315ee91da0933
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+  71:     0x7f69263d6fb8 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::hb704b036655719e5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+  72:     0x7f69264005c1 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task::h890aa33d4ede1d58
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+  73:     0x7f69267367c4 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::h7a10eba4e28393e5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+  74:     0x7f69267367c4 - stacker::maybe_grow::h45238aae565b419c
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+  75:     0x7f69267367c4 - rustc_data_structures::stack::ensure_sufficient_stack::h40f8f56e2f168d24
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+  76:     0x7f6926681ada - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::hb350b29eded64f8f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+  77:     0x7f6926681ada - rustc_middle::ty::context::tls::enter_context::{{closure}}::hbd8133710df5b37f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+  78:     0x7f6926681ada - rustc_middle::ty::context::tls::set_tlv::hc34fbf7680cda9d0
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+  79:     0x7f6926681ada - rustc_middle::ty::context::tls::enter_context::hf8328d503fedf4a0
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+  80:     0x7f6926681ada - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::h8c2df9a8f7d864ec
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+  81:     0x7f6926681ada - rustc_middle::ty::context::tls::with_related_context::{{closure}}::hafb4ddf3aed4cbb0
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+  82:     0x7f6926681ada - rustc_middle::ty::context::tls::with_context::{{closure}}::hfbfd87c3bbbe98b9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+  83:     0x7f6926681ada - rustc_middle::ty::context::tls::with_context_opt::hac3f0c2461c0ec6f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+  84:     0x7f6926681ada - rustc_middle::ty::context::tls::with_context::h353773f53d0237a7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+  85:     0x7f6926681ada - rustc_middle::ty::context::tls::with_related_context::hf991a5c851fb56c6
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+  86:     0x7f6926681ada - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::hd15b07eccc334394
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+  87:     0x7f6926681ada - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::he278f2667cb40c21
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+  88:     0x7f6926681ada - rustc_query_system::query::plumbing::with_diagnostics::hb52bc5b68c788dc4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+  89:     0x7f6926681ada - rustc_query_system::query::plumbing::force_query_with_job::h9263fcfba19e8756
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+  90:     0x7f69265fc71b - rustc_query_system::query::plumbing::try_execute_query::h83681dc48d66159a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+  91:     0x7f69265fc71b - rustc_query_system::query::plumbing::get_query_impl::h5bb517cf393e6bdc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+  92:     0x7f692670a433 - rustc_query_system::query::plumbing::get_query::hf1ced206871bec94
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+  93:     0x7f69261e599e - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::codegen_fulfill_obligation::h0c4c86d02be38c06
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+  94:     0x7f69259c965c - rustc_middle::ty::query::TyCtxtAt::codegen_fulfill_obligation::h16df294682cf8519
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+  95:     0x7f69259c965c - rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::codegen_fulfill_obligation::hbbc4d86bd88105bd
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+  96:     0x7f69259c965c - rustc_ty_utils::instance::resolve_associated_item::hd97dd410fc21afc9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_ty_utils/src/instance.rs:118:16
+  97:     0x7f69259c965c - rustc_ty_utils::instance::inner_resolve_instance::hbee5b82a5e5b02ed
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_ty_utils/src/instance.rs:52:9
+  98:     0x7f69259c7df9 - rustc_ty_utils::instance::resolve_instance::h40a1521afa01fc7a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_ty_utils/src/instance.rs:25:5
+  99:     0x7f69267196c6 - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::resolve_instance>::compute::h3127724c25995097
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+ 100:     0x7f69263ba7d4 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h775e3db5805d6631
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 101:     0x7f69263ff6a1 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task::h2d08f0bc483dc4cf
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+ 102:     0x7f692672fc44 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::h2c37117500ac05a3
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+ 103:     0x7f692672fc44 - stacker::maybe_grow::ha8b78fe223edf5de
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 104:     0x7f692672fc44 - rustc_data_structures::stack::ensure_sufficient_stack::h079cc7f998ca5553
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 105:     0x7f6926674df7 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::h3d4746882a9cee28
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 106:     0x7f6926674df7 - rustc_middle::ty::context::tls::enter_context::{{closure}}::h0bad6bb310b7d6c7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 107:     0x7f6926674df7 - rustc_middle::ty::context::tls::set_tlv::h113989a6a7b11195
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 108:     0x7f6926674df7 - rustc_middle::ty::context::tls::enter_context::h84723d108dd1f285
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 109:     0x7f6926674df7 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::hc52a6ceb3451ec93
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 110:     0x7f6926674df7 - rustc_middle::ty::context::tls::with_related_context::{{closure}}::h60458400badc3132
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 111:     0x7f6926674df7 - rustc_middle::ty::context::tls::with_context::{{closure}}::h67491f24f0930f9e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 112:     0x7f6926674df7 - rustc_middle::ty::context::tls::with_context_opt::h0914d45003a07f3c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 113:     0x7f6926674df7 - rustc_middle::ty::context::tls::with_context::h2a5b63a82a4f5faa
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 114:     0x7f6926674df7 - rustc_middle::ty::context::tls::with_related_context::h6efe45deab1de2af
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 115:     0x7f6926674df7 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::hc37b86ec278ba7b9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 116:     0x7f6926674df7 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::h74cba33fe50bef4b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 117:     0x7f6926674df7 - rustc_query_system::query::plumbing::with_diagnostics::h232c4e6452f87460
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 118:     0x7f6926674df7 - rustc_query_system::query::plumbing::force_query_with_job::h4047b6d4b6e42683
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 119:     0x7f6926602d40 - rustc_query_system::query::plumbing::try_execute_query::hfd75d29c6f6357b8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 120:     0x7f6926602d40 - rustc_query_system::query::plumbing::get_query_impl::h66b679de24886b1f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 121:     0x7f69266f5773 - rustc_query_system::query::plumbing::get_query::h79d4b498e186679e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 122:     0x7f69261e651e - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::resolve_instance::hf910ed68cd53c732
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+ 123:     0x7f69279d876b - rustc_middle::ty::query::TyCtxtAt::resolve_instance::h7cbb4076e183819c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 124:     0x7f69279d876b - rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::resolve_instance::h9edbbcec309e1cd9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+ 125:     0x7f69279d876b - rustc_middle::ty::instance::Instance::resolve_opt_const_arg::hab4c8b4a20fd71eb
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/instance.rs:371:13
+ 126:     0x7f69278d2506 - rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve::hf6970a076d0ed04c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/mir/interpret/queries.rs:43:15
+ 127:     0x7f6927624f76 - rustc_middle::ty::consts::kind::ConstKind::try_eval::hc1af6b923ac7cda2
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/consts/kind.rs:126:19
+ 128:     0x7f6927624f76 - rustc_middle::ty::consts::Const::eval::hb55094fe85a23f87
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/consts.rs:179:28
+ 129:     0x7f6927624f76 - <rustc_trait_selection::traits::query::normalize::QueryNormalizer as rustc_middle::ty::fold::TypeFolder>::fold_const::h9b161e9697bb5a1d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/query/normalize.rs:216:9
+ 130:     0x7f6925a61c76 - rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::consts::Const>::fold_with::hf127e95f70182f7a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/structural_impls.rs:1016:9
+ 131:     0x7f6925a61c76 - <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::fold::TypeFoldable>::super_fold_with::h489b2b7eb215b829
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/subst.rs:159:42
+ 132:     0x7f6925a61c76 - rustc_middle::ty::fold::TypeFoldable::fold_with::hf12c0d7de11cf78f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/fold.rs:49:9
+ 133:     0x7f6925a696c6 - <rustc_infer::infer::at::At as rustc_trait_selection::traits::query::normalize::AtExt>::normalize::h66f0af4c8406ddde
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/query/normalize.rs:65:22
+ 134:     0x7f69259e5763 - rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions::{{closure}}::h51f0b7eedd0891e0
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_traits/src/normalize_erasing_regions.rs:24:15
+ 135:     0x7f69259e5763 - rustc_infer::infer::InferCtxtBuilder::enter::hed0a1f368832a2ff
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:583:9
+ 136:     0x7f6925aaf3b9 - rustc_traits::normalize_erasing_regions::normalize_generic_arg_after_erasing_regions::h760a3bfeb797e6c2
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_traits/src/normalize_erasing_regions.rs:22:5
+ 137:     0x7f69263d23bd - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::hb148dfb66ff58bab
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 138:     0x7f692673fee7 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::h71e05c05f5e2cd94
+ 139:     0x7f692673fee7 - stacker::maybe_grow::ha79eb11103f6de9c
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 140:     0x7f692673fee7 - rustc_data_structures::stack::ensure_sufficient_stack::h9921b30f428cd381
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 141:     0x7f6926676348 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::h957e29231e055202
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 142:     0x7f6926676348 - rustc_middle::ty::context::tls::enter_context::{{closure}}::h71a2335d2e048ad4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 143:     0x7f6926676348 - rustc_middle::ty::context::tls::set_tlv::h38fc006c31a212fe
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 144:     0x7f6926676348 - rustc_middle::ty::context::tls::enter_context::h5c236d4c64bf053e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 145:     0x7f6926676348 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::h10c036579f83347e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 146:     0x7f6926676348 - rustc_middle::ty::context::tls::with_related_context::{{closure}}::hc92ca8f7b9b91933
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 147:     0x7f6926676348 - rustc_middle::ty::context::tls::with_context::{{closure}}::h1897fff4ccf850fd
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 148:     0x7f6926676348 - rustc_middle::ty::context::tls::with_context_opt::h9ab79bc4ac6156fb
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 149:     0x7f6926676348 - rustc_middle::ty::context::tls::with_context::h72c4212799904ff4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 150:     0x7f6926676348 - rustc_middle::ty::context::tls::with_related_context::h57e6094919c4f304
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 151:     0x7f6926676348 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::hf5d9f2245310f11d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 152:     0x7f6926676348 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::ha842be5a660e416e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 153:     0x7f6926676348 - rustc_query_system::query::plumbing::with_diagnostics::h62687f3de8fb17e2
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 154:     0x7f6926676348 - rustc_query_system::query::plumbing::force_query_with_job::h4620fb8b673b0c49
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 155:     0x7f6926618395 - rustc_query_system::query::plumbing::try_execute_query::h460e036e23288588
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 156:     0x7f6926618395 - rustc_query_system::query::plumbing::get_query_impl::h964a14a2d95a53dc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 157:     0x7f69266fd4c0 - rustc_query_system::query::plumbing::get_query::ha3bd2f88664cb61f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 158:     0x7f69278dd30b - rustc_middle::ty::query::TyCtxtAt::normalize_generic_arg_after_erasing_regions::h63eaed7f848d662f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 159:     0x7f69278dd30b - rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::normalize_generic_arg_after_erasing_regions::h23df722dbde5b4e8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+ 160:     0x7f69278dd30b - <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_const::h17e4e7b73e0a9958
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:102:9
+ 161:     0x7f6926b0305f - rustc_middle::ty::structural_impls::<impl rustc_middle::ty::fold::TypeFoldable for &rustc_middle::ty::consts::Const>::fold_with::ha155dd6731bdb97c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/structural_impls.rs:1016:9
+ 162:     0x7f6926b0305f - rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::normalize_erasing_regions::hde5daf32fe412784
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:37:13
+ 163:     0x7f6926b03f30 - rustc_middle::ty::normalize_erasing_regions::<impl rustc_middle::ty::context::TyCtxt>::subst_and_normalize_erasing_regions::h5d95a2f32eb32eb4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:81:9
+ 164:     0x7f6926d09071 - rustc_middle::ty::instance::Instance::subst_mir_and_normalize_erasing_regions::he24a8803055491e5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/instance.rs:495:13
+ 165:     0x7f6926d09071 - rustc_mir::interpret::eval_context::InterpCx<M>::subst_from_frame_and_normalize_erasing_regions::h2941edb1ca2ad557
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/interpret/eval_context.rs:509:9
+ 166:     0x7f6926d09071 - rustc_mir::interpret::eval_context::InterpCx<M>::subst_from_current_frame_and_normalize_erasing_regions::hb2f6f69427b50c04
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/interpret/eval_context.rs:499:9
+ 167:     0x7f6926d09071 - rustc_mir::interpret::eval_context::InterpCx<M>::push_stack_frame::hc8b0c4ee14e673e1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/interpret/eval_context.rs:691:17
+ 168:     0x7f6926aa43fb - rustc_mir::const_eval::eval_queries::eval_body_using_ecx::h47e2b57ac074f507
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:56:5
+ 169:     0x7f6926aa43fb - rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider::{{closure}}::ha359d8e90790a1bc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:307:31
+ 170:     0x7f6926aa43fb - core::result::Result<T,E>::and_then::h99e71c2860ee35d8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/result.rs:704:22
+ 171:     0x7f6926aa43fb - rustc_mir::const_eval::eval_queries::eval_to_allocation_raw_provider::h14a52ead43f90580
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:307:11
+ 172:     0x7f692671421b - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_allocation_raw>::compute::h86ebeaf833837ba8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+ 173:     0x7f69263b3ef2 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h6d18237ab842a031
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 174:     0x7f69264015ac - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task::hd63596dac1a89349
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+ 175:     0x7f692673d689 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::hb55a0ed872942ba4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+ 176:     0x7f692673d689 - stacker::maybe_grow::h82fadd37aa436468
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 177:     0x7f692673d689 - rustc_data_structures::stack::ensure_sufficient_stack::h808b01bf4ebdbefc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 178:     0x7f692667c5a5 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::had748c8cfc8089ba
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 179:     0x7f692667c5a5 - rustc_middle::ty::context::tls::enter_context::{{closure}}::h95c4e7b11c7132c3
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 180:     0x7f692667c5a5 - rustc_middle::ty::context::tls::set_tlv::h5309e76566702382
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 181:     0x7f692667c5a5 - rustc_middle::ty::context::tls::enter_context::h4385c3b5baf880db
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 182:     0x7f692667c5a5 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::hba70f19e4dc93ca3
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 183:     0x7f692667c5a5 - rustc_middle::ty::context::tls::with_related_context::{{closure}}::h3df10331b2998248
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 184:     0x7f692667c5a5 - rustc_middle::ty::context::tls::with_context::{{closure}}::h5a739b373b92b107
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 185:     0x7f692667c5a5 - rustc_middle::ty::context::tls::with_context_opt::haf218e07a5b891ae
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 186:     0x7f692667c5a5 - rustc_middle::ty::context::tls::with_context::h3f94ab3edd44bcd1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 187:     0x7f692667c5a5 - rustc_middle::ty::context::tls::with_related_context::hb83b53306443075c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 188:     0x7f692667c5a5 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::he367ebb6dfbea2b8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 189:     0x7f692667c5a5 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::hd6f298b9d35692d1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 190:     0x7f692667c5a5 - rustc_query_system::query::plumbing::with_diagnostics::h64d8597bdc358bcc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 191:     0x7f692667c5a5 - rustc_query_system::query::plumbing::force_query_with_job::h6ceec5f0f6bb2bb3
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 192:     0x7f69265ed74d - rustc_query_system::query::plumbing::try_execute_query::h1870e8440853c717
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 193:     0x7f69265ed74d - rustc_query_system::query::plumbing::get_query_impl::h422d21bfc1a80126
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 194:     0x7f6926709ae7 - rustc_query_system::query::plumbing::get_query::hee251721da2023a1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 195:     0x7f69261e55f6 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_allocation_raw::h2ba250ad45957c89
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+ 196:     0x7f6926aa2aa0 - rustc_middle::ty::query::TyCtxtAt::eval_to_allocation_raw::ha7fc728e4c87cf5b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 197:     0x7f6926aa2aa0 - rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::eval_to_allocation_raw::hc5017bd03554a000
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+ 198:     0x7f6926aa2aa0 - rustc_mir::const_eval::eval_queries::eval_to_const_value_raw_provider::hc4c70bc0361d8300
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_mir/src/const_eval/eval_queries.rs:238:5
+ 199:     0x7f692671428b - rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::eval_to_const_value_raw>::compute::ha5a21a01032aac79
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:400:17
+ 200:     0x7f6926392492 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h0d641151b611fa05
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 201:     0x7f692640176c - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task::hdc0434e418932b0d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:247:9
+ 202:     0x7f6926731fd9 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::h1e04f847c14784d5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:627:17
+ 203:     0x7f6926731fd9 - stacker::maybe_grow::h2f841290d429ecc2
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 204:     0x7f6926731fd9 - rustc_data_structures::stack::ensure_sufficient_stack::h1cf373a918ae2db4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 205:     0x7f6926687c57 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::h19dcaa68b49ca91d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 206:     0x7f6926687c57 - rustc_middle::ty::context::tls::enter_context::{{closure}}::h13855d11f90a9a5f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 207:     0x7f6926687c57 - rustc_middle::ty::context::tls::set_tlv::h9261046d5214c91b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 208:     0x7f6926687c57 - rustc_middle::ty::context::tls::enter_context::h3a9a3dc7a72e49c3
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 209:     0x7f6926687c57 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::hbda1a3d61e2965b7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 210:     0x7f6926687c57 - rustc_middle::ty::context::tls::with_related_context::{{closure}}::h896fb578247162de
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 211:     0x7f6926687c57 - rustc_middle::ty::context::tls::with_context::{{closure}}::h5f13474cd119772b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 212:     0x7f6926687c57 - rustc_middle::ty::context::tls::with_context_opt::h3a9ae973b778cb4e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 213:     0x7f6926687c57 - rustc_middle::ty::context::tls::with_context::h6703c041a30e185e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 214:     0x7f6926687c57 - rustc_middle::ty::context::tls::with_related_context::h4c496fe580c638a7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 215:     0x7f6926687c57 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::h6d6946c892afc25c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 216:     0x7f6926687c57 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::hf0b4315d2ec21da3
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 217:     0x7f6926687c57 - rustc_query_system::query::plumbing::with_diagnostics::h46c571babd25556b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 218:     0x7f6926687c57 - rustc_query_system::query::plumbing::force_query_with_job::hb7fcd8b4ae6e8d86
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 219:     0x7f6926642002 - rustc_query_system::query::plumbing::try_execute_query::h7d3a4a07644349ed
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 220:     0x7f6926642002 - rustc_query_system::query::plumbing::get_query_impl::hff765ddf489c6b19
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 221:     0x7f69266f2127 - rustc_query_system::query::plumbing::get_query::h607e8c81fe2218b6
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 222:     0x7f69261e5656 - <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::eval_to_const_value_raw::hba3b99b634da29f1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:602:17
+ 223:     0x7f69278b72d9 - rustc_middle::ty::query::TyCtxtAt::eval_to_const_value_raw::h194557701ac6dbbf
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 224:     0x7f69278b72d9 - rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_global_id::h8d47f76423301b3c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/mir/interpret/queries.rs:73:13
+ 225:     0x7f69278d25cd - rustc_middle::mir::interpret::queries::<impl rustc_middle::ty::context::TyCtxt>::const_eval_resolve::hf6970a076d0ed04c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/mir/interpret/queries.rs:46:17
+ 226:     0x7f69276e4c0e - rustc_infer::infer::InferCtxt::const_eval_resolve::h92441cceee97a71f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:1515:9
+ 227:     0x7f6927507d97 - rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations::{{closure}}::hb3d54880141a92c4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:545:35
+ 228:     0x7f6927507835 - rustc_trait_selection::traits::fulfill::FulfillProcessor::progress_changed_obligations::hf17e90ee60deb84d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:568:28
+ 229:     0x7f692763fb3e - <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation::hb4118cde32ed92df
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:309:9
+ 230:     0x7f692763fb3e - rustc_data_structures::obligation_forest::ObligationForest<O>::process_obligations::hd4e149d60f835253
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/obligation_forest/mod.rs:448:19
+ 231:     0x7f6927505f7a - rustc_trait_selection::traits::fulfill::FulfillmentContext::select::h50f931d5e436b5a1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:135:17
+ 232:     0x7f6927505f7a - <rustc_trait_selection::traits::fulfill::FulfillmentContext as rustc_infer::traits::engine::TraitEngine>::select_where_possible::h6f6e4b5f2bcf95aa
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_trait_selection/src/traits/fulfill.rs:237:9
+ 233:     0x7f6925d7ec4a - rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::select_obligations_where_possible::h107274bc4f2a9684
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/_impl.rs:705:22
+ 234:     0x7f6925e68f43 - rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_argument_types::h8e10f539055805df
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:300:17
+ 235:     0x7f6925e44755 - rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::confirm_builtin_call::h49a548c9340f96df
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/callee.rs:439:9
+ 236:     0x7f6925e42d8e - rustc_typeck::check::callee::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_call::h40d2ef874d36de9a
+ 237:     0x7f6925e5327c - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind::h4f86ffd0ef72013a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:276:45
+ 238:     0x7f6925e51e10 - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation::h0c853e0bb296088e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:187:18
+ 239:     0x7f6925e6b883 - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_hint::hb091274f1cfa1591
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:118:9
+ 240:     0x7f6925e6b883 - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_coercable_to_type::h69ebb84d69b4076d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:108:18
+ 241:     0x7f6925e6b883 - rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_initializer::h87892f5f33065940
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:513:13
+ 242:     0x7f6925e6b994 - rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_decl_local::h56a3ea96d69cdc5f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:525:27
+ 243:     0x7f6925e6bae5 - rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt::h13b41ab632057b15
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:557:17
+ 244:     0x7f6925d7f476 - rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected::{{closure}}::h99aaa7bc26117311
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:637:17
+ 245:     0x7f6925d7f476 - rustc_typeck::check::fn_ctxt::_impl::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::with_breakable_ctxt::h3824020cd2670844
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/_impl.rs:1522:22
+ 246:     0x7f6925e6bdfb - rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected::h20a285774f6adb56
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/fn_ctxt/checks.rs:635:26
+ 247:     0x7f6925e528ea - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind::h4f86ffd0ef72013a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:275:41
+ 248:     0x7f6925e51e10 - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation::h0c853e0bb296088e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:187:18
+ 249:     0x7f6925e592a9 - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_hint::hb091274f1cfa1591
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:118:9
+ 250:     0x7f6925e592a9 - rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr::h23bfeee70d856c94
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/expr.rs:714:30
+ 251:     0x7f6925d15f3a - rustc_typeck::check::check::check_fn::h4d753a9919c6988f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/check.rs:210:9
+ 252:     0x7f6925d506bd - rustc_typeck::check::typeck_with_fallback::{{closure}}::hc25907d0c6cc0b22
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:524:23
+ 253:     0x7f6925d506bd - rustc_typeck::check::inherited::InheritedBuilder::enter::{{closure}}::h5bd4ef497a340219
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/inherited.rs:105:34
+ 254:     0x7f6925d506bd - rustc_infer::infer::InferCtxtBuilder::enter::hc51282fbf4ae0231
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_infer/src/infer/mod.rs:583:9
+ 255:     0x7f6925cdf12e - rustc_typeck::check::inherited::InheritedBuilder::enter::h8fe0daae99111af8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/inherited.rs:105:9
+ 256:     0x7f6925d67fa7 - rustc_typeck::check::typeck_with_fallback::h26ac925b7b141747
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:493:26
+ 257:     0x7f6925d74736 - rustc_typeck::check::typeck::hb6a70a7d78d1c25f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:458:9
+ 258:     0x7f69263b8188 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h73af2c3cb892f910
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 259:     0x7f6926747a70 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::h3174950375422ea3
+ 260:     0x7f6926747a70 - stacker::maybe_grow::h59cd192e39e0c372
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 261:     0x7f6926747a70 - rustc_data_structures::stack::ensure_sufficient_stack::he2313e5db45634c7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 262:     0x7f69266908e6 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::he86f8678ec9ab243
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 263:     0x7f69266908e6 - rustc_middle::ty::context::tls::enter_context::{{closure}}::hb6ed297a3799fb88
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 264:     0x7f69266908e6 - rustc_middle::ty::context::tls::set_tlv::hb46c8bdb81e02c79
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 265:     0x7f69266908e6 - rustc_middle::ty::context::tls::enter_context::h63dfeaff4c88b517
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 266:     0x7f69266908e6 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::hdd0ea1641a27187d
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 267:     0x7f69266908e6 - rustc_middle::ty::context::tls::with_related_context::{{closure}}::hb32cd63374179de0
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 268:     0x7f69266908e6 - rustc_middle::ty::context::tls::with_context::{{closure}}::h0e21bd78cdc8b145
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 269:     0x7f69266908e6 - rustc_middle::ty::context::tls::with_context_opt::h90a69ba818206b54
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 270:     0x7f69266908e6 - rustc_middle::ty::context::tls::with_context::hbf30a08df7b7fc86
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 271:     0x7f69266908e6 - rustc_middle::ty::context::tls::with_related_context::h2fa8a5b113638c82
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 272:     0x7f69266908e6 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::h7f2f4b65cdd9d1eb
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 273:     0x7f69266908e6 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::h59f2ab21ceba56bc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 274:     0x7f69266908e6 - rustc_query_system::query::plumbing::with_diagnostics::hcf352dc7236ff861
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 275:     0x7f69266908e6 - rustc_query_system::query::plumbing::force_query_with_job::hec9f6d3da92d9677
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 276:     0x7f6926628eba - rustc_query_system::query::plumbing::try_execute_query::h27f6a79e7aa89c87
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 277:     0x7f6926628eba - rustc_query_system::query::plumbing::get_query_impl::hbf4ca31bd92e7536
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 278:     0x7f692670b340 - rustc_query_system::query::plumbing::get_query::hf539baa9b5ce39cf
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 279:     0x7f6925ce7ba1 - rustc_middle::ty::query::TyCtxtEnsure::typeck::h42d0e858381b8307
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:176:17
+ 280:     0x7f6925ce7ba1 - rustc_typeck::check::typeck_item_bodies::{{closure}}::h70cf2b503f1ab454
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:1147:9
+ 281:     0x7f6925ce7ba1 - rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners::{{closure}}::h50644039152042ab
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/mod.rs:2788:34
+ 282:     0x7f6925ce7ba1 - <core::slice::iter::Iter<T> as core::iter::traits::iterator::Iterator>::for_each::h36d9b1e3cc59c72c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/slice/iter/macros.rs:203:21
+ 283:     0x7f6925ce7ba1 - rustc_middle::ty::<impl rustc_middle::ty::context::TyCtxt>::par_body_owners::h540e2a8c8800f7a7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/mod.rs:2787:9
+ 284:     0x7f6925d78354 - rustc_typeck::check::typeck_item_bodies::hfe0fc0f64af706ae
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/check/mod.rs:1146:5
+ 285:     0x7f69263e6f22 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::hdc5351be876f20d4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 286:     0x7f692673eec0 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::h728d9d1f0373639b
+ 287:     0x7f692673eec0 - stacker::maybe_grow::h5b4f02e962610dd8
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 288:     0x7f692673eec0 - rustc_data_structures::stack::ensure_sufficient_stack::h8f74ab380c72e9ac
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 289:     0x7f69266864e6 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::h0caf8d9929701bca
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 290:     0x7f69266864e6 - rustc_middle::ty::context::tls::enter_context::{{closure}}::hfb2309ac5dc4655f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 291:     0x7f69266864e6 - rustc_middle::ty::context::tls::set_tlv::hbe938005f3eac3b5
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 292:     0x7f69266864e6 - rustc_middle::ty::context::tls::enter_context::h3de32a3e042a1440
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 293:     0x7f69266864e6 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::h767fe968f546ab67
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 294:     0x7f69266864e6 - rustc_middle::ty::context::tls::with_related_context::{{closure}}::h1515514951a0d22c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 295:     0x7f69266864e6 - rustc_middle::ty::context::tls::with_context::{{closure}}::h49226d23b54b590b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 296:     0x7f69266864e6 - rustc_middle::ty::context::tls::with_context_opt::hf7907e9393b29b6a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 297:     0x7f69266864e6 - rustc_middle::ty::context::tls::with_context::h3fa9350a8f283071
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 298:     0x7f69266864e6 - rustc_middle::ty::context::tls::with_related_context::h02f3f9a04bd8b6e0
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 299:     0x7f69266864e6 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::h2b7787e95515c609
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 300:     0x7f69266864e6 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::h09af8de7770c3e23
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 301:     0x7f69266864e6 - rustc_query_system::query::plumbing::with_diagnostics::h9f6ff72d226b5345
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 302:     0x7f69266864e6 - rustc_query_system::query::plumbing::force_query_with_job::haebd981f275759db
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 303:     0x7f6926617108 - rustc_query_system::query::plumbing::try_execute_query::h7bc16090a184faee
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 304:     0x7f6926617108 - rustc_query_system::query::plumbing::get_query_impl::h91552be2e23890b1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 305:     0x7f69266f4860 - rustc_query_system::query::plumbing::get_query::h73a1ba66c604089c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 306:     0x7f6925e0eb21 - rustc_middle::ty::query::TyCtxtAt::typeck_item_bodies::h6741133cd1d08413
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 307:     0x7f6925e0eb21 - rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::typeck_item_bodies::he028e4610137da13
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+ 308:     0x7f6925e0eb21 - rustc_typeck::check_crate::{{closure}}::h2e7aea7b582b9371
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/lib.rs:408:46
+ 309:     0x7f6925e0eb21 - rustc_data_structures::profiling::VerboseTimingGuard::run::h7634fad870c06db9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/profiling.rs:573:9
+ 310:     0x7f6925e0eb21 - rustc_session::utils::<impl rustc_session::session::Session>::time::h9317b9b391701913
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_session/src/utils.rs:10:9
+ 311:     0x7f6925d9ff1e - rustc_typeck::check_crate::h189000d7ce6891f7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_typeck/src/lib.rs:408:5
+ 312:     0x7f6925815dcf - rustc_interface::passes::analysis::h2d009277cbc1dd9e
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/passes.rs:853:5
+ 313:     0x7f69263a6f88 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl::h4592a9cc53d44819
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:365:14
+ 314:     0x7f69263fc209 - rustc_query_system::dep_graph::graph::DepGraph<K>::with_eval_always_task::hcf0f2404d883d4dc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/dep_graph/graph.rs:421:9
+ 315:     0x7f69267483c2 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::{{closure}}::h64c312b75859eb77
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:619:17
+ 316:     0x7f69267483c2 - stacker::maybe_grow::hff109b251c021f8f
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.12/src/lib.rs:55:9
+ 317:     0x7f69267483c2 - rustc_data_structures::stack::ensure_sufficient_stack::he7724be31af62a2c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_data_structures/src/stack.rs:16:5
+ 318:     0x7f692666e496 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::{{closure}}::hcde68ef2e3565b3b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:169:17
+ 319:     0x7f692666e496 - rustc_middle::ty::context::tls::enter_context::{{closure}}::h219bdc78f4a9ac7a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 320:     0x7f692666e496 - rustc_middle::ty::context::tls::set_tlv::hcf4a64387aaf524f
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 321:     0x7f692666e496 - rustc_middle::ty::context::tls::enter_context::h737abf7915f594b6
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 322:     0x7f692666e496 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::{{closure}}::hc8ab98be52e2f674
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:168:13
+ 323:     0x7f692666e496 - rustc_middle::ty::context::tls::with_related_context::{{closure}}::h43543eecbc2acd99
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1767:13
+ 324:     0x7f692666e496 - rustc_middle::ty::context::tls::with_context::{{closure}}::ha3081cab6341af01
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:40
+ 325:     0x7f692666e496 - rustc_middle::ty::context::tls::with_context_opt::h72d149cc09951e23
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1740:22
+ 326:     0x7f692666e496 - rustc_middle::ty::context::tls::with_context::h3cc20d2ff616e420
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1751:9
+ 327:     0x7f692666e496 - rustc_middle::ty::context::tls::with_related_context::h5810f5d0408174ad
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1764:9
+ 328:     0x7f692666e496 - <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::h62cca45051d46ee4
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_impl/src/plumbing.rs:157:9
+ 329:     0x7f692666e496 - rustc_query_system::query::plumbing::force_query_with_job::{{closure}}::h69a19d4366208835
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:617:9
+ 330:     0x7f692666e496 - rustc_query_system::query::plumbing::with_diagnostics::ha57816f9dd069dfd
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:328:18
+ 331:     0x7f692666e496 - rustc_query_system::query::plumbing::force_query_with_job::h1dc62f5882673ee1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:616:51
+ 332:     0x7f69265f5ff2 - rustc_query_system::query::plumbing::try_execute_query::ha4439e10abcb9f79
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:444:16
+ 333:     0x7f69265f5ff2 - rustc_query_system::query::plumbing::get_query_impl::h4f3c55760c9deec8
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:664:5
+ 334:     0x7f6926704663 - rustc_query_system::query::plumbing::get_query::hc94a405f6d05a0d9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_query_system/src/query/plumbing.rs:775:9
+ 335:     0x7f6925688214 - rustc_middle::ty::query::TyCtxtAt::analysis::h971468903c2358c1
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:205:17
+ 336:     0x7f6925688214 - rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::analysis::hbece35a9a65071fd
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/query/mod.rs:186:17
+ 337:     0x7f6925688214 - rustc_driver::run_compiler::{{closure}}::{{closure}}::{{closure}}::hff1582966a154b79
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_driver/src/lib.rs:431:59
+ 338:     0x7f6925688214 - rustc_interface::passes::QueryContext::enter::{{closure}}::hbe7d90b9a5e08477
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/passes.rs:753:42
+ 339:     0x7f6925688214 - rustc_middle::ty::context::tls::enter_context::{{closure}}::he6be741b646e73df
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:50
+ 340:     0x7f6925688214 - rustc_middle::ty::context::tls::set_tlv::h3a98ab4d5c581cca
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1707:9
+ 341:     0x7f6925688214 - rustc_middle::ty::context::tls::enter_context::hbbccb4a4a3223cac
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_middle/src/ty/context.rs:1723:9
+ 342:     0x7f6925688214 - rustc_interface::passes::QueryContext::enter::h65a2d990fbfa9d31
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/passes.rs:753:9
+ 343:     0x7f69255c441a - rustc_driver::run_compiler::{{closure}}::{{closure}}::h5df862f718437939
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_driver/src/lib.rs:431:13
+ 344:     0x7f69255c441a - rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter::h895d6fcbb7d5d1cd
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/queries.rs:422:19
+ 345:     0x7f69255c68b0 - rustc_driver::run_compiler::{{closure}}::hcd4cf11dae7498dc
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_driver/src/lib.rs:332:22
+ 346:     0x7f69255c68b0 - rustc_interface::interface::create_compiler_and_run::{{closure}}::he878ba0a98ad60ae
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/interface.rs:197:13
+ 347:     0x7f69255c68b0 - rustc_span::with_source_map::h6f5bb9d990435e65
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_span/src/lib.rs:787:5
+ 348:     0x7f69255c55d3 - rustc_interface::interface::create_compiler_and_run::haf5290aece4c3f87
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/interface.rs:191:5
+ 349:     0x7f69255c832b - rustc_interface::interface::run_compiler::{{closure}}::h76136b8d8f4a2c47
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/interface.rs:213:12
+ 350:     0x7f69255c832b - rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}::{{closure}}::h6ee697cad05dc6f9
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/util.rs:155:13
+ 351:     0x7f69255c832b - scoped_tls::ScopedKey<T>::set::hfd7282ebf8eae28a
+                               at /home/ellen-nyan/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+ 352:     0x7f69255c7303 - rustc_span::with_session_globals::h41ffc22b5a378973
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_span/src/lib.rs:104:5
+ 353:     0x7f69255ba4ae - rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals::{{closure}}::hddf5d89cfb4a4b6c
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/util.rs:153:9
+ 354:     0x7f69255ba4ae - rustc_interface::util::scoped_thread::{{closure}}::h44c92feaa5c6b632
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/compiler/rustc_interface/src/util.rs:128:24
+ 355:     0x7f69255ba4ae - std::sys_common::backtrace::__rust_begin_short_backtrace::h48a131bc7ee53dde
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys_common/backtrace.rs:125:18
+ 356:     0x7f692566c679 - std::thread::Builder::spawn_unchecked::{{closure}}::{{closure}}::hbf8f8066118e7576
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/thread/mod.rs:474:17
+ 357:     0x7f692566c679 - <std::panic::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h12e5030cfe6ff014
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panic.rs:344:9
+ 358:     0x7f692566c679 - std::panicking::try::do_call::hf0f4df2a06cffcab
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:379:40
+ 359:     0x7f692566c679 - std::panicking::try::h613b49299caf1db7
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panicking.rs:343:19
+ 360:     0x7f6925687c0a - std::panic::catch_unwind::hb8b40ebfa74d9a0b
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/panic.rs:431:14
+ 361:     0x7f6925687c0a - std::thread::Builder::spawn_unchecked::{{closure}}::hdfcdff5d1f221584
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/thread/mod.rs:473:30
+ 362:     0x7f6925687c0a - core::ops::function::FnOnce::call_once{{vtable.shim}}::ha0316378ab3e36ff
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/core/src/ops/function.rs:227:5
+ 363:     0x7f6924f5798b - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h301be98306dec59a
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/alloc/src/boxed.rs:1546:9
+ 364:     0x7f6924f5798b - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hffba219afffd1e30
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/alloc/src/boxed.rs:1546:9
+ 365:     0x7f6924f6c0fa - std::sys::unix::thread::Thread::new::thread_start::h1e08a266be789032
+                               at /media/ellen-nyan/DnData/Workspace/Repos/rust/library/std/src/sys/unix/thread.rs:71:17
+ 366:     0x7f6920057609 - start_thread
+ 367:     0x7f6924dd3293 - clone
+ 368:                0x0 - <unknown>
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.52.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z treat-err-as-bug
+
+query stack during panic:
+end of query stack
+thread panicked while panicking. aborting.
+Illegal instruction (core dumped)
+
+Bug Labels:
+A-const-generics, C-bug, F-generic_const_exprs, I-ICE, T-compiler, glacier

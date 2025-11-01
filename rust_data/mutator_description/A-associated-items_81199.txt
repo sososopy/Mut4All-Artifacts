@@ -1,0 +1,42 @@
+Mutation Operator:
+
+Target: Union and associated types.
+
+Mutation Rule:
+1. Identify a union definition in the seed program. The union should contain at least one field that is a pointer or reference involving a generic type `T`.
+2. Locate an associated type usage within a field type of the union. This is typically an expression in the form: `<T as Trait>::AssocType`.
+3. Introduce a struct definition that uses a trait with an associated type constraint similar to the union. Ensure that the struct's type is a combination of existing types in the seed program.
+4. Modify the union by replacing one of its fields that uses an associated type with the newly introduced struct type. The new struct should include similar pointers or references as fields.
+
+Example:
+Given:
+```rust
+#[repr(C)]
+union PtrRepr<T: ?Sized> {
+    const_ptr: *const T,
+    mut_ptr: *mut T,
+    components: PtrComponents<T>,
+}
+```
+
+Mutation Steps:
+1. Introduce a new struct:
+```rust
+#[repr(C)]
+struct NewStruct<U: Pointee + ?Sized> {
+    new_data_address: *const (),
+    new_metadata: <U as Pointee>::Metadata,
+}
+```
+
+2. Modify the union to use `NewStruct` instead of `PtrComponents`:
+```rust
+#[repr(C)]
+union PtrRepr<T: ?Sized> {
+    const_ptr: *const T,
+    mut_ptr: *mut T,
+    components: NewStruct<T>,
+}
+```
+
+This mutation specifically targets cases where associated types are used within unions, potentially leading to interesting scenarios for the Rust compiler to handle. The mutation retains the original logic and semantics as much as possible by using existing traits and associated types, ensuring compatibility and coverage across different seed programs.

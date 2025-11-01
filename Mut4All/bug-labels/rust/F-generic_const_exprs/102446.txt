@@ -1,0 +1,84 @@
+Issue Title:
+ICE using [`inline_const`] and [`generic_const_exprs`] · Issue #102446 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(inline_const)]
+#![feature(generic_const_exprs)]
+use std::mem;
+
+union AsBytes<T> {
+    value: mem::ManuallyDrop<T>,
+    as_bytes: [u8; const { mem::size_of::<T>() }],
+}
+
+fn main() {}
+
+Bug Trace:
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> main.rs:2:12
+  |
+2 | #![feature(generic_const_exprs)]
+  |            ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+
+warning: union `AsBytes` is never used
+ --> main.rs:5:7
+  |
+5 | union AsBytes<T> {
+  |       ^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: 2 warnings emitted
+
+error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+
+error: internal compiler error: Missing value for constant, but no error reported?
+ --> main.rs:7:15
+  |
+7 |     as_bytes: [u8; const { mem::size_of::<T>() }],
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: delayed at compiler/rustc_trait_selection/src/traits/const_evaluatable.rs:189:63
+
+error: internal compiler error: `InferCtxt` incorrectly tainted by errors
+  |
+  = note: delayed at compiler/rustc_infer/src/infer/mod.rs:1282:27
+
+error: internal compiler error: `ErrorGuaranteed` without an error
+ --> main.rs:7:15
+  |
+7 |     as_bytes: [u8; const { mem::size_of::<T>() }],
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: delayed at compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:1070:31
+
+error: internal compiler error: expected fullfillment errors
+  |
+  = note: delayed at compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:210:23
+
+thread 'rustc' panicked at 'Box<dyn Any>', compiler/rustc_errors/src/lib.rs:1529:13
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+   2: <rustc_errors::HandlerInner as core::ops::drop::Drop>::drop
+   3: core::ptr::drop_in_place::<rustc_session::parse::ParseSess>
+   4: <alloc::rc::Rc<rustc_session::session::Session> as core::ops::drop::Drop>::drop
+   5: core::ptr::drop_in_place::<rustc_interface::interface::Compiler>
+   6: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>
+   7: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.66.0-nightly (470e518c4 2022-09-27) running on x86_64-unknown-linux-gnu
+
+query stack during panic:
+end of query stack
+
+Bug Labels:
+C-bug, F-generic_const_exprs, F-inline_const, I-ICE, T-compiler, glacier, requires-nightly

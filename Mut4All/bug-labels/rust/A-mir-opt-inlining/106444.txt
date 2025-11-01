@@ -1,0 +1,275 @@
+Issue Title:
+Normalization ICE from `drop_in_place` in Mir inliner on `-Zopt-level=3` · Issue #106444 · rust-lang/rust · GitHub
+
+Rust Code:
+pub trait A {
+    type B;
+}
+
+pub struct S<T: A>(T::B);
+
+pub fn foo<T: A>(p: *mut S<T>) {
+    unsafe { core::ptr::drop_in_place(p) };
+}
+
+Bug Trace:
+error: internal compiler error: compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:198:90: Failed to normalize <T as A>::B, maybe try to call `try_normalize_erasing_regions` instead
+
+thread 'rustc' panicked at 'Box<dyn Any>', /home/jake/git/rust/rustc2/compiler/rustc_errors/src/lib.rs:1587:9
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+             at /home/jake/git/rust/rustc2/library/std/src/panicking.rs:607:12
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+             at /home/jake/git/rust/rustc2/library/std/src/panic.rs:61:5
+   2: <rustc_errors::HandlerInner>::bug::<&alloc::string::String>
+             at /home/jake/git/rust/rustc2/compiler/rustc_errors/src/lib.rs:1587:9
+   3: <rustc_errors::Handler>::bug::<&alloc::string::String>
+             at /home/jake/git/rust/rustc2/compiler/rustc_errors/src/lib.rs:1040:9
+   4: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/util/bug.rs:35:34
+   5: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1376:40
+   6: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>::{closure#0}, ()>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1328:22
+   7: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, ()>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1376:9
+   8: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/util/bug.rs:31:5
+   9: rustc_middle::util::bug::bug_fmt
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/util/bug.rs:15:5
+  10: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder>::normalize_generic_arg_after_erasing_regions::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:198:90
+  11: <core::result::Result<rustc_middle::ty::subst::GenericArg, rustc_middle::traits::query::NoSolution>>::unwrap_or_else::<<rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder>::normalize_generic_arg_after_erasing_regions::{closure#0}>
+             at /home/jake/git/rust/rustc2/library/core/src/result.rs:1503:23
+  12: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder>::normalize_generic_arg_after_erasing_regions
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:198:9
+  13: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::TypeFolder>::fold_ty
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:211:9
+  14: <rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder as rustc_middle::ty::fold::FallibleTypeFolder>::try_fold_ty
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/fold.rs:193:12
+  15: <rustc_middle::ty::Ty as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/structural_impls.rs:612:9
+  16: <rustc_middle::ty::Ty as rustc_middle::ty::fold::TypeFoldable>::fold_with::<rustc_middle::ty::normalize_erasing_regions::NormalizeAfterErasingRegionsFolder>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/fold.rs:73:9
+  17: <rustc_middle::ty::context::TyCtxt>::normalize_erasing_regions::<rustc_middle::ty::Ty>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/normalize_erasing_regions.rs:58:13
+  18: <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:278:21
+  19: core::iter::adapters::map::map_fold::<(usize, &rustc_middle::ty::FieldDef), (rustc_middle::mir::syntax::Place, core::option::Option<()>), (), <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}, core::iter::traits::iterator::Iterator::for_each::call<(rustc_middle::mir::syntax::Place, core::option::Option<()>), <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::extend_trusted<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>::{closure#0}>::{closure#0}>::{closure#0}
+             at /home/jake/git/rust/rustc2/library/core/src/iter/adapters/map.rs:84:28
+  20: <core::iter::adapters::enumerate::Enumerate<_> as core::iter::traits::iterator::Iterator>::fold::enumerate::<&rustc_middle::ty::FieldDef, (), core::iter::adapters::map::map_fold<(usize, &rustc_middle::ty::FieldDef), (rustc_middle::mir::syntax::Place, core::option::Option<()>), (), <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}, core::iter::traits::iterator::Iterator::for_each::call<(rustc_middle::mir::syntax::Place, core::option::Option<()>), <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::extend_trusted<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>::{closure#0}>::{closure#0}>::{closure#0}>::{closure#0}
+             at /home/jake/git/rust/rustc2/library/core/src/iter/adapters/enumerate.rs:106:27
+  21: <core::slice::iter::Iter<rustc_middle::ty::FieldDef> as core::iter::traits::iterator::Iterator>::fold::<(), <core::iter::adapters::enumerate::Enumerate<_> as core::iter::traits::iterator::Iterator>::fold::enumerate<&rustc_middle::ty::FieldDef, (), core::iter::adapters::map::map_fold<(usize, &rustc_middle::ty::FieldDef), (rustc_middle::mir::syntax::Place, core::option::Option<()>), (), <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}, core::iter::traits::iterator::Iterator::for_each::call<(rustc_middle::mir::syntax::Place, core::option::Option<()>), <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::extend_trusted<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>::{closure#0}>::{closure#0}>::{closure#0}>::{closure#0}>
+             at /home/jake/git/rust/rustc2/library/core/src/iter/traits/iterator.rs:2421:21
+  22: <core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>> as core::iter::traits::iterator::Iterator>::fold::<(), core::iter::adapters::map::map_fold<(usize, &rustc_middle::ty::FieldDef), (rustc_middle::mir::syntax::Place, core::option::Option<()>), (), <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}, core::iter::traits::iterator::Iterator::for_each::call<(rustc_middle::mir::syntax::Place, core::option::Option<()>), <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::extend_trusted<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>::{closure#0}>::{closure#0}>::{closure#0}>
+             at /home/jake/git/rust/rustc2/library/core/src/iter/adapters/enumerate.rs:112:9
+  23: <core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}> as core::iter::traits::iterator::Iterator>::fold::<(), core::iter::traits::iterator::Iterator::for_each::call<(rustc_middle::mir::syntax::Place, core::option::Option<()>), <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::extend_trusted<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>::{closure#0}>::{closure#0}>
+             at /home/jake/git/rust/rustc2/library/core/src/iter/adapters/map.rs:124:9
+  24: <core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}> as core::iter::traits::iterator::Iterator>::for_each::<<alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::extend_trusted<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>::{closure#0}>
+             at /home/jake/git/rust/rustc2/library/core/src/iter/traits/iterator.rs:832:9
+  25: <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::extend_trusted::<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>
+             at /home/jake/git/rust/rustc2/library/alloc/src/vec/mod.rs:2880:17
+  26: <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)> as alloc::vec::spec_extend::SpecExtend<(rustc_middle::mir::syntax::Place, core::option::Option<()>), core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>>::spec_extend
+             at /home/jake/git/rust/rustc2/library/alloc/src/vec/spec_extend.rs:26:9
+  27: <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)> as alloc::vec::spec_from_iter_nested::SpecFromIterNested<(rustc_middle::mir::syntax::Place, core::option::Option<()>), core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>>::from_iter
+             at /home/jake/git/rust/rustc2/library/alloc/src/vec/spec_from_iter_nested.rs:62:9
+  28: <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)> as alloc::vec::spec_from_iter::SpecFromIter<(rustc_middle::mir::syntax::Place, core::option::Option<()>), core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>>::from_iter
+             at /home/jake/git/rust/rustc2/library/alloc/src/vec/spec_from_iter.rs:33:9
+  29: <alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)> as core::iter::traits::collect::FromIterator<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>::from_iter::<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}>>
+             at /home/jake/git/rust/rustc2/library/alloc/src/vec/mod.rs:2748:9
+  30: <core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::FieldDef>>, <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields::{closure#0}> as core::iter::traits::iterator::Iterator>::collect::<alloc::vec::Vec<(rustc_middle::mir::syntax::Place, core::option::Option<()>)>>
+             at /home/jake/git/rust/rustc2/library/core/src/iter/traits/iterator.rs:1843:9
+  31: <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::move_paths_for_fields
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:267:9
+  32: <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::open_drop_for_adt_contents
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:468:26
+  33: <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::open_drop_for_adt::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:451:13
+  34: <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::open_drop_for_adt
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:434:99
+  35: <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::open_drop
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:888:21
+  36: <rustc_mir_dataflow::elaborate_drops::DropCtxt<rustc_mir_transform::shim::DropShimElaborator>>::elaborate_drop
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:250:31
+  37: rustc_mir_dataflow::elaborate_drops::elaborate_drop::<rustc_mir_transform::shim::DropShimElaborator>
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_dataflow/src/elaborate_drops.rs:189:5
+  38: rustc_mir_transform::shim::build_drop_shim
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/shim.rs:213:13
+  39: rustc_mir_transform::shim::make_shim
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/shim.rs:78:13
+  40: rustc_query_system::query::plumbing::execute_job::<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:433:13
+  41: stacker::maybe_grow::<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>
+             at /home/jake/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.15/src/lib.rs:55:9
+  42: rustc_data_structures::stack::ensure_sufficient_stack::<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>
+             at /home/jake/git/rust/rustc2/compiler/rustc_data_structures/src/stack.rs:17:5
+  43: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:128:17
+  44: rustc_middle::ty::context::tls::enter_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}, rustc_middle::mir::Body>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1311:50
+  45: rustc_middle::ty::context::tls::set_tlv::<rustc_middle::ty::context::tls::enter_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}, rustc_middle::mir::Body>::{closure#0}, rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1295:9
+  46: rustc_middle::ty::context::tls::enter_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}, rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1311:9
+  47: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:127:13
+  48: rustc_middle::ty::context::tls::with_related_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle::mir::Body>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1355:13
+  49: rustc_middle::ty::context::tls::with_context::<rustc_middle::ty::context::tls::with_related_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle::mir::Body>::{closure#0}, rustc_middle::mir::Body>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1339:40
+  50: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_context<rustc_middle::ty::context::tls::with_related_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle::mir::Body>::{closure#0}, rustc_middle::mir::Body>::{closure#0}, rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1328:22
+  51: rustc_middle::ty::context::tls::with_context::<rustc_middle::ty::context::tls::with_related_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle::mir::Body>::{closure#0}, rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1339:9
+  52: rustc_middle::ty::context::tls::with_related_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1352:9
+  53: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::<rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:112:9
+  54: rustc_query_system::query::plumbing::execute_job::<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:432:22
+  55: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:378:17
+  56: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::mir_shims, rustc_query_impl::plumbing::QueryCtxt, rustc_middle::dep_graph::dep_node::DepKind>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:752:36
+  57: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_shims::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:727:17
+  58: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_shims
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/lib.rs:44:1
+  59: <rustc_middle::ty::query::TyCtxtAt>::mir_shims
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/query.rs:263:17
+  60: <rustc_middle::ty::context::TyCtxt>::mir_shims
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/query.rs:244:17
+  61: <rustc_middle::ty::context::TyCtxt>::instance_mir
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/mod.rs:2307:49
+  62: <rustc_mir_transform::inline::Inliner>::try_inlining
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/inline.rs:147:27
+  63: <rustc_mir_transform::inline::Inliner>::process_blocks
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/inline.rs:120:19
+  64: rustc_mir_transform::inline::inline
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/inline.rs:92:5
+  65: <rustc_mir_transform::inline::Inline as rustc_middle::mir::MirPass>::run_pass
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/inline.rs:61:12
+  66: rustc_mir_transform::pass_manager::run_passes_inner
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/pass_manager.rs:124:13
+  67: rustc_mir_transform::pass_manager::run_passes
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/pass_manager.rs:83:5
+  68: rustc_mir_transform::run_optimization_passes
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/lib.rs:542:5
+  69: rustc_mir_transform::inner_optimized_mir
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/lib.rs:622:5
+  70: rustc_mir_transform::optimized_mir
+             at /home/jake/git/rust/rustc2/compiler/rustc_mir_transform/src/lib.rs:597:21
+  71: rustc_query_system::query::plumbing::execute_job::<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:433:13
+  72: stacker::maybe_grow::<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>
+             at /home/jake/.cargo/registry/src/github.com-1ecc6299db9ec823/stacker-0.1.15/src/lib.rs:55:9
+  73: rustc_data_structures::stack::ensure_sufficient_stack::<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>
+             at /home/jake/git/rust/rustc2/compiler/rustc_data_structures/src/stack.rs:17:5
+  74: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:128:17
+  75: rustc_middle::ty::context::tls::enter_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}, &rustc_middle::mir::Body>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1311:50
+  76: rustc_middle::ty::context::tls::set_tlv::<rustc_middle::ty::context::tls::enter_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}, &rustc_middle::mir::Body>::{closure#0}, &rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1295:9
+  77: rustc_middle::ty::context::tls::enter_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}::{closure#0}, &rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1311:9
+  78: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:127:13
+  79: rustc_middle::ty::context::tls::with_related_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, &rustc_middle::mir::Body>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1355:13
+  80: rustc_middle::ty::context::tls::with_context::<rustc_middle::ty::context::tls::with_related_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, &rustc_middle::mir::Body>::{closure#0}, &rustc_middle::mir::Body>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1339:40
+  81: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_context<rustc_middle::ty::context::tls::with_related_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, &rustc_middle::mir::Body>::{closure#0}, &rustc_middle::mir::Body>::{closure#0}, &rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1328:22
+  82: rustc_middle::ty::context::tls::with_context::<rustc_middle::ty::context::tls::with_related_context<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, &rustc_middle::mir::Body>::{closure#0}, &rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1339:9
+  83: rustc_middle::ty::context::tls::with_related_context::<<rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>::{closure#0}, &rustc_middle::mir::Body>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1352:9
+  84: <rustc_query_impl::plumbing::QueryCtxt as rustc_query_system::query::QueryContext>::start_query::<&rustc_middle::mir::Body, rustc_query_system::query::plumbing::execute_job<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>::{closure#0}>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:112:9
+  85: rustc_query_system::query::plumbing::execute_job::<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:432:22
+  86: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:378:17
+  87: rustc_query_system::query::plumbing::get_query::<rustc_query_impl::queries::optimized_mir, rustc_query_impl::plumbing::QueryCtxt, rustc_middle::dep_graph::dep_node::DepKind>
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_system/src/query/plumbing.rs:752:36
+  88: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::optimized_mir::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/plumbing.rs:727:17
+  89: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::optimized_mir
+             at /home/jake/git/rust/rustc2/compiler/rustc_query_impl/src/lib.rs:44:1
+  90: <rustc_middle::ty::query::TyCtxtAt>::optimized_mir::<rustc_span::def_id::LocalDefId>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/query.rs:263:17
+  91: <rustc_middle::ty::context::TyCtxt>::optimized_mir::<rustc_span::def_id::LocalDefId>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/query.rs:244:17
+  92: <rustc_metadata::rmeta::encoder::EncodeContext>::encode_mir
+             at /home/jake/git/rust/rustc2/compiler/rustc_metadata/src/rmeta/encoder.rs:1412:74
+  93: <rustc_metadata::rmeta::encoder::EncodeContext>::encode_crate_root::{closure#14}
+             at /home/jake/git/rust/rustc2/compiler/rustc_metadata/src/rmeta/encoder.rs:601:29
+  94: <rustc_metadata::rmeta::encoder::EncodeContext>::encode_crate_root
+             at /home/jake/git/rust/rustc2/compiler/rustc_metadata/src/rmeta/encoder.rs:601:13
+  95: rustc_metadata::rmeta::encoder::encode_metadata_impl
+             at /home/jake/git/rust/rustc2/compiler/rustc_metadata/src/rmeta/encoder.rs:2245:16
+  96: rustc_metadata::rmeta::encoder::encode_metadata::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_metadata/src/rmeta/encoder.rs:2196:12
+  97: rustc_data_structures::sync::join::<rustc_metadata::rmeta::encoder::encode_metadata::{closure#0}, rustc_metadata::rmeta::encoder::encode_metadata::{closure#1}, (), ()>
+             at /home/jake/git/rust/rustc2/compiler/rustc_data_structures/src/sync.rs:117:14
+  98: rustc_metadata::rmeta::encoder::encode_metadata
+             at /home/jake/git/rust/rustc2/compiler/rustc_metadata/src/rmeta/encoder.rs:2195:5
+  99: rustc_metadata::fs::encode_and_write_metadata
+             at /home/jake/git/rust/rustc2/compiler/rustc_metadata/src/fs.rs:86:13
+ 100: rustc_interface::passes::start_codegen
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/passes.rs:986:44
+ 101: <rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/queries.rs:253:20
+ 102: <rustc_interface::passes::QueryContext>::enter::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/passes.rs:765:42
+ 103: rustc_middle::ty::context::tls::enter_context::<<rustc_interface::passes::QueryContext>::enter<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1311:50
+ 104: rustc_middle::ty::context::tls::set_tlv::<rustc_middle::ty::context::tls::enter_context<<rustc_interface::passes::QueryContext>::enter<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1295:9
+ 105: rustc_middle::ty::context::tls::enter_context::<<rustc_interface::passes::QueryContext>::enter<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>
+             at /home/jake/git/rust/rustc2/compiler/rustc_middle/src/ty/context.rs:1311:9
+ 106: <rustc_interface::passes::QueryContext>::enter::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/passes.rs:765:9
+ 107: <rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/queries.rs:240:13
+ 108: <core::option::Option<core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>>::get_or_insert_with::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}>
+             at /home/jake/git/rust/rustc2/library/core/src/option.rs:1590:49
+ 109: <rustc_interface::queries::Query<alloc::boxed::Box<dyn core::any::Any>>>::compute::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}>
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/queries.rs:38:9
+ 110: rustc_driver::run_compiler::{closure#1}::{closure#2}
+             at /home/jake/git/rust/rustc2/compiler/rustc_driver/src/lib.rs:395:13
+ 111: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorGuaranteed>>
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/queries.rs:380:19
+ 112: rustc_driver::run_compiler::{closure#1}
+             at /home/jake/git/rust/rustc2/compiler/rustc_driver/src/lib.rs:306:22
+ 113: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/interface.rs:327:21
+ 114: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}::{closure#0}>
+             at /home/jake/git/rust/rustc2/compiler/rustc_span/src/lib.rs:1026:5
+ 115: rustc_interface::interface::run_compiler::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/interface.rs:321:13
+ 116: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+             at /home/jake/.cargo/registry/src/github.com-1ecc6299db9ec823/scoped-tls-1.0.0/src/lib.rs:137:9
+ 117: rustc_span::create_session_globals_then::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}>
+             at /home/jake/git/rust/rustc2/compiler/rustc_span/src/lib.rs:111:5
+ 118: rustc_interface::util::run_in_thread_pool_with_globals::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>::{closure#0}::{closure#0}
+             at /home/jake/git/rust/rustc2/compiler/rustc_interface/src/util.rs:145:38
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.68.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z mir-opt-level=3 --crate-type lib
+
+query stack during panic:
+#0 [mir_shims] generating MIR shim for `core::ptr::drop_in_place`
+#1 [optimized_mir] optimizing MIR for `foo`
+end of query stack
+error: aborting due to previous error
+
+Bug Labels:
+A-mir-opt-inlining, C-bug, E-needs-test, I-ICE, T-compiler, glacier, requires-nightly

@@ -1,0 +1,28 @@
+Issue Title:
+"Broken MIR" ICE when using runtime crate · Issue #61731 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(async_await)]
+
+use futures::prelude::*;
+use runtime::net::TcpListener;
+use std::io;
+
+#[runtime::main]
+async fn main() -> io::Result<()> {
+    let mut listener = TcpListener::bind("127.0.0.1:12345")?;
+    let mut incoming = listener.incoming();
+    while let Some(stream) = incoming.next().await {
+        runtime::spawn(async move {
+            let stream = stream?;
+            let (mut rd, mut wr) = stream.split();
+            rd.copy_into(&mut wr).await?;
+            Ok::<_, std::io::Error>(())
+        });
+    }
+
+    Ok(())
+}
+
+Bug Labels:
+A-MIR, A-async-await, A-coroutines, AsyncAwait-Polish, C-bug, I-ICE, T-compiler

@@ -1,0 +1,156 @@
+Issue Title:
+ICE on "computing whether GenFuture<_> is `Copy`" · Issue #95034 · rust-lang/rust · GitHub
+
+Rust Code:
+use std::{
+    future::Future,
+    marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
+};
+
+mod object {
+    use super::*;
+
+    pub trait Object<'a> {
+        type Error;
+        type Future: Future<Output = Self>;
+        fn create() -> Self::Future;
+    }
+
+    impl<'a> Object<'a> for u8 {
+        type Error = ();
+        type Future = Pin<Box<dyn Future<Output = Self>>>;
+        fn create() -> Self::Future {
+            unimplemented!()
+        }
+    }
+
+    impl<'a, E, A: Object<'a, Error = E>> Object<'a> for (A,) {
+        type Error = ();
+        type Future = CustomFut<'a, E, A>;
+        fn create() -> Self::Future {
+            unimplemented!()
+        }
+    }
+
+    pub struct CustomFut<'f, E, A: Object<'f, Error = E>> {
+        ph: PhantomData<(A::Future,)>,
+    }
+
+    impl<'f, E, A: Object<'f, Error = E>> Future for CustomFut<'f, E, A> {
+        type Output = (A,);
+        fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
+            unimplemented!()
+        }
+    }
+}
+
+mod async_fn {
+    use super::*;
+
+    pub trait AsyncFn {
+        type Future: Future<Output = ()>;
+        fn call(&self) -> Self::Future;
+    }
+
+    impl<F, Fut> AsyncFn for F
+    where
+        F: Fn() -> Fut,
+        Fut: Future<Output = ()>,
+    {
+        type Future = Fut;
+        fn call(&self) -> Self::Future {
+            (self)()
+        }
+    }
+}
+
+pub async fn test() {
+    use self::{async_fn::AsyncFn, object::Object};
+
+    async fn create<T: Object<'static>>() {
+        T::create().await;
+    }
+
+    async fn call_async_fn(inner: impl AsyncFn) {
+        inner.call().await;
+    }
+
+    call_async_fn(create::<(u8,)>).await;
+}
+
+Bug Trace:
+thread 'rustc' panicked at 'index out of bounds: the len is 0 but the index is 0', /cargo/registry/src/github.com-1ecc6299db9ec823/ena-0.14.0/src/snapshot_vec.rs:199:10
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/52b34550aca5f7dd7e152f773e3ab786acb86f6f/library/std/src/panicking.rs:584:5
+   1: core::panicking::panic_fmt
+             at /rustc/52b34550aca5f7dd7e152f773e3ab786acb86f6f/library/core/src/panicking.rs:143:14
+   2: core::panicking::panic_bounds_check
+             at /rustc/52b34550aca5f7dd7e152f773e3ab786acb86f6f/library/core/src/panicking.rs:84:5
+   3: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+   4: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+   5: <&rustc_middle::ty::list::List<rustc_middle::ty::Ty> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_infer::infer::canonical::canonicalizer::Canonicalizer>
+   6: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::FallibleTypeFolder>::try_fold_binder::<&rustc_middle::ty::list::List<rustc_middle::ty::Ty>>
+   7: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+   8: <&rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_infer::infer::canonical::canonicalizer::Canonicalizer>
+   9: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  10: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  11: <&rustc_middle::ty::list::List<rustc_middle::ty::Ty> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_infer::infer::canonical::canonicalizer::Canonicalizer>
+  12: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::FallibleTypeFolder>::try_fold_binder::<&rustc_middle::ty::list::List<rustc_middle::ty::Ty>>
+  13: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  14: <&rustc_middle::ty::list::List<rustc_middle::ty::subst::GenericArg> as rustc_middle::ty::fold::TypeFoldable>::try_fold_with::<rustc_infer::infer::canonical::canonicalizer::Canonicalizer>
+  15: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  16: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::TypeFolder>::fold_ty
+  17: <rustc_infer::infer::canonical::canonicalizer::Canonicalizer as rustc_middle::ty::fold::FallibleTypeFolder>::try_fold_predicate
+  18: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::predicate_must_hold_modulo_regions
+  19: rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions
+  20: <rustc_infer::infer::InferCtxtBuilder>::enter::<bool, rustc_ty_utils::common_traits::is_item_raw::{closure#0}>
+  21: rustc_ty_utils::common_traits::is_copy_raw
+  22: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, bool>>
+  23: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::is_copy_raw
+  24: <rustc_middle::ty::Ty>::is_copy_modulo_regions
+  25: rustc_ty_utils::needs_drop::needs_drop_raw
+  26: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::ParamEnvAnd<rustc_middle::ty::Ty>, bool>>
+  27: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::needs_drop_raw
+  28: rustc_mir_dataflow::drop_flag_effects::on_all_children_bits::on_all_children_bits::<rustc_mir_dataflow::drop_flag_effects::on_all_drop_children_bits<rustc_mir_transform::elaborate_drops::find_dead_unwinds::{closure#0}>::{closure#0}>
+  29: <rustc_mir_transform::elaborate_drops::ElaborateDrops as rustc_middle::mir::MirPass>::run_pass
+  30: rustc_mir_transform::pass_manager::run_passes
+  31: rustc_mir_transform::mir_drops_elaborated_and_const_checked
+  32: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::WithOptConstParam<rustc_span::def_id::LocalDefId>, &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>>>
+  33: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::mir_drops_elaborated_and_const_checked
+  34: rustc_mir_transform::optimized_mir
+  35: rustc_query_system::query::plumbing::try_execute_query::<rustc_query_impl::plumbing::QueryCtxt, rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::DefId, &rustc_middle::mir::Body>>
+  36: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::optimized_mir
+  37: <rustc_metadata::rmeta::encoder::EncodeContext>::encode_crate_root
+  38: rustc_metadata::rmeta::encoder::encode_metadata_impl
+  39: rustc_data_structures::sync::join::<rustc_metadata::rmeta::encoder::encode_metadata::{closure#0}, rustc_metadata::rmeta::encoder::encode_metadata::{closure#1}, rustc_metadata::rmeta::encoder::EncodedMetadata, ()>
+  40: rustc_metadata::rmeta::encoder::encode_metadata
+  41: <rustc_interface::passes::QueryContext>::enter::<<rustc_interface::queries::Queries>::ongoing_codegen::{closure#0}::{closure#0}, core::result::Result<alloc::boxed::Box<dyn core::any::Any>, rustc_errors::ErrorGuaranteed>>
+  42: <rustc_interface::queries::Queries>::ongoing_codegen
+  43: <rustc_interface::interface::Compiler>::enter::<rustc_driver::run_compiler::{closure#1}::{closure#2}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_errors::ErrorGuaranteed>>
+  44: rustc_span::with_source_map::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_interface::interface::create_compiler_and_run<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#1}>
+  45: rustc_interface::interface::create_compiler_and_run::<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>
+  46: <scoped_tls::ScopedKey<rustc_span::SessionGlobals>>::set::<rustc_interface::interface::run_compiler<core::result::Result<(), rustc_errors::ErrorGuaranteed>, rustc_driver::run_compiler::{closure#1}>::{closure#0}, core::result::Result<(), rustc_errors::ErrorGuaranteed>>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.61.0-nightly (52b34550a 2022-03-15) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: --crate-type lib
+
+query stack during panic:
+#0 [is_copy_raw] computing whether `core::future::from_generator::GenFuture<[static generator@src/lib.rs:72:49: 74:6]>` is `Copy`
+#1 [needs_drop_raw] computing whether `core::future::from_generator::GenFuture<[static generator@src/lib.rs:72:49: 74:6]>` needs drop
+#2 [mir_drops_elaborated_and_const_checked] elaborating drops for `test::{closure#0}`
+#3 [optimized_mir] optimizing MIR for `test::{closure#0}`
+end of query stack
+
+Bug Labels:
+A-async-await, A-coroutines, AsyncAwait-Triaged, C-bug, I-ICE, P-medium, T-compiler, glacier, regression-from-stable-to-stable

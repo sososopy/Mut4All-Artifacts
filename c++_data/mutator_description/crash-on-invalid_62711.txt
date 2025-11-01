@@ -1,0 +1,37 @@
+Mutation Operator: Misuse of `__builtin_va_arg` with Undefined Variables
+  
+Target: Function body using `__builtin_va_arg` with `va_list`
+
+Mutation Rule:
+1. Identify any usage of `__builtin_va_arg` within a function body that utilizes a `va_list`.
+2. Introduce a reference to an undefined or uninitialized `va_list` variable instead of a properly initialized one.
+3. Optionally, insert a conditional statement to perform an operation (such as a logical or arithmetic operation) on the result of the `__builtin_va_arg` call, which may exacerbate the issue and increase the likelihood of a crash.
+
+Example:
+Original Code:
+```c
+#include <stdarg.h>
+#include <stdlib.h>
+
+void example_function(va_list param, ...) {
+  va_list local;
+  __builtin_va_start(local, param);
+  if (__builtin_va_arg(local, int) << 1) abort();
+}
+```
+
+Mutated Code:
+```c
+#include <stdarg.h>
+#include <stdlib.h>
+
+void example_function(va_list param, ...) {
+  va_list some_undefined_list; // Intentionally not initialized
+  __builtin_va_start(some_undefined_list, param);
+  
+  // Use undefined va_list with __builtin_va_arg
+  if (__builtin_va_arg(some_undefined_list, int) << 1) abort(); 
+}
+```
+
+The mutation introduces a misuse of `__builtin_va_arg` by applying it on an uninitialized `va_list` (`some_undefined_list`), which is likely to cause undefined behavior or a crash in the compiler when it attempts to compile the code.

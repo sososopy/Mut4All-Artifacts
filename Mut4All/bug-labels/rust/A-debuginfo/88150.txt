@@ -1,0 +1,88 @@
+Issue Title:
+ICE while computing layout with uninhabited type · Issue #88150 · rust-lang/rust · GitHub
+
+Rust Code:
+use core::marker::PhantomData;
+
+pub struct Foo<T: ?Sized, A>(
+    PhantomData<(A, T)>,
+);
+
+enum Never {}
+
+impl<T: ?Sized> Foo<T, Never> {
+    fn new_foo() -> Foo<T, Never> {
+        Foo(PhantomData)
+    }
+}
+
+fn main() {
+    let _ = Foo::<(), Never>::new_foo();
+    let _ = Foo::<[()], Never>::new_foo(); // <-- This line causes the ICE
+}
+
+Bug Trace:
+Compiling playground v0.0.1 (/playground)
+thread 'rustc' panicked at 'assertion failed: layout.abi.is_uninhabited()', compiler/rustc_middle/src/ty/layout.rs:237:21
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/a178d0322ce20e33eac124758e837cbd80a6f633/library/std/src/panicking.rs:515:5
+   1: core::panicking::panic_fmt
+             at /rustc/a178d0322ce20e33eac124758e837cbd80a6f633/library/core/src/panicking.rs:92:14
+   2: core::panicking::panic
+             at /rustc/a178d0322ce20e33eac124758e837cbd80a6f633/library/core/src/panicking.rs:50:5
+   3: rustc_middle::ty::layout::layout_raw
+   4: rustc_query_impl::<impl rustc_query_system::query::config::QueryAccessors<rustc_query_impl::plumbing::QueryCtxt> for rustc_query_impl::queries::layout_raw>::compute
+   5: rustc_query_system::query::plumbing::get_query_impl
+   6: <rustc_query_impl::Queries as rustc_middle::ty::query::QueryEngine>::layout_raw
+   7: <rustc_middle::ty::layout::LayoutCx<rustc_middle::ty::context::TyCtxt> as rustc_target::abi::LayoutOf>::layout_of
+   8: <rustc_codegen_llvm::context::CodegenCx as rustc_target::abi::LayoutOf>::spanned_layout_of
+   9: rustc_codegen_llvm::debuginfo::metadata::create_struct_stub
+  10: rustc_codegen_llvm::debuginfo::metadata::prepare_tuple_metadata
+  11: rustc_codegen_llvm::debuginfo::metadata::type_metadata
+  12: core::ops::function::impls::<impl core::ops::function::FnMut<A> for &mut F>::call_mut
+  13: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  14: rustc_codegen_llvm::debuginfo::metadata::set_members_of_composite_type
+  15: rustc_codegen_llvm::debuginfo::metadata::RecursiveTypeDescription::finalize
+  16: rustc_codegen_llvm::debuginfo::metadata::type_metadata
+  17: <core::iter::adapters::map::Map<I,F> as core::iter::traits::iterator::Iterator>::fold
+  18: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter
+  19: rustc_codegen_llvm::debuginfo::metadata::MemberDescriptionFactory::create_member_descriptions
+  20: rustc_codegen_llvm::debuginfo::metadata::RecursiveTypeDescription::finalize
+  21: rustc_codegen_llvm::debuginfo::metadata::type_metadata
+  22: rustc_codegen_llvm::debuginfo::<impl rustc_codegen_ssa::traits::debuginfo::DebugInfoMethods for rustc_codegen_llvm::context::CodegenCx>::dbg_scope_fn::get_containing_scope
+  23: rustc_codegen_llvm::debuginfo::<impl rustc_codegen_ssa::traits::debuginfo::DebugInfoMethods for rustc_codegen_llvm::context::CodegenCx>::dbg_scope_fn
+  24: rustc_codegen_ssa::mir::codegen_mir
+  25: rustc_codegen_ssa::base::codegen_instance
+  26: <rustc_middle::mir::mono::MonoItem as rustc_codegen_ssa::mono_item::MonoItemExt>::define
+  27: rustc_codegen_llvm::base::compile_codegen_unit::module_codegen
+  28: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  29: rustc_codegen_llvm::base::compile_codegen_unit
+  30: <rustc_codegen_llvm::LlvmCodegenBackend as rustc_codegen_ssa::traits::backend::CodegenBackend>::codegen_crate
+  31: rustc_interface::passes::QueryContext::enter
+  32: rustc_interface::queries::Queries::ongoing_codegen
+  33: rustc_interface::queries::<impl rustc_interface::interface::Compiler>::enter
+  34: rustc_span::with_source_map
+  35: rustc_interface::interface::create_compiler_and_run
+  36: scoped_tls::ScopedKey<T>::set
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.54.0 (a178d0322 2021-07-26) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C codegen-units=1 -C debuginfo=2 --crate-type bin
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [layout_raw] computing layout of `(Never, [()])`
+end of query stack
+error: could not compile `playground`
+
+Bug Labels:
+A-debuginfo, C-bug, I-ICE, T-compiler

@@ -1,0 +1,184 @@
+Issue Title:
+ICE when using const_evaluatable_checked · Issue #79251 · rust-lang/rust · GitHub
+
+Rust Code:
+#![feature(const_generics)]
+#![feature(const_evaluatable_checked)]
+
+#[derive(Debug)]
+struct Node<K, const D: usize>
+where
+    SmallVec<K, { D * 2 }>: ,
+{
+    keys: SmallVec<K, { D * 2 }>,
+}
+
+impl<K, const D: usize> Node<K, D>
+where
+    SmallVec<K, { D * 2 }>: ,
+{
+    fn new() -> Self {
+        panic!()
+    }
+
+    #[inline(never)]
+    fn split(&mut self, i: usize, k: K, right: bool) -> Node<K, D> {
+        let mut node = Node::new();
+        node.keys.push(k);
+        node
+    }
+}
+
+#[derive(Debug)]
+struct SmallVec<T, const D: usize> {
+    data: [T; D],
+}
+impl<T, const D: usize> SmallVec<T, D> {
+    fn new() -> Self {
+        panic!()
+    }
+}
+
+Bug Trace:
+Compiling btree_join v0.1.0 (/home/simon/git_repositories/rust_test/btree_ice_mfe)
+warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/lib.rs:1:12
+  |
+1 | #![feature(const_generics)]
+  |            ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+  = help: consider using `min_const_generics` instead, which is more stable and complete
+
+warning: the feature `const_evaluatable_checked` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> src/lib.rs:2:12
+  |
+2 | #![feature(const_evaluatable_checked)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+
+error: internal compiler error: compiler/rustc_middle/src/ich/impls_ty.rs:167:9: ty::TyKind::hash_stable() - can't hash a TyVid _#0t.
+
+thread 'rustc' panicked at 'Box<Any>', compiler/rustc_errors/src/lib.rs:958:9
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: rustc_errors::HandlerInner::bug
+   2: rustc_errors::Handler::bug
+   3: rustc_middle::util::bug::opt_span_bug_fmt::{{closure}}
+   4: rustc_middle::ty::context::tls::with_opt::{{closure}}
+   5: rustc_middle::ty::context::tls::with_opt
+   6: rustc_middle::util::bug::opt_span_bug_fmt
+   7: rustc_middle::util::bug::bug_fmt
+   8: rustc_middle::ich::impls_ty::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::TyVid>::hash_stable
+   9: rustc_middle::ty::sty::_DERIVE_rustc_data_structures_stable_hasher_HashStable_rustc_middle_ich_StableHashingContext_ctx_FOR_InferTy::<impl rustc_data_structures::stable_hasher::HashStable<rustc_middle::ich::hcx::StableHashingContext> for rustc_middle::ty::sty::InferTy>::hash_stable
+  10: std::thread::local::LocalKey<T>::with
+  11: <T as rustc_query_system::dep_graph::dep_node::DepNodeParams<Ctxt>>::to_fingerprint
+  12: rustc_query_system::query::plumbing::get_query_impl
+  13: rustc_middle::ty::relate::super_relate_consts
+  14: <rustc_infer::infer::combine::Generalizer as rustc_middle::ty::relate::TypeRelation>::consts
+  15: <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::relate::Relate>::relate
+  16: <core::result::Result<T,E> as rustc_middle::ty::context::InternIteratorElement<T,R>>::intern_with
+  17: <rustc_infer::infer::combine::Generalizer as rustc_middle::ty::relate::TypeRelation>::relate_item_substs
+  18: rustc_middle::ty::relate::super_relate_tys
+  19: <rustc_infer::infer::combine::Generalizer as rustc_middle::ty::relate::TypeRelation>::tys
+  20: rustc_infer::infer::combine::CombineFields::instantiate
+  21: <rustc_infer::infer::equate::Equate as rustc_middle::ty::relate::TypeRelation>::tys
+  22: <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::relate::Relate>::relate
+  23: <core::result::Result<T,E> as rustc_middle::ty::context::InternIteratorElement<T,R>>::intern_with
+  24: rustc_middle::ty::relate::super_relate_tys
+  25: rustc_infer::infer::combine::<impl rustc_infer::infer::InferCtxt>::super_combine_tys
+  26: <rustc_infer::infer::equate::Equate as rustc_middle::ty::relate::TypeRelation>::tys
+  27: <rustc_middle::ty::subst::GenericArg as rustc_middle::ty::relate::Relate>::relate
+  28: <core::result::Result<T,E> as rustc_middle::ty::context::InternIteratorElement<T,R>>::intern_with
+  29: <rustc_middle::ty::sty::TraitRef as rustc_middle::ty::relate::Relate>::relate
+  30: rustc_infer::infer::InferCtxt::commit_if_ok
+  31: rustc_trait_selection::traits::select::SelectionContext::match_impl
+  32: rustc_infer::infer::InferCtxt::probe
+  33: rustc_middle::ty::trait_def::<impl rustc_middle::ty::context::TyCtxt>::for_each_relevant_impl
+  34: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::assemble_candidates_from_impls
+  35: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::assemble_candidates
+  36: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::candidate_from_obligation_no_cache
+  37: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  38: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  39: rustc_trait_selection::traits::select::candidate_assembly::<impl rustc_trait_selection::traits::select::SelectionContext>::candidate_from_obligation
+  40: rustc_trait_selection::traits::select::SelectionContext::evaluate_stack
+  41: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  42: rustc_query_system::dep_graph::graph::DepGraph<K>::with_anon_task
+  43: rustc_trait_selection::traits::select::SelectionContext::evaluate_trait_predicate_recursively
+  44: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively::{{closure}}
+  45: rustc_trait_selection::traits::select::SelectionContext::evaluate_predicate_recursively
+  46: rustc_infer::infer::InferCtxt::probe
+  47: rustc_trait_selection::traits::select::SelectionContext::evaluate_root_obligation
+  48: rustc_infer::infer::InferCtxtBuilder::enter_with_canonical
+  49: rustc_traits::evaluate_obligation::evaluate_obligation
+  50: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::evaluate_obligation>::compute
+  51: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  52: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  53: rustc_data_structures::stack::ensure_sufficient_stack
+  54: rustc_query_system::query::plumbing::get_query_impl
+  55: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation
+  56: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+  57: <rustc_trait_selection::autoderef::Autoderef as core::iter::traits::iterator::Iterator>::next
+  58: <alloc::vec::Vec<T> as alloc::vec::SpecFromIter<T,I>>::from_iter
+  59: rustc_infer::infer::InferCtxtBuilder::enter_with_canonical
+  60: rustc_typeck::check::method::probe::method_autoderef_steps
+  61: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::method_autoderef_steps>::compute
+  62: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  63: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  64: rustc_data_structures::stack::ensure_sufficient_stack
+  65: rustc_query_system::query::plumbing::get_query_impl
+  66: rustc_typeck::check::method::probe::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::probe_for_name
+  67: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::report_extended_method_error::{{closure}}
+  68: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  69: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  70: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_stmt
+  71: rustc_typeck::check::fn_ctxt::checks::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_block_with_expected
+  72: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_kind
+  73: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_expr_with_expectation
+  74: rustc_typeck::check::expr::<impl rustc_typeck::check::fn_ctxt::FnCtxt>::check_return_expr
+  75: rustc_typeck::check::check::check_fn
+  76: rustc_infer::infer::InferCtxtBuilder::enter
+  77: rustc_typeck::check::typeck
+  78: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck>::compute
+  79: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  80: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  81: rustc_data_structures::stack::ensure_sufficient_stack
+  82: rustc_query_system::query::plumbing::get_query_impl
+  83: rustc_query_system::query::plumbing::ensure_query_impl
+  84: rustc_typeck::check::typeck_item_bodies
+  85: rustc_middle::ty::query::<impl rustc_query_system::query::config::QueryAccessors<rustc_middle::ty::context::TyCtxt> for rustc_middle::ty::query::queries::typeck_item_bodies>::compute
+  86: rustc_middle::dep_graph::<impl rustc_query_system::dep_graph::DepKind for rustc_middle::dep_graph::dep_node::DepKind>::with_deps
+  87: rustc_query_system::dep_graph::graph::DepGraph<K>::with_task
+  88: rustc_data_structures::stack::ensure_sufficient_stack
+  89: rustc_query_system::query::plumbing::get_query_impl
+  90: rustc_typeck::check_crate
+  91: rustc_interface::passes::analysis
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.50.0-nightly (fe982319a 2020-11-19) running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -C embed-bitcode=no -C debuginfo=2 -C incremental --crate-type lib
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+#0 [evaluate_obligation] evaluating trait selection obligation `std::pin::Pin<SmallVec<^1, { D * 2 }>>: std::ops::Deref`
+#1 [method_autoderef_steps] computing autoderef types for `Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Ty(General(U0)) }, CanonicalVarInfo { kind: Const(U0) }], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [ConstEvaluatable(WithOptConstParam { did: DefId(0:6 ~ btree_join[ecb8]::{impl#0}::{constant#0}), const_param_did: None }, [K, Const { ty: usize, val: Param(D/#1) }]), TraitPredicate(<K as std::marker::Sized>), OutlivesPredicate(SmallVec<K, { D * 2 }>, ReLateBound(DebruijnIndex(0), BrAnon(0))), OutlivesPredicate(K, ReLateBound(DebruijnIndex(0), BrAnon(0)))], reveal: UserFacing }, value: std::pin::Pin<SmallVec<^1, { D * 2 }>> } }`
+#2 [typeck] type-checking `Node::<K, D>::split`
+#3 [typeck_item_bodies] type-checking all item bodies
+#4 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error; 2 warnings emitted
+
+error: could not compile `btree_join`
+
+To learn more, run the command again with --verbose.
+
+Bug Labels:
+A-const-generics, A-incr-comp, C-bug, F-generic_const_exprs, I-ICE, T-compiler
