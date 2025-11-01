@@ -12,12 +12,8 @@ Here are the main useful files and directories:
 |-- Mut4All-Artifacts/
 	|-- Mut4All ## An automatic mutator generator
 		|-- bug-labels				## Bugs classified by tags
-		|-- mutator_description     ## mutator description
 		|-- mutator_examples		## Human handwritten mutator
 		|-- mutator_template  		## Mutator template
-		|-- mutators				## mutators
-		|-- mutators_err			## Incorrect mutators
-		|-- raw_mutators			## Unverified and unfixed mutators
 		|-- Bug-labels.txt			## Bug tags
 		|-- config.json             ## Configuration information		
 		|-- main.py					## Main
