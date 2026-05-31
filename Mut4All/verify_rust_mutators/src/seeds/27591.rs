@@ -1,0 +1,1 @@
+fn rem_is_zero < T : Eq + Rem + Zero > (n : T , m : T) -> bool where < T as Rem > :: Output : Zero + Eq { let z = < T as Rem > :: Output :: zero () ; (n % m) == z }

@@ -1,0 +1,1 @@
+# [repr ("C")] struct A { } fn main () { }

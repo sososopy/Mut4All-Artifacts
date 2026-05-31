@@ -1,0 +1,1 @@
+use anyhow ; async fn main2 () { loop { let pending : Result < Vec < () > , anyhow :: Error > = Ok (vec ! []) ; match pending { Ok (vec ! []) => { } Err (e) => { } , } } }

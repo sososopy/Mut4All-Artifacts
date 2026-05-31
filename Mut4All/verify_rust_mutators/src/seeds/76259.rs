@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] use std :: arch :: x86_64 :: * ; pub unsafe fn f (a : __m256i) -> u32 { _mm256_movemask_epi8 (a) . trailing_zeros () }

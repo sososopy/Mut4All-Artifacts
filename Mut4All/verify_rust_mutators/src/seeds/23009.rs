@@ -1,0 +1,1 @@
+fn main () { let mut v = vec ! [1 , 2 , 3] ; match & v [..] { [1 , ref n , 3] => { } , [1 , 2 , 3] => { } , } }

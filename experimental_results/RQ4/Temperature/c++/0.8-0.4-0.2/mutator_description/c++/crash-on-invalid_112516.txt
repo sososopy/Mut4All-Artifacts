@@ -1,0 +1,38 @@
+Mutation Operator: Misuse of Macros in Constant Expression
+
+Target: Macro usage within constant expressions
+
+Mutation Rule:
+1. Identify a macro that takes parameters and is defined in the seed program. Example: #define macro_name(param1, param2) ((param1) < (param2) ? (param1) : (param2))
+2. Locate a constant expression context in the seed program, such as within a `constexpr` or a global constant.
+3. Replace a valid constant expression with a call to the identified macro, passing a mix of compile-time constants and runtime variables as parameters.
+4. Ensure that at least one parameter of the macro is a runtime variable or an expression involving such a variable.
+
+Example:
+Original Code:
+```cpp
+struct Data {
+    int value;
+};
+
+int main() {
+    struct Data d = {5};
+    constexpr int safe_constexpr = 10 < 20 ? 10 : 20;
+}
+```
+
+Mutated Code:
+```cpp
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+struct Data {
+    int value;
+};
+
+int main() {
+    struct Data d = {5};
+    constexpr int unsafe_constexpr = min(10, d.value);
+}
+```
+
+By introducing the macro within a `constexpr` context where it depends on a non-constant value, this mutation can reveal issues related to the misuse of macros in inappropriate contexts, potentially leading to a compiler crash.

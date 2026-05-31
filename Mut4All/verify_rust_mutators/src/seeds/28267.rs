@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] trait Trait { const SIZE : usize ; } pub fn cause_compiler_to_panic < T : Trait > () -> [u8 ; T :: SIZE] { unimplemented ! () }

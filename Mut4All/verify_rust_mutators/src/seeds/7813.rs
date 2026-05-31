@@ -1,0 +1,1 @@
+fn main () { let v = & [] ; let it = v . iter () ; }

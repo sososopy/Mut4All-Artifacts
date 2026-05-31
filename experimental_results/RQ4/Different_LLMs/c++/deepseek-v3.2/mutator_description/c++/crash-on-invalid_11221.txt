@@ -1,0 +1,27 @@
+Mutation operator: Replace a class template specialization with a partial specialization that duplicates an existing specialization.
+
+This mutation applies when the seed program contains a class template with at least one explicit specialization (full specialization). The operator modifies the code by introducing a class template partial specialization that attempts to specialize the same template but with a pattern that logically matches the same set of template arguments as an existing full specialization, potentially creating a conflict.
+
+Specifically, locate a class template declaration and its subsequent explicit (full) specialization. For the template being specialized, create a new partial specialization that uses a template parameter list which, when instantiated with the arguments used in the existing full specialization, would resolve to that same type. The partial specialization is inserted after the original template declaration but before or near the existing full specialization.
+
+Changes to make:
+1. Identify a class template `TemplateName` with parameters `TParams`.
+2. Identify an existing full specialization of `TemplateName` for a specific type, e.g., `TemplateName<SpecificType>`.
+3. Create a partial specialization of `TemplateName` using a subset or pattern of `TParams` that matches `SpecificType`. For example, if `TemplateName` has one parameter `T`, and the full specialization is for `int`, introduce a partial specialization like `TemplateName<T*>` (if `SpecificType` is not a pointer, this creates a distinct but overlapping category). Alternatively, if the template has multiple parameters, specialize one while leaving others generic, aiming for a scenario where the specialization criteria could ambiguously apply.
+4. The body of the new partial specialization should be a copy or slight modification of the existing full specialization's body, using only existing member names or types from the seed program. Do not introduce new data names or types unless absolutely necessary; if needed, reuse a simple existing type like `int` or a template parameter from the original template.
+5. Ensure the new partial specialization is syntactically valid and uses only variables, types, or functions already present in the seed program.
+
+Example in pseudo-code form:
+Original seed code snippet:
+template<typename T>
+class MyClass { /* ... */ };
+class MyClass<int> { /* ... */ }; // full specialization
+
+Mutated code:
+template<typename T>
+class MyClass { /* ... */ };
+template<typename T>
+class MyClass<T*> { /* ... */ }; // new partial specialization (using existing template parameter T)
+class MyClass<int> { /* ... */ }; // existing full specialization remains
+
+This mutation targets the compiler's handling of template specialization sets, particularly the logic that manages overlapping or duplicate specialization definitions, which can trigger assertion failures like "Already set to a class template partial specialization."

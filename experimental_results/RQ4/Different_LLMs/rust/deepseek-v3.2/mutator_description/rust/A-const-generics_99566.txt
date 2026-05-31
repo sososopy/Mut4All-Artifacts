@@ -1,0 +1,13 @@
+Mutation operator: Insert a const generic parameter into a for<...> binder on a closure expression, where the binder currently contains only lifetime parameters or no parameters.
+
+This mutation applies to closure expressions that may optionally have a for<...> binder preceding them. The operator targets the specific case where a const generic parameter is introduced into a for<...> binder that originally did not contain one. The mutation changes the binder by adding a const parameter declaration. If the seed program already has a for<...> binder, the operator modifies it by inserting a const parameter alongside any existing lifetime parameters. If there is no for<...> binder, the operator adds one containing only a const parameter.
+
+To apply, examine each closure expression in the seed program. For a closure expression, if it has a for<...> binder, locate the list of generic parameters inside the angle brackets. If this list contains only lifetime parameters (like 'a, 'b) or is empty, insert a const parameter declaration. Choose a const parameter name that does not conflict with existing names in the scope; prefer a fresh identifier like N. Choose a type for the const parameter from existing types in the seed program; if no suitable type exists, use a default integral type like i32. The syntax to insert is: const N: T, where N is the chosen name and T is the chosen type. Place it as the first parameter in the list if the list is empty, or after the existing lifetime parameters if present, ensuring proper comma separation.
+
+If the closure expression does not have a for<...> binder, add one immediately before the closure, formatted as for<const N: T> where N and T are chosen as above.
+
+Example transformation for a closure with no binder: Original code: let f = || {}; Mutated code: let f = for<const N: i32> || {};
+
+Example transformation for a closure with existing lifetime binder: Original code: let f = for<'a> || -> &'a i32 { &0 }; Mutated code: let f = for<'a, const N: usize> || -> &'a i32 { &0 };
+
+The mutation must ensure that the closure expression remains syntactically valid; the const parameter should be a valid const generic parameter type available in the context. Avoid introducing ambiguous or undefined names.

@@ -1,0 +1,1 @@
+pub trait Foo { type Bar ; } pub trait Broken { type Assoc ; fn broken (& self) -> Vec < < Self :: Assoc as Foo > :: Bar > where Self :: Assoc : Foo ; } impl < T > Broken for T { type Assoc = () ; fn broken (& self) -> Vec < < Self :: Assoc as Foo > :: Bar > where Self :: Assoc : Foo { Vec :: new () } } fn main () { let _m : & Broken < Assoc = () > = & () ; }

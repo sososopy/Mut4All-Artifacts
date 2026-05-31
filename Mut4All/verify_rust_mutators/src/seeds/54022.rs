@@ -1,0 +1,1 @@
+pub struct Db < 'a > { z : & 'a str , } impl < '_ > Drop for Db < '_ > { fn drop (& mut self) { } } fn main () { println ! ("Hello, world!") ; }

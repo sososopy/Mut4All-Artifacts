@@ -1,0 +1,34 @@
+Mutation operator: Replace a using-declaration inside a lambda or function body with an alternative declaration or usage pattern that might affect ADL lookup in a requires expression.
+
+Target code construct: Using-declarations (`using std::begin;` or similar) placed inside a lambda or function body that is used within a concept definition, especially when these using-declarations are intended to guide ADL lookup for subsequent requires expressions.
+
+Where it applies: This mutation targets using-declarations that appear inside the body of a lambda, function, or block scope within a concept definition, where the using-declaration is meant to influence name lookup for expressions inside a requires clause. It applies when the seed program contains such using-declarations, typically for standard library functions like `begin` or `end`, within a concept.
+
+Changes to make: For each using-declaration of the form `using std::X;` found inside a lambda or function body within a concept, mutate it by either:
+1. Removing the using-declaration entirely, relying solely on ADL without explicit guidance.
+2. Replacing it with a qualified call directly in the requires expression, e.g., change `{begin(t)}` to `{std::begin(t)}` in the requires clause and remove the using-declaration.
+3. Moving the using-declaration outside the lambda to a broader scope, if such a scope exists in the seed program (e.g., to the global scope or enclosing namespace), while keeping the requires expression unchanged.
+Preference: Use the first option (removal) if the seed program already has the using-declaration inside the lambda, as this is the simplest change that may expose ADL-related bugs.
+
+Example in pseudo-code: Original seed code snippet inside a concept:
+```
+concept HasBeginEnd = []{
+    using std::begin;
+    using std::end;
+    return requires(T& t) {
+        {begin(t)} -> std::input_iterator;
+        {end(t)} -> std::input_iterator;
+    };
+}();
+```
+Mutated version (after applying option 1):
+```
+concept HasBeginEnd = []{
+    // using-declarations removed
+    return requires(T& t) {
+        {begin(t)} -> std::input_iterator;
+        {end(t)} -> std::input_iterator;
+    };
+}();
+```
+Note: This mutation alters the ADL setup, potentially causing the compiler to handle lookup differently and revealing crashes or misbehavior related to mixing iterator concepts, ADL, and using-declarations.

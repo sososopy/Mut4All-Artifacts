@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] struct Foo < const NUM_BYTES : usize > (pub [u8 ; NUM_BYTES]) ; fn main () { let foo = Foo :: < 3 > ([1 , 2 , 3]) ; }

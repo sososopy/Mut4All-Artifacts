@@ -1,0 +1,1 @@
+use std :: path :: Path ; fn main () { let path = Path :: from (format ! ("./new/path")) ; }

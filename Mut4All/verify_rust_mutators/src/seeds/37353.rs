@@ -1,0 +1,1 @@
+fn main () { loop { 'w : while break 'w { } } }

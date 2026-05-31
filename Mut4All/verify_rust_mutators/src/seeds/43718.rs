@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] fn iter_values (a : & [u32]) -> impl Iterator < Item = & u32 > { a . iter () . map (| a | & a) }

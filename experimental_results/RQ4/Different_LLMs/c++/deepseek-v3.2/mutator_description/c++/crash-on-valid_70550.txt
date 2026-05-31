@@ -1,0 +1,22 @@
+Based on the bug report, the crash occurs during template instantiation of a binary operator overload (operator|) involving a user-defined integer type (wide::integer). The crash stack indicates issues in the comment attachment mechanism during function definition instantiation. This suggests that template-heavy code with complex overloaded operators and user-defined types can trigger compiler bugs, especially when combined with inline function definitions and template argument deduction.
+
+Mutation Operator:
+Target: Overloaded binary operator expressions involving user-defined types within template contexts.
+
+Scope: Applies to any binary operator expression (e.g., +, -, *, /, %, |, &, ^, <<, >>, ==, !=, <, <=, >, >=, &&, ||, =, +=, etc.) where at least one operand is of a user-defined type (class, struct, or union) and the expression appears inside a template (class template, function template, or member function of a class template). The mutation changes the binary operator to another binary operator from the same category (arithmetic, relational, logical, bitwise, assignment) if type-correctness can be preserved, aiming to alter the overload resolution or instantiation path.
+
+Procedure:
+1. Identify a binary operator expression within a template where at least one operand has a user-defined type. Use existing types and operators from the seed program.
+2. Determine the category of the current operator: arithmetic (+, -, *, /, %), relational (==, !=, <, <=, >, >=), logical (&&, ||), bitwise (|, &, ^, <<, >>), or assignment (=, +=, -=, etc.).
+3. Select a different operator from the same category that is likely to be valid given the operand types. For example, change | to & or ^ for bitwise, change + to - for arithmetic, change == to != for relational. For assignment operators, change to another assignment operator (e.g., += to -=).
+4. Replace the operator token in the source code. Ensure that any implicit type conversions or existing operator overloads are not violated; if necessary, check that the target operator is declared for the types involved.
+5. If the seed program does not have a suitable operator overload for the new operator, do not apply the mutation, as it would introduce a compilation error rather than test the compiler.
+
+Example:
+Original code inside a template: auto result = lhs | rhs; // where lhs is of user-defined type UDT
+Mutated code: auto result = lhs & rhs; // assuming operator& is defined for UDT and the type of rhs
+
+Original code inside a template: if (a == b) { } // where a is of user-defined type UDT
+Mutated code: if (a != b) { } // assuming operator!= is defined for UDT and b
+
+Note: The mutation should only use operators and types already present in the seed program to maintain validity. The goal is to trigger different template instantiation or overload resolution paths that may expose bugs in the compiler's handling of operator overloads in templates.

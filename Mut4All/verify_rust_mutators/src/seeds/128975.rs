@@ -1,0 +1,1 @@
+use dashmap :: DashMap ; # [derive (PartialEq , Eq , Clone , Copy , Hash)] pub struct Id (pub & 'static str) ; fn f (x : DashMap < Id , () >) { let id = Id ("key") ; x . view (& id , | k , _ | k) ; }

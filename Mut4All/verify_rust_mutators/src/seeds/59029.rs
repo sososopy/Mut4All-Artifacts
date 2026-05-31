@@ -1,0 +1,1 @@
+trait Svc < Req > { type Res ; } trait MkSvc < Target , Req > = Svc < Target > where Self :: Res : Svc < Req > ;

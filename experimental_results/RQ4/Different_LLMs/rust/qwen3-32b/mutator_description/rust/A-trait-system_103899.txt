@@ -1,0 +1,29 @@
+Mutation operator: Replace a struct field's type with a nested type alias involving both PhantomData and an associated type from a trait that requires type inference. This applies to structs with generic type parameters and trait bounds that include PhantomData as a placeholder for type parameters. The mutation introduces a field of the form `PhantomData<Alias<Nested<...>>>` where `Alias` is a type alias that references an associated type from a trait, creating a complex type-resolution scenario that stresses the trait system and borrow checker's interaction with opaque types.
+
+Example of mutation:
+Original:
+struct MyStruct<B> {
+    data: Vec<B>,
+}
+
+Mutated:
+struct MyStruct<B, T: MyTrait> {
+    data: Vec<B>,
+    phantom: PhantomData<Alias<Nested<T>>>,
+}
+
+Where:
+- `Nested<T>` is a type alias referencing an associated type from `MyTrait` (e.g., type Nested<T> = T::Assoc)
+- `Alias<T>` is another type alias wrapping `Nested<T>` (e.g., type Alias<T> = Wrapper<Nested<T>>)
+
+Requires defining:
+trait MyTrait {
+    type Assoc;
+}
+
+struct Wrapper<T> {
+    _marker: PhantomData<T>,
+}
+
+type Nested<T> = T::Assoc;
+type Alias<T> = Wrapper<Nested<T>>;

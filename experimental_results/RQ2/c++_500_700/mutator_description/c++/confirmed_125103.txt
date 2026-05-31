@@ -1,0 +1,28 @@
+Mutation Operator
+Target: Function template with structured bindings
+
+Mutation Rule:
+1. Identify a function template that utilizes structured bindings with parameter pack expansion, such as `auto &&[...xs] = FWD(v);`.
+2. Modify the structured binding to use a fixed number of bindings instead of the pack expansion. For instance, if the original code is `auto &&[...xs]`, change it to `auto &&[x0, x1]`.
+3. Ensure that the number of bindings corresponds to the expected number of elements in the aggregate being decomposed. If the number of elements is unknown, introduce a deliberate mismatch, such as providing two bindings for a three-element aggregate, to potentially trigger a compiler issue.
+
+Example:
+Original Code:
+```
+template <typename T> requires std::is_aggregate_v<std::remove_cvref_t<T>>
+[[nodiscard]] constexpr auto as_tuple(T &&v) {
+    auto &&[...xs] = FWD(v);
+    return std::forward_as_tuple(FWD(xs)...);
+}
+```
+
+Mutated Code:
+```
+template <typename T> requires std::is_aggregate_v<std::remove_cvref_t<T>>
+[[nodiscard]] constexpr auto as_tuple(T &&v) {
+    auto &&[x0, x1] = FWD(v);  // Attempt to bind to only two elements
+    return std::forward_as_tuple(FWD(x0), FWD(x1));
+}
+```
+
+This mutation is designed to test the compiler's ability to handle structured bindings when there is a mismatch in the number of elements in the aggregate and the number of bindings. This type of mutation is likely to expose issues related to template instantiation and decomposition declarations, which are involved in the crash trace of the bug report.

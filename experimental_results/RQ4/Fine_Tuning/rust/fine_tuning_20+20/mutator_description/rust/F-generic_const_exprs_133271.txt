@@ -1,0 +1,41 @@
+Mutation Operator: Modify Generic Const Expressions in Trait Implementations
+
+Target: Trait Implementations with Generic Const Expressions
+
+Mutation Rule: 
+
+1. Identify a trait implementation block that uses generic const expressions in its constraints. This is typically indicated by a `const` parameter in the `impl` block.
+
+2. Within the where clause of the trait implementation, locate an expression that involves a const parameter, such as `[(); CONST_EXPR]: Sized`.
+
+3. Modify the const expression in a way that causes a type mismatch or logical inconsistency. For instance, change a simple arithmetic expression to one that might not resolve to a valid size, such as changing `[(); 1 + 0]` to `[(); 0 - 1]`.
+
+4. Ensure that the modified const expression is still syntactically correct but semantically invalid or unexpected. The goal is to violate assumptions about const evaluation or the sizing of arrays, triggering ICEs (internal compiler errors).
+
+Example:
+
+Original Code:
+```rust
+impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+where
+    [(); 1 + 0]: Sized,
+{
+    fn unimplemented(self, _: &Foo) -> Self::Output {
+        loop {}
+    }
+}
+```
+
+Mutated Code:
+```rust
+impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+where
+    [(); 0 - 1]: Sized,  // Mutated expression to potentially cause a crash
+{
+    fn unimplemented(self, _: &Foo) -> Self::Output {
+        loop {}
+    }
+}
+```
+
+This mutation operator targets situations where the Rust compiler must evaluate generic const expressions, which are prone to complex constraint resolution issues leading to ICEs. By creating a scenario where the const evaluation leads to a negative or illogical size, it challenges the compiler’s ability to handle edge cases in generic const expressions.

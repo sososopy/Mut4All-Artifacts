@@ -1,0 +1,22 @@
+Mutation operator: Modify the async status of closures in Result combinators and adjust await usage to create type-checking discrepancies.  
+Target code construct: Result combinators (e.g., `and_then`) with closures that return futures (async functions).  
+
+Example mutation:  
+Original code:  
+`result.and_then(|x| foo(x)).await;`  
+
+Mutated code:  
+`result.and_then(|x| async { foo(x) });`  
+
+Effect:  
+- Introduces an async closure without awaiting it, creating a `Result<Pin<Box<dyn Future>>>` type mismatch.  
+- Forces the compiler to reconcile futures and synchronous result chains during type inference.  
+- Triggers ICEs if the compiler mishandles nested type snapshots or async closure resolution in ena's snapshot system.  
+
+Mutation rule:  
+1. For closures in `and_then`/`map_err` combinators that return a future:  
+   - Toggle `async` keyword before the closure.  
+   - Remove or add `.await` on the returned future value.  
+2. Ensure the closure's return type conflicts with the combinator's expected output type.  
+
+This exploits compiler logic for async type resolution and snapshot tracking of type variables, increasing likelihood of exposing index errors in type inference.

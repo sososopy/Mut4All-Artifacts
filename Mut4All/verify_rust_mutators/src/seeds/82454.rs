@@ -1,0 +1,1 @@
+use std :: result :: Result ; pub fn foo (v : Option < Vec < u32 > >) -> Result < Vec < u32 > , Err > { v . unwrap () }

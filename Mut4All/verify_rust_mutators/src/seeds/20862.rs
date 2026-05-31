@@ -1,0 +1,1 @@
+fn foo (x : i32) { | y | x + y } fn main () { let x = foo (5) (2) ; }

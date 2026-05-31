@@ -1,0 +1,56 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Minus, Percent, Plus, Shl, Shr, Slash, Star},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Change_Binary_Operator_56;
+
+impl Mutator for Change_Binary_Operator_56 {
+    fn name(&self) -> &str {
+        "Change_Binary_Operator_56"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                for stmt in &mut func.block.stmts {
+                    if let Stmt::Expr(expr, _) = stmt {
+                        if let Expr::Binary(binary_expr) = expr {
+                            let mut rng = thread_rng();
+                            let operators = vec![Plus, Minus, Star, Slash, Percent, Shl, Shr];
+                            let new_operator = operators.choose(&mut rng).unwrap();
+                            binary_expr.op = match new_operator {
+                                Plus => syn::BinOp::Add(Plus { span: binary_expr.op.span() }),
+                                Minus => syn::BinOp::Sub(Minus { span: binary_expr.op.span() }),
+                                Star => syn::BinOp::Mul(Star { span: binary_expr.op.span() }),
+                                Slash => syn::BinOp::Div(Slash { span: binary_expr.op.span() }),
+                                Percent => syn::BinOp::Rem(Percent { span: binary_expr.op.span() }),
+                                Shl => syn::BinOp::Shl(Shl { span: binary_expr.op.span() }),
+                                Shr => syn::BinOp::Shr(Shr { span: binary_expr.op.span() }),
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator changes binary operators in the given code. It replaces the operator with a randomly chosen one from a list of binary operators, including addition, subtraction, multiplication, division, modulo, left shift, and right shift. This transformation aims to test the compiler's handling of different binary operations and its ability to correctly evaluate expressions and handle potential errors."
+    }
+}

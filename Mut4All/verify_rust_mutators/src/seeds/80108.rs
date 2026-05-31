@@ -1,0 +1,1 @@
+# ! [feature (repr_simd)] # [repr (simd)] pub struct Vector ([i32 ; 4]) ; impl Vector { pub const fn to_array (self) -> [i32 ; 4] { self . 0 } }

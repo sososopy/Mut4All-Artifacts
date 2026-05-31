@@ -1,0 +1,18 @@
+mutation operator
+
+Target code construct: struct definitions with generic const parameters that have default values and where clauses that depend on those const parameters. Specifically applies to structs using the generic_const_exprs feature where the where clause contains an array of the form [(); U] (or similar) and the const parameter U has a default value.
+
+Mutation action: Remove the default value assignment from the const parameter in the struct definition. Change from `struct Name<const PARAM: Type = DEFAULT_EXPR> where [(); PARAM]: ;` to `struct Name<const PARAM: Type> where [(); PARAM]: ;`. The default expression DEFAULT_EXPR is deleted entirely. If the seed program uses the struct elsewhere without explicitly providing the const argument, those usages must also be changed to provide an explicit argument. For each usage of the struct type without explicit const arguments (e.g., `Name`), replace it with `Name<DEFAULT_EXPR>` where DEFAULT_EXPR is the original default expression from the struct definition. If the DEFAULT_EXPR references other generic parameters, those parameters must be preserved in the instantiation. If the struct is used in an impl block without explicit const arguments (e.g., `impl Trait for Name`), change it to `impl Trait for Name<DEFAULT_EXPR>`.
+
+Example seed pseudo-code:
+feature generic_const_exprs;
+const C: usize = 5;
+struct S<const N: usize = C> where [(); N]: ;
+impl Trait for S {}
+After mutation:
+feature generic_const_exprs;
+const C: usize = 5;
+struct S<const N: usize> where [(); N]: ;
+impl Trait for S<C> {}
+
+Rationale: This mutation directly triggers the scenario in the bug report where the compiler must substitute a const parameter during well-formedness checking but may encounter an empty substitution list when defaults are involved, leading to an out-of-range panic. By removing the default, we force explicit instantiation at use sites, which may alter the substitution environment and expose similar ICEs in the specialization graph construction or type folding logic. This mutation maintains syntactic validity and uses only elements present in the seed program.

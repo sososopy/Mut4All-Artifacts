@@ -1,0 +1,33 @@
+Mutation Operator: Modify Uncomputable Layouts with Trivial Bounds
+
+This mutation targets Rust functions that use the `trivial_bounds` feature to declare type bounds that are immediately known to be unsatisfiable, particularly when attempting to instantiate types with inherently uncomputable layouts such as `str`. The mutation operator will modify the function by adding or altering type bounds that are trivial and unsatisfiable, aiming to expose issues related to constant evaluation and layout computation.
+
+Where it applies:
+- Functions with a `where` clause applying trivial bounds.
+- Functions leveraging the `trivial_bounds` feature.
+
+Mutation Description:
+1. Locate a Rust function using the `trivial_bounds` feature with a `where` clause that imposes unsatisfiable bounds on types.
+2. Add or modify the `where` clause to include an additional unsatisfiable bound on a different primitive or complex type (e.g., a slice, `&[T]`, or another dynamically sized type `T`).
+3. Ensure that the function's body uses these types in a way that involves constant evaluation, such as within array sizes or other compile-time constructs.
+
+Example:
+Original Seed:
+```
+#![feature(trivial_bounds)]
+
+fn example_function() where str: Sized {
+    let arr: [u8; { let _opt: Option<str> = None; 0 }] = [];
+}
+```
+
+Mutated Version:
+```
+#![feature(trivial_bounds)]
+
+fn example_function() where str: Sized, &[u8]: Sized {
+    let arr: [u8; { let _opt: Option<&[u8]> = None; 0 }] = [];
+}
+```
+
+In this mutated version, an additional trivial bound is added on the slice type `&[u8]`, which cannot satisfy the `Sized` trait, aiming to trigger issues in constant evaluation related to layout computations. The function's constant evaluation path is adjusted to incorporate this new type, expecting to surface potential compiler bugs in this area.

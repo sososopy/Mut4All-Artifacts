@@ -1,0 +1,1 @@
+extern crate nalgebra ; use nalgebra :: * ; # [repr (packed)] struct S { x : Vector1 < f64 > , } fn main () { }

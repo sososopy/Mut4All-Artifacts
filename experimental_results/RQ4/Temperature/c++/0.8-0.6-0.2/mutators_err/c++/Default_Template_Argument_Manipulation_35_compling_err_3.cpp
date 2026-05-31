@@ -1,0 +1,66 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * default_template_argument_manipulation_35
+ */ 
+class MutatorFrontendAction_35 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(35)
+
+private:
+    class MutatorASTConsumer_35 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_35(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        std::vector<const clang::FunctionTemplateDecl *> templateFunctions;
+    };
+};
+
+//source file
+#include "../include/default_template_argument_manipulation_35.h"
+
+// ========================================================================================================
+#define MUT35_OUTPUT 1
+
+void MutatorFrontendAction_35::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *FTD = Result.Nodes.getNodeAs<clang::FunctionTemplateDecl>("FunctionTemplate")) {
+        if (!FTD || !Result.Context->getSourceManager().isWrittenInMainFile(FTD->getLocation()))
+            return;
+
+        for (auto *param : *FTD->getTemplateParameters()) {
+            if (auto *typeParam = llvm::dyn_cast<clang::TemplateTypeParmDecl>(param)) {
+                if (typeParam->hasDefaultArgument()) {
+                    auto defaultArg = typeParam->getDefaultArgumentLoc();
+                    auto argType = typeParam->getDefaultArgument().getTypePtr();
+                    if (argType->isBuiltinType()) {
+                        std::string newDefault = "std::string";
+                        SourceLocation startLoc = defaultArg.getBegin();
+                        SourceLocation endLoc = defaultArg.getEnd();
+                        Rewrite.ReplaceText(SourceRange(startLoc, endLoc), newDefault);
+                    }
+                }
+            }
+        }
+        templateFunctions.push_back(FTD);
+    }
+}
+
+void MutatorFrontendAction_35::MutatorASTConsumer_35::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    DeclarationMatcher matcher = functionTemplateDecl(has(templateTypeParmDecl(hasDefaultArgument()))).bind("FunctionTemplate");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

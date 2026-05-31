@@ -1,0 +1,1 @@
+trait B < A > { fn a () -> A { self . a } }

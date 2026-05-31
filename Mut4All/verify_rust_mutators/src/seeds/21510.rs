@@ -1,0 +1,1 @@
+use std :: num :: ToPrimitive ; use std :: ops :: { Add , Mul } ; use std :: clone :: Clone ; # [derive (Clone , Show)] pub struct Vec3 < T > { pub x : T , } impl < T : Mul > Vec3 < T > where < T as Mul > :: Output : Add , < < T as Mul > :: Output as Add > :: Output : Add { pub fn new (x : T) -> Vec3 < T > { Vec3 { x : x } } } fn main () { println ! ("{}" , Vec3 { x : 1u8 }) ; }

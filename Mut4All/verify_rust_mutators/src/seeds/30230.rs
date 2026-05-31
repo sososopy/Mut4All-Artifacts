@@ -1,0 +1,1 @@
+use std :: borrow :: Borrow ; fn double_borrow < 'a , B1 , B2 = & 'a i32 > (_n : B1) where B1 : 'a + Borrow < B2 > , B2 : 'a + Borrow < i32 > { } fn main () { double_borrow (& 52) ; }

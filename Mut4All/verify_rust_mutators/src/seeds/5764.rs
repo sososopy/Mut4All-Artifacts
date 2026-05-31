@@ -1,0 +1,1 @@
+enum Outer { Y (Inner) } enum Inner { X (Inner) }

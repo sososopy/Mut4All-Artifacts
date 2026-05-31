@@ -1,0 +1,17 @@
+Mutation Operator: Introduce an undefined const placeholder in an inline assembly statement within an async function that has a lifetime parameter.
+
+This mutation applies when the seed program contains an async function with at least one lifetime parameter and an inline assembly expression (using the asm! macro). The mutation modifies the inline assembly expression by adding a const placeholder that references an identifier not defined in the current scope.
+
+Steps:
+1. Identify all async functions in the seed program that have at least one lifetime parameter (e.g., async fn foo<'a>()).
+2. Within each such function, locate any inline assembly expression (using the asm! macro). If none exist, this mutation does not apply.
+3. For each asm! expression, modify it by adding a new const placeholder that references an identifier not present in the function's scope. The identifier should be a simple name like UNDEF_CONST to ensure it is undefined.
+4. Ensure the asm! template string is adjusted to include the new placeholder. For example, if the original asm! expression is asm!("nop"), change it to asm!("/* {0} */", const UNDEF_CONST). If the template already has placeholders, add a new one accordingly.
+5. If the asm! expression already uses const placeholders, replace one of them with an undefined identifier or add an additional undefined const placeholder.
+6. The mutation does not introduce any new declarations for the undefined identifier; it relies on the compiler's handling of missing constants.
+
+Example transformation:
+Original code: async unsafe fn example<'a>() { asm!("nop"); }
+Mutated code: async unsafe fn example<'a>() { asm!("/* {0} */", const UNDEF_CONST); }
+
+Note: The undefined identifier (e.g., UNDEF_CONST) should be chosen to not conflict with any existing identifiers in the scope to ensure it is truly missing. This mutation aims to replicate the conditions that led to the ICE by combining async functions with lifetime parameters and inline assembly referencing missing constants.

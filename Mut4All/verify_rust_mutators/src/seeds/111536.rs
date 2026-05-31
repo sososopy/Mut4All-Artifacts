@@ -1,0 +1,1 @@
+# ! [feature (arbitrary_self_types)] # ! [feature (async_fn_in_trait)] use std :: { ops :: Deref , sync :: Arc } ; use anyhow :: Result ; pub trait ByteStorage { async fn get (self : & (impl Deref < Target = Self > + Clone + Send + 'static) , key : String) -> Result < Option < Vec < u8 > > > ; }

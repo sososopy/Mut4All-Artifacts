@@ -1,0 +1,1 @@
+pub struct Slice < 'a , T > (& 'a [T]) ; impl < 'a , T : 'a > Slice < 'a , T > { pub const EMPTY : Self = Slice ({ let v : & [T] = & [] ; v }) ; }

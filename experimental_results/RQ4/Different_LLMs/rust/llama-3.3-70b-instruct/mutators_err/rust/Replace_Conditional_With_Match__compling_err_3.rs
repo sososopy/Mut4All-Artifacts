@@ -1,0 +1,32 @@
+struct Replace_Conditional_With_Match_;
+
+impl Mutator for Replace_Conditional_With_Match_ {
+    fn mutate(&self, file_ast: &mut File) {
+        let mut rng = thread_rng();
+        for item in &mut file_ast.items {
+            if let Item::Fn(func) = item {
+                for stmt in &mut func.block.stmts {
+                    if let Stmt::Expr(expr) = stmt {
+                        if let Expr::If(if_expr) = &**expr {
+                            let match_arm = parse_quote! {
+                                match true {
+                                    true => #if_expr.then_branch,
+                                    false => #if_expr.else_branch,
+                                }
+                            };
+                            *expr = match_arm;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Replace_Conditional_With_Match_ {
+    fn new() -> Self {
+        Replace_Conditional_With_Match_
+    }
+}
+
+let mutator = Replace_Conditional_With_Match_;

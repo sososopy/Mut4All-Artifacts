@@ -1,0 +1,23 @@
+Based on the bug report, which involves a class template with a constrained non-type template parameter (NTTP) nested inside another class template, C++ compiler bugs are more likely to be triggered in structures that combine nested templates, template constraints (concepts), and static assertions or constant evaluation contexts. Specifically, bugs may arise when evaluating dependent expressions within nested template specializations, especially when concepts are applied to NTTPs and accessed in contexts requiring constant expression evaluation, like static_assert.
+
+Mutation Operator: Introduce a nested class template with a concept-constrained NTTP inside an existing class template and access it within a static_assert.
+
+This mutation operator applies when a seed program contains at least one class template declaration. The operator modifies the seed program by adding a nested class template inside an existing class template, where the nested template uses a concept to constrain a non-type template parameter, and then uses a static_assert to access a member of that nested template. The goal is to create a scenario similar to the bug report, where the compiler must evaluate a dependent expression within a constant expression context.
+
+Steps:
+1. Identify an existing class template in the seed program. Let's denote it as OuterTemplate with at least one template parameter.
+2. Inside OuterTemplate, add a new nested class template named InnerTemplate. InnerTemplate should have two template parameters: a type parameter (use an existing type name from the seed program or introduce a new one like int) and a non-type template parameter constrained by a concept.
+3. To create the concept, if no concept exists in the seed program, declare a simple concept at the top of the program. For example: template <class T> concept AlwaysTrue = true; Use this concept to constrain the NTTP of InnerTemplate. The NTTP should be of a type that is valid for NTTPs, such as int.
+4. Within InnerTemplate, define a static const member, such as static const int value = 0;.
+5. Outside the OuterTemplate, add a static_assert that attempts to access this member through a full specialization of OuterTemplate and InnerTemplate. For example: static_assert(OuterTemplate<void>::InnerTemplate<int, 0>::value == 0);
+
+Example in pseudo-code form:
+Original seed program may have: template <class T> struct Outer { /* existing content */ };
+Mutated program:
+template <class T> concept AlwaysTrue = true;
+template <class T> struct Outer {
+    template <class U, AlwaysTrue auto N> struct Inner { static const int value = 0; };
+};
+static_assert(Outer<void>::Inner<int, 0>::value == 0);
+
+Note: The concept AlwaysTrue is introduced if not present. The type names T, U, and void, int are examples; use existing types from the seed program where possible to avoid introducing new types unnecessarily. If no suitable types exist, introduce simple types like int and void. The NTTP value 0 is an example; use a constant value appropriate for the NTTP type. This mutation creates a nested template with a constrained NTTP and a static_assert accessing it, which may trigger bugs in constant expression evaluation of dependent expressions within nested templates.

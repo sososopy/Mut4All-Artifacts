@@ -1,0 +1,1 @@
+# [deriving (Show)] pub struct Context < 'a > { field : Nested < 'a > , } # [deriving (Show)] pub struct Nested < 'a > ; # [cfg (not (no_drop))] impl < 'a > Drop for Context < 'a > { fn drop (& mut self) { println ! ("Dropping {}" , * self) ; } } fn main () { let c = Context { field : Nested } ; println ! ("{}" , c) ; }

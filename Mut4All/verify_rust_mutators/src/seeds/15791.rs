@@ -1,0 +1,1 @@
+# [deriving (PartialEq , Show)] pub enum SomeObject { SomeString (String) , SomeInteger (i64) , SomeArray (Vec < SomeObject >) , } fn somefunction () -> Option < SomeObject > { if true { Some (SomeString ("foo" . to_string ())) } else { None } } fn main () { match somefunction () { Some (s) => assert ! (s , SomeString ("foo")) , None => println ! ("bad luck") } }

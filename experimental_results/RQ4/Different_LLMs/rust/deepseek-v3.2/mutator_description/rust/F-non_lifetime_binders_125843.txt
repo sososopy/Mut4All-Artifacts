@@ -1,0 +1,19 @@
+mutation operator
+This mutation operator targets the interaction between higher-ranked trait bounds (for<> syntax) and associated type projections within impl Trait return types, specifically when non_lifetime_binders is enabled. The operator applies to function signatures that use impl Trait in return position and contain for<> binders. It modifies the associated type projection within the impl Trait by replacing a type parameter bound in the for<> binder with a concrete type that already exists in scope, potentially causing resolution mismatches during bound variable collection.
+
+The operator works as follows: First, locate a function with a return type that is an impl Trait containing a higher-ranked for<> binder. Within that impl Trait, identify an associated type projection (e.g., Trait<...>::Assoc). If the associated type projection uses a type parameter that is bound by the for<> binder (e.g., for<T> Trait<T>::Assoc), replace that type parameter with a concrete type that is already in scope (e.g., a type defined in the same module or a primitive like i32). If no such concrete type exists, introduce a new type alias at the module level (e.g., type Concrete = i32;) and use that alias.
+
+For example, given a seed program with:
+#![feature(non_lifetime_binders)]
+trait Trait<T> { type Assoc; }
+fn foo() -> impl for<T> Trait<T, Assoc = T> {}
+The operator might change the associated type projection from T to i32, resulting in:
+#![feature(non_lifetime_binders)]
+trait Trait<T> { type Assoc; }
+fn foo() -> impl for<T> Trait<T, Assoc = i32> {}
+Alternatively, if a type alias exists, use it:
+#![feature(non_lifetime_binders)]
+trait Trait<T> { type Assoc; }
+type MyType = u8;
+fn foo() -> impl for<T> Trait<T, Assoc = MyType> {}
+This mutation can trigger internal compiler errors (ICEs) similar to the bug report, where the compiler fails to resolve DefIds due to mismatched bound variable contexts, especially in the resolve_bound_vars query. The change introduces a type that is not bound by the for<> binder into a position that expects a bound variable, potentially confusing the binder resolution logic.

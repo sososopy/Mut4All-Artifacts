@@ -1,0 +1,1 @@
+type Foo < 'a , 'b > = (i32 , impl PartialEq) ; fn main < 'a , 'main > (i : & 'a i32) -> Foo < 'a , 'b > { }

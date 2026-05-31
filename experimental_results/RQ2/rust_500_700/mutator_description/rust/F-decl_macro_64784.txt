@@ -1,0 +1,31 @@
+Mutation Operator: Glob Import Cycle Avoidance in Macros
+
+This mutation operator targets Rust code containing declarative macros that generate modules with glob imports. The aim is to detect infinite import cycles that can be introduced through such macros, which can lead to compiler errors like infinite recursion or internal compiler errors.
+
+Mutation Description:
+1. Identify macros that generate modules with glob imports. These are macros that, when invoked, create a module structure using `mod` and introduce a `pub use` statement with a glob (`::*`) for importing items from another module.
+2. Modify the macro by changing the glob import into explicit imports for specific entities that exist within the target module. This can be done by replacing the glob with known entities such as structs, enums, or functions that are expected to be present in the module being imported. If the target module is dynamic or not determinable, introduce a mechanism to specify placeholder entities temporarily.
+
+Example:
+Original Macro:
+```
+pub macro m($i:ident, $j:ident) {
+    mod $i {
+        pub use crate::$j::*;
+        pub struct A;
+    }
+}
+```
+
+Mutated Macro:
+```
+pub macro m($i:ident, $j:ident) {
+    mod $i {
+        // Replace glob import with explicit import of known entities from the target module
+        pub use crate::$j::{Entity1, Entity2}; // Assume Entity1 and Entity2 are known entities
+        pub struct A;
+    }
+}
+```
+
+In this example, `Entity1` and `Entity2` are placeholders for actual entities within the `$j` module that should be defined or known at the time of mutation. This change prevents the creation of infinite import cycles by avoiding the use of broad glob imports, thereby exposing potential bugs related to import resolution in the compiler.

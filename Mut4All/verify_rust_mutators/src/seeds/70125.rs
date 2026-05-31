@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] const L : usize = 3 ; fn main () { let p = Printer { } ; p . print (& [1 , 2 , 3]) ; } trait Print < const LEN : usize > { fn print (& self , _data : & [u8 ; LEN]) { for _ in 0 .. LEN { } } } struct Printer { } impl Print < L > for Printer { }

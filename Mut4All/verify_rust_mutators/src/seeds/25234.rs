@@ -1,0 +1,1 @@
+fn foo < T > (t : & T) { } struct Bar ; fn main () { foo (& Bar :: Baz) ; }

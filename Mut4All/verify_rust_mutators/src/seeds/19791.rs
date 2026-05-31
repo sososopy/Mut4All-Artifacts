@@ -1,0 +1,1 @@
+use std :: intrinsics :: TypeId ; fn print_type_name < T : 'static > (_val : T) { println ! ("{}" , TypeId :: of ::< T > ()) ; } fn main () { print_type_name (| _name : & str | { 5i }) ; }

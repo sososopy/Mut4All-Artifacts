@@ -1,0 +1,1 @@
+# ! [feature (repr_align)] # ! [feature (attr_literals)] # [repr (align (16))] pub struct A { y : i64 , } pub extern "C" fn foo (x : A) { }

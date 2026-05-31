@@ -1,0 +1,39 @@
+Mutation Operator: Array Element Type Substitution
+
+Description:
+This mutation operator targets arrays with elements of impl Trait type, especially when the trait is `Generator` or similar. The idea is to replace the element type of such arrays with a concrete type or a different impl Trait type that has compatible item requirements. This mutation helps test how the compiler handles type inference and binding inconsistencies within arrays.
+
+Mutation Steps:
+1. Identify arrays where elements are initialized with `impl Trait`, especially those implementing the `Generator` trait.
+2. Replace the `impl Trait` element type with a concrete type that satisfies the trait requirements, ensuring that the array's initialization matches this new type.
+3. If no concrete type is readily available in the seed program, introduce a new struct or type that implements the required trait. Define the struct with minimal implementation to satisfy the trait.
+4. Reassign the array with compatible instances of this new type, ensuring the surrounding code logic is preserved.
+
+Example Pseudo-code:
+Original Code:
+```
+fn mk_gen() -> impl Generator<Return=!, Yield=()> {
+    || { loop { yield; } }
+}
+
+fn main() {
+    let gens: [impl Generator<Return=!, Yield=()>; 2] = [mk_gen(), mk_gen()];
+}
+```
+
+Mutated Code:
+```
+struct MyGen;
+
+impl Generator for MyGen {
+    type Yield = ();
+    type Return = !;
+    fn resume(&mut self) -> std::ops::GeneratorState<(), !> { loop { yield; } }
+}
+
+fn main() {
+    let gens: [MyGen; 2] = [MyGen, MyGen];
+}
+```
+
+By performing this mutation, the code can help reveal how the compiler manages type inference between `impl Trait` and concrete types, especially in the context of nightly features.

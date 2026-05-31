@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] pub trait Tokenizer { type TokenIter < 'a > : Iterator < Item = & 'a str > ; }

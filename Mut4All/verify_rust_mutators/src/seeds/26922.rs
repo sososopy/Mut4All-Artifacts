@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] pub trait Test { const LENGTH : usize ; fn method (array : [i32 ; Self :: LENGTH]) { } } fn main () { }

@@ -1,0 +1,48 @@
+Mutation Operator: Template Template Deduction Anomaly
+
+Target Code Construct:
+This mutation operator targets template structures, specifically when detecting template template parameters and their specialization, which can utilize function pointers, member function pointers, or type aliases in templates.
+
+Mutation Rule:
+1. Identify a template structure with a template template parameter. Ensure it has a template specialization that deduces or assumes a specific form of the template parameter (e.g., a function or type alias).
+2. Modify the template specialization by changing the expected type or form of the template parameter. If the template assumes a member function pointer, alter it to expect a type alias or vice versa.
+3. Adjust the seed program's instantiation of the template to reflect the modified expectations, causing potential mismatches.
+
+Example:
+Before Mutation:
+```cpp
+template<typename T, typename V, typename = void>
+struct has_fun_diff : public std::false_type {};
+
+template<typename T, typename V>
+struct has_fun_diff<T, V, std::void_t<decltype(&T::template fun_diff<V>)>> : public std::true_type {};
+
+struct test {
+  template<typename T> using fun_diff = int; // Expecting a function, but using a type alias
+};
+
+int main() {
+  bool b = has_fun_diff<test, int>::value;
+  return b;
+}
+```
+
+After Mutation:
+```cpp
+template<typename T, typename V, typename = void>
+struct has_fun_diff : public std::false_type {};
+
+template<typename T, typename V>
+struct has_fun_diff<T, V, std::void_t<typename T::template fun_diff<V>>> : public std::true_type {}; // Changed to expect a type alias
+
+struct test {
+  template<typename T> static int fun_diff(); // Changed to a static member function
+};
+
+int main() {
+  bool b = has_fun_diff<test, int>::value;
+  return b;
+}
+```
+
+This mutation operator attempts to create a mismatch in template deduction, by altering the specialization logic from expecting a member function to expecting a type alias or the reverse, potentially triggering the issue related to template substitution errors.

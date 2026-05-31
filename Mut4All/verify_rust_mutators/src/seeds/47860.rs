@@ -1,0 +1,1 @@
+# ! [feature (const_size_of)] use std :: cell :: Cell ; use std :: mem ; pub struct S { s : Cell < usize > } type _S = [usize ; 0 - (mem :: size_of :: < S > () != 4) as usize] ;

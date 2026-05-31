@@ -1,0 +1,15 @@
+Based on the bug report, the crash occurs during parsing when a class inherits from an undefined template instantiation and that class is further used as a base for another template class with an anonymous struct member that also uses the undefined template. The compiler crashes due to an assertion failure when querying properties of a class with no definition. This suggests that bugs are more likely to be triggered by complex interactions involving template instantiation, inheritance, and nested or anonymous structs/classes, especially when there are unresolved or incomplete template dependencies.
+
+Mutation Operator: Introduce an undefined template base class in a derived class definition.
+
+This mutation operator applies to class definitions that involve inheritance. It targets scenarios where a class inherits from a base class. The mutation changes the base class to be an undefined template instantiation, creating a situation similar to the bug report where the compiler may encounter incomplete type information during parsing or semantic analysis.
+
+Specifically, for any class definition that includes a base class list (i.e., class inheritance), replace the base class with a template instantiation that is not defined in the current translation unit. To achieve this, if the seed program already contains a template declaration (e.g., template <typename T> class X;), use that template with arbitrary parameters. If no such template exists, introduce a new template declaration before the mutated class. The new template should be a simple forward declaration without a definition. For example, add "template <int> class UndefTemplate;" at a global scope. Then, in the class definition, change the base class to "UndefTemplate<1>" or similar, replacing the original base class.
+
+Example in pseudo-code:
+Original: class Derived : public Base {};
+Mutated: 
+   // Add if not present: template <int> class UndefTemplate;
+   class Derived : public UndefTemplate<1> {};
+
+This mutation should be applied to all class definitions that have at least one base class. It aims to create incomplete template dependencies that may lead to compiler crashes during the processing of class hierarchies, particularly when combined with other features like nested anonymous structs or further template derivations. The operator ensures that the undefined template is referenced, forcing the compiler to handle an unresolved instantiation during parsing or AST construction.

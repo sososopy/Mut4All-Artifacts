@@ -1,0 +1,16 @@
+Mutation Operator: In a scope where a mutable borrow of a RefCell with a destructor is immediately dereferenced in an if-let pattern, replace the direct dereference with a variable that captures the borrowed reference. This forces the borrow checker to track the extended lifetime of the borrow and its interaction with the destructor.
+
+Example of mutated content:
+Original:
+if let Some(n) = *(s.borrow_mut()) { ... }
+
+Mutated:
+let mut_borrow = s.borrow_mut();
+if let Some(n) = *mut_borrow { ... }
+
+This applies to code structures where:
+1. A RefCell instance contains a type with a destructor (e.g., Option, Box, String)
+2. The .borrow_mut() method is directly dereferenced in an if-let pattern
+3. The borrowed value is immediately consumed in a single scope
+
+The mutation introduces a named variable to explicitly capture the borrowed reference, increasing the likelihood of exposing lifetime calculation errors in the borrow checker when combined with destructor logic. This change stresses the compiler's NLL implementation by requiring it to analyze the borrow's lifetime across multiple control flow paths and track the implications of the reference being dropped at the end of the extended scope.

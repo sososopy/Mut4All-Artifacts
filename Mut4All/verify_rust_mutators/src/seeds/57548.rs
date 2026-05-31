@@ -1,0 +1,1 @@
+struct TraitVec < T : ? Sized > { inner : Vec < Box < T > > , } fn main () { }

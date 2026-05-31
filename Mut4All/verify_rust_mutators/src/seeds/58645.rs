@@ -1,0 +1,1 @@
+pub struct S (u8 , u8) ; fn main () { let mut dst = S (0 , 0) ; unsafe { std :: ptr :: write_volatile (& mut dst , S (10 , 20)) ; } }

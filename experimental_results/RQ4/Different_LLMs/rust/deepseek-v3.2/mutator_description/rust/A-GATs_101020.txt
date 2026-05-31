@@ -1,0 +1,19 @@
+mutation operator: replace GAT where clause bound with a different lifetime bound
+
+applies to: generic associated type (GAT) definitions within trait or impl blocks that have a where clause containing a bound relating the GAT's lifetime parameter to the Self type.
+
+description: when a GAT definition includes a where clause of the form `where Self: 'a` (binding the GAT's lifetime parameter `'a` to the Self type), replace this bound with a bound that uses a different lifetime. specifically, change `where Self: 'a` to `where Self: 'b`, where `'b` is a new lifetime parameter introduced on the trait or impl. if the trait or impl does not already have a lifetime parameter, add a new lifetime parameter `'b` to its declaration. then, in the GAT's where clause, use `Self: 'b` instead of `Self: 'a`. ensure the new lifetime `'b` is also properly constrained if necessary by the surrounding context (e.g., may need to add `'b: 'a` or similar in the where clause to maintain coherence).
+
+example original code (from seed):
+trait ExampleTrait {
+    type Item<'a> where Self: 'a;
+}
+
+example mutated code:
+trait ExampleTrait<'b> { // new lifetime parameter added
+    type Item<'a> where Self: 'b; // changed 'a to 'b
+}
+
+if the trait already has a lifetime parameter, use the existing one. for instance, if the seed has `trait ExampleTrait<'c>`, mutate to `type Item<'a> where Self: 'c;`.
+
+in impl blocks, apply the same change: replace `where Self: 'a` in the GAT definition with `where Self: 'b`, using an existing lifetime parameter from the impl or adding one to the impl header if needed. the goal is to create a mismatch or novel relation between the GAT's lifetime parameter and the bound on Self, potentially exposing compiler bugs in region checking for GATs.

@@ -1,0 +1,15 @@
+mutation operator
+
+This operator targets the noexcept specification of function definitions and lambda expressions. It applies when a function or lambda has a noexcept specifier that is conditional (i.e., noexcept with a boolean expression). The mutation changes the conditional expression inside the noexcept specifier by replacing it with a logical negation of itself, provided the expression is not already a simple boolean literal. The goal is to alter exception specification evaluation during template instantiation or transformation phases, which can expose bugs in exception spec handling, particularly in complex nested template contexts.
+
+Specifically, for any function or lambda declaration in the seed program that contains a noexcept(expression) specifier where expression is not strictly true or false, replace expression with !(expression). If the expression is a simple boolean literal (true or false), do not mutate it to avoid trivial changes. The operator uses only variables, types, or functions already present in the seed program to form the new expression; no new elements are introduced. This ensures the mutation remains within the scope of existing code constructs.
+
+For example, if the seed program contains:
+    auto func() noexcept(noexcept(some_call())) { ... }
+Mutate to:
+    auto func() noexcept(!(noexcept(some_call()))) { ... }
+Another example with a lambda:
+    auto lambda = []() noexcept(condition) { ... };
+Mutate to:
+    auto lambda = []() noexcept(!(condition)) { ... }
+Where condition is any boolean expression existing in the context, such as a comparison or logical operation. This mutation can trigger different paths in compiler logic for exception specification transformation, potentially revealing assertion failures like the one in TreeTransform::TransformExceptionSpec.

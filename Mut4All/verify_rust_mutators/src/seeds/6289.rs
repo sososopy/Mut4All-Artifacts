@@ -1,0 +1,1 @@
+fn main () { let x = Some (3) ; let y = 0 ; match (x) { None => println ("None") , _ if y == 0 => println ("y is zero") , Some (n) => println (fmt ! ("Some(%d)" , n)) , } }

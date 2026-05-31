@@ -1,0 +1,1 @@
+macro_rules ! foo { ($ d : expr) => { { fn bar (d : u8) { } bar (& mut $ d) ; } } } mod m ;

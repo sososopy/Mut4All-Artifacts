@@ -1,0 +1,42 @@
+Based on the bug report, which indicates a crash during template instantiation (specifically for PDS4EditableSynchronizer<PDS4FixedWidthTable>::EditableSyncToDisk) at the end of parsing, the structures that are more likely to trigger compiler bugs often involve complex template instantiations, member function definitions of class templates, and operations at the end of translation units. Compiler bugs are frequently exposed when dealing with template member function definitions that are instantiated late (e.g., at the end of the translation unit), especially when combined with other language features like nested classes, default arguments, or attribute specifiers.
+
+Mutation Operator: Template Member Function Definition Relocation
+This mutation operator targets member function definitions of class templates. It relocates the definition of a member function from outside the class template body (i.e., a definition at namespace scope) to inside the class template body (making it an inline definition), or vice versa. This can affect the instantiation context and timing, potentially exposing bugs in template processing, particularly during deferred instantiation at the end of the translation unit. The operator applies to any member function definition of a class template that is defined outside its class body.
+
+The mutation must use existing class template names, function names, and types from the seed program. No new names or types are introduced. The change is purely structural: moving the function body. If moving a definition inside the class, ensure the function is declared within the class template (if not, this operator does not apply). If moving a definition outside, ensure the class template has a corresponding member declaration.
+
+Example transformation from external to internal definition:
+Original seed code snippet:
+template<typename T>
+class ClassName {
+    void memberFunc();
+};
+template<typename T>
+void ClassName<T>::memberFunc() {
+    // function body statements
+}
+Mutated code:
+template<typename T>
+class ClassName {
+    void memberFunc() {
+        // function body statements
+    }
+};
+Example transformation from internal to external definition:
+Original seed code snippet:
+template<typename T>
+class ClassName {
+    void memberFunc() {
+        // function body statements
+    }
+};
+Mutated code:
+template<typename T>
+class ClassName {
+    void memberFunc();
+};
+template<typename T>
+void ClassName<T>::memberFunc() {
+    // function body statements
+}
+The mutation operator should be applied to one eligible member function definition per mutation instance, chosen from the seed program. The function body remains unchanged; only its location relative to the class template definition is altered. This can change the point of instantiation and may trigger compiler crashes in template handling.

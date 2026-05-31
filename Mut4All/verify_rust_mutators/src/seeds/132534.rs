@@ -1,0 +1,1 @@
+trait Fun { fn identity < 'a , const N : usize , T = u32 > () -> T :: Error < { u32 :: MIN } > { t } }

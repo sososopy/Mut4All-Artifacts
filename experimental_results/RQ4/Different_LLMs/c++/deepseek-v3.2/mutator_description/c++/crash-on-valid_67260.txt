@@ -1,0 +1,11 @@
+Based on the bug report, the compiler crash occurs during template instantiation involving complex type computations, such as inheritance from a pack expansion, using-declarations, and constraints. The crash in Sema::tryCaptureVariable suggests issues with variable capture in lambda contexts during deep template instantiation, particularly when combined with C++20 features like constraints and pack expansions.
+
+Mutation Operator: Introduce a lambda capture by reference in a template context where a variable is used within a requires-clause or a constraint.
+
+This operator applies when there is a variable declared in a function template or a member function of a class template, and that variable is used within a requires-clause or a constraint expression. The mutation changes the usage of the variable to be captured by a lambda that is immediately invoked, within the same context.
+
+For a seed program, identify a variable 'var' of a type that is already present in the scope, such as a parameter or local variable. Then, locate a requires-clause or a constraint expression that uses 'var'. Replace the direct use of 'var' with a lambda capture by reference that returns 'var'. Specifically, change the expression from using 'var' to '[&var]() -> auto& { return var; }()', ensuring the lambda returns a reference to maintain the original type and value category.
+
+Example: Suppose the seed has a template function with a requires-clause using a parameter 'x'. Original code: template<typename T> void f(T x) requires (x > 0); After mutation: template<typename T> void f(T x) requires ([&x]() -> auto& { return x; }() > 0);
+
+This mutation should be applied only if 'var' is a variable that can be captured by reference, meaning it is in scope and not a member variable unless in a lambda within a member function. The lambda must be immediately invoked to preserve the expression context. This can expose bugs in the compiler's handling of lambda captures during constraint checking and template instantiation.

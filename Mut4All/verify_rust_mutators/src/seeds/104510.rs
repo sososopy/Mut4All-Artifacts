@@ -1,0 +1,1 @@
+struct W < T : ? Sized > (Oops) ; unsafe fn test () { let j = W (()) ; let pointer = & j as * const _ ; core :: arch :: asm ! ("nop" , in ("eax") pointer ,) ; } fn main () { }

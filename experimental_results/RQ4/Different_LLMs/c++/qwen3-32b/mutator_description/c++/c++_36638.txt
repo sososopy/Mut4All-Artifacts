@@ -1,0 +1,29 @@
+Mutation operator: Recursive trailing return type for variadic lambdas
+Applies to: Variadic lambdas with trailing return types that involve template instantiation
+Modification: Insert a trailing return type in a variadic lambda that uses decltype to reference the lambda's own type in a way that creates recursive template expansion during compilation
+
+Example:
+Original code:
+[](auto... args) { return process(args...); }
+
+Mutated code:
+[](auto... args) -> decltype(complex_template<decltype(complex_template<decltype(...decltype(complex_template<decltype(args)>, args)...>) { return complex_template<decltype(complex_template<decltype(args)>, args)...; }
+
+This creates multiple layers of nested template type deductions that require the compiler to parse and instantiate recursive type traits. The mutation forces:
+1. Multiple levels of type trait nesting
+2. Trailing return type that depends on variadic arguments
+3. Possible infinite recursion during template argument deduction
+
+The mutated code would look like:
+[](auto... args) -> typeof(some_template<decltype(
+        some_template<decltype(
+            some_template<decltype(args)>.value
+        )>, args)...)) 
+{ 
+    return some_template<decltype(some_template<decltype(
+        some_template<decltype(
+            some_template<decltype(args)>.value
+        )>, args)...)>(); 
+}
+
+Each level of nesting forces the compiler to process template type relationships while dealing with variadic parameters. This stresses the type deduction engine and may trigger similar ICEs as in the original bug report. The mutation reuses existing type trait names and function templates from the seed program to maintain syntactic validity while creating complex type dependencies.

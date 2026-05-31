@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] fn main () { } const fn x () { let t = true ; let x = | | t ; }

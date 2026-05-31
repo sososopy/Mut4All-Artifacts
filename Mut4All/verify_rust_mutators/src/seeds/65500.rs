@@ -1,0 +1,1 @@
+# [macro_use] extern crate async_trait ; # [async_trait] trait MyTrait { type MyType ; async fn call_boxed (& self) -> Self :: MyType ; } struct MyStruct ; # [async_trait] impl MyTrait for MyStruct { type MyType = i32 ; async fn call_boxed (& self) -> Self :: MyType { self . call () . await } } impl MyStruct { async fn call (& self) -> Self :: Output { 5 } } fn main () { }

@@ -1,0 +1,1 @@
+fn foo1 (x : Option < Box < int > >) -> Option < int > { let res = match x { Some (ref v) => v . clone () , None => return None } ; Some (* res) } fn foo2 (x : Option < Box < int > >) -> Option < int > { let res = match x { Some (ref v) => Some (* v . clone ()) , None => return None } ; return res ; }

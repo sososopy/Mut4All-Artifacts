@@ -1,0 +1,1 @@
+# ! [feature (or_patterns)] fn main () { if let 0 | (1 | 2) = 0 { } }

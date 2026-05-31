@@ -1,0 +1,1 @@
+fn f (x : int) -> int { x } static mut F : extern fn (x : int) -> int = f ; fn main () { unsafe { F (1) } }

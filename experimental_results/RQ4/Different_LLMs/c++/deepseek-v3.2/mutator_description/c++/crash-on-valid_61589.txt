@@ -1,0 +1,22 @@
+mutation operator: Expand generic lambda parameter packs into concept checks within template functions.
+
+This mutation operator targets generic lambdas used inside template functions, specifically when the lambda's parameter pack is used in a context that requires concept evaluation. It applies when a generic lambda is defined within a template function and its parameter pack is passed to a concept or constraint check, typically within a decltype or requires clause.
+
+The operator modifies the lambda to explicitly expand its parameter pack into a concept check for each argument, embedding this expansion in a way that forces the compiler to evaluate concept constraints on each pack element individually. This is done by introducing a helper array or type trait that iterates over the pack.
+
+The changes are made using existing types and variables from the seed program. No new external declarations are introduced; the mutation reuses existing concepts, templates, and lambda parameters.
+
+For a seed code containing a generic lambda inside a template function, such as:
+template<typename... Args>
+auto func(auto&& lambda, Args... args) {
+    return lambda(args...);
+}
+Where the lambda is generic (e.g., with auto&&... parameters), the mutation transforms it by adding an internal expansion that checks a concept (e.g., callable or object) for each argument in the pack. For example, if the seed has a lambda like [](auto&&... xs) { return ...; }, it is mutated to:
+[](auto&&... xs) {
+    using dummy = int[];
+    (void)dummy{ 0, (requires { requires callable<decltype(xs)>; } ? 0 : 0)... };
+    return ...;
+}
+Here, callable is an existing concept from the seed. The expansion creates a concept check for each xs in the pack, wrapped in a requires expression, and placed in an array initializer to ensure it is evaluated at compile-time without runtime overhead. This forces the compiler to process concept constraints per pack element, which can expose crashes in template instantiation or concept substitution.
+
+The mutation should be applied to all generic lambdas within template functions that have a parameter pack, focusing on those used in contexts where concept checks might be triggered indirectly. The goal is to stress the compiler's handling of concept evaluation with expanded parameter packs from generic lambdas, as seen in the bug report where such combinations led to a crash.

@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] # ! [feature (conservative_impl_trait)] pub fn partial_apply < A , B , C , F > (f : F , x : A) -> impl FnOnce (B) -> C where F : FnOnce (A , B) -> C { & | y | f (x , y) }

@@ -1,0 +1,1 @@
+fn iter () -> impl Iterator { (1 .. 2) . map (| _ | "hello") }

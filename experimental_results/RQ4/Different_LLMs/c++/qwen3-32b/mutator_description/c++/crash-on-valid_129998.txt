@@ -1,0 +1,27 @@
+Mutation Operator 1: CTAD_ALIAS_NONTYPE_CONCEPT  
+Applies to alias templates with non-type template parameters involving class template argument deduction guided by concepts.  
+Modify an alias template's template parameters to require CTAD from a non-type template parameter deduced via a concept check or complex expression.  
+Example:  
+Before:  
+template <class T> using MyAlias = SomeTemplate<T>;  
+After:  
+template <auto V> using MyAlias = SomeTemplate<decltype(V), std::integral<decltype(V)> ? 42 : V>;  
+Target constructs: alias templates, non-type parameters, CTAD with concepts. Forces compiler to resolve ambiguous or invalid deduction paths.  
+
+Mutation Operator 2: NESTED_TEMPLATE_NONTYPE_AMBIG  
+Applies to nested template types using non-type template parameters.  
+Introduce nested template specializations where non-type parameters require multi-step deduction involving user-defined conversions or concepts.  
+Example:  
+Before:  
+template <class T> struct Outer { template <T V> struct Inner; };  
+After:  
+template <class T> struct Outer { template <T V> struct Inner { using Type = typename Outer<decltype(V), std::integral<T> ? V : 0>::Inner<V*2>; }; };  
+Triggers nested deduction requiring complex type/parameter resolution.  
+
+Mutation Operator 3: DEDUCTION_GUIDE_CONCEPT_CHAIN  
+Applies to class templates with deduction guides involving chained concepts.  
+Replace simple deduction guides with guides requiring compound concept checks and non-trivial expression parameters.  
+Example:  
+Before: template <class T> MyTemplate(T) -> MyTemplate<T>;  
+After: template <class T> requires (std::integral<T> || std::floating_point<T>) MyTemplate(T, T) requires (std::signed_integral<T> ? T{} < 0 : false) -> MyTemplate<decltype(T{} * 2)>;  
+Compels compiler to evaluate multi-stage concept constraints during argument deduction.

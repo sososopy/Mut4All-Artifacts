@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] pub struct Struct < const N : usize > ([u8 ; N]) ; pub type Alias = Struct < 2 > ;

@@ -1,0 +1,29 @@
+Mutation operator:  
+dyn_star_trait_return  
+Applies to functions returning a `dyn*`-cast value with overlapping trait bounds. Targets incomplete `dyn_star` handling by wrapping return value in an opaque `impl Trait` with identical bound pairs and lifetime parameters from the input. Forces incremental query evaluation of region variables during trait coherence checks.  
+
+Example transformation:  
+Before:  
+```rust  
+fn F(x: impl T+'a) -> impl T+'a { x as _ }  
+```  
+After:  
+```rust  
+fn F(x: impl T+'a) -> impl T+'a { x as _ }  
+```  
+(No change to signature, but compiler infers opaque return type as `dyn* T` with region constraints)  
+
+Triggers when:  
+1. Function returns `dyn*` coercion  
+2. Return type bound contains both trait marker and lifetime parameter from input  
+3. Incremental query processes trait obligations for this return type during `typeck` or `mir_borrowck`  
+
+Always preserves:  
+- Existing lifetime parameter names and positions  
+- Trait bound combinations from original function  
+- Coercion syntax `as _` to maintain user-guided dyn* inference  
+
+Applies only to:  
+- Functions with at least one `dyn*`-returning coercion  
+- Where return bound includes both a marker trait and lifetime from input  
+- Not if return type is explicitly named or fully erased

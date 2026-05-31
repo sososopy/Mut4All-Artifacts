@@ -1,0 +1,1 @@
+struct CrashIt ; impl Iterator for CrashIt { } fn main () { }

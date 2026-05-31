@@ -1,0 +1,9 @@
+Mutation operator: Replace an empty struct or union initializer with a nested anonymous struct containing a typedef of a malformed array type.
+
+This operator targets union or struct declarations that have an empty initializer list, i.e., `{}`. It applies when the seed program contains a declaration of a union or a struct with an empty brace-enclosed initializer. The operator modifies this initializer by inserting a nested anonymous struct definition inside it, and within that struct, it places a typedef statement that declares an array type with an incomplete or malformed size specifier.
+
+Specifically, the operator changes an initializer `{}` to `{ struct { typedef union [t]; } }`. More precisely, the introduced anonymous struct contains a single member: a typedef that attempts to define an array type named 't' of a union type, but the union type name is omitted, leaving a syntax error. The array size `[t]` uses the same identifier 't' as the array name, creating a conflict and invalid syntax.
+
+In practice, for a given seed program, if there is a line like `union w { {} };`, it is mutated to `union w { { struct { typedef union f[t]; } } };`. Here, the new union name 'f' should be chosen if a union type named 'f' already exists in the seed program; otherwise, a new union type 'f' must be declared earlier in the code. The identifier 't' is used both as the array name and in the array size brackets, which is intentionally malformed. If 't' is not already declared as a variable or type in the seed, it is introduced as a simple `int t;` declaration prior to the mutated union, to avoid undeclared identifiers, but the syntax remains invalid due to the typedef structure.
+
+The operator aims to trigger crashes during semantic analysis when the compiler tries to parse and resolve the invalid nested typedef inside an anonymous struct within a union initializer, particularly expecting issues in handling implicit member expressions or type declarations.

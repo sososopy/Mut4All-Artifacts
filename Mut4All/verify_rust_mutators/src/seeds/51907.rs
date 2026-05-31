@@ -1,0 +1,1 @@
+trait Foo { extern fn method (& self) ; } struct Bar ; impl Foo for Bar { extern fn method (& self) { } } fn main () { let foo : Box < dyn Foo > = Box :: new (Bar) ; foo . method () ; }

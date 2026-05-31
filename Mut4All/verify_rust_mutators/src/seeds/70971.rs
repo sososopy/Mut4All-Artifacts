@@ -1,0 +1,1 @@
+# ! [feature (impl_trait_in_bindings)] fn foo () { let x : (impl Copy ,) = (true ,) ; }

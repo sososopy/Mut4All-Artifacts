@@ -1,0 +1,70 @@
+```cpp
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * ReplaceNonTypeTemplateParameterPackExpansion_135
+ */ 
+class MutatorFrontendAction_135 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(135)
+
+private:
+    class MutatorASTConsumer_135 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_135(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        //Necessary node information record used in the mutation process
+    };
+};
+
+//source file
+#include "../include/ReplaceNonTypeTemplateParameterPackExpansion_135.h"
+
+// ========================================================================================================
+#define MUT135_OUTPUT 1
+
+void MutatorFrontendAction_135::Callback::run(const MatchFinder::MatchResult &Result) {
+    //Check whether the matched AST node is the target node
+    if (auto *MT = Result.Nodes.getNodeAs<clang::TemplateParameterList>(("TemplateParameterList"))) {
+      //Filter nodes in header files
+      if (!MT || !Result.Context->getSourceManager().isWrittenInMainFile(
+                     MT->getLocation()))
+        return;
+      //Get the source code text of target node
+      auto declaration = stringutils::rangetoStr(*(Result.SourceManager),
+                                                   MT->getSourceRange());
+      //Perform mutation on the source code text by applying string replacement
+      // Replace the expansion of a non-type template parameter pack with a single non-type template parameter or vice versa
+      if (declaration.find("...") != std::string::npos) {
+        // Replace pack expansion with a single non-type template parameter
+        declaration.replace(declaration.find("..."), 3, "");
+      } else {
+        // Replace single non-type template parameter with pack expansion
+        declaration.insert(declaration.find(">"), "...");
+      }
+      //Replace the original AST node with the mutated one
+      Rewrite.ReplaceText(CharSourceRange::getTokenRange(MT->getSourceRange()), declaration);
+    }
+}
+  
+void MutatorFrontendAction_135::MutatorASTConsumer_135::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    //Define one or more ASTMatchers to identify the target AST node for mutation.
+    DeclarationMatcher matcher = templateParameterList().bind("TemplateParameterList");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

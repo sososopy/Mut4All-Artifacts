@@ -1,0 +1,22 @@
+mutation operator: Introduce a volatile qualifier on a variable used in an atomic operation within a template function.
+
+This operator targets code constructs where atomic operations (e.g., from std::atomic or built-in __atomic functions) are performed on non-volatile variables, particularly within template functions or class templates. It applies when a seed program contains an atomic load, store, or read-modify-write operation (like fetch_add) on a variable of fundamental or pointer type.
+
+The mutation changes a variable used directly as the first argument to an atomic built-in function, or the object of an std::atomic operation, to have a volatile-qualified type. If the variable is a local variable or a parameter, its declaration is modified to add the volatile qualifier. If it is a member variable, the qualifier is added at the point of declaration. The operator prefers to mutate variables that are already in scope and used in atomic operations, avoiding the introduction of new variables.
+
+Example: For a seed code snippet inside a template function:
+void atomic_increment(int* ptr) {
+    __atomic_fetch_add(ptr, 1, __ATOMIC_SEQ_CST);
+}
+The mutated version would be:
+void atomic_increment(volatile int* ptr) {
+    __atomic_fetch_add(ptr, 1, __ATOMIC_SEQ_CST);
+}
+Or, if the variable is declared locally:
+int counter = 0;
+__atomic_fetch_add(&counter, 1, __ATOMIC_SEQ_CST);
+Becomes:
+volatile int counter = 0;
+__atomic_fetch_add(&counter, 1, __ATOMIC_SEQ_CST).
+
+The change is made only if the variable is used in an atomic operation and is not already volatile. This can trigger compiler bugs in code generation or instruction selection passes when handling volatiles in atomic contexts.

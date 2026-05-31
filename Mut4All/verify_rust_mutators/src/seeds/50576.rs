@@ -1,0 +1,1 @@
+fn main () { | bool : [u8 ; break 'L] | 0 ; }

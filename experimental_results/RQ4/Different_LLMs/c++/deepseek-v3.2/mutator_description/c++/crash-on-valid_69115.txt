@@ -1,0 +1,16 @@
+mutation operator
+target construct: nested array initialization with list initialization syntax in a constexpr context, specifically when the array element type is an aggregate struct and the initializer list contains fewer elements than required for full explicit initialization, leading to implicit value initialization for remaining elements, but where the destruction of temporary or intermediate objects during constant evaluation may be mishandled.
+
+application context: applies when a constexpr function or variable initialization contains a multi-dimensional array of aggregate type (struct or class with no user-provided constructors) initialized with a braced-init-list that does not explicitly provide all nested aggregate initializers, and where array-to-pointer decay or structured binding is subsequently applied to the array.
+
+changes: modify the initializer list to expand implicit initializations into explicit ones, ensuring each subaggregate and element is fully specified, but also introduce a temporary object that forces destruction semantics at a different point in evaluation. for a two-dimensional array of aggregate type T with dimensions [M][N], replace an initializer list like {v1, v2, ...} with a list that explicitly initializes each element of the outermost array, using nested braces for each row, and insert a dummy temporary of type T that is value-initialized and immediately destroyed in the same full-expression.
+
+example: given seed code with `T arr[M][N] = { init-list };`, change to:
+```
+T arr[M][N] = { { init-list-for-row0 }, { init-list-for-row1 }, ... };
+// ensure each row's init-list has exactly N initializers for T, padding with T{} if needed
+// then add: (void)(T{}); // value-initialized temporary destroyed at end of full-expression
+```
+if the seed already uses nested braces, ensure each inner brace list is complete; if not, complete them. the temporary `T{}` must be of the same aggregate type as the array elements, using existing type T from the seed.
+
+constraints: only apply in constexpr contexts (constexpr functions, constexpr variable initializers, static_assert). use existing aggregate type T; do not introduce new types. the temporary is a prvalue of type T; it may be cast to void to avoid unused value warnings. this mutation may increase the number of initializers but must not introduce undeclared identifiers.

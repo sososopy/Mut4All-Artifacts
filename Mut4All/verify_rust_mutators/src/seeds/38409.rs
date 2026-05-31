@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; struct A < T > { x : PhantomData < T > , } impl A < () > { fn foo () -> A < () > { < A < () > as A < () > > :: foo () } } impl < T > A < T > { fn foo () -> A < T > { A { x : PhantomData } } } fn main () { }

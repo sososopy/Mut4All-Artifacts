@@ -1,0 +1,17 @@
+Based on the bug report, the crash occurs when a concept definition uses a recursive requirement with 'C auto x' inside its own requires-clause. This triggers an assertion failure due to a dependent expression being evaluated as a constant expression. Structures that are more likely to trigger C++ compiler bugs involve recursive or self-referential constructs within C++20 concepts and templates, especially those that create circular dependencies or infinite recursion in constraint checking.
+
+Mutation Operator: Replace a concept's parameter list with a recursive self-reference using the concept itself.
+
+Target: This mutation applies to concept definitions that have a parameter list. It specifically targets the parameter declaration within the requires-clause of a concept.
+
+Procedure: For a concept definition of the form:
+concept C = requires ( parameters ) { requirements };
+Replace the parameter list with 'C auto x', where 'C' is the name of the concept being mutated. If the concept has multiple parameters, replace the first parameter with 'C auto x' and keep the rest unchanged if possible, but if the concept originally has no parameters, introduce 'C auto x' as a single parameter. Ensure that the concept name used is exactly the same as the concept being mutated.
+
+Example: If the seed program contains:
+template<typename T>
+concept Addable = requires (T a, T b) { a + b; };
+After mutation, it becomes:
+template<typename T>
+concept Addable = requires (Addable auto x, T b) { x + b; };
+Note: The variable 'x' is introduced; it must be used within the requirement body. If the original body uses the first parameter (e.g., 'a'), replace those uses with 'x'. If the concept body does not use the first parameter, the mutation still applies, but the requirement body remains unchanged. This mutation creates a self-referential constraint that may lead to infinite recursion or dependent expression evaluation during concept checking, similar to the bug report.

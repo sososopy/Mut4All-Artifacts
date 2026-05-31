@@ -1,0 +1,1 @@
+use std :: simd :: u32x4 ; fn function (n : u32 , key : u32x4) -> u32x4 { key % u32x4 (n , n , n , n) }

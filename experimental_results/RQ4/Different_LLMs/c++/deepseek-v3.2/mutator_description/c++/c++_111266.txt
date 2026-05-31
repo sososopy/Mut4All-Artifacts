@@ -1,0 +1,25 @@
+Mutation Operator: Replace member function template explicit specialization with equivalent non-specialized definition while preserving return type deduction and body.
+
+Applies to: Within a class or struct definition, when a member function template explicit specialization is declared inline (i.e., defined inside the class body). This targets bug-prone compiler handling of explicit specializations of member templates within their class scope, which is an extension or non-standard scenario.
+
+Change: Remove the explicit specialization syntax for the member function template. Convert it into a non-specialized member function template that uses SFINAE or a conditional to mimic the specialization's behavior for the specific arguments. Specifically, for a member function template with a single template parameter that is explicitly specialized for a particular argument, replace the specialization with a primary template that uses a default template argument and a requires-clause (if C++20) or a SFINAE-enabled overload to isolate the intended case. Since the bug report involves crashes with inline explicit specializations, this mutation alters the structure to a more standard-compliant form that may expose compiler inconsistencies in handling the original non-standard code.
+
+Example Original Code Pattern:
+template<class T> struct StructName {
+  template<Parameters> ReturnType functionName();
+  template<> ReturnType functionName<SpecificArguments>() { Body }
+};
+
+Mutated Code Pattern:
+template<class T> struct StructName {
+  template<Parameters, typename Enable = void> ReturnType functionName();
+  // For the specific arguments case, create a separate definition constrained to those arguments.
+  // If C++20 is available, use a requires-clause.
+  template<Parameters> ReturnType functionName() requires (ConditionCheckingSpecificArguments) { Body }
+  // For pre-C++20, use a SFINAE default template argument.
+  template<Parameters, typename std::enable_if<ConditionCheckingSpecificArguments, void>::type* = nullptr> ReturnType functionName() { Body }
+};
+
+In the mutated code, ConditionCheckingSpecificArguments is a compile-time boolean expression that evaluates to true only when the template arguments match SpecificArguments. For instance, if the original specialization was for template<int> auto foo<1>(), the condition would check if the non-type template parameter equals 1. The Body remains identical to the original specialization's body. This mutation introduces a requires-clause or SFINAE technique, which relies on standard C++ features (C++20 concepts or type traits). It uses elements that should be present or includable: std::enable_if from <type_traits> must be included if used. The mutation avoids introducing new data names or types beyond the existing template parameters and uses the same return type deduction (auto) as in the original.
+
+Note: This mutation is designed to transform a potentially problematic explicit specialization into a more standard construct, potentially revealing compiler bugs in handling the original extension versus the mutated standard code. It applies to seed programs containing inline member function template explicit specializations, replacing them with constrained templates.

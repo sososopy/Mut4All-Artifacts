@@ -1,0 +1,49 @@
+pub struct Add_Async_Trait_Lifetime_Mismatch_301;
+
+impl Mutator for Add_Async_Trait_Lifetime_Mismatch_301 {
+    fn name(&self) -> &str {
+        "Add_Async_Trait_Lifetime_Mismatch_301"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut modified_methods = std::collections::HashSet::new();
+
+        for item in &mut file.items {
+            if let syn::Item::Trait(item_trait) = item {
+                for trait_item in &mut item_trait.items {
+                    if let syn::TraitItem::Fn(method) = trait_item {
+                        if let Some(asyncness) = &method.sig.asyncness {
+                            let lifetime = syn::Lifetime::new("'a", Span::call_site());
+                            let lifetime_param = syn::GenericParam::Lifetime(syn::LifetimeParam {
+                                attrs: vec![],
+                                lifetime,
+                                colon_token: None,
+                                bounds: Punctuated::new(),
+                            });
+                            method.sig.generics.params.push(lifetime_param);
+                            modified_methods.insert(method.sig.ident.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        for item in &mut file.items {
+            if let syn::Item::Impl(item_impl) = item {
+                for impl_item in &mut item_impl.items {
+                    if let syn::ImplItem::Fn(method) = impl_item {
+                        if modified_methods.contains(&method.sig.ident) {
+                            if let Some(first_param) = method.sig.generics.params.iter().next() {
+                                if let syn::GenericParam::Lifetime(_) = first_param {
+                                    method.sig.generics.params = method.sig.generics.params.clone().into_iter().skip(1).collect();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

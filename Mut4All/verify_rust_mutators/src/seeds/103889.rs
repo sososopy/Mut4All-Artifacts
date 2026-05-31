@@ -1,0 +1,1 @@
+trait Responder { } impl Responder for () { } async fn status () -> Option < impl Responder > { do_status () } async fn do_status () -> Option < impl Responder > { Some (()) }

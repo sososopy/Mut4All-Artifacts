@@ -1,0 +1,1 @@
+use std :: sync :: Arc ; pub enum ThingOrRef < S > where S : AsRef < Self > { ThingRef (S) , Thing } pub type ThingArena < 'ctx , T > = ThingOrRef < Arc < Self > > ;

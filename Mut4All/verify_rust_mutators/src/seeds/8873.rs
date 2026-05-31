@@ -1,0 +1,1 @@
+trait A < 'self > { fn foo (& self) -> & 'self str ; } trait B : A { fn bar (& self) ; }

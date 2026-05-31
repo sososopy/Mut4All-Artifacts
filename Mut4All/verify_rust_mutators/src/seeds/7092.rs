@@ -1,0 +1,1 @@
+enum Whatever { } fn foo (x : Whatever) { match x { Some (field) => field . access () , } } fn main () { }

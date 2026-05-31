@@ -1,0 +1,37 @@
+Mutation Operator: Modify Static Variable References with Interior Mutability
+
+Target: This mutation operator applies to static variables that reference other static variables with potential interior mutability traits, such as `OnceLock`, `Mutex`, or `RwLock`. 
+
+Description: To expose bugs related to constant evaluation and ICEs (Internal Compiler Errors), modify the usage of static variables that involve interior mutability. Specifically, introduce a layer of interior mutability to an already existing static variable reference. This can potentially unveil issues in how the Rust compiler handles interior mutability in constant contexts.
+
+Mutation Steps:
+1. Identify a static variable in the program that references another static variable which does not currently use interior mutability.
+2. Introduce an intermediate static variable using interior mutability constructs, such as `OnceLock`, `Mutex`, or `RwLock`, to wrap the original static reference.
+3. Update the original static variable to reference this new intermediate variable with interior mutability.
+
+Example Mutation:
+Original:
+```
+pub static WL_CALLBACK_INTERFACE: Interface =
+    Interface { other_interfaces: &[], c_ptr: Some(unsafe { &wl_callback_interface }) };
+```
+
+Mutated:
+1. Introduce a new static variable with interior mutability:
+   ```
+   use std::sync::OnceLock;
+   static WL_CALLBACK_INTERFACE_WRAPPER: OnceLock<&Interface> = OnceLock::new();
+   ```
+2. Initialize this new static variable in a function or block where mutable access is permissible:
+   ```
+   fn initialize_interface() {
+       WL_CALLBACK_INTERFACE_WRAPPER.get_or_init(|| &WL_CALLBACK_INTERFACE);
+   }
+   ```
+3. Update the original static variable to use this new wrapper:
+   ```
+   pub static WL_CALLBACK_INTERFACE: Interface =
+       Interface { other_interfaces: &[], c_ptr: Some(unsafe { WL_CALLBACK_INTERFACE_WRAPPER.get().unwrap() }) };
+   ```
+
+This mutation aims to test how the Rust compiler's constant evaluation handles static variables that involve additional layers of interior mutability.

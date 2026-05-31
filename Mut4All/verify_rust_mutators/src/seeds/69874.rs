@@ -1,0 +1,1 @@
+# ! [feature (trivial_bounds)] fn use_for () where i32 : Iterator { for _ in 2i32 { } } fn main () { }

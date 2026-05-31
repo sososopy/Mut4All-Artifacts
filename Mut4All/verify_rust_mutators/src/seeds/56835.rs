@@ -1,0 +1,1 @@
+pub struct Foo { } impl Foo { fn bar (Self (foo) : Self) { } } fn main () { }

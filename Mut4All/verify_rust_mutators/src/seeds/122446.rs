@@ -1,0 +1,1 @@
+# ! [cfg_attr (all (feature = "unstable" , nightly) , feature (diagnostic_namespace , lint_reasons , multiple_supertrait_upcastable , must_not_suspend , non_exhaustive_omitted_patterns_lint , rustdoc_missing_doc_code_examples , strict_provenance , type_privacy_lints ,))]

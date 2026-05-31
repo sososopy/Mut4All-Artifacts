@@ -1,0 +1,1 @@
+# ! [feature (async_await)] async fn a () { } async fn b () { } async fn start () { a () ; b () . await ; } fn main () { start () ; }

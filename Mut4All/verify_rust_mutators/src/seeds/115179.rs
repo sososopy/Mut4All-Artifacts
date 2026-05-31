@@ -1,0 +1,1 @@
+use std :: io :: Write ; pub type DynEncoder < 'w , W > = Box < dyn EncodeTo < W > + 'w > ; pub trait EncodeTo < W : ? Sized > { } # [derive (Debug)] pub struct StatefulEncoder < E > (E) ; pub type DynStatefulEncoder < 'w > = StatefulEncoder < DynEncoder < 'w , dyn Write > > ; fn main () { }

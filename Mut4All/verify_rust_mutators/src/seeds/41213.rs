@@ -1,0 +1,1 @@
+enum A { A1 , A2 , A3 , } enum B { B1 (String , String) , B2 (String , String) , } fn consume_b (_b : B) { } fn main () { let a = A :: A1 ; loop { let ctor = match a { A3 => break , A1 => B :: B1 , A2 => B :: B2 , } ; consume_b (ctor ("1" . into () , "2" . into ())) ; break ; } }

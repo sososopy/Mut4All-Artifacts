@@ -1,0 +1,22 @@
+From the bug report, the crash occurs in the Clang frontend during template argument deduction and substitution, specifically when processing a `using` alias declaration that involves a `std::variant` with several template arguments. The stack trace indicates issues in template argument pack expansion and substitution. Based on this and general compiler testing knowledge, C++ compiler bugs are more likely to be triggered by complex template constructs, particularly involving variadic templates, nested templates, alias declarations, and `std::variant` usage. These structures stress the compiler's template instantiation, deduction, and substitution mechanisms.
+
+Mutation Operator: Variadic Template Argument Expansion Mutation in Alias Declarations
+
+This mutation operator targets `using` alias declarations (type aliases) that involve template arguments, especially those that could be variadic or involve complex template types like `std::variant`. It applies when the seed program contains a `using` declaration that defines an alias for a template type. The operator modifies the alias by introducing a pack expansion pattern within the template argument list, which can stress the compiler's template argument handling and substitution logic, potentially exposing bugs like those seen in the report.
+
+To apply the mutation, identify a `using` alias declaration in the seed program that aliases a template type, such as `std::variant`, `std::tuple`, or any other template class. The alias must already have a list of template arguments. The mutation changes this list by replacing one of the arguments with a pack expansion pattern that expands a template parameter pack. This requires that the alias is templated itself (i.e., it has a template parameter list). If the alias is not templated, this mutation does not apply. The operator uses existing template parameters from the alias or introduces a new template parameter pack if necessary, but prefers to reuse existing parameters to avoid introducing new undeclared elements.
+
+Steps for mutation:
+1. Locate a `using` alias declaration with a template parameter list and a template type on the right-hand side. For example: `template <typename T> using Alias = ExistingTemplate<T, int, char>;`.
+2. Ensure the right-hand side template type has multiple template arguments. If it has fewer than two arguments, consider other mutations.
+3. Select one of the template arguments on the right-hand side (preferably not the first, to vary patterns).
+4. Replace the selected argument with a pack expansion pattern. If the alias already has a variadic template parameter (e.g., `template <typename... Ts>`), use that pack. For example, change `ExistingTemplate<T, int, char>` to `ExistingTemplate<T, Ts..., char>` where `Ts` is the existing parameter pack.
+5. If the alias does not have a variadic template parameter, introduce a new template parameter pack in the alias's template parameter list. Add `typename... Pack` to the template parameter list (before or after existing parameters). Then, in the right-hand side, replace the selected argument with `Pack...`. For example, change `template <typename T> using Alias = ExistingTemplate<T, int, char>;` to `template <typename T, typename... Pack> using Alias = ExistingTemplate<T, Pack..., char>;`.
+6. Ensure the mutation does not use specific type names like `int` or `char` in the description; the examples use generic names like `T` and `Pack` to illustrate.
+
+Example in pseudo-code:
+Original seed code snippet: `template <typename T> using MyAlias = std::variant<Type1, Type2, Type3>;`
+Mutated code: `template <typename T, typename... Args> using MyAlias = std::variant<Type1, Args..., Type3>;`
+Here, `Type1`, `Type2`, `Type3` are existing types from the seed program (they could be any declared types). The mutation introduces a new template parameter pack `Args` and expands it in the middle of the `std::variant` argument list.
+
+This mutation stresses template argument deduction and pack expansion in alias declarations, similar to the crash scenario. It aims to expose bugs in the compiler's handling of variadic templates within alias definitions, which can lead to crashes during compilation.

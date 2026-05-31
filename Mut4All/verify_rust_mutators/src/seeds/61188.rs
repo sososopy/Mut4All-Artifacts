@@ -1,0 +1,1 @@
+struct B (i32) ; const A : & [B] = & [] ; fn main () { match & [] [..] { A => () , _ => () , } }

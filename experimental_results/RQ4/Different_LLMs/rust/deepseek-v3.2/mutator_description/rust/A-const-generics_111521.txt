@@ -1,0 +1,17 @@
+mutation operator
+
+Target: trait method implementations where associated constants or generic const parameters are referenced within trait bounds or where clauses, specifically in the context of generic const expressions (feature `generic_const_exprs`). This applies to impl blocks that implement traits for generic types involving const generics, especially when the trait or impl contains where clauses or bounds that compare or compute using associated constants or const parameters.
+
+Change: In an impl block header, for each where clause or bound that uses an equality or inequality comparison between a const generic parameter and an associated constant (or between two const generics), modify the comparison operator. Specifically, replace `==` with `!=` or `!=` with `==`. If the comparison is part of a larger logical expression (e.g., within an `&&` or `||` chain), only change the operator of one such comparison at a time. Ensure the change is syntactically valid by not introducing undeclared identifiers.
+
+Example: Suppose a seed program contains an impl like:
+impl<T, const N: usize> Trait for Struct<T, N> where [(); N - T::SIZE]: Sized { ... }
+Change to:
+impl<T, const N: usize> Trait for Struct<T, N> where [(); N - T::SIZE + 1]: Sized { ... }
+But for this operator, focus on comparisons. If the seed has:
+impl<T: Trait, const N: usize> AnotherTrait for Wrapper<T, N> where T::DIM == N { ... }
+Mutate to:
+impl<T: Trait, const N: usize> AnotherTrait for Wrapper<T, N> where T::DIM != N { ... }
+If no such comparison exists, the operator does not apply.
+
+Rationale: The bug report involves a deadlock in the parallel compiler when evaluating const generics with complex dependencies. Mutating comparison operators in where clauses can alter the satisfaction of trait bounds, potentially creating different evaluation orders or cycles in the query system. This can expose latent deadlocks or ICEs in the compiler's const evaluation and trait resolution, especially under concurrent compilation. The change uses existing names and types, ensuring broad applicability without introducing new elements.

@@ -1,0 +1,1 @@
+pub struct ICMCommon < InterfaceThing : ? Sized , E > { phantom : PhantomData < InterfaceThing > , sleep_bit : BitStruct < dyn Interface < Error = InterfaceError < E > > , _ , _ , _ > , }

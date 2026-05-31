@@ -1,0 +1,1 @@
+# ! [feature (repr128 , const_int_pow)] # [repr (u128)] # [derive (Debug , Clone , Copy , PartialOrd , Ord , PartialEq , Eq)] pub enum Prefix { Yobi = 1024u128 . pow (8) , } impl Prefix { pub fn from_str (s : & str) -> Option < Self > { use self :: Prefix :: * ; match s { "Yi" => Some (Yobi) , _ => None , } } } fn main () { println ! ("{:?}" , Prefix :: from_str ("Yi")) ; }

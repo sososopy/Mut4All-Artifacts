@@ -1,0 +1,1 @@
+macro_rules ! stupid { ($ f0 : ty , $ f1 : ty) => { for <'q > FnOnce (&'q $ f0) -> $'q f1 } } fn test < T : stupid (String , & str) > () { }

@@ -1,0 +1,42 @@
+Mutation operator: Replace a fold expression over a requires-expression with a nested requires-expression containing a parameter pack expansion.
+
+This mutation targets C++20 code constructs where a fold expression (using && or || operators) is applied directly over a requires-expression that contains a parameter pack expansion. The bug is triggered during template instantiation when the compiler attempts to expand parameter packs within a requires-expression that is part of a fold expression, particularly within a concept definition or a constexpr boolean variable. The mutation operator replaces the fold expression with a requires-expression that manually iterates over the pack using a recursive template or a constexpr function, but still involves pack expansion inside the requires clause.
+
+Specifically, the mutation applies to code patterns like:
+template<typename T>
+constexpr bool variable = requires {
+    ( requires { subexpression containing pack Is... } && ... );
+};
+
+Where the fold expression is over a requires-expression that expands a parameter pack Is... (e.g., from an index_sequence). The mutation changes this to:
+template<typename T>
+constexpr bool variable = requires {
+    requires [] <size_t... Is> (std::index_sequence<Is...>) {
+        // Replace fold with a recursive check or a constexpr function that expands Is...
+        // Example: return check_all<Is...>(T{});
+        // where check_all is a template that expands the pack.
+        return true; // This should be a placeholder for actual logic.
+    }(std::make_index_sequence<N>{});
+};
+
+In practice, the mutation operator should replace the fold expression with a requires-expression that contains a lambda or function template that expands the parameter pack inside its body, but avoids the fold syntax. For instance, if the original code uses a fold over requires with a pack Is..., mutate it to a requires-expression that uses a helper template to iterate over Is... without a fold.
+
+Example: If the seed program has:
+template<typename T>
+constexpr bool test = requires {
+    ( requires { typename std::tuple_element<Is, T>::type; } && ... );
+};
+
+Where Is... is from an index_sequence, mutate to:
+template<typename T>
+constexpr bool test = requires {
+    requires [] <size_t... Is> (std::index_sequence<Is...>) {
+        // Introduce a helper struct that checks each Is iteratively.
+        struct checker {
+            static constexpr bool value = true; // Actually implement iteration.
+        };
+        return checker::value;
+    }(std::make_index_sequence<N>{});
+};
+
+The mutation must use existing types and variables from the seed program (e.g., std::tuple_element, std::index_sequence). If new elements like checker are introduced, they should be declared as a struct or constexpr function within the lambda or requires-expression, using the same parameter pack Is... and types from the context. Avoid introducing undeclared names; define them inline. This change shifts the pack expansion from a fold to a nested context, which may expose similar compiler bugs in template instantiation and requires-expression evaluation.

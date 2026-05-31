@@ -1,0 +1,1 @@
+# ! [feature (decl_macro)] pub trait Test { } pub struct B { } struct A { } impl Test for A { } fn main () { pub macro test ($ t : expr) { &$ t as & dyn Test } test ! (example_panic :: B { }) ; }

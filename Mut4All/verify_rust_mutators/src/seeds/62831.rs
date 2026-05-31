@@ -1,0 +1,1 @@
+pub trait Foo { fn len (& self) -> usize ; } macro_rules ! delegate_foo { ($ (< $ ($ types : ty) , * > :) ? $ (< $ ($ trait_types : ty) , * > for) ? $ struct : ty : $ inner : ident ; $ ($ extra : tt) *) => { impl Foo for $ struct { fn len (& self) -> usize { self . $ inner . len () } $ ($ extra) * } } ; }

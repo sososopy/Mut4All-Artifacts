@@ -1,0 +1,1 @@
+fn main () { let a = Some ("world") ; let b = true ; if let Some (text) = a && b { println ! ("hello {}" , text) ; } }

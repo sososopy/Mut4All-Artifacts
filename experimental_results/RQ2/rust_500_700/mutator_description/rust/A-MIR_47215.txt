@@ -1,0 +1,38 @@
+Mutation Operator: Thread Local Static Mutation
+
+Target Code Construct:
+This mutation operator targets the use of `#[thread_local]` static mutable variables within Rust programs.
+
+Description:
+The mutation operator focuses on altering the use of `#[thread_local]` attributes in static mutable variables and their interactions, which are more likely to trigger bugs related to the Rust compiler's mid-level intermediate representation (MIR) and borrow checker. This operator considers the interaction of thread-local storage with atomic operations, which appears to be a point of failure in the compiler.
+
+Mutation Steps:
+1. Identify any static variables in the seed program that use the `#[thread_local]` attribute and are defined with atomic types, such as `AtomicUsize`.
+2. Replace the atomic type with a non-atomic type, such as `usize`, and remove the associated initialization to check how the compiler handles it without atomic guarantees.
+3. Modify the usage of the static variable within the `unsafe` block to perform direct arithmetic operations or assignments, avoiding explicit atomic operations.
+
+Example:
+
+Original Code:
+#[thread_local]
+static mut X: ::std::sync::atomic::AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
+
+fn main() {
+    unsafe {
+        let mut x = X;
+        let _y = x.get_mut();
+    }
+}
+
+Mutated Code:
+#[thread_local]
+static mut X: usize = 0;
+
+fn main() {
+    unsafe {
+        let mut x = X;
+        x += 1; // Direct arithmetic operation instead of atomic methods
+    }
+}
+
+This mutation exposes how the compiler handles thread-local variables when their type is altered from atomic to non-atomic, providing insights into the robustness and correctness of the MIR and borrow checker implementations.

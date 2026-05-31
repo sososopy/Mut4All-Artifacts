@@ -1,0 +1,1 @@
+pub fn main () { enum Inner { Member (u32) } ; Inner :: Member (0) ; }

@@ -1,0 +1,84 @@
+use proc_macro2::{Span,*};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command,*};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_Trait_Bounds_186;
+
+impl Mutator for Modify_Trait_Bounds_186 {
+    fn name(&self) -> &str {
+        "Modify_Trait_Bounds_186"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut trait_c_added = false;
+        let mut struct_c_added = false;
+
+        for item in &mut file.items {
+            if let Item::Trait(item_trait) = item {
+                if !trait_c_added {
+                    // Define a new trait `TraitC`
+                    let trait_c: ItemTrait = parse_quote! {
+                        pub trait TraitC {}
+                    };
+                    file.items.push(Item::Trait(trait_c));
+                    trait_c_added = true;
+                }
+
+                // Modify trait bounds to include `TraitC`
+                item_trait.supertraits.push(parse_quote!(TraitC));
+            }
+        }
+
+        for item in &mut file.items {
+            if let Item::Struct(item_struct) = item {
+                if !struct_c_added {
+                    // Define a struct `StructC` and implement `TraitC` for it
+                    let struct_c: ItemStruct = parse_quote! {
+                        pub struct StructC;
+                    };
+                    let impl_trait_c: ItemImpl = parse_quote! {
+                        impl TraitC for StructC {}
+                    };
+                    file.items.push(Item::Struct(struct_c));
+                    file.items.push(Item::Impl(impl_trait_c));
+                    struct_c_added = true;
+                }
+            }
+        }
+
+        for item in &mut file.items {
+            if let Item::Impl(item_impl) = item {
+                // Ensure all implementations of the original trait also implement `TraitC`
+                if let Some((_, path, _)) = &item_impl.trait_ {
+                    if let Some(last_segment) = path.segments.last() {
+                        if last_segment.ident == "B" {
+                            item_impl.items.push(parse_quote! {
+                                impl TraitC for Self {}
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

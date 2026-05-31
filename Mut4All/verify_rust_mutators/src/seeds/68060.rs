@@ -1,0 +1,1 @@
+fn calc (width : usize) -> Vec < usize > { (0 .. width) . map (# [target_feature (enable = "avx2")] | y | y ,) . collect () } fn main () { println ! ("ICE {:?}" , calc (8)) ; }

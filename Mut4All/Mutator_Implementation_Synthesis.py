@@ -5,10 +5,10 @@ import json
 import argparse
 import time
 
-PROXY = "http://127.0.0.1:7890"
-
 # GPT API KEY
-OPENAI_API_KEY = ""
+API_KEY = ""
+URL = ""
+MODEL = ""
 INPUT_FILE = ""
 TEMPLATE_PATH = ""
 LANGUAGE = ""
@@ -20,7 +20,7 @@ MAX_RETRIES = 20
 
 # load
 def load_config(config_path, language):
-    global INPUT_FILE, TEMPLATE_PATH, LANGUAGE, OUTPUT_FILE,SUFFIX,TOKEN_JSON,EXAMPLE_DIR_PATH,OPENAI_API_KEY
+    global INPUT_FILE, TEMPLATE_PATH, LANGUAGE, OUTPUT_FILE,SUFFIX,TOKEN_JSON,EXAMPLE_DIR_PATH,API_KEY,URL,MODEL
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -28,7 +28,9 @@ def load_config(config_path, language):
             raise ValueError(f"Unsupported language: {language}.")
         
         # API_KET is initialized
-        OPENAI_API_KEY = config[language]["api_key"]
+        API_KEY = config[language]["api_key"]
+        URL = config[language]["url"]
+        MODEL = config[language]["model"]
         INPUT_FILE = config[language]["mutation_output_file"]
         TEMPLATE_PATH = config[language]["mutator_template"]
         EXAMPLE_DIR_PATH = config[language]["mutator_examples"]
@@ -38,7 +40,7 @@ def load_config(config_path, language):
         TOKEN_JSON = config[language]["token_json"]
 
         # Check the correctness of the assignment
-        if not all([INPUT_FILE, TEMPLATE_PATH, LANGUAGE, OUTPUT_FILE,SUFFIX,TOKEN_JSON,EXAMPLE_DIR_PATH,OPENAI_API_KEY]):
+        if not all([INPUT_FILE, TEMPLATE_PATH, LANGUAGE, OUTPUT_FILE,SUFFIX,TOKEN_JSON,EXAMPLE_DIR_PATH,API_KEY,URL,MODEL]):
             raise ValueError("One or more configuration variables are empty. Please check the configuration file.")
         return config
     except FileNotFoundError:
@@ -49,6 +51,9 @@ def load_config(config_path, language):
 # read mutation
 def read_mutation_suggestions(directory):
     mutation_data = []
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+        return mutation_data
     for filename in os.listdir(directory):
         filepath = os.path.join(directory, filename)
         if os.path.isfile(filepath) and filename.endswith(".txt"):
@@ -62,33 +67,7 @@ def read_mutation_suggestions(directory):
     return mutation_data
 
 def split_mutation_operators(content):
-    pattern1 = r'Mutation Operator \d+:.*\n'
-    pattern3 = r'Mutation Operator'
-    pattern2 = r'#### Mutation Operator \d+:.*\n'
-    pattern4 = r'Mutator \d+:.*\n'
-    pattern5 = r'Mutator'
-    pattern6 = r'####Mutator \d+:.*\n'
-    matches = list(re.finditer(pattern1, content))
-    
-    if not matches:
-        matches = list(re.finditer(pattern2, content))
-    if not matches:
-        matches = list(re.finditer(pattern3, content))
-    if not matches:
-        matches = list(re.finditer(pattern4, content))
-    if not matches:
-        matches = list(re.finditer(pattern5, content))
-    if not matches:
-        matches = list(re.finditer(pattern6, content))
-    if not matches:
-        return []
-    operators = []
-    for i in range(len(matches)):
-        start = matches[i].start()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
-        operator_content = content[start:end].strip()
-        operators.append(operator_content)
-    return operators
+    return [content.strip()]
 
 # read mutator template
 def read_mutator_template(template_path):
@@ -97,10 +76,11 @@ def read_mutator_template(template_path):
 
 # generate mutator
 def generate_mutator(mutation_content,mutator_index):
-    url = "https://api.openai.com/v1/chat/completions"
+    # select url
+    url = URL
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENAI_API_KEY}"
+        "Authorization": f"Bearer {API_KEY}"
     }
 
     template = read_mutator_template(TEMPLATE_PATH)
@@ -126,7 +106,7 @@ def generate_mutator(mutation_content,mutator_index):
     9. Provide only the complete {LANGUAGE} code for the mutator, matching the template's style;
     10. Do not wrap the output in Markdown code blocks (e.g., ```{LANGUAGE} or ```). Output only the raw {LANGUAGE} code;
     11. Do not implement the mutator based on the examples provided in mutation_content. Instead, focus on designing and implementing complex mutation effects, ideally creating a mutator that maximizes coverage of the seed program's code;
-    12. Design a unique name that can clearly demonstrate the function of the mutator, replace "Mutator_" in the code template. Name words are separated by '_', and the first letter of each word is capitalized (for example : Add_Const_Generics), and attach "_{mutator_index}". Be sure to specify this name separately on the last line at the end of the output text;
+    12. Design a unique name that can clearly demonstrate the function of the mutator, replace "Mutator_" in the code template. Name words are separated by '_', and the first letter of each word is capitalized (for example : Add_Const_Generics), and attach "_{mutator_index}".
     Output only the filled-in {LANGUAGE} code, without additional explanations, comments beyond those in the template, or Markdown code blocks.
     Output only the completed {LANGUAGE} code, without any additional explanations or formatting, ensuring that no comments beyond those in the template or Markdown code blocks are included.
     Here are the necessary inputs:
@@ -135,8 +115,8 @@ def generate_mutator(mutation_content,mutator_index):
     Human-written {LANGUAGE} mutators: {example}.
     """
     data = {
-        # The fine-tuned model
-        "model": "",
+        # select model
+        "model": MODEL,
         "messages": [
             {"role": "system", "content": prompt_system},
             {"role": "user", "content": prompt_user}
@@ -144,49 +124,68 @@ def generate_mutator(mutation_content,mutator_index):
         "temperature": 0.4
     }
 
-    proxies = {
-        "http": PROXY,
-        "https": PROXY
-    }
+    last_error = None
 
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.post(url, headers=headers, json=data, proxies=proxies)
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data,
+                timeout=(10, 300)
+            )
             response.raise_for_status()
-            break
-        except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
+            response_data = response.json()
+
+            if "choices" not in response_data:
+                raise ValueError(f"Invalid response format: {response_data}")
+
+            code = response_data['choices'][0]['message'].get('content')
+
+            if code is None:
+                raise ValueError(f"Model returned empty content: {response_data}")
+
+            if not isinstance(code, str):
+                raise ValueError(f"Model returned non-string content: {type(code)}")
+
+            code = re.sub(r'^```[a-zA-Z0-9+]+\n(.*)\n```$', r'\1', code, flags=re.DOTALL)
+            code = code.strip()
+
+            token_usage = {
+                "input_token": response_data.get("usage", {}).get("prompt_tokens", 0),
+                "output_token": response_data.get("usage", {}).get("completion_tokens", 0),
+            }
+            return code, token_usage
+
+        except (requests.exceptions.RequestException,
+                requests.exceptions.JSONDecodeError,
+                ValueError,
+                TypeError) as e:
+            last_error = e
+            print(f"Attempt {attempt + 1} failed: {type(e).__name__}: {e}")
+
             if attempt < MAX_RETRIES - 1:
                 time.sleep(7)
             else:
                 print("Max retries exceeded. Unable to complete request.")
-    response_data = response.json()
-    if "choices" in response_data:
-        code = response_data['choices'][0]['message']['content']
-        code = re.sub(r'^```[a-zA-Z0-9+]+\n(.*)\n```$', r'\1', code, flags=re.DOTALL)
-        code = code.strip()
-        token_usage = {
-            "input_token": response_data.get("usage", {}).get("prompt_tokens", 0),
-            "output_token": response_data.get("usage", {}).get("completion_tokens", 0),
-        }
-        return code,token_usage
-    else:
-        return f"Error: {response_data}"
+                raise last_error
 
-def extract_and_remove_suffix(code):
-    pattern = r'(.*\n)?([^\n]*)$'
-    match = re.search(pattern, code, re.DOTALL)
-    if match:
-        last_line = match.group(2).strip()
-        cleaned_code = code[:match.start(2)].rstrip('\n')
-        if not last_line:
-            raise ValueError("Last line is empty.")
-        return last_line, cleaned_code
-    else:
-        raise ValueError("No last line found in the code.")
+def extract_mutator_name(code, mutator_index):
+    code = code.strip()
+    if not code:
+        return str(mutator_index), ""
+
+    pattern = rf"\b([A-Za-z][A-Za-z0-9_]*_{mutator_index})\b"
+    matches = re.findall(pattern, code)
+
+    if matches:
+        return matches[0], code
+
+    return str(mutator_index), code
 
 # save raw mutator
 def write_mutator_file(output_dir, mutator_code, mutator_name):
+    os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{mutator_name}.{SUFFIX}")
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(mutator_code)
@@ -200,26 +199,52 @@ def save_token(input_token,output_token,mutation_name,mutator_name):
         "output_token": output_token,
         "mutator_restorer" : False,
     }
-    with open(TOKEN_JSON, 'r', encoding='utf-8') as f:
-        existing_data = json.load(f)
+    if os.path.exists(TOKEN_JSON):
+        try:
+            with open(TOKEN_JSON, 'r', encoding='utf-8') as f:
+                existing_data = json.load(f)
+        except json.JSONDecodeError:
+            existing_data = []
+    else:
+        existing_data = []
+
+    if not isinstance(existing_data, list):
+        existing_data = [existing_data]
+
     for record in existing_data:
         if record.get("mutation") == mutation_filename:
             if "mutators" not in record:
                 record["mutators"] = []
             record["mutators"].append(new_mutator)
             break
+    token_dir = os.path.dirname(TOKEN_JSON)
+    if token_dir:
+        os.makedirs(token_dir, exist_ok=True)
     
     with open(TOKEN_JSON, 'w', encoding='utf-8') as f:
         json.dump(existing_data, f, indent=4, ensure_ascii=False)
 
 def modify_mutation_to_code_in_json(mutation_name):
     mutation_filename = f"{mutation_name}.txt"
-    with open(TOKEN_JSON, 'r', encoding='utf-8') as f:
-        existing_data = json.load(f)
+
+    if os.path.exists(TOKEN_JSON):
+        with open(TOKEN_JSON, 'r', encoding='utf-8') as f:
+            existing_data = json.load(f)
+    else:
+        existing_data = []
+
+    if not isinstance(existing_data, list):
+        existing_data = [existing_data]
+
     for record in existing_data:
         if record.get("mutation") == mutation_filename:
             record["mutation_to_code"] = True
             break
+
+    token_dir = os.path.dirname(TOKEN_JSON)
+    if token_dir:
+        os.makedirs(token_dir, exist_ok=True)
+
     with open(TOKEN_JSON, 'w', encoding='utf-8') as f:
         json.dump(existing_data, f, indent=4, ensure_ascii=False)
 
@@ -241,11 +266,13 @@ def main(args):
         if judge_mutation_to_code(mutation_name):
             print(f"Skip {mutation_name}, because this mutation has already generated the mutator.")
             continue
-        mutation_operators = split_mutation_operators(mutation_data["content"])
+        mutation_operators = [mutation_data["content"].strip()]
         for operator_content in mutation_operators:
+            # print(operator_content)
             code,token_usage = generate_mutator(operator_content, mutator_index)
+            print(mutator_index)
             # [mutator_name,mutator_code]
-            mutator_code = extract_and_remove_suffix(code)
+            mutator_code = extract_mutator_name(code,mutator_index)
             write_mutator_file(OUTPUT_FILE, mutator_code[1],mutator_code[0])
             mutator_index += 1
             input_token = token_usage['input_token']

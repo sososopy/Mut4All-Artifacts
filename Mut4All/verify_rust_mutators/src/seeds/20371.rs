@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] impl X for f64 { type Y = int ; } trait X { type Y ; } fn main () { }

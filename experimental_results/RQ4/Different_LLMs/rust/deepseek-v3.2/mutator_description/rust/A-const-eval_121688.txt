@@ -1,0 +1,9 @@
+Mutation operator: Replace function pointer types with higher-ranked trait bounds in const contexts.
+
+Target: This mutation applies to const functions and const contexts where function pointers are used. Specifically, it targets situations where a function pointer type is compared, assigned, or passed as an argument. The mutation changes a non-higher-ranked function pointer type to a higher-ranked one, or vice-versa, particularly introducing a for<'a> bound where none existed, or removing it where it did.
+
+Change: In a const function, locate any function pointer type annotation. This includes parameter types, return types, and type annotations within the function body. For each such type fn(), replace it with for<'a> fn(). Conversely, if a type for<'a> fn() exists, replace it with fn(). Ensure the mutation only applies within const contexts. If the seed program does not contain a function pointer type, introduce a new const function that uses one. The new function should be declared as const fn name(param: fn()) -> bool { unsafe { param == param } } and then mutated to const fn name(param: for<'a> fn()) -> bool { unsafe { param == param } }.
+
+Example: Suppose the seed program contains const fn foo(x: fn()) -> bool { x == x }. The mutation changes it to const fn foo(x: for<'a> fn()) -> bool { x == x }. Conversely, if the seed program contains const fn bar(x: for<'a> fn()) -> bool { x == x }, the mutation changes it to const fn bar(x: fn()) -> bool { x == x }.
+
+Rationale: The bug report shows an internal compiler error when comparing a fn() with a for<'a> fn() within a const function. This mutation directly creates that mismatch, potentially triggering similar ICEs in the const evaluator when handling higher-ranked trait bounds and function pointer equality.

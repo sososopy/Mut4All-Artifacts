@@ -1,0 +1,1 @@
+pub mod test { pub struct A ; pub struct B ; pub struct Foo < T > (:: std :: marker :: PhantomData < T >) ; impl Foo < A > { fn foo (a : usize) -> usize { a } } impl Foo < B > { fn foo (_a : usize , b : usize) -> usize { b } } } fn main () { test :: Foo :: < test :: B > :: foo (0 , 0) ; }

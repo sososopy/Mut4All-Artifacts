@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] pub trait TokenSink { fn process_token (& self , token : ()) ; } pub struct TreeBuilder < Handle > { pub open_elems : Vec < Handle > , } impl < Handle > TokenSink for TreeBuilder < Handle > { fn process_token (& self , token : ()) { match token { _ => for x in self . open_elems . iter () { } , } } }

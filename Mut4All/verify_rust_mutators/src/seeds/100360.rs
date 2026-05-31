@@ -1,0 +1,1 @@
+# ! [feature (adt_const_params)] # ! [feature (generic_const_exprs)] fn foo < const B : & 'static bool > (arg : & 'static bool) -> bool { B == arg } fn main () { foo :: < { & true } > (& false) ; }

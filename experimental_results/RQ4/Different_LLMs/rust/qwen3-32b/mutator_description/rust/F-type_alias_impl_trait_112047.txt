@@ -1,0 +1,27 @@
+Mutation Operator: Introduce_async_trait_recursion  
+Target: Async trait methods returning an associated type that implements another trait with an async method.  
+Applies to: Implementations of traits where the return type of an async method is an associated type (e.g., `Self::Second`) that implements a different trait with an async method.  
+
+Transformation:  
+In an async method body (`async fn X(...)`) that returns an associated type (e.g., `Self::Second`), add a recursive call to another trait method that eventually calls back to the original method. For example:  
+Original body:  
+```rust  
+async fn first(self) -> Self::Second { ... }  
+```  
+Modified body:  
+```rust  
+async fn first(self) -> Self::Second {  
+    let result = ...;  
+    // Insert mutual recursion between traits  
+    result.second().await;  
+    result  
+}  
+```  
+This creates a cycle where `first` → `second` → `first`... causing infinite normalization during compilation.  
+
+Dependencies:  
+- Requires the return type of the original method to implement a secondary trait with an async method (e.g., `Second` trait with `async fn second(self)`).  
+- Uses existing variables/traits in the seed program (e.g., `result` from original logic).  
+
+Effect:  
+Triggers type normalization issues when the compiler recursively resolves the async method chain, increasing likelihood of ICEs related to `async_fn_in_trait` and `type_alias_impl_trait`.

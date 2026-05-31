@@ -1,0 +1,1 @@
+trait Foo { fn foo < T > (self) -> u64 ; } impl Foo for () { fn foo < T : 'static > (self) -> u64 { std :: intrinsics :: TypeId :: of :: < & 'static T > () . hash () } } fn main () { println ! ("{}" , () . foo ::<& () > ()) ; }

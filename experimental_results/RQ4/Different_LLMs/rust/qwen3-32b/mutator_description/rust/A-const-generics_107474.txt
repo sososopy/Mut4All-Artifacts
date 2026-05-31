@@ -1,0 +1,24 @@
+mutation operator: Remove explicit const generic parameter in function call when return type depends on an associated constant  
+applies to: function calls that return a generic struct with const parameter derived from a trait's associated constant  
+when source code contains:  
+struct Foo<T> where [(); T::VALUE]: Sized;  
+impl<T> Foo<T> { fn new() -> Self; }  
+pub fn make<T: MyTrait>() -> Foo<T> { Foo::new() }  
+
+mutated into:  
+pub fn make<T: MyTrait>() -> Foo<T> {  
+    // Original: Foo::<T>::new()  
+    Foo::new()  // Omit explicit type parameter  
+}  
+
+example:  
+// Before: safe variant with explicit type  
+Conster::<COT>::new()  
+
+// After: triggers ICE variant due to inference  
+Conster::new()  
+
+this mutation exploits the compiler's type inference for const parameters involving associated constants, exposing bugs in const generic evaluation when type parameter is elided but required for evaluating [(); T::VALUE]: Sized. the mutation avoids introducing new types but requires existing:  
+1. a trait with associated const VALUE: usize  
+2. a generic struct using [(); T::VALUE]  
+3. a function returning such struct without explicit type parameter

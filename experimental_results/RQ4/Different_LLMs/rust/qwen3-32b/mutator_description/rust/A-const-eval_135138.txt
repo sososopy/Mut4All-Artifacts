@@ -1,0 +1,31 @@
+Mutation Operator: TrivialBoundsConstEvalLayoutMutation  
+Target: Functions with `where` clauses enforcing `Sized` on non-Sized types, array bounds using uncomputable layouts in const contexts.  
+
+Applies to:  
+- Functions or generic constructs with `where T: Sized` constraints where `T` is not a Sized type (e.g., `str`, `dyn Trait`).  
+- Array expressions with const bounds that trigger uncomputable layout checks (e.g., `[(); { let _x: Option<NonSizedType> = None; 0 }]`).  
+
+Mutation Logic:  
+1. Insert a `where T: Sized` clause in a function or generic context where `T` is a non-Sized type (e.g., `str`, `dyn Trait`).  
+2. In the same function, create an array with a const-computed length that involves a block containing an unused binding of type `Option<T>` (e.g., `let _x: Option<T> = None; 0`).  
+
+Example:  
+```rust  
+fn example<T>() where T: Sized {  
+    [(); { let _x: Option<T> = None; 0 }];  
+}  
+```  
+
+Coverage:  
+- Covers generic functions with invalid `Sized` constraints.  
+- Forces const eval to compute array length involving uncomputable layouts (non-Sized types).  
+- Applies to existing types/functions if they lack `?Sized` but are used in const contexts.  
+
+Rationale:  
+The mutation exploits compiler phase interactions:  
+1. The `Sized` constraint on non-Sized `T` creates a conflicting trait obligation.  
+2. The array’s const-bound computation forces layout evaluation of `Option<T>`, which is uncomputable for non-Sized `T`.  
+3. This exposes ICEs in const-eval logic when layout errors are not properly reported.  
+
+Avoids introducing new types: Uses existing `Option<T>` and array expressions.  
+Ensures high mutation coverage by targeting common patterns in generic code and const contexts.

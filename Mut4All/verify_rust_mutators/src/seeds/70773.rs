@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] const HASH_LEN : usize = 20 ; struct Hash ([u8 ; HASH_LEN]) ; pub fn foo < 'a > () -> & 'a () { Hash ([0 ; HASH_LEN]) ; & () }

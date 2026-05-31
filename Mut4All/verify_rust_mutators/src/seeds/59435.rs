@@ -1,0 +1,1 @@
+# ! [feature (specialization)] struct MyStruct { } trait MyTrait { type MyType : Default ; } impl MyTrait for i32 { default type MyType = MyStruct ; }

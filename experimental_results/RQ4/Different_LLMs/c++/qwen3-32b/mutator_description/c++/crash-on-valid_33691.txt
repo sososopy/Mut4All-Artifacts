@@ -1,0 +1,26 @@
+Mutation operator: Friend template substitution with nested alias  
+Applies to: Friend function templates inside class templates that use template aliases for parameter substitution  
+Target structure:  
+- Nested namespaces with template aliases (template <T> using A = ...)  
+- Class templates with friend operator declarations  
+- Multiple template parameter substitutions in friend function return types  
+
+Transform: Replace direct template parameter usage in friend function declarations with nested alias template instantiations  
+Example:  
+Before:  
+template <typename T>  
+struct X {  
+  friend bool operator==(X, X) noexcept;  
+};  
+
+After:  
+namespace N {  
+  template <typename T> using Alias = std::conditional_t<true, T, int>;  
+}  
+
+template <typename T>  
+struct X {  
+  friend bool operator==(X, X) noexcept(decltype(N::Alias<T>::value){});  
+};  
+
+Note: Requires existing template aliases in the seed program's namespace structure. If no aliases exist, declare a simple identity alias (template <typename T> using Id = T) in the same namespace scope as the class template. The mutation forces substitution through multiple template layers, increasing chances of canonical type resolution failures in complex template mappings.

@@ -1,0 +1,1 @@
+fn const_param < const N : usize > () -> [u8 ; N + 1] { }

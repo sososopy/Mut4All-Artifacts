@@ -1,0 +1,1 @@
+macro_rules ! m { ($ asref : ty) => { fn bar (s : & str) -> &$ asref { s . as_ref ::<$ asref > () } fn baz (s : & str) -> &$ asref { s . as_ref ::<$ asref > () } } } m ! { [u8] } fn main () { }

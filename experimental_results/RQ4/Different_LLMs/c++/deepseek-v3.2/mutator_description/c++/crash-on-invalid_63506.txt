@@ -1,0 +1,24 @@
+Mutation Operator: Replace Pointer to Undefined Type with Pointer to Defined Type in Built-in Diagnostic Functions
+
+This mutation operator applies to any call of __builtin_dump_struct or similar built-in diagnostic functions where the first argument is a pointer to an incomplete or undefined type. The operator changes this pointer argument to a pointer to a complete, defined type that is already present in the program.
+
+Specifically, when the seed program contains a call like __builtin_dump_struct(ptr, callback) where ptr is a pointer to an incomplete type T (e.g., a forward-declared struct or class that has no definition in the current translation unit), the mutation replaces ptr with a pointer to a different type D that is fully defined in the program. The new pointer should be of the same pointer type (e.g., D*) and is initialized with nullptr or a valid existing object if available.
+
+Steps:
+1. Identify all calls to __builtin_dump_struct or similar built-in diagnostic functions in the seed program.
+2. For each call, analyze the type of the first argument (the pointer argument). If the pointed-to type is incomplete (only declared but not defined), proceed.
+3. Search the seed program for a complete, defined type (struct, class, or union) that is already declared and fully defined. Select one such type D.
+4. Replace the pointer argument in the call with a new pointer variable of type D*. For example, if the original call is __builtin_dump_struct(ptrUndef, printf), change it to __builtin_dump_struct(ptrDef, printf).
+5. Before the call, insert a declaration and initialization of ptrDef. Use ptrDef = nullptr if no existing object of type D is available, or assign it to an existing variable of type D if present. Ensure the new pointer is compatible with the diagnostic function's expectations.
+
+Example:
+Original seed code snippet:
+struct Unknown;
+void diagnosticFunc(Unknown* p) { __builtin_dump_struct(p, printf); }
+
+After mutation:
+struct Unknown;
+struct Known { int x; };
+void diagnosticFunc(Unknown* p) { Known* newPtr = nullptr; __builtin_dump_struct(newPtr, printf); }
+
+Note: The mutation introduces a new pointer variable newPtr of type Known*, where Known is a defined struct already in the program (or added if none exists, but preference is to use existing types). This avoids the undefined type scenario and tests the compiler's handling of valid pointers in diagnostic contexts.

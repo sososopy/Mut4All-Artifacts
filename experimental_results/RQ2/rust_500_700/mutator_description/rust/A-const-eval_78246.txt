@@ -1,0 +1,40 @@
+Mutation Operator: Alter Const Evaluation in Trait Implementations
+
+Target Code Construct: Trait implementations with associated types and const generics
+
+Description: This mutation operator targets Rust programs that implement traits with associated types and that use const generics for type-level computations, particularly those involving array sizes or other compile-time constants. The mutation introduces variations in how const evaluations are performed within the trait implementation, especially where size-based computations are involved. This could involve changing arithmetic expressions or introducing alternate ways to compute the same result, aiming to expose bugs in the constant evaluation mechanisms of the compiler.
+
+Mutation Steps:
+1. Identify trait implementations that use associated types and are parameterized with const generics.
+2. Locate areas within the impl block where constant computations are performed, especially those involving size calculations on associated types (e.g., `std::mem::size_of`).
+3. Alter the constant expression to use a different equivalent computation. This could mean:
+   - Adding or removing arithmetic operations.
+   - Using alternate methods to achieve the same computation.
+   - If the computation involves `std::mem::size_of`, substitute it with a different logical expression that results in the same outcome (e.g., using multiplication or division strategically).
+
+Example Before Mutation:
+```
+impl<T: Ice, const N: usize> Ice for [T; N] where
+    [(); std::mem::size_of::<T::Array>() * N]:
+{
+    type Array = [(); std::mem::size_of::<T::Array>() * N];
+
+    fn into_bytes(self) -> Self::Array {}
+}
+```
+
+Example After Mutation:
+```
+impl<T: Ice, const N: usize> Ice for [T; N] where
+    [(); (std::mem::size_of::<T::Array>() + 0) * N]:
+{
+    type Array = [(); (std::mem::size_of::<T::Array>() * N)];
+
+    fn into_bytes(self) -> Self::Array {}
+}
+```
+
+Notes:
+- Ensure that the mutated expressions are logically equivalent to the original to maintain valid program semantics.
+- The alterations should be subtle to effectively test the compiler's ability to handle different forms of const evaluation.
+- Introduce no new types or variables unless necessary, and if so, declare them clearly with explicit types to avoid ambiguity.

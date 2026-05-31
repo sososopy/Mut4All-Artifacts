@@ -1,0 +1,1 @@
+fn main () { let a = std :: path :: Path :: from (format ! ("a/b")) ; }

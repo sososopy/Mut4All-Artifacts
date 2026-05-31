@@ -1,0 +1,1 @@
+fn main () { [() ; & (& 'static : loop { | x | { } ; }) as * const _ as usize] }

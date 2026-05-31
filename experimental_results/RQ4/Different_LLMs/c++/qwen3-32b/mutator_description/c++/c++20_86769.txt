@@ -1,0 +1,29 @@
+Mutation operator: FriendTemplateConceptDependency  
+Target construct: Friend class declarations within template classes using concepts.  
+Change: Modify a friend template class declaration to apply a concept constraint to a dependent type derived from the outer template's type parameter. This creates a scenario where the compiler evaluates a dependent expression during constant evaluation, potentially triggering an ICE.  
+
+Example:  
+Original code snippet:  
+template <ConceptA T>  
+class C {  
+    template <ConceptB U>  
+    friend class C;  
+};  
+
+Mutated code snippet:  
+template <ConceptA T>  
+class C {  
+    template <ConceptA decltype(T::nested)> U  
+    friend class C;  
+};  
+
+Explanation:  
+1. The mutation replaces the friend's concept constraint from a standalone type (ConceptB) to a dependent type (T::nested) using the outer template's parameter T.  
+2. 'nested' is assumed to be a valid member type of T that exists in the seed program (e.g., T::value_type).  
+3. This forces the compiler to evaluate the constraint on a type dependent on T, which may not be fully substituted at the point of declaration, leading to invalid constant evaluation.  
+
+Requirements:  
+- The outer template parameter T must have a nested type (e.g., T::nested) already present in the seed program.  
+- The concept (ConceptA) must already be defined in the seed program.  
+
+This mutation targets compiler logic that mishandles dependent types in concept constraints during template instantiation, exposing bugs in constant expression evaluation.

@@ -1,0 +1,21 @@
+mutation operator: Add const qualifier to trait implementations or bounds in combination with min_specialization and effects features.
+
+This operator applies when a seed program contains trait definitions and implementations, particularly when the program already uses or could use the min_specialization and effects feature flags. The mutation introduces const qualifiers to trait implementations and/or trait bounds, which can trigger edge cases in the compiler's specialization and const evaluation logic.
+
+The mutation should be applied to existing trait impl blocks and where clause bounds. For each trait implementation in the seed program that does not already have a const qualifier, add the const keyword before the trait name in the impl header. Additionally, for any existing trait bound in a where clause, if the bound is on a trait that is declared in the seed program (or is a standard trait that supports const), add the const keyword before the trait name in the bound. If the seed program does not already have the necessary feature flags (#![feature(const_trait_impl)], #![feature(effects)], #![feature(min_specialization)]), these should be added at the crate root, but only if they are not already present. The mutation must use only types, traits, and variables that exist in the seed program; no new declarations should be introduced.
+
+Example transformation for a seed program snippet:
+Original seed code:
+trait MyTrait {}
+impl<T> MyTrait for T {}
+impl<T> MyTrait for T where T: OtherTrait {}
+
+After mutation (assuming OtherTrait is defined in the seed):
+#![feature(const_trait_impl)]
+#![feature(effects)]
+#![feature(min_specialization)]
+trait MyTrait {}
+impl<T> const MyTrait for T {}
+impl<T> const MyTrait for T where T: const OtherTrait {}
+
+Note that if the trait MyTrait is not marked with #[const_trait], this may produce expected errors, but the goal is to expose internal compiler errors like the unresolved inference variable bug. The mutation should be applied even if it leads to compilation errors, as the ICE occurs during the error handling or well-formedness checking phase.

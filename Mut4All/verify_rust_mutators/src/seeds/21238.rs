@@ -1,0 +1,1 @@
+pub trait Test { # [no_mangle] extern "C" fn something (& self) -> i32 ; } # [derive (Copy)] pub struct Foo { field : i32 } impl Test for Foo { extern "C" fn something (& self) -> i32 { self . field } }

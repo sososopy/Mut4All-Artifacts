@@ -1,0 +1,81 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Add_Unused_Lifetime_Constraints_214;
+
+impl Mutator for Add_Unused_Lifetime_Constraints_214 {
+    fn name(&self) -> &str {
+        "Add_Unused_Lifetime_Constraints_214"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                if func.sig.ident == "main" {
+                    continue;
+                }
+                let lifetime_param = LifetimeParam {
+                    attrs: vec![],
+                    lifetime: Lifetime::new("'unused", Span::call_site()),
+                    colon_token: None,
+                    bounds: Punctuated::new(),
+                };
+                func.sig.generics.params.push(GenericParam::Lifetime(lifetime_param.clone()));
+                let mut new_where_predicates = Punctuated::new();
+                new_where_predicates.push(syn::WherePredicate::Lifetime(syn::PredicateLifetime {
+                    lifetime: lifetime_param.lifetime.clone(),
+                    colon_token: Default::default(),
+                    bounds: Punctuated::new(),
+                }));
+                func.sig.generics.where_clause = Some(WhereClause {
+                    where_token: Default::default(),
+                    predicates: new_where_predicates,
+                });
+            }
+            if let syn::Item::Impl(item_impl) = item {
+                for impl_item in &mut item_impl.items {
+                    if let syn::ImplItem::Fn(func) = impl_item {
+                        let lifetime_param = LifetimeParam {
+                            attrs: vec![],
+                            lifetime: Lifetime::new("'unused", Span::call_site()),
+                            colon_token: None,
+                            bounds: Punctuated::new(),
+                        };
+                        func.sig.generics.params.push(GenericParam::Lifetime(lifetime_param.clone()));
+                        let mut new_where_predicates = Punctuated::new();
+                        new_where_predicates.push(syn::WherePredicate::Lifetime(syn::PredicateLifetime {
+                            lifetime: lifetime_param.lifetime.clone(),
+                            colon_token: Default::default(),
+                            bounds: Punctuated::new(),
+                        }));
+                        func.sig.generics.where_clause = Some(WhereClause {
+                            where_token: Default::default(),
+                            predicates: new_where_predicates,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator adds unused lifetime parameters and constraints to function and method signatures. By introducing lifetimes that are not utilized within the function or method, it stresses the compiler's lifetime resolution and inference mechanisms, potentially triggering ICEs or assertion failures due to unexpected lifetime interactions."
+    }
+}

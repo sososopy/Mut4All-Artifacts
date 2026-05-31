@@ -1,0 +1,1 @@
+fn load_get < A > () -> Result < & 'static A , () > { unimplemented ! () } fn main () -> Result < () , () > { let image : image :: ImageBuffer < image :: Rgba < u8 > , Vec < u8 > > = load_get () ? ; Ok (()) }

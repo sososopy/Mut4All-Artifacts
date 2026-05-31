@@ -1,0 +1,1 @@
+# ! [feature (async_await)] fn main () { (| _ | 2333) . await }

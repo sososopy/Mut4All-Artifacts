@@ -1,0 +1,1 @@
+use std :: io :: Read ; use std :: default :: Default ; trait MyRead : Sized { fn read < R : Read > (r : & mut R) -> Self ; } type Foobar = [u8 ; 10] ; impl MyRead for Foobar { fn read < R : Read > (r : & mut R) -> Self { let mut result : Self = Default :: default () ; r . read (& mut result [..]) . unwrap () ; result } } fn main () { }

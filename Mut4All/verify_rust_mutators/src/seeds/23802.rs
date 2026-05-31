@@ -1,0 +1,1 @@
+trait Shape { fn area (& self) -> f64 ; } trait Circle : Shape { fn radius (& self) -> f64 ; fn area (& self) -> f64 { self . radius () . powf (2.0) * 3.14 } } struct MyCircle ; impl Shape for MyCircle { } impl Circle for MyCircle { fn radius (& self) -> f64 { 2.0 } } fn main () { let b = MyCircle ; println ! ("{}" , b . area ()) ; }

@@ -1,0 +1,22 @@
+mutation operator: Modify alias template expansions by appending a template argument from the enclosing context to the parameter pack when the alias is used within a member function of a class template.
+
+This mutation applies when an alias template (defined with a template parameter pack) is instantiated within a member function of a class template, and the alias's instantiation uses only the parameter pack (e.g., Alias<Ts...>). The mutation changes the instantiation to append an additional template argument available in the current scope (such as a template parameter from the member function or the class) to the pack, resulting in Alias<Ts..., ExtraArg>.
+
+Specifically, for a class template with parameter pack `Ts...` and a member function template with parameter `U`, if there is an alias template `Alias` defined as `template<typename... Args> using Alias = SomeTemplate<Args...>;` and it is instantiated as `Alias<Ts...>` inside the member function, mutate it to `Alias<Ts..., U>`. This mimics the bug scenario where expanding a parameter pack followed by an extra argument in an alias template can trigger compiler bugs.
+
+The mutation uses only template arguments already present in the immediate scope (like `U` from the member function template). No new types, variables, or functions are introduced. The change is solely in the template argument list where the alias is used.
+
+Example in pseudo-code based on the seed structure:
+Original code in member function:
+template<typename... Ts>
+template<typename U>
+void Foo<Ts...>::foo() {
+    Bar<Ts...> bar; // Assuming Bar is an alias template for Foo<Ts...>
+}
+Mutated code:
+template<typename... Ts>
+template<typename U>
+void Foo<Ts...>::foo() {
+    Bar<Ts..., U> bar; // Changed to append U to the pack
+}
+This mutation targets template instantiation patterns involving alias templates and parameter packs, which are prone to frontend crashes or assertion failures in compilers like Clang.

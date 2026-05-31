@@ -1,0 +1,1 @@
+extern "C" fn foo < T > () { } fn main () { let _ = foo :: < int > ; }

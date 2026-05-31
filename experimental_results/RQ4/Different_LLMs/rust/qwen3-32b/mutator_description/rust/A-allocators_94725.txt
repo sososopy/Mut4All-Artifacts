@@ -1,0 +1,47 @@
+Mutation Operator: AllocatorRef
+Applies to: struct implementing Allocator that uses a reference type as allocator.
+Action: Replace standard Box<T> allocations with Box<T, &A> where A is a custom zero-sized type (ZST) implementing Allocator. This introduces a reference-based allocator for a non-ZST element type, creating a mismatch between pointer/pointee size/alignment metadata in debuginfo. 
+Example: 
+Before: Box::new(value)
+After: 
+#![feature(allocator_api)]
+Box::<T, &ZST>::new_in(value, &ZST)
+
+Mutation Operator: DebugInfoOverride
+Applies to: Types annotated with #[derive(Debug)] or using debug!() macros.
+Action: Add #[derive(Debug)] to a type that contains a field with a custom allocator-based Box. This triggers debuginfo generation for types with the problematic allocator configuration.
+Example: 
+Before: struct MyStruct { data: Box<T> }
+After: 
+#[derive(Debug)]
+struct MyStruct { data: Box<T, &ZST> }
+
+Mutation Operator: PointerSizeMismatch
+Applies to: Box allocations with explicit size constraints.
+Action: Modify Box allocation to use a size that's not power-of-two aligned with the field type while enabling allocator_api. This creates size/alignment mismatches between pointer and pointee types in debug metadata.
+Example: 
+Before: Box::new([1, 2, 3])
+After: 
+Box::<[u8; 32], &ZST>::new_in([1, 2, 3], &ZST)
+
+Mutation Operator: LayoutAssertionFailure
+Applies to: Any Box allocation using the allocator_api feature.
+Action: Add explicit Layout assertions after Box allocation that compare size/alignment values from different allocator methods. This forces compiler to validate internal layout calculations which may fail.
+Example: 
+Before: let x = Box::new_in(value, allocator);
+After: 
+let x = Box::new_in(value, allocator);
+assert!(Layout::for_value(&x).size() == Layout::new::<T>().size(),
+        "debuginfo layout mismatch");
+
+Mutation Operator: AllocatorFnCall
+Applies to: Custom allocator implementations.
+Action: Add explicit calls to Allocator methods (allocate/deallocate) with mismatched size/alignment parameters during Box construction. This stresses the compiler's handling of allocator interactions.
+Example: 
+Before: Box::new_in(value, &custom_allocator)
+After: 
+unsafe {
+    let layout = Layout::new::<T>();
+    custom_allocator.allocate(layout)?; 
+    Box::new_in(value, &custom_allocator)
+}

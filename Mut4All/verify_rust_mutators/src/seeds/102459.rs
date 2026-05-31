@@ -1,0 +1,1 @@
+# ! [feature (dyn_star)] # ! [allow (incomplete_features)] use std :: fmt :: Display ; fn bug () -> impl Display { & 1 as dyn * Display } fn main () { let x = bug () ; println ! ("{x}") ; }

@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] trait X { type I ; fn f () -> Self :: I ; } impl < T > X for () { type I = impl Sized ; fn f () -> Self :: I { } } fn main () { }

@@ -1,0 +1,1 @@
+pub trait Trait { type Item ; } impl < T > Trait for T where for < 'a > & 'a T : Trait , for < 'a > < & 'a T > :: Item : Clone , { }

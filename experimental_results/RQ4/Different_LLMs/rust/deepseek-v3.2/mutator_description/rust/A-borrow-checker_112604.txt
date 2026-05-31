@@ -1,0 +1,25 @@
+mutation operator: introduce a higher-ranked trait bound mismatch in a function return type that uses an impl Trait with a for<'a> binder, where the concrete type being returned contains a closure or function that itself returns a type with a higher-ranked lifetime that must be equated, but the nested type's associated type projection is altered to cause a potential inference failure.
+
+this mutation applies to functions that return an impl for<'a> Trait<Assoc<'a> = SomeType>, where the concrete return expression involves a call to a generic function that returns a type implementing that trait, but with an associated type that depends on a higher-ranked lifetime. the mutation changes the concrete return expression by wrapping it in a closure or another generic context that duplicates the associated type projection, but with a slight variation that may lead to an equate_inputs_and_outputs solver failure.
+
+specifically, locate a function with a return type like 'impl for<'a> Parser<Output<'a> = ()>'. inside its body, there is a call like 'lazy(|| uncycle(always(())))'. the mutation will change the call to 'lazy(|| { let x = uncycle(always(())); x })'. this introduces a new temporary binding that does not change the type but may affect the region inference. more specifically, the mutation will target the inner expression 'always(())' and replace it with a similar expression that uses a generic parameter from an outer scope, if available, to create a more complex projection. for example, if there is a generic type parameter 'T' in scope, change 'always(())' to 'always::<T>(())' where T is a type that implements Clone. if no such T exists, introduce a new generic type parameter to the function, like adding '<T: Clone>' to the function signature and using 'always::<T>(())' with a default concrete type like '()' for T to keep the program compilable, but the presence of the generic may affect region solving.
+
+steps:
+1. identify a function with a return type that is an impl Trait with a higher-ranked lifetime binder and an associated type that depends on that lifetime.
+2. inside the function body, locate a call expression that returns a type implementing that trait.
+3. if the call expression uses a concrete type, see if there is a generic type parameter in scope that can be substituted into the call. if yes, change the call to use that generic parameter.
+4. if no generic parameter is in scope, modify the function signature to add a new generic type parameter with a default bound and a default concrete type. for instance, change 'pub fn foo() -> ...' to 'pub fn foo<T: Clone = ()>() -> ...'. then, in the return expression, change the relevant part to use T, e.g., 'always::<T>(())'.
+5. ensure the mutation does not introduce undeclared variables or types. the new generic parameter must be properly bounded and defaulted so the existing call sites remain valid.
+
+example pseudo-code of the mutation:
+original:
+pub fn foo() -> impl for<'a> Parser<Output<'a> = ()> {
+    lazy(|| uncycle(always(())))
+}
+mutated:
+pub fn foo<T: Clone = ()>() -> impl for<'a> Parser<Output<'a> = ()> {
+    lazy(|| uncycle(always::<T>(())))
+}
+note: the default '= ()' ensures that existing code calling foo() without a type argument still works.
+
+the goal is to create a scenario where the region solver must equate higher-ranked lifetimes from the impl Trait return type with those from the nested associated type projections that now involve a generic type, potentially leading to a NoSolution error and an ICE.

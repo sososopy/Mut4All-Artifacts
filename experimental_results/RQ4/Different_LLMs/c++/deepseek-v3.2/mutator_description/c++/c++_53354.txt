@@ -1,0 +1,24 @@
+mutation operator: Insert a nested template template parameter into a concept requirement that accesses a dependent nested template alias.
+
+This mutation applies when a concept is defined using a requires-expression that contains a type requirement. Specifically, it targets concepts that have a simple typename requirement like `typename T::something`. The mutation modifies the concept to introduce a nested template template parameter by changing the accessed nested name to a template alias that itself is a template template parameter. This mimics the structure in the bug report where `T::template value_types` is used within a template template parameter context.
+
+The mutation operator should be applied as follows: For any concept definition that contains a type requirement of the form `typename T::identifier`, where `T` is a template parameter of the concept and `identifier` is a nested type or template, replace the requirement with `typename void_t<T::template identifier>`, provided that a suitable `void_t` template is available or can be introduced. To ensure adaptation, if a `void_t` template is not already present in the seed program, introduce a declaration: `template <class...> struct void_t { using type = void; };` at the global scope before the concept. The `void_t` should be a variadic template to accept any arguments. The mutation changes the type requirement to involve a template template parameter indirectly, which may stress compiler logic for nested template arguments in constraints.
+
+Example pseudo-code of the mutation:
+
+Original concept:
+template <class T>
+concept C = requires {
+    typename T::inner_type;
+};
+
+Mutated concept:
+// Ensure void_t is declared as above if not present.
+template <class T>
+concept C = requires {
+    typename void_t<T::template inner_type>;
+};
+
+Note that the mutation uses `T::template inner_type` only if `inner_type` is expected to be a template; if the original uses `T::inner_type` without `template`, the mutation still adds `template` keyword, which may be invalid if `inner_type` is not a template. To avoid introducing syntax errors, apply this mutation only when the seed program already contains a pattern where `T::template something` is used elsewhere, or when the nested entity is known to be a template (this might require analysis). For simplicity in the operator, always add the `template` keyword and rely on the compiler to diagnose any misuse; the goal is to generate potentially valid but complex code that triggers corner cases.
+
+The change should be made to all matching concepts in the seed program, one at a time, to generate multiple variants. This mutation targets the interaction of concepts with nested template types and template template parameters, which was the source of the segfault in the bug report.

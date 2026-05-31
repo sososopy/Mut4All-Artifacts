@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] trait SomeTrait { } trait WithAssoc < A > { type AssocType ; } type Return < A > = impl WithAssoc < A , AssocType = impl SomeTrait + 'a > ; fn my_fun () -> Return < () > { } fn main () { }

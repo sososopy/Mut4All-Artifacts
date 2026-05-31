@@ -1,0 +1,1 @@
+struct MnemonicResponse < '_ > { pass : & str }

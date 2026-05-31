@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] struct S < const C : u8 > (C) ;

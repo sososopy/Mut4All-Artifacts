@@ -1,0 +1,37 @@
+mutation operator: Replace a member initializer with an implicit reference to the same member within a dependent context, targeting class templates or member templates where a data member is initialized using its own name without explicit qualification, which may trigger frontend crashes during template instantiation or member access resolution.
+
+This operator applies when a struct or class definition inside a template (including member templates) contains a non-static data member with an initializer that uses a simple identifier matching the member's name. The change replaces that identifier with an implicit member access, effectively creating a self-referential initializer within a dependent type context. The operator modifies only the initializer expression, leaving the member declaration unchanged.
+
+Specifically, for any non-static data member declaration within a template (class template, function template, or member of a template) of the form:
+  type member_name = member_name;
+or
+  type member_name{ member_name };
+or similar direct-initialization using the same identifier, change the right-hand side identifier to an implicit member access by removing any explicit qualification, ensuring it remains identical in spelling to the member name.
+
+If the seed program already contains such a self-referential initializer, no change is made. The operator focuses on situations where the initializer currently uses a valid expression (like a constant, other variable, or function call) and mutates it to a self-reference using the same name. For example, if the seed has:
+  struct A {
+    int x = 0;
+  };
+within a template, mutate to:
+  struct A {
+    int x = x;
+  }.
+This introduces a dependent context where member access might be resolved incorrectly during instantiation.
+
+Use only identifiers that exist in the current scope as member names. Do not introduce new names. If multiple members exist, prefer the member being declared for self-reference. The change should be syntactically valid but semantically dubious, aiming to expose crashes in template handling, especially in clang frontend.
+
+Example in pseudo-code for a template:
+  template<typename T>
+  void example() {
+    struct Inner {
+      int value = 42; // original
+    };
+  }
+After mutation:
+  template<typename T>
+  void example() {
+    struct Inner {
+      int value = value; // mutated: self-reference
+    };
+  }.
+This targets the bug pattern where implicit member access in a dependent initializer leads to a compiler crash.

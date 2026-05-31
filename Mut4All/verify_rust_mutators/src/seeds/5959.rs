@@ -1,0 +1,1 @@
+struct matrix ; impl Drop for matrix { fn finalize (& self) { } } impl Add < matrix , matrix > for matrix { fn add (& self , _rhs : & matrix) -> matrix { matrix } } fn main () { let mut m = matrix ; m += matrix ; info ! (m) ; }

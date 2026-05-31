@@ -1,0 +1,13 @@
+mutation operator
+
+Target: Type alias definitions that resolve to trait objects (specifically dyn Trait) within const contexts, particularly when used in tuple or struct constructions.
+
+Apply when: A type alias is defined in a const context (including const, static, or associated const items) and resolves to a trait object type (e.g., type Alias = dyn Trait; or via a bound like type Alias = impl Trait where the underlying type is a dyn Trait). The mutation specifically targets the usage of this alias in a tuple or struct constructor expression within the same const context.
+
+Change: Replace the tuple or struct constructor expression that uses the trait object alias with a constructor that wraps the value in an additional tuple layer of one element. For a tuple constructor, change it to a nested tuple. For a struct constructor, change it to a tuple struct constructor with one field (if a tuple struct of the same name does not already exist) or wrap it in a new tuple.
+
+Example: If the seed contains `const X: (Alias, u8) = (value, 0);` where `Alias` resolves to a trait object, mutate to `const X: ((Alias, u8),) = ((value, 0),);`. If the seed contains `const X: Struct = Struct { field: value };` where the field's type is `Alias`, and a tuple struct `Struct` with one field does not exist, introduce a new tuple struct `struct Struct(Alias);` and change the constant to `const X: Struct = Struct(value);`. If introducing a new struct, place it immediately before the constant definition.
+
+Rationale: This mutation creates a scenario where the layout computation for the trait object within a nested aggregate type (tuple or struct) may be triggered incorrectly during const evaluation, potentially exposing the assertion failure in layout sizing checks. It increases the complexity of the type structure without changing the underlying trait object, which is a known source of ICEs in const evaluation.
+
+Note: Only apply if the alias resolves to a trait object type. This can be approximated by checking if the alias definition contains `dyn` or if it is a `FnOnce() -> T` style type alias (as in the bug report). The mutation should use existing variable names and values from the seed program; do not introduce new values. If a new tuple struct type is introduced, it must be declared with the same visibility as the original struct or as pub if the original was pub.

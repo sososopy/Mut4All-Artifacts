@@ -1,0 +1,1 @@
+# [doc = " Marker type for a `Client<G, Teacher>`, indicates the client has teacher privileges"] # [derive (Debug)] pub struct Teacher ; # [doc = " Marker type for a `Client<G, Student>`, indicates the client has student privileges"] # [derive (Debug)] pub struct Student ;

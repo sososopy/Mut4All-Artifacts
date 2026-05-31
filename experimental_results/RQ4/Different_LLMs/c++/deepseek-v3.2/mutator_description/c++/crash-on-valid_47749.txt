@@ -1,0 +1,22 @@
+The bug report involves a crash in the C++ compiler when using a template alias (typedef) inside a template class that is instantiated with a local generic lambda. The crash occurs during template instantiation, specifically when the compiler attempts to substitute the lambda's call operator within the decltype expression. This indicates that bugs are more likely to be triggered in complex template scenarios involving nested template instantiations, decltype expressions, and non-traditional template arguments like generic lambdas.
+
+Mutation Operator: This operator targets template alias declarations within template classes or structs that depend on template parameters. It mutates the alias definition by wrapping the existing type expression inside a decltype that invokes a template member function of a lambda, if a lambda is present in the scope. The goal is to create scenarios where the compiler must perform template argument deduction and substitution within a decltype context, which can expose bugs in template instantiation logic.
+
+Applicability: This mutation applies to any template class or struct that contains a template alias (using declaration) whose definition uses a template parameter. The seed program must contain at least one lambda expression (generic or non-generic) that can be captured or used.
+
+Changes: For a template class with a template alias, replace the alias definition with a decltype expression that attempts to call a template operator on a lambda. If the seed program contains a lambda, use its declared name. If not, introduce a new generic lambda with a simple auto parameter and a placeholder body. The lambda should be declared in the same scope as the template class instantiation. The mutation modifies the alias to become: using AliasName = decltype(Lambda.template operator()<TemplateParam>(0)); where Lambda is an existing lambda variable or a newly introduced one, and TemplateParam is the template parameter of the alias. Ensure the lambda is visible and can be used in the context.
+
+Example: Original code snippet:
+template <typename T>
+struct Container {
+    template <typename U>
+    using ValueType = U;
+};
+Mutated code snippet:
+auto lambda = [](auto){};
+template <typename T>
+struct Container {
+    template <typename U>
+    using ValueType = decltype(lambda.template operator()<U>(0));
+};
+Note: The lambda is introduced if not already present. The mutation should only be applied if the template alias is within a template class and uses its template parameter in a way that can be replaced. This creates complex instantiation patterns similar to the bug report.

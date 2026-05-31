@@ -1,0 +1,1 @@
+impl :: rustc_serialize :: Decoder for AlertPayloadType { fn read_str (& mut self) -> Result < String , Decoder :: Error > { match self . pop () { Json :: Null => Ok ("" . to_string ()) , value => Ok (format ! ("{}" , value)) , } } }

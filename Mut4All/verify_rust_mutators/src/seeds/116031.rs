@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] pub type Tait = impl Iterator < Item = (& 'db Key , impl Iterator) > ; pub fn main () { }

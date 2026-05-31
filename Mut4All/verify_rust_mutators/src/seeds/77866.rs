@@ -1,0 +1,1 @@
+# ! [feature (link_llvm_intrinsics , repr_simd , simd_ffi)] # [allow (non_camel_case_types)] # [repr (simd)] struct v2f32 (f32 , f32) ; # [allow (improper_ctypes)] extern "C" { # [link_name = "llvm.round.v2f32"] fn round_v2f32 (x : v2f32) -> v2f32 ; } # [cfg (test)] mod test { # [test] fn round_v2f32 () { let _ = unsafe { crate :: round_v2f32 (crate :: v2f32 (0.5 , 0.5)) } ; } }

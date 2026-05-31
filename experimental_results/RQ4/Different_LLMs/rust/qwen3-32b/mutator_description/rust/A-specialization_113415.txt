@@ -1,0 +1,151 @@
+Mutation Operator 1: Introduce nested trait associations with specialization conflicts  
+Applies to code that uses `#![feature(specialization)]` with a default impl for a trait and an overriding impl.  
+Mutates code by adding a second trait that references the associated type of the first through a nested path, creating a potential coherence conflict.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+After:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+trait OtherTrait { type Nested; }  
+impl OtherTrait for <u8 as Assoc>::Output { type Nested = <Self as Assoc>::Output; }  
+
+Mutation Operator 2: Overload an associated type in a trait with interdependent impls  
+Applies to code with multiple impls of the same trait that define an associated type in a way that introduces cyclical or overlapping dependencies during inference.  
+Mutates code by inserting an additional impl of the same trait that defines the associated type using a different generic path that depends on previously defined types.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+After:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+impl Assoc for <u8 as Assoc>::Output { type Output = u8; }  
+
+Mutation Operator 3: Chain specialization through nested trait bounds  
+Applies to code with multiple traits where one or more impls depend on an associated type defined in another trait.  
+Mutates code by introducing a trait bound inside an impl that depends on another associated type in the same or a different trait, leading to ambiguous or cyclic trait resolution.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+trait Foo {}  
+impl Foo for u32 {}  
+
+After:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+trait Foo {}  
+impl Foo for u32 {}  
+impl<T: Assoc<Output = <T as Assoc>::Output>> Foo for T {}  
+
+Mutation Operator 4: Add an overriding impl for a nested associated type  
+Applies to code where an associated type is defined in a trait and referenced in a nested path elsewhere in the program.  
+Mutates code by adding an impl that redefines the associated type in a nested context, potentially violating trait coherence.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+trait Foo {}  
+impl Foo for <u8 as Assoc>::Output {}  
+
+After:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+trait Foo {}  
+impl Foo for <u8 as Assoc>::Output {}  
+impl Foo for <<u8 as Assoc>::Output as Assoc>::Output {}  
+
+Mutation Operator 5: Use a generic impl of a trait that depends on a nested associated type  
+Applies to code with generic impls that use nested paths to access associated types.  
+Mutates code by replacing a concrete type in a generic impl with a nested associated type reference, which may create a scenario where the compiler cannot resolve trait obligations during specialization.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+trait Foo {}  
+impl Foo for u32 {}  
+
+After:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = bool; }  
+impl Assoc for u8 {}  
+
+trait Foo {}  
+impl<T> Foo for T where T: Assoc<Output = bool> {}  
+impl Foo for <<u8 as Assoc>::Output as Assoc>::Output {}  
+
+Mutation Operator 6: Add a default impl for an existing trait with ambiguous associated types  
+Applies to code that has a non-default impl and an associated type, but no default impl.  
+Mutates code by adding a default impl for the same trait that uses an associated type that may be ambiguous or conflict with existing impls.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+impl Assoc for u8 { type Output = bool; }  
+
+trait Foo {}  
+impl Foo for u32 {}  
+
+After:  
+trait Assoc { type Output; }  
+default impl<T> Assoc for T { type Output = <T as Assoc>::Output; }  
+impl Assoc for u8 { type Output = bool; }  
+
+trait Foo {}  
+impl Foo for u32 {}  
+
+Mutation Operator 7: Add an impl of a trait that uses an associated type defined in another trait for the same type  
+Applies to code where a type does not yet use any of the associated types from a trait.  
+Mutates code by adding an impl of a second trait for the same type that references an associated type defined in the first trait.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+impl Assoc for u8 { type Output = bool; }  
+
+trait Foo {}  
+impl Foo for u32 {}  
+
+After:  
+trait Assoc { type Output; }  
+impl Assoc for u8 { type Output = bool; }  
+
+trait Foo {}  
+impl Foo for u32 {}  
+impl Foo for u8 { type Nested = <u8 as Assoc>::Output; }  
+
+Mutation Operator 8: Create overlapping impls using associated types in trait bounds  
+Applies to code with impls that already define associated types, possibly in a nested structure.  
+Mutates code by introducing a second impl that shares a common bound or nested type reference, potentially causing the compiler to misresolve trait obligations.  
+Example:  
+Before:  
+trait Assoc { type Output; }  
+impl Assoc for u8 { type Output = bool; }  
+
+trait Foo {}  
+impl Foo for <u8 as Assoc>::Output {}  
+
+After:  
+trait Assoc { type Output; }  
+impl Assoc for u8 { type Output = bool; }  
+
+trait Foo {}  
+impl Foo for <u8 as Assoc>::Output {}  
+impl<T: Assoc<Output = bool>> Foo for T {}

@@ -1,0 +1,1 @@
+# ! [feature (macro_lifetime_matcher)] macro_rules ! m { ($ x : lifetime) => { } } m ! (a) ;

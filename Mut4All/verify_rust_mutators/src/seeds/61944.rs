@@ -1,0 +1,1 @@
+fn main () { let x = String :: from ("foo") ; let x_ref = & x ; let x_ref_ref = & x_ref ; x_ref . push_str ("bar") ; println ! ("{}" , x_ref_ref) ; }

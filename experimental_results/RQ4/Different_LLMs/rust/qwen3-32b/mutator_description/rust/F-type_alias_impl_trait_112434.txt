@@ -1,0 +1,31 @@
+Mutation Operator 1: Conditional Opaque Return Value Mismatch  
+Applies to functions with return type using `impl Trait` or its type alias, where both branches of a conditional return values.  
+Change: Insert an `if/else` structure in the function body where one branch returns a valid value matching the opaque type, and the other branch has an incomplete/missing return (e.g., empty block or commented-out return). Example:  
+Original:  
+`fn example() -> impl Display { "valid" }`  
+Mutated:  
+`fn example() -> impl Display { if true { "valid" } else { } }`  
+
+Mutation Operator 2: Dangling Boxdyn Suggestion Span  
+Applies to functions returning `impl Trait` with explicit dynamic trait object syntax in one branch.  
+Change: Introduce a branch with `Box::new(` but no closing `dyn Trait>)`, causing the compiler to attempt overlapping suggestions for missing syntax. Example:  
+Original:  
+`fn example() -> impl Display { Box::new("valid") }`  
+Mutated:  
+`fn example() -> impl Display { if true { Box::new("valid") } else { Box::new(42) } }`  
+
+Mutation Operator 3: Overlapping Trait Bound Suggestions  
+Applies to type aliases of `impl Trait` with multiple trait bounds.  
+Change: Modify the function returning the opaque type to return a value in one branch with overlapping trait bounds (e.g., `Box<dyn Display + Debug>` in one branch and `Box<dyn Display>` in another). Example:  
+Original:  
+`type Bar = impl Display + Debug; fn test() -> Bar { "valid" }`  
+Mutated:  
+`fn test() -> Bar { if true { Box::new("valid") } else { Box<dyn Display> } }`  
+
+Mutation Operator 4: Incomplete Type Path in Return Position  
+Applies to functions returning a type alias with `impl Trait` using a non-empty else branch.  
+Change: Replace a return value's type path in one branch with an incomplete slice (e.g., `Box<dyn` instead of `Box<dyn Trait>`), forcing compiler diagnostics to suggest completion that overlaps the incomplete syntax. Example:  
+Original:  
+`type Baz = impl ToString; fn func() -> Baz { "complete" }`  
+Mutated:  
+`fn func() -> Baz { if true { "complete" } else { Box<dyn } }`

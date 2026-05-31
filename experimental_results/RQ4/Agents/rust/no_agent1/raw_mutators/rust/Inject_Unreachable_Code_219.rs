@@ -1,0 +1,55 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Inject_Unreachable_Code_219;
+
+impl Mutator for Inject_Unreachable_Code_219 {
+    fn name(&self) -> &str {
+        "Inject_Unreachable_Code_219"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                if func.sig.ident == "main" {
+                    continue;
+                }
+                let unreachable_expr: Expr = parse_quote! { unreachable!() };
+                let mut new_block = func.block.clone();
+                new_block.stmts.push(Stmt::Expr(unreachable_expr, None));
+                func.block = new_block;
+            }
+            if let syn::Item::Impl(item_impl) = item {
+                for impl_item in &mut item_impl.items {
+                    if let syn::ImplItem::Fn(func) = impl_item {
+                        let unreachable_expr: Expr = parse_quote! { unreachable!() };
+                        let mut new_block = func.block.clone();
+                        new_block.stmts.push(Stmt::Expr(unreachable_expr, None));
+                        func.block = new_block;
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator injects an `unreachable!()` macro call at the end of function and method bodies. This transformation introduces unreachable code paths, which can stress the compiler's dead code analysis and optimization passes. It aims to uncover bugs related to control flow analysis, potentially leading to ICEs or miscompilations when the compiler attempts to optimize or analyze the unreachable code."
+    }
+}

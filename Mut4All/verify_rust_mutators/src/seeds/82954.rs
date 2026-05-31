@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; pub enum Empty { } struct Test < A , B : ? Sized > { phantom : PhantomData < (A , B) > , } fn main () { let x : Test < Empty , [usize] > ; }

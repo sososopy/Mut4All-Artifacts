@@ -1,0 +1,1 @@
+fn f (x : usize) -> usize { x } const Y : usize = f (2) ; fn main () { let z = [0 ; Y] ; }

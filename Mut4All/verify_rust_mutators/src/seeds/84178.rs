@@ -1,0 +1,1 @@
+# ! [cfg (test)] # [test] fn test_nz () { const u8 : u8 = 40u32 . pow (2) as u8 ; dbg ! (u8) ; }

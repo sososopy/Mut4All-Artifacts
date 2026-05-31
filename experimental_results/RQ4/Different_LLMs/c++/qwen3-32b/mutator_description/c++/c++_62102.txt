@@ -1,0 +1,25 @@
+Mutation Operator 1: Defaulted Operator Template Clash Mutation  
+Applies to: Structs with a defaulted operator== and a member of a templated type.  
+
+Description: Replace a member variable of a struct with a templated type and introduce a conflicting template operator==. This forces the compiler to incorrectly instantiate the user-defined template operator instead of generating the defaulted comparison logic, leading to type-mismatch errors and potential assertion failures.  
+
+Example:  
+Given a struct  
+struct X {  
+  TypeMember m; // existing member (non-templated)  
+  friend bool operator==(const X&, const X&);  
+};  
+bool operator==(const X&, const X&) = default;  
+
+Change to:  
+template <typename> struct T {};  
+struct X {  
+  T<int> m; // replaced with templated type  
+  friend bool operator==(const X&, const X&);  
+};  
+template <typename T1, typename T2> constexpr bool operator==(T<T1>, T<T2> x) {  
+  return 0 == x; // triggers invalid operand types  
+}  
+bool operator==(const X&, const X&) = default;  
+
+This mutation leverages existing struct X and introduces minimal new elements (template T) to create an overload resolution conflict. The defaulted operator== will attempt to use the user-defined template operator due to incorrect overload resolution, causing the compiler to crash during instantiation.

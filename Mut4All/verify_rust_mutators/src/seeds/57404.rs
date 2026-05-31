@@ -1,0 +1,1 @@
+# ! [feature (unboxed_closures)] # ! [feature (const_vec_new)] # ! [feature (fn_traits)] pub struct PackBytes ; static mut HANDLERS : Vec < Box < dyn FnMut < & mut PackBytes , Output = () > > > = Vec :: new () ; fn main () { let mut pack = PackBytes ; unsafe { HANDLERS [0] . as_mut () . call_mut (& mut pack) ; } }

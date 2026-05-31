@@ -1,0 +1,21 @@
+Mutation Operator: Replace a structured binding capture in a lambda with a direct variable capture of the decomposed variables, when the structured binding refers to a temporary object via a reference that extends its lifetime incorrectly.
+
+1. Target: This applies to lambda expressions within functions where a structured binding declaration uses `auto&` or `const auto&` to bind to a temporary returned by a function, and the structured binding is captured by the lambda. The mutation changes the lambda capture list from capturing the structured binding identifiers to capturing the individual decomposed variables directly, which may expose compiler bugs related to lifetime extension and capture semantics in such contexts.
+
+2. Adaptation: The mutation operator should be applied to seed programs that contain a structured binding declaration of a temporary object via a reference, followed by a lambda that captures the structured binding identifiers. It should not rely on specific names like "Point" or "get_point"; instead, it uses the existing variable names and types from the seed.
+
+3. Coverage: This targets C++17 structured bindings and lambda captures, focusing on edge cases where the structured binding's reference binding might lead to invalid capture scenarios, potentially triggering crashes or miscompilation.
+
+4. Example: Original code snippet pattern:
+```
+auto& [var1, var2] = function_returning_temp();
+auto lambda = [var1, var2] { /* use var1, var2 */ };
+```
+Mutated code snippet pattern:
+```
+auto& [var1, var2] = function_returning_temp();
+auto lambda = [&var1, &var2] { /* use var1, var2 */ };
+```
+Here, `var1` and `var2` are the decomposed variables from the structured binding. The mutation changes the capture from the structured binding identifiers to explicit references to these variables. Note that `var1` and `var2` are not standalone variables but are part of the binding; this mutation assumes they can be captured as references directly, which may be invalid if their lifetime is tied to the temporary.
+
+5. Changes: In the seed program, identify a structured binding declaration using `auto&` or `const auto&` that binds to a temporary (e.g., a function return). Then, locate a lambda that captures the structured binding identifiers (e.g., `[var1, var2]`). Replace the capture list with `[&var1, &var2]`, where `var1` and `var2` are the same identifiers from the binding. This introduces a capture of references to decomposed elements, which might not have valid lifetimes independently of the structured binding, potentially exposing compiler bugs. No new variables or types are introduced; only the capture specification is altered. Ensure the lambda body still uses `var1` and `var2` as before.

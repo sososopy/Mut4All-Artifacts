@@ -1,0 +1,1 @@
+fn ice < T > (n : T) { let mut n = n ; n |= n >> n ^ 2 ; } fn main () { ice (5) }

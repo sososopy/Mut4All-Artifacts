@@ -1,0 +1,1 @@
+# ! [feature (quote)] extern crate syntax ; use syntax :: ext :: base :: ExtCtxt ; use syntax :: ptr :: P ; use syntax :: ast :: Item ; fn create_item (context : & mut ExtCtxt) -> Option < P < Item > > { quote_item ! (context , fn foo < T : ? Sized > () { }) }

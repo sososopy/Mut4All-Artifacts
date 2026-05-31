@@ -1,0 +1,1 @@
+trait Foo { type Bar ; } union Type < T > { bar : < T as Foo > :: Bar , }

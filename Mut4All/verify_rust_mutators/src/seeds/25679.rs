@@ -1,0 +1,1 @@
+trait Device { type Resources ; } struct Foo < R > (R) ; impl < D : Device > Foo < D :: Resources > { fn present (& self , _dev : & D) { } } fn main () { struct Res ; struct Dev ; impl Device for Dev { type Resources = Res ; } struct Win ; let foo = Foo (Res) ; let dev = Dev ; foo . present (& dev) ; }

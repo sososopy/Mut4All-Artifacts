@@ -1,0 +1,1 @@
+# ! [feature (closure_to_fn_coercion)] fn main () { let bar : fn (& mut u32) = | _ | { } ; }

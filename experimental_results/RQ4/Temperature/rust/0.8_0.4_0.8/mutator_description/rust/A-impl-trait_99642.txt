@@ -1,0 +1,36 @@
+Mutation Operator: Nested Return Type Mutation
+
+Target: This mutation applies to functions that return a nested `impl Trait` type, specifically in the context of trait objects and coercion, as seen in the provided bug report.
+
+Description: This mutation operator is designed to expose potential issues in the Rust compiler when dealing with nested return types using `impl Trait` in combination with trait objects and type coercion. The operator introduces an additional layer of wrapping around the return type, adding complexity to the coercion process, which can trigger subtle bugs related to type inference and coercion logic in the compiler.
+
+Transformation:
+1. Identify functions that return a type involving `impl Trait`, typically in the form `fn foo() -> impl SomeTrait`.
+2. Introduce an additional wrapper around the return type using a type that implements the `Deref` trait pointing to a `Box<dyn SomeTrait>`.
+3. Ensure the new type is logically sound and can be coerced to the original return type within the function body.
+
+Example Pseudo-code:
+- Original function:
+  ```
+  fn example() -> impl Iterator<Item = impl Sized> {
+      Box::new(0..) as Box<dyn Iterator<Item = _>>
+  }
+  ```
+
+- After mutation:
+  ```
+  struct Wrapper<T: ?Sized>(Box<T>);
+
+  impl<T: ?Sized> std::ops::Deref for Wrapper<T> {
+      type Target = T;
+      fn deref(&self) -> &Self::Target {
+          &self.0
+      }
+  }
+
+  fn example() -> Wrapper<dyn Iterator<Item = impl Sized>> {
+      Wrapper(Box::new(0..) as Box<dyn Iterator<Item = _>>)
+  }
+  ```
+
+This mutation introduces a new `Wrapper` struct that leverages the `Deref` trait to provide access to the underlying `Box<dyn Iterator<Item = _>>`. This increases the complexity of the return type, potentially revealing issues in how the compiler handles type inference and coercion when dealing with nested `impl Trait` constructs.

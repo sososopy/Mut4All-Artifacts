@@ -1,0 +1,1 @@
+struct Greeting { name : String , } fn main () { let greeting = Greeting { name : "Bjørn" . to_string () } ; println ! ("Hello, {}!" , greeting . name) ; }

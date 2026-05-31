@@ -1,0 +1,26 @@
+Mutation Operator:
+This mutation operator targets function definitions, specifically those involving trait bounds and type casting. The goal is to introduce changes in the function signature and body that may expose Rust compiler bugs by modifying trait bounds and type casting.
+
+Step-by-step Mutation Rule:
+1. Identify a function with a signature that includes trait bounds, as in the example function `make_dyn_star`.
+2. Alter the trait bounds by adding or modifying them. For instance, if the function has bounds like `impl Trait1 + Trait2`, introduce an additional trait bound that is less common or experimental.
+3. Inside the function body, identify the type casting operation. Replace the type being cast with a type that has a complex or nested trait bound relationship, which might interact unpredictably with the existing bounds.
+4. Ensure the function is utilized in a context that exercises the trait bounds, such as calling it within `main` or another function, to trigger potential compiler errors.
+
+Example (pseudo-code form):
+Original function:
+```
+fn make_dyn_star<'a>(t: impl PointerLike + Debug + 'a) -> impl PointerLike + Debug + 'a {
+    t as _
+}
+```
+
+Mutated function:
+```
+fn make_dyn_star<'a>(t: impl PointerLike + Debug + Send + 'a) -> impl PointerLike + Debug + Send + 'a {
+    let casted: &dyn Send = &t;
+    casted as _
+}
+```
+
+In this example, the `Send` trait is added to both the input and output trait bounds, and a type casting operation to `&dyn Send` is inserted to challenge the compiler's handling of trait bounds and trait objects.

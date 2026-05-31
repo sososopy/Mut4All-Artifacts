@@ -1,0 +1,1 @@
+# ! [feature (plugin)] # ! [cfg_attr (test , plugin (speculate))] speculate ! { describe hello { it "panics" { assert ! (true) ; } } }

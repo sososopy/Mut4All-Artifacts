@@ -1,0 +1,1 @@
+extern crate rand ; use std :: intrinsics :: transmute ; fn main () { unsafe { call_me_maybe () ; } } unsafe fn call_me_maybe () -> ! { if rand :: random () { transmute (()) } else { loop { } } }

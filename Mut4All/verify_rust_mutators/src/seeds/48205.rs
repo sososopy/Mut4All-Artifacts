@@ -1,0 +1,1 @@
+enum Variant < T > { A (T) , B (T) , } fn main () { const A : fn (usize) -> Variant < usize > = Variant :: A ; const B : fn (usize) -> Variant < usize > = Variant :: B ; let my_variant : fn (usize) -> Variant < usize > = Variant :: A ; match my_variant { A => { } B => { } _ => { } } }

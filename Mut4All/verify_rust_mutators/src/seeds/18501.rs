@@ -1,0 +1,1 @@
+struct Foo ; trait Show { fn fmt (& self) ; } impl Show for Foo { fn fmt (& self) { } } fn secret_show < T : Show > (_ : & T) { } fn bar < T > (f : extern "Rust" fn (& T) , t : & T) { } # [cfg (ice)] # [inline] pub fn baz () { bar (Show :: fmt , & Foo) ; } # [cfg (not (ice))] # [inline] pub fn baz () { bar (secret_show , & Foo) ; }

@@ -1,0 +1,1 @@
+async fn main () { test () ? ; } async fn test < const N : usize > () { }

@@ -1,0 +1,131 @@
+pub struct Remove_Transmute_Generic_470;
+
+impl Mutator for Remove_Transmute_Generic_470 {
+    fn name(&self) -> &str {
+        "Remove_Transmute_Generic_470"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                let generics = &mut func.sig.generics;
+                let has_transmute = {
+                    let mut has = false;
+                    if let Some(where_clause) = &generics.where_clause {
+                        for predicate in &where_clause.predicates {
+                            if let syn::WherePredicate::Type(predicate_type) = predicate {
+                                for bound in &predicate_type.bounds {
+                                    if let syn::TypeParamBound::Trait(trait_bound) = bound {
+                                        if trait_bound.path.is_ident("TransmuteFrom") {
+                                            has = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if has { break; }
+                            }
+                        }
+                    }
+                    has
+                };
+                if !has_transmute {
+                    let has_type_params = generics.params.iter().any(|param| matches!(param, GenericParam::Type(_)));
+                    if !has_type_params {
+                        generics.params.push(parse_quote!(Dst));
+                    }
+                    generics.params.push(parse_quote!(Src));
+                    let where_clause = generics.where_clause.get_or_insert_with(|| syn::WhereClause {
+                        where_token: Default::default(),
+                        predicates: Default::default(),
+                    });
+                    let dst_type: Type = if let Some(param) = generics.params.iter().find(|param| matches!(param, GenericParam::Type(type_param) if type_param.ident == "Dst")) {
+                        parse_quote!(Dst)
+                    } else {
+                        if let Some(param) = generics.params.iter().find(|param| matches!(param, GenericParam::Type(_))) {
+                            if let GenericParam::Type(type_param) = param {
+                                parse_quote!(#type_param)
+                            } else {
+                                unreachable!()
+                            }
+                        } else {
+                            unreachable!()
+                        }
+                    };
+                    let src_type: Type = parse_quote!(Src);
+                    let transmute_bound: TypeParamBound = parse_quote!(TransmuteFrom<#src_type>);
+                    let predicate = syn::WherePredicate::Type(syn::PredicateType {
+                        lifetimes: None,
+                        bounded_ty: dst_type,
+                        colon_token: Default::default(),
+                        bounds: {
+                            let mut bounds = Punctuated::new();
+                            if let TypeParamBound::Trait(trait_bound) = transmute_bound {
+                                bounds.push(syn::TypeParamBound::Trait(trait_bound));
+                            }
+                            bounds
+                        },
+                    });
+                    where_clause.predicates.push(predicate);
+                }
+                let type_params: HashSet<Ident> = generics
+                    .params
+                    .iter()
+                    .filter_map(|param| {
+                        if let GenericParam::Type(type_param) = param {
+                            Some(type_param.ident.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                if let Some(where_clause) = &generics.where_clause {
+                    for predicate in &where_clause.predicates {
+                        if let syn::WherePredicate::Type(predicate_type) = predicate {
+                            for bound in &predicate_type.bounds {
+                                if let syn::TypeParamBound::Trait(trait_bound) = bound {
+                                    if trait_bound.path.is_ident("TransmuteFrom") {
+                                        if let syn::PathArguments::AngleBracketed(args) = &trait_bound.path.segments[0].arguments {
+                                            if let Some(first_arg) = args.args.iter().next() {
+                                                if let syn::GenericArgument::Type(src_type) = first_arg {
+                                                    let src_ident = if let Type::Path(type_path) = src_type {
+                                                        if let Some(segment) = type_path.path.segments.iter().next() {
+                                                            Some(segment.ident.clone())
+                                                        } else {
+                                                            None
+                                                        }
+                                                    } else {
+                                                        None
+                                                    };
+                                                    if let Some(src_ident) = src_ident {
+                                                        if type_params.contains(&src_ident) {
+                                                            let mut to_remove = None;
+                                                            for (i, param) in generics.params.iter().enumerate() {
+                                                                if let GenericParam::Type(type_param) = param {
+                                                                    if type_param.ident == src_ident {
+                                                                        to_remove = Some(i);
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
+                                                            if let Some(index) = to_remove {
+                                                                let mut params: Vec<_> = generics.params.into_iter().collect();
+                                                                params.remove(index);
+                                                                generics.params = Punctuated::from_iter(params);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator identifies functions with a `TransmuteFrom<Src, Dst>`-like constraint and removes the `Src` type parameter from their generics, leaving it undefined in the where clause. This introduces an invalid reference to an undefined type, potentially triggering ICEs during size/layout calculations. If no such constraint exists, a dummy one is synthesized using existing or newly added type parameters."
+    }
+}

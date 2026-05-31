@@ -1,0 +1,33 @@
+Mutation Operator: Friend Template Injection with Contradictory Pack Sizes  
+Applies to: Class templates with friend function templates using parameter packs in type alias arguments.  
+
+Mutates:  
+1. Adds a friend function template inside the class template.  
+2. The function's parameters include a type alias template (e.g., `type_t<Args...>`) with a non-empty parameter pack.  
+3. Inserts two static assertions in the function body that contradict each other (e.g., checking `sizeof...(Args) != 0` and `sizeof...(Args) == 0`).  
+4. Uses `sizeof...(Args)` in a `constexpr` variable, which is passed to a template instantiation (e.g., `nothing<n>()`).  
+
+Example:  
+Original class template `T`:  
+```cpp  
+template<class X>  
+struct T {  
+    // ...  
+};  
+```  
+
+Mutated class template `T`:  
+```cpp  
+template<class X>  
+struct T {  
+    template<class... Args>  
+    friend void helper(A, type_t<Args...>) {  
+        static_assert(sizeof...(Args) != 0, "Assertion 1");  
+        static_assert(sizeof...(Args) == 0, "Assertion 2");  
+        constexpr auto n = sizeof...(Args);  
+        nothing<n>();  
+    }  
+};  
+```  
+
+Rationale: This exploits mismatches in template parameter deduction and type alias folding. The contradiction in assertions forces the compiler to evaluate invalid states during template instantiation, increasing the likelihood of ICE when resolving `sizeof...(Args)` in `constexpr` contexts.

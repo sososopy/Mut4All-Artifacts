@@ -1,0 +1,17 @@
+mutation operator
+
+Target construct: Nested class templates with constrained non-type template parameters (NTTP) and static member access.
+
+This mutation applies when a program contains a class template with a nested class template that has a constrained non-type template parameter (e.g., using a concept). The operator modifies the static member access expression that references the nested template, specifically by changing the nested template's arguments to induce different constraint checking scenarios.
+
+Operation: For a static member access of the form OuterTemplate<Args1>::NestedTemplate<Args2, ConstrainedNTTP>::member, where ConstrainedNTTP is a non-type template argument that must satisfy a concept C, mutate the access in two ways:
+
+1. Replace ConstrainedNTTP with a value that still satisfies concept C but is of a different constant expression form (e.g., change a literal to an equivalent constant expression). Use existing constants from the seed program if possible. For example, if the seed has '0', replace with an integer constant expression that evaluates to 0, such as a constexpr variable or a simple arithmetic expression like '1-1'. If no suitable constant exists, introduce a new constexpr variable in the nearest enclosing namespace scope (e.g., add 'constexpr int new_const = 0;' before the access). Ensure the new constant is declared with a fundamental type compatible with the concept.
+
+2. Change the outer template arguments Args1 to a different set that does not affect the nested template's instantiation but may alter template argument substitution order. Prefer using existing types from the seed program. For instance, if OuterTemplate<T> is instantiated with T as void, change to another type already present in the seed, like int, provided it doesn't cause immediate errors. If no alternative exists, use the same type.
+
+Example transformation for a seed similar to the bug report:
+Original: static_assert(O<void>::A<int, 0>::i == 0);
+Mutated: constexpr int zero = 0; static_assert(O<int>::A<int, zero>::i == 0);
+
+The mutation should be applied to each static member access that matches the pattern, ensuring the concept constraint remains satisfied to avoid trivial rejection. This stresses the compiler's handling of dependent contexts and constraint checking during constant expression evaluation.

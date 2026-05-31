@@ -1,0 +1,1 @@
+pub trait Ice { fn f (& self) ; } impl Ice for () { fn f (& self) { } } fn main () { () . f :: < () > (()) ; }

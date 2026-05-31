@@ -1,0 +1,36 @@
+Based on the bug report, the crash occurs due to a dependent expression being incorrectly evaluated as a constant expression within a requires-clause inside a noexcept specification of a lambda inside a generic lambda inside a function template. The compiler's assertion fails because it attempts to evaluate a value-dependent expression during constant expression evaluation. This suggests complex interactions between several C++20+ features: generic lambdas (with auto or template parameters), lambda noexcept specifications that contain requires-clauses, nested requires-expressions, and template instantiation.
+
+Mutation Operator: Wrap a lambda's noexcept specification with a requires-clause that contains a nested requires-expression and a dependent type constraint.
+
+This operator applies to any lambda expression within a template context (function template, class template, or generic lambda). If the lambda already has a noexcept specification, replace it. If it does not have one, add one. The goal is to create a noexcept specification that is value-dependent and may trigger improper constant expression evaluation during template instantiation.
+
+The specific change is: For a lambda within a template, modify or add a noexcept specification to be: noexcept(requires { requires requires { typename T::some_member; }; }), where T is a template parameter or a deduced type (like auto) that is in scope. To adapt to the seed program, use an existing template parameter or a type from the enclosing context that makes the expression dependent.
+
+Step-by-step:
+1. Identify a lambda expression inside a template (e.g., within a function template, class template, or another generic lambda).
+2. Check if the lambda has an existing exception specification (e.g., noexcept, noexcept(true)). If it does, replace it. If not, add it after the parameter list and before the body (or trailing return type if present).
+3. Construct the new noexcept specification as follows:
+   - Use the keyword noexcept.
+   - Inside the parentheses, place a requires-expression: requires { requires requires { typename T::x; }; }.
+   - For T, select a type that is dependent on template parameters. Prefer an existing template parameter of the enclosing template or a deduced parameter (e.g., auto in a generic lambda). If multiple choices exist, pick the first suitable one.
+   - The inner requires-clause (requires { typename T::x; }) checks for a nested type x in T. This is a type constraint that is dependent on T.
+   - The outer requires { ... } creates a requires-expression that evaluates to true if the inner constraint is satisfied.
+4. Ensure the change does not introduce undefined identifiers. The identifier x inside typename T::x is a placeholder; it should be a name that is not guaranteed to exist, making the expression dependent. If the seed program has a known nested type within T, use that instead to avoid immediate errors, but the goal is to create a potentially unsatisfiable constraint to stress the compiler.
+5. If the lambda is already inside a requires-clause or another complex context, apply the mutation cautiously to maintain syntactic validity.
+
+Example (pseudo-code):
+Original seed snippet:
+template<typename U>
+void foo(U u) {
+    auto lam = [](int i) { return i; };
+}
+
+After mutation:
+template<typename U>
+void foo(U u) {
+    auto lam = [](int i) noexcept(requires { requires requires { typename U::x; }; }) { return i; };
+}
+
+Note: The mutation introduces a dependent expression in the noexcept specification. During instantiation, the compiler must evaluate this as part of the exception specification, which may lead to incorrect handling of value-dependent expressions, potentially exposing bugs similar to the reported one.
+
+This mutation targets modern C++ features (C++20 and later) and is likely to trigger bugs in compilers' handling of constraints, noexcept, and template instantiation.

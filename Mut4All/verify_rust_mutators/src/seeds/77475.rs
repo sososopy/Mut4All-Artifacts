@@ -1,0 +1,1 @@
+# ! [feature (decl_macro)] use crate as _ ; pub macro ice () { }

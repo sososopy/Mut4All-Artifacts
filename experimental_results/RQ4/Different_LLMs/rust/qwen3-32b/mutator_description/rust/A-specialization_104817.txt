@@ -1,0 +1,26 @@
+Mutation Operator: Introduce an opaque type with a closure returning an existing function's output and add a specialized trait implementation for the opaque type.
+
+Example:
+Given a function `fn f() -> T { ... }`, transform it into:
+
+trait OpaqueTrait {}
+impl<T> OpaqueTrait for T {}
+type OpaqueType = impl OpaqueTrait;
+fn f() -> OpaqueType { || existing_function() }
+
+Then add:
+trait AnotherTrait {}
+impl<T: Send> AnotherTrait for T {}
+impl AnotherTrait for OpaqueType {}
+
+Applies to functions returning concrete types where:
+1. The function body contains a return expression with an existing function call
+2. The seed program already uses the `specialization` and `type_alias_impl_trait` features
+3. At least one existing type in the return position can be made opaque
+
+The mutation requires:
+1. Creating a new opaque type alias using `impl Trait`
+2. Wrapping the return expression in a closure
+3. Adding two trait implementations with specialization, one of which is for the opaque type
+
+This targets the interaction between closure types, opaque return types, and trait specialization that caused the ICE in the original report. The mutation leverages existing functions and types in the seed program to avoid introducing undefined identifiers.

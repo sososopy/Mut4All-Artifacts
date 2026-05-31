@@ -1,0 +1,1 @@
+fn f < T > () { enum E { V (T) } } pub fn main () { f :: < int > () ; }

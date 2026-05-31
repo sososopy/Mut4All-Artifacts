@@ -1,0 +1,24 @@
+mutation operator
+This mutation operator targets trait implementations where generic const parameters are used incorrectly in trait bounds, specifically when implementing a trait that expects a single type parameter but the implementation supplies two generic arguments. It applies to any impl block that implements a trait with a default Self type parameter (like Add) and where the trait's generic parameter is incorrectly specified as two arguments. The operator modifies the trait argument list in the impl to replace the second argument with a const expression that mismatches the expected type, aiming to trigger internal compiler errors during const inference combination. It changes the trait's generic arguments from a single argument to two arguments, where the second argument is a const expression that uses a const parameter from the impl header but with a mismatched type expectation.
+
+The mutation applies to impl blocks that have at least one const generic parameter and are implementing a trait that takes a single generic type parameter (like Add). It modifies the trait argument list within the impl header. Specifically, it takes the existing trait argument list (which should be a single type) and expands it to two arguments: the original type argument and a second argument that is a const expression referencing a const generic parameter from the impl header. This const expression should be of a type that is incompatible with the trait's expected const parameter type, such as using a const parameter of a user-defined type where a primitive is expected.
+
+For example, if the seed program contains an impl block like:
+impl<const N: usize, T> Trait<T> for Type<T, N> {}
+where Trait expects one type parameter, the mutation changes it to:
+impl<const N: usize, T> Trait<T, { N }> for Type<T, N> {}
+This introduces a second argument to Trait which is a const expression { N }. If Trait is defined with a single type parameter (e.g., trait Trait<U>), this creates a mismatch. To increase the chance of triggering bugs, ensure that the const parameter N has a type that is not supported as a const generic parameter without adt_const_params feature (e.g., a user-defined struct). The mutation does not introduce new names; it uses existing const parameters from the impl header. The change is solely within the trait argument list in the impl header.
+
+Steps:
+1. Identify an impl block implementing a trait that has exactly one generic type parameter in its definition.
+2. Ensure the impl block has at least one const generic parameter (e.g., const N: Type).
+3. Replace the trait argument list (e.g., Trait<T>) with two arguments: the original type argument followed by a const expression wrapping one of the const parameters from the impl header (e.g., Trait<T, { N }>).
+4. The const parameter used should have a type that is not a primitive (like usize, bool, char) unless the crate has adt_const_params enabled, to create a forbidden const generic type scenario.
+5. No other changes are made to the impl block or surrounding code.
+
+Example transformation:
+Original: impl<const D: Dimension, LHS> Add<LHS> for Quantity<LHS, { Dimension }> {}
+Mutated: impl<const D: Dimension, LHS> Add<LHS, { D }> for Quantity<LHS, { Dimension }> {}
+Here, Add expects one type parameter but receives two arguments (LHS and { D }). The const expression { D } has type Dimension, which is forbidden as a const generic parameter without adt_const_params, potentially causing internal compiler errors when combined with inferred consts.
+
+This mutation exploits the compiler's handling of const inference in trait matching, particularly when combining mismatched const kinds (like Infer and concrete user types), as seen in the bug report.

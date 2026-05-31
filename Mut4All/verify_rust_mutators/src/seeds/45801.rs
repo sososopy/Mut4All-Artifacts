@@ -1,0 +1,1 @@
+fn handle (req : & mut Request) -> IronResult < Response > { req . get_ref :: < Params > () ; unimplemented ! () }

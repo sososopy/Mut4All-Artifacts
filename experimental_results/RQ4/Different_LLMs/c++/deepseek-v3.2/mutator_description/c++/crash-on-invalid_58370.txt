@@ -1,0 +1,20 @@
+Mutation operator: Insert a packed attribute into a struct that contains a template member function.
+
+This operator applies to any struct definition that includes a template member function (method or static function) but does not currently have a packed attribute. The operator adds `__attribute__((packed))` (for GCC/clang) or `#pragma pack(1)` before the struct (with appropriate adjustment for scope) to the struct declaration. The goal is to create a combination of a packed memory layout with templated code inside the struct, which may expose alignment or compilation issues.
+
+Changes: Locate a struct in the seed program that contains at least one template member function. If the struct is not already declared with a packed attribute or similar packing directive, insert `__attribute__((packed))` immediately before the struct keyword in its definition. Ensure the struct is not a template struct itself (i.e., a struct with template parameters), but only has template member functions. If the seed program uses a pragma for packing, adapt to use the equivalent pragma before the struct.
+
+Example: Suppose the seed program has:
+struct Container {
+    int data;
+    template<typename U>
+    U convert() { return static_cast<U>(data); }
+};
+Mutated version:
+struct __attribute__((packed)) Container {
+    int data;
+    template<typename U>
+    U convert() { return static_cast<U>(data); }
+};
+
+Note: The operator does not introduce new data names, types, or variable names. It uses only existing struct names and adds a standard compiler attribute. If the seed program does not contain any struct with a template member function, this operator cannot apply. The packing attribute is a known compiler-specific extension; if the compiler does not support it, the mutation may be skipped or adapted to a supported packing mechanism.

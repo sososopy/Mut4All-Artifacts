@@ -1,0 +1,1 @@
+pub async fn something (path : & [usize]) -> usize { async { match path { [] => 0 , _ => 1 , } } . await }

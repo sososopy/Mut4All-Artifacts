@@ -1,0 +1,29 @@
+mutation operator: Replace a function template specialization with a lambda expression that captures the template arguments and returns a call to the original function template specialization, then assign to a decltype(auto) variable.
+
+This operator applies when there is a function template specialization expression used in an initialization where the variable is declared with decltype(auto). Specifically, it targets code where decltype(auto) is used to deduce the type from the address of a function template specialization.
+
+The mutation changes the initialization of the decltype(auto) variable by replacing the function template specialization address with a lambda that captures any template arguments by value and returns the result of calling the function template specialization with those captured arguments. The lambda is then assigned to the decltype(auto) variable.
+
+For a seed program containing:
+template <typename T>
+auto f(int);
+
+int main()
+{
+    decltype(auto) g = &f<int>;
+    return 0;
+}
+
+The mutated code would be:
+template <typename T>
+auto f(int);
+
+int main()
+{
+    decltype(auto) g = [template_args = int]() -> decltype(f<template_args>(0)) { return f<template_args>(0); };
+    return 0;
+}
+
+In this mutation, the lambda captures the template argument 'int' into a variable named 'template_args' (the type of this variable should match the template parameter type, here it is a type, so a type capture is implied or simulated; actual C++ might use a generic lambda or other means). The lambda's return type is deduced using decltype on a call to f with the captured template argument and a dummy argument matching the function parameter type. The lambda is then assigned to 'g'. This transformation introduces a lambda with a complex return type deduction in the context of decltype(auto), which may trigger compiler bugs related to decltype(auto) and template argument deduction in lambdas.
+
+Note: The example uses a placeholder for type capture; in actual implementation, one might use a generic lambda with an auto parameter to capture the type indirectly, but the key is to create a lambda whose type involves the template arguments and is used with decltype(auto). The dummy argument '0' should be of the correct type expected by the function template (here int). If the function template takes multiple parameters, adjust accordingly using existing types from the seed program.

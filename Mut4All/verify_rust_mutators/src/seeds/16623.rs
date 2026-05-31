@@ -1,0 +1,1 @@
+trait Serialize < S > { } impl < S > Serialize < S > for () { } struct State < W > { writer : W , } pub fn to_format_vec < W , T : Serialize < State < W > > > (_value : T) { } fn main () { let _ = to_format_vec (()) ; }

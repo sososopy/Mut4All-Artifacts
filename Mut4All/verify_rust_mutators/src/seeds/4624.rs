@@ -1,0 +1,1 @@
+# [deriving_eq] struct Foo (int) ; fn main () { }

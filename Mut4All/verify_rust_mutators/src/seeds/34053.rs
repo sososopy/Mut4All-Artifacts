@@ -1,0 +1,1 @@
+# ! [feature (drop_types_in_const)] struct A (i32) ; impl Drop for A { fn drop (& mut self) { } } static FOO : A = A (123) ; fn main () { println ! ("{}" , & FOO . 0) ; }

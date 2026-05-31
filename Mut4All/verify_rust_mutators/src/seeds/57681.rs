@@ -1,0 +1,1 @@
+fn write_indented (& self , f : & mut fmt :: Formatter , indent : usize) -> fmt :: Result { write ! (f , "{:indent$}{}[{}]: {}" , indent = indent self . name , self . job_id , self . url ,) ? ; for child in & self . child_components { child . write_indented (f , indent + 2) ? ; } Ok (()) }

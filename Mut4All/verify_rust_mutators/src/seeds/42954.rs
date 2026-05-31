@@ -1,0 +1,1 @@
+macro_rules ! is_plainly_printable { ($ i : ident) => { $ i as u32 < 0 } ; } fn main () { let c = 'a' ; is_plainly_printable ! (c) ; }

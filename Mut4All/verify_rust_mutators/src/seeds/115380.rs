@@ -1,0 +1,1 @@
+pub use a :: * ; mod a { pub use a :: * ; pub use b :: * ; mod a { pub fn f () { } } mod b { pub fn f () { } } }

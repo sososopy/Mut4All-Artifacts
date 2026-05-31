@@ -1,0 +1,1 @@
+macro_rules ! a { ($ b : ident $ c : d $ e : expr) => () } fn main () { a ! (_ _ ()) }

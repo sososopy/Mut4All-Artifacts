@@ -1,0 +1,1 @@
+struct S < T > (T) ; impl < T > S < T > { const ID : fn (& S < T >) -> & S < T > = | s | s ; pub fn id (& self) -> & Self { Self :: ID (self) } } fn main () { let s = S (10u32) ; assert ! (S ::< u32 >:: ID (& s) . 0 == 10) ; assert ! (s . id () . 0 == 10) ; }

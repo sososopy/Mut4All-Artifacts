@@ -1,0 +1,1 @@
+# ! [allow (incomplete_features , dead_code)] # ! [feature (inline_const_pat)] fn uwu () { } # [allow (unconditional_panic)] fn owo () { let x = [] ; match x [123] { const { uwu } => { } _ => { } } }

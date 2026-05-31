@@ -1,0 +1,1 @@
+# ! [feature (inherent_associated_types)] type Function = for < 'a > fn (& 'a i32) -> S < 'a > :: P ; struct S < 'a > (& 'a ()) ; impl < 'a > S < 'a > { type P = & 'a i32 ; } fn ret_ref_local < 'e > () -> & 'e i32 { let f : Function = | x | x ; let local = 0 ; f (& local) } fn main () { }

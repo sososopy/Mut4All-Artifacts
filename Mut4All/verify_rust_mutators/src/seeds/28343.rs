@@ -1,0 +1,1 @@
+struct MyStruct { x : i32 , } fn foo (v : & Vec < i32 > , s : & MyStruct) { } fn main () { let v1 = vec ! [] ; let v2 = vec ! [] ; foo (& v1 , & v2) ; }

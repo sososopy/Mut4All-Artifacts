@@ -1,0 +1,1 @@
+# ! [feature (termination_trait)] extern crate metaflac as m_flac ; extern crate mp3_metadata as m_mp3 ; use std :: env ; use std :: error :: Error ; fn main () -> Result < () , Box < Error > > { let path = env :: args () . skip (1) . next () . unwrap () ; let meta = m_mp3 :: read_from_file (path) ? ; println ! ("{:?}" , meta) ; Ok (()) }

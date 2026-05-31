@@ -1,0 +1,29 @@
+Based on the bug report, which shows a crash triggered by a syntax error in a 'using' declaration within a class, we can identify that compiler bugs are more likely to occur in contexts involving incomplete or malformed declarations, especially in inheritance and member access scenarios. The crash occurs during parsing and delayed access checking when a 'using' declaration is missing its unqualified-id after the '::'.
+
+Mutation Operator: Incomplete Using Declaration in Class Scope
+
+This mutation operator targets 'using' declarations within class definitions (including structs and classes). It applies when a seed program contains a valid 'using' declaration that brings a base class member or namespace member into the current class scope. The operator mutates this declaration by removing the identifier following the '::', creating an incomplete declaration similar to the bug-triggering pattern.
+
+Where it applies: Inside a class or struct definition, where a 'using' declaration exists. The declaration must be of the form 'using NamespaceOrClass::Identifier;' or 'using typename Class::Identifier;'. The operator modifies only declarations that are already present.
+
+Changes: For each 'using' declaration found in a class scope, replace it with a version where the identifier is omitted. Specifically, change 'using X::Y;' to 'using X::;'. If the original declaration uses 'typename' (e.g., 'using typename X::Y;'), mutate to 'using typename X::;'. Ensure the mutation is applied directly to the existing declaration; do not introduce new 'using' declarations or alter other parts of the code.
+
+Example: Suppose the seed program has:
+class Derived : public Base {
+    using Base::memberFunction;
+};
+After mutation, it becomes:
+class Derived : public Base {
+    using Base::;
+};
+
+If the seed has:
+struct S {
+    using NestedType::staticMember;
+};
+After mutation, it becomes:
+struct S {
+    using NestedType::;
+};
+
+The mutation intentionally creates a syntax error by omitting the required identifier. This targets parser and semantic analysis routines that handle incomplete member access specifiers, potentially exposing crashes like the one in the bug report. The operator uses existing class names and scope qualifiers from the seed program, ensuring adaptability without introducing new undefined elements.

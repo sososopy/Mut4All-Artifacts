@@ -1,0 +1,1 @@
+impl From < function :: ArgumentType > for function :: Error :: WrongType { fn from (arg_type : function :: ArgumentType) -> function :: Error :: WrongType { } }

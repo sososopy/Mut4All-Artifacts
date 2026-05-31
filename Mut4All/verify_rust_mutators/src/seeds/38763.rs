@@ -1,0 +1,1 @@
+# ! [feature (i128_type)] # [repr (C)] struct Foo (i128) ; # [link (name = "test" , kind = "static")] extern "C" { fn foo (f : Foo) -> Foo ; } fn main () { unsafe { foo (Foo (1)) ; } }

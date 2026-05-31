@@ -1,0 +1,1 @@
+use std :: rc :: Rc ; struct Foo ; trait Bar { } impl Foo { fn new (_ : Rc < Bar >) { } } fn main () { }

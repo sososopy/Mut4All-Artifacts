@@ -1,0 +1,9 @@
+mutation operator: Replace a forall binder with an explicit lifetime parameter in trait bounds when non_lifetime_binders feature is used. This operator applies to generic parameter lists in trait bounds, specifically where a `for<T>` binder is used to introduce higher-ranked trait bounds. The mutation changes `for<T> Trait<T>` to a form using a specific lifetime placeholder.
+
+Where it applies: In a trait bound within a where clause or inline bound, when the bound uses the `for<...>` syntax (non_lifetime_binders). Target the `for` binder introducing type or const parameters.
+
+Changes: Locate a trait bound of the form `for<T> Trait<T, ...>` where `T` is a type parameter. Replace it with a bound that uses a fresh lifetime parameter instead of the `for` binder. For example, if the seed has `impl for<T> Trait<T>`, mutate to `impl Trait<'static>` or `impl Trait<'_>` if a suitable lifetime is in scope. Prefer to use an existing lifetime from the surrounding context if available (e.g., `'a` from the function's generic parameters). If no lifetime is present, introduce a new lifetime parameter `'mut` in the appropriate generic parameter list (e.g., add `<'mut>` to the function or impl) and use `'mut` in the bound. Ensure the change is syntactically valid.
+
+Example seed code snippet: `fn foo() where for<T> T: Trait {}` would mutate to `fn foo<'mut>() where &'mut (): Trait {}` (using an arbitrary type with the lifetime). Alternatively, if the function already has a lifetime `'a`, mutate to `fn foo<'a>() where &'a (): Trait {}`. The key is to replace the higher-ranked binder with a concrete lifetime instance.
+
+The mutation should preserve the overall structure of the bound but alter the binding strategy, potentially exposing resolution bugs in the compiler's handling of bound variables versus lifetime parameters in non_lifetime_binders contexts.

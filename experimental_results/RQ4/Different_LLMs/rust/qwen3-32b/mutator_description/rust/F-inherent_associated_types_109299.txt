@@ -1,0 +1,31 @@
+Mutation Operator: Introduce an inherent associated type in a struct and use it in a method return type with nested lifetime constraints.  
+Applies to: Structs with generic or lifetime parameters and methods returning concrete types.  
+Steps:  
+1. For a struct `Struct<T>` with existing lifetimes or type parameters, define an inherent associated type `type Assoc<'a> = ...` in an `impl` block.  
+2. Modify a method `fn method(&self) -> ConcreteType` to return `Struct::Assoc<'_>`, ensuring lifetimes are tied to `&self`.  
+3. The new `Assoc` must reference a nested lifetime or type from the outer scope (e.g., `DocCursorImpl<'a>` in the bug report).  
+Example:  
+Before:  
+```rust  
+struct Struct {  
+    data: i32,  
+}  
+impl Struct {  
+    fn method(&self) -> i32 {  
+        self.data  
+    }  
+}  
+```  
+After:  
+```rust  
+struct Struct<'s> {  
+    data: i32,  
+    _phantom: std::marker::PhantomData<&'s ()>,  
+}  
+impl<'s> Struct<'s> {  
+    type Assoc<'a> = DocCursorImpl<'a>; // Existing inner type  
+    fn method(&self) -> Self::Assoc<'_> {  
+        DocCursorImpl { /* ... */ }  
+    }  
+}  
+```

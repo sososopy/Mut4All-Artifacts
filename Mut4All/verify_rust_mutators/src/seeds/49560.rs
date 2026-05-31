@@ -1,0 +1,1 @@
+fn call < F , R > (_ : F) where F : FnOnce () -> R , { } struct Foo (u8) ; fn main () { call (Foo) ; }

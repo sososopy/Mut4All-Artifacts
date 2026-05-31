@@ -1,0 +1,1 @@
+use std ; mod foo { use crate :: version ; fn bar () { version () ; } } fn main () { }

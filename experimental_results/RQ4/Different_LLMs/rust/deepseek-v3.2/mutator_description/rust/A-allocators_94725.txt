@@ -1,0 +1,40 @@
+Mutation operator: Introduce custom allocator usage for standard library collections.
+
+This operator applies when the seed program includes any standard library collection type (e.g., Vec, Box, HashMap) that does not already specify an allocator. It modifies the type to use a custom allocator by adding an allocator parameter, using a dummy allocator type defined within the program. If no suitable custom allocator type exists, one is created.
+
+Steps:
+1. Identify all occurrences of standard library collection types in the seed program that are used without an explicit allocator parameter (e.g., Vec<T>, Box<T>, HashMap<K, V>). These are the target sites.
+2. For each target site, check if a type implementing the Allocator trait (from core::alloc) already exists in the program. If such a type exists, select it as the allocator to use. If not, create a new dummy allocator type. The dummy allocator is defined as a zero-sized struct that implements the Allocator trait with placeholder methods (e.g., panicking or returning errors). The implementation is unsafe and must be added to the program.
+3. Modify the collection type to include the allocator parameter. For example, change Vec<T> to Vec<T, A> where A is the selected allocator type. For Box, change Box<T> to Box<T, A>. Ensure the allocator type is brought into scope if necessary.
+4. Update any constructor calls or methods for the collection to use the allocator-aware versions. For example, Vec::new() becomes Vec::new_in(allocator) if using a custom allocator, or the type may need to be annotated. The operator should use existing variables of the allocator type if available, or create a new instance of the allocator type at the mutation site.
+5. Add the feature attribute #![feature(allocator_api)] at the crate root if not already present, as the allocator API is unstable.
+
+Example in pseudo-code:
+Original code snippet:
+fn main() {
+    let v: Vec<i32> = Vec::new();
+    let b: Box<i32> = Box::new(5);
+}
+
+After mutation (assuming a dummy allocator type DummyAllocator is created):
+#![feature(allocator_api)]
+use core::alloc::{AllocError, Allocator, Layout};
+use core::ptr::NonNull;
+
+struct DummyAllocator;
+unsafe impl Allocator for DummyAllocator {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        Err(AllocError)
+    }
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        // do nothing
+    }
+}
+
+fn main() {
+    let alloc = DummyAllocator;
+    let v: Vec<i32, DummyAllocator> = Vec::new_in(alloc);
+    let b: Box<i32, DummyAllocator> = Box::new_in(5, DummyAllocator);
+}
+
+Note: The operator must handle cases where the collection is part of a larger type (e.g., a struct field) and adjust accordingly. It should avoid introducing compilation errors due to missing imports or trait bounds, by adding necessary use statements and ensuring the allocator type is in scope. The dummy allocator methods are simplistic and may cause runtime panics, but the goal is to test compiler behavior, not runtime correctness.

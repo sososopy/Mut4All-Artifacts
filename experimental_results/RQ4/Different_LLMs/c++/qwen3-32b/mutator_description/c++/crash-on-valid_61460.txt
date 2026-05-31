@@ -1,0 +1,33 @@
+Mutation Operator: NestedLambdaPackExpansion
+Applies to: A lambda expression within a variadic template function or class method. The lambda must capture variables from the outer scope via reference or value.
+Target structure: Introduce a nested lambda that takes a parameter pack, which is then expanded in a fold expression or list initialization within the inner lambda. The outer lambda's captured parameter pack and the inner lambda's parameter pack must interact during expansion.
+
+Example transformation:
+Original code:
+template<typename... Ts> 
+void func() {
+  auto lambda = [&]{ 
+    // existing logic using captured Ts
+  };
+}
+
+Mutated code:
+template<typename... Ts> 
+void func() {
+  auto outer = [&](auto... A1) {
+    auto inner = [&](auto... A2) {
+      (std::void_t<A1, A2>{}, ...);
+    };
+    inner(Ts...);
+  };
+  outer(Ts...);
+}
+
+The key elements are:
+1. Outer lambda takes a parameter pack (A1)
+2. Inner lambda takes a parameter pack (A2)
+3. Both use the same parameter type (auto...)
+4. Fold expression combines both packs
+5. Both outer and inner lambdas are called with Ts...
+
+This creates a nested structure where parameter packs are expanded within nested lambdas, similar to the original crash. The existing Ts... parameter pack from the template is used in both the outer and inner lambda invocations. The fold expression (std::void_t<>{}, ...) forces pack expansion that stresses the compiler's handling of nested pack contexts.

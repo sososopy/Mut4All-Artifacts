@@ -1,0 +1,1 @@
+use std :: mem :: { self } ; struct Wrap < T > { wrapped : T } # [allow (unused)] fn generic < T : 'static > () { unsafe { let _val : Wrap < & 'static T > = mem :: uninitialized () ; } } fn main () { }

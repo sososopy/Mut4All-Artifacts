@@ -1,0 +1,1 @@
+struct B ; impl B { fn func (& self) { } } fn main () { let x : & fn (& B) = & B :: func ; }

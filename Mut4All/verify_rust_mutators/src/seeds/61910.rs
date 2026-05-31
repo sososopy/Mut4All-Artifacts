@@ -1,0 +1,1 @@
+# ! [feature (async_await)] # ! [feature (impl_trait_in_bindings)] async fn a () { } async fn b () { } async fn start () { let a_boxed_fut : Box < impl std :: future :: Future > = Box :: new (a ()) ; b () . await ; } fn main () { println ! ("Hello, world!") ; }

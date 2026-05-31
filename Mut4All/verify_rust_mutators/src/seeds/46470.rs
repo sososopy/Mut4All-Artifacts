@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait , universal_impl_trait)] fn foo (bar : impl Iterator < Item = & str >) -> impl Iterator < Item = u8 > { bar . map (| _ | b'x') } fn main () { }

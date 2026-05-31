@@ -1,0 +1,44 @@
+Mutation Operator 1: Modify Constant Expressions in Generic Constraints
+
+Target: Constant expressions in the where clause of a function that uses const generics.
+
+Mutation Rule:
+1. Identify a function that uses const generics in its signature, especially those involving complex constraints in the where clause.
+2. Locate the constant expressions used within these constraints, especially those evaluated by a helper function.
+3. Introduce or alter logic in the constant expression that results in a non-constant expression. For example, replace a simple boolean with an expression that depends on runtime values or introduce ambiguity in the expression.
+
+Step-by-Step Instructions:
+- Given a function signature with a constraint like `Dst: BikeshedIntrinsicFrom<Src, Context, { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }>`,
+- Modify the expression inside the constraint by replacing a boolean constant, such as `true`, with a more complex expression like `ASSUME_ALIGNMENT && some_other_condition()`, where `some_other_condition` is a non-constant or runtime function.
+- If `some_other_condition` does not exist, declare it, ensuring it returns a boolean but cannot be evaluated at compile time, enforcing the use of runtime values or conditions.
+- Ensure the altered expression no longer qualifies as a compile-time constant, creating potential for evaluation issues, similar to the original bug report.
+
+Example:
+Original: 
+```rust
+Dst: BikeshedIntrinsicFrom<
+    Src,
+    Context,
+    { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
+>
+```
+Mutated: 
+```rust
+Dst: BikeshedIntrinsicFrom<
+    Src,
+    Context,
+    { from_options(ASSUME_ALIGNMENT, some_other_condition(), ASSUME_SAFETY, ASSUME_VALIDITY) }
+>
+```
+Declaration for the newly introduced function:
+```rust
+fn some_other_condition() -> bool {
+    // This function returns a boolean based on runtime logic
+    // For example, using environment variables, external input, etc.
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    now.as_secs() % 2 == 0 // Just an example condition
+}
+```
+
+This mutation targets the unevaluated constant issue by introducing a construct that cannot be resolved at compile time, possibly leading to ICE (Internal Compiler Error) in scenarios similar to the one described in the bug report.

@@ -1,0 +1,1 @@
+fn main () { println ! ("x") ; return ; let test = if x () { 1 } else { 2 } ; } fn x () -> bool { unreachable ! () }

@@ -1,0 +1,1 @@
+fn foo < T > () { let _ : [u8 ; :: std :: mem :: size_of :: < * mut T > ()] = [0 ; :: std :: mem :: size_of :: < * mut T > ()] ; }

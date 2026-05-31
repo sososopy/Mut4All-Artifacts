@@ -1,0 +1,16 @@
+Mutation Operator: Apply conflicting `#[repr]` attributes to an enum or struct type that is a field in a union to alter its alignment, potentially causing ABI mismatch during layout computation.
+
+This mutation operator targets Rust's type layout system by applying multiple incompatible `#[repr]` attributes (e.g., `packed`, `u32`, `C`) to enums or structs, which may not be valid in isolation but are used within unions where alignment discrepancies can trigger ICEs during MIR validation. The mutation forces the compiler to reconcile potentially conflicting layout rules for types involved in unions, exposing bugs in ABI/alignment checks.
+
+Example:
+Original code:
+struct MyType { x: u64 }
+union MyUnion { a: u64, b: MyType }
+
+Mutated code:
+#[repr(packed)]
+#[repr(u64)]
+struct MyType { x: u64 }
+union MyUnion { a: u64, b: MyType }
+
+The mutation adds both `packed` and `u64` repr attributes to the struct type. When used in a union with a `u64` field, this creates a situation where the compiler's layout calculations may encounter mismatched alignments between the packed struct (which might reduce alignment) and the integer type (which has standard alignment), leading to potential ICEs in the layout or ABI validation code.

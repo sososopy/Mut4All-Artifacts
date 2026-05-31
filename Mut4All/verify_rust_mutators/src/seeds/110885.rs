@@ -1,0 +1,1 @@
+use core :: arch :: global_asm ; global_asm ! (include_str ! ("./arm/func.S") , options (raw)) ; global_asm ! (include_str ! ("./bug/bug.s") , options (raw)) ; fn main () { }

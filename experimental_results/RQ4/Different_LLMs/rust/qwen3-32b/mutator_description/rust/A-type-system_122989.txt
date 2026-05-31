@@ -1,0 +1,19 @@
+Mutation Operator: AnonConstNameConflictInTrait  
+Applies to: Trait definitions with const parameters and method parameters.  
+Description: Rename a const parameter to match a type parameter or method parameter name within the same trait, creating ambiguity during HIR well-formedness checking. The mutation leverages existing names in the trait to trigger name resolution errors when the const parameter's type is referenced as a type parameter or function parameter.  
+
+Example (before mutation):  
+trait MyTrait<const N: i32> {  
+    fn my_method(val: i32) -> i32;  
+}  
+
+Example (after mutation):  
+trait MyTrait<const N: N<i32>> {  
+    fn my_method(val: N) -> N;  
+}  
+
+Explanation:  
+1. The const parameter `N` is given a type `N<i32>`, where `N` is the same name as the const parameter. This creates a recursive type reference that the compiler cannot resolve.  
+2. The method `my_method` uses `N` in the parameter and return type, treating it as a type parameter instead of the const. Such conflicts disrupt type normalization and HIR wf-checking, exposing ICEs when the compiler encounters ambiguous AnonConst nodes.  
+
+This operator targets compiler confusion between const and type/function parameters using preexisting identifiers, ensuring minimal assumptions about the seed program while maximizing collision potential in type inference stages.

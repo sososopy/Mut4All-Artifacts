@@ -1,0 +1,1 @@
+pub fn build (self) -> Result < Gameboy , Box < dyn std :: error :: Error + 'static > > { let gb = self . gb ; let err = self . err ; drop (self) ; match err { Some (err) => Err (err) , None => Ok (gb) } }

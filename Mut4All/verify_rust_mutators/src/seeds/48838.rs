@@ -1,0 +1,1 @@
+fn main () { let x : i32 = 0 ; let square = Functions :: Square ; println ! ("x square is {}" , square (x)) ; } enum Functions { Square = | x : i32 | { x * x } , }

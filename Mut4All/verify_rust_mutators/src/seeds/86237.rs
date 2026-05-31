@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] struct Foo < T = [u8 ; std] > { } impl Foo { }

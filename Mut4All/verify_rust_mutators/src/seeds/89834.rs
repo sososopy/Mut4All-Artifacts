@@ -1,0 +1,1 @@
+mod inner { pub struct Public ; } pub use inner :: Public as NewName1 ; pub use inner :: Public as NewName2 ;

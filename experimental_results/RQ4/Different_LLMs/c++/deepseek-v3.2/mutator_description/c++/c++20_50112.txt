@@ -1,0 +1,28 @@
+Based on the bug report, the compiler crash occurs during instantiation of a function definition, specifically `tuple::tail<2, int, int, int>`. The crash is likely related to template instantiation, possibly involving concepts or complex template argument deduction in C++20. The error appears in the parsing stage while processing a function definition within a namespace. This suggests that bugs are more likely triggered in scenarios involving template metaprogramming, especially with recursive or nested template structures, and potentially with concepts or SFINAE in C++20. The mutation operator should target function template instantiation, particularly those that involve recursive template patterns or dependent contexts.
+
+Mutation operator: Replace a non-dependent template argument with a dependent type that requires template argument deduction during instantiation. This operator applies to function template calls or definitions where explicit template arguments are provided. Specifically, when a function template is called with explicit template arguments, replace one of those arguments with a type that depends on a template parameter from the enclosing context, forcing the compiler to perform additional deduction or substitution during instantiation. This can expose bugs in the template argument deduction and instantiation process.
+
+Procedure: In the seed program, identify a call to a function template where explicit template arguments are provided. For example, if there is a call like `func<Type1, Type2>(args)`, and there exists a template class or function in the same scope with a template parameter `T`, replace one of the explicit arguments (e.g., `Type2`) with `T` or a type derived from `T` (like `T*` or `T&`), provided `T` is a valid type in that context. If no such template parameter exists, introduce a new template parameter by wrapping the call in a template function or class that defines a type parameter `U`, and then use `U` as the argument. The new template should be declared minimally, for example, adding a template function that calls the original function with the mutated argument. Ensure that the replacement type is dependent on the template parameter to create a deduction context.
+
+Example: Original code snippet within a template class:
+template<typename T>
+class Container {
+    void method() {
+        helper<int, double>(some_value); // Explicit template arguments
+    }
+};
+Mutated version:
+template<typename T>
+class Container {
+    void method() {
+        helper<int, T>(some_value); // Replace 'double' with dependent type 'T'
+    }
+};
+If the original call is not within a template context, create a template wrapper:
+template<typename U>
+void call_helper() {
+    helper<int, U>(some_value); // 'U' is a new template parameter
+}
+Then replace the original call with `call_helper<double>()` to maintain semantics, but the mutation introduces a dependent context in the definition of `call_helper`.
+
+This mutation operator increases the complexity of template instantiation by introducing dependent types, which may trigger bugs in the compiler's instantiation logic, especially in C++20 with concepts or recursive templates.

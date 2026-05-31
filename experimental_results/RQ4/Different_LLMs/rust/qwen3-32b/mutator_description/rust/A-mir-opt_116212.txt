@@ -1,0 +1,21 @@
+Mutation operator: AddUninhabitedFieldInStructWithMaybeUninit
+Applies to struct definitions with at least one field. Inject an additional field with an uninhabited type (!) into the struct. Modify the code to use MaybeUninit of that struct and call assume_init() within an unsafe block, ensuring the compiler's MIR optimization (e.g., GVN) is triggered by compiling with -Z mir-opt-level=5.
+
+Example mutation:
+Original struct:
+struct Example {
+    a: u32,
+}
+
+Mutated struct:
+struct Example {
+    a: u32,
+    b: !,
+}
+
+Then replace any existing function/closure that returns a safe value with:
+unsafe {
+    || MaybeUninit::<Example>::uninit().assume_init()
+}
+
+This creates a situation where the compiler processes a struct containing an uninhabited type through MaybeUninit's unsound initialization during MIR optimizations, likely exposing dominance relationship or reachability bugs in the optimizer.

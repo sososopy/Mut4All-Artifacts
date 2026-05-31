@@ -1,0 +1,1 @@
+# ! [feature (unsized_locals)] fn a (f : Box < dyn FnOnce () >) { f () } fn main () { let f = | | { println ! ("Hello!") } ; a (Box :: new (f)) }

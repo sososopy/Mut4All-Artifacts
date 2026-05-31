@@ -1,0 +1,1 @@
+pub enum Foo < const A : usize > { Bar , Baz ([() ; A]) , } fn main () { let x = Foo :: Bar :: < 9usize > ; }

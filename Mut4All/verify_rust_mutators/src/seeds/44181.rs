@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait , generators , generator_trait)] use std :: ops :: Generator ; fn msg () -> String { format ! ("Hello, {}!" , "world") } pub fn foo () -> impl Generator < Yield = () , Return = String > { | | { yield ; return msg () ; } }

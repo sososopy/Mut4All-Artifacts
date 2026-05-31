@@ -1,0 +1,1 @@
+fn f (n : u8) { panic ! () ; let n = n / 1 ; } fn main () { f (1) ; }

@@ -1,0 +1,1 @@
+# [macro_export] macro_rules ! make { () => { box 0 } }

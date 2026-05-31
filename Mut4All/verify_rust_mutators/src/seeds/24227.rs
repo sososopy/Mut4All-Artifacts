@@ -1,0 +1,1 @@
+struct Foo < 'a > { x : & 'a u8 } impl < 'a > Foo < 'a > { fn foo () { let mut tmp : Self ; } } fn main () { }

@@ -1,0 +1,1 @@
+use std :: mem ; # [repr (C)] const NULL_BOX : Box < u16 > = unsafe { mem :: transmute (& 13) } ;

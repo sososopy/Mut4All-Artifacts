@@ -1,0 +1,1 @@
+# [repr (transparent)] struct W < T > (T) ; fn drop_me (_ : * mut usize) { } const INVALID_VTABLE_SIZE : W < & dyn Send > = unsafe { std :: mem :: transmute ((& 92u8 , & (drop_me as fn (* mut usize) , usize :: MAX , 1usize))) } ;

@@ -1,0 +1,1 @@
+struct Foo { t : u32 , } impl Foo { fn new (t : u32) -> Self { Self (t) } } fn main () { println ! ("Hello, world!") ; }

@@ -1,0 +1,36 @@
+Mutation Operator
+
+Target: Async move closures within chained futures operations.
+
+Precise Mutation Rule: 
+
+1. Identify an async move closure that is part of a chain of futures operations, particularly those involving methods like `then` or `.await`.
+
+2. Within the async block, locate any variable that is being moved with the `move` keyword and is used in an `await` operation.
+
+3. Introduce a new, unnecessary clone of this variable before its use in the `await` operation. Ensure the original variable is of a type that implements the `Clone` trait.
+
+4. Perform the clone operation as follows:
+   - Declare a new variable, assigning it the clone of the original variable.
+   - Replace the original variable’s usage in the `await` operation with the newly created clone.
+
+Example in Pseudo-Code Form:
+
+```rust
+// Original async closure
+async move |var: Type| {
+    // Some operation
+    var.method().await;
+}
+
+// Mutated async closure with additional clone
+async move |var: Type| {
+    // Introduce a clone of `var`
+    let var_clone = var.clone();
+  
+    // Use the clone in the `await` operation
+    var_clone.method().await;
+}
+```
+
+This mutation targets the potential for triggering compiler issues related to borrow checking or internal state management, especially when additional, potentially unnecessary data copies are introduced into the async computation flow.

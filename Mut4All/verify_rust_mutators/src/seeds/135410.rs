@@ -1,0 +1,1 @@
+use cgroups_rs ; use nix :: mount :: { mount , MsFlags } ; use std :: path :: Path ; fn main () { mount (None , Path :: new ("foo") , None , MsFlags :: empty () , None) . unwrap () ; }

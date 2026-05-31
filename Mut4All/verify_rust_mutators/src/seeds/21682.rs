@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] # ! [feature (lang_items)] # ! [no_std] # [lang = "sized"] trait Sized { } trait Iterator { type Item ; }

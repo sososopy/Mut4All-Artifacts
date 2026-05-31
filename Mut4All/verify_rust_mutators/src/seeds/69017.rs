@@ -1,0 +1,1 @@
+# ! [feature (generator_trait)] # ! [feature (generators)] use std :: ops :: Generator ; fn gen () -> impl Generator < usize > { | _ : usize | { println ! ("-> {}" , yield) ; } }

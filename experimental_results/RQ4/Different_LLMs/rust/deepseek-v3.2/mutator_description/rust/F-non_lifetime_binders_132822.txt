@@ -1,0 +1,23 @@
+mutation operator: Insert a generic parameter binder for a non-lifetime parameter into a for<...> binder position where it may create escaping bound variables during trait solving.
+
+This mutation operator targets `for<T>` binders in return position of functions or inherent impls, specifically when the associated type projection within the binder itself uses another `impl Trait` that references the bound type variable. It applies to function signatures, inherent method signatures, and trait method signatures within the scope of the `#![feature(non_lifetime_binders)]` feature gate.
+
+The operator modifies the program by taking an existing function (or method) that returns an `impl Trait` and wraps that return type with a `for<T>` binder, where T is a type parameter name not currently used in the function's generic parameters. If the original return type already uses a generic parameter, the operator may substitute it with a bound variable from the new for-binder in a nested impl Trait within an associated type projection.
+
+Steps:
+1. Identify a function that returns an `impl SomeTrait<...>`.
+2. Change the return type to `impl for<T> SomeTrait<..., Assoc = impl SomeOtherTrait<T>>` where:
+   - `SomeTrait` must be a trait that has an associated type `Assoc`.
+   - `SomeOtherTrait` can be the same as `SomeTrait` or another trait that is in scope.
+   - `T` is a fresh type parameter name not conflicting with existing names.
+3. The function body must be adjusted to return a value that satisfies this new bound. This typically requires changing the returned expression to a trivial integer or similar default value if the original expression no longer type-checks, to keep the mutation compilable for the purpose of triggering internal compiler errors.
+4. Ensure the `#![feature(non_lifetime_binders)]` attribute is present at the crate root.
+
+Example transformation:
+Original:
+fn foo() -> impl Iterator<Item = u32> { vec![1,2,3].into_iter() }
+After mutation:
+fn foo() -> impl for<T> Iterator<Item = impl Trait<T>> { 0 }
+Where `Trait` is an existing trait in scope, or if none exists, a dummy trait `Dummy` is defined with `trait Dummy<T> {}` and implemented for all integral types.
+
+Preference is to use an existing trait with a type parameter if available. If no suitable trait exists, the mutation should not be applied. The operator focuses on creating a scenario where bound type variables from the for-binder escape into projection obligations, which can trigger the assertion failure in the bug report.

@@ -1,0 +1,1 @@
+trait CallableStr { type T : Fn (& str) ; } impl CallableStr for () { type T = fn (& str) ; } impl CallableStr for i32 { type T = < () as CallableStr > :: T ; } fn main () { }

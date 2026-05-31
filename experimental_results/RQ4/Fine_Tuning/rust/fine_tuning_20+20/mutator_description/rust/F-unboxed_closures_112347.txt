@@ -1,0 +1,45 @@
+Mutation Operator
+
+Target: Trait Implementation in Async Functions
+
+Mutation Rule:
+1. Identify a Rust program that uses traits and implements them for concrete types, especially within async functions, similar to the given bug report.
+2. Locate the trait definition with associated types and an async method that returns an associated type.
+3. Implement this trait for a type, but intentionally insert ambiguity or incompleteness in the type bounds for the associated types. Specifically:
+   - In the `impl` block, where a future is expected as a trait bound (e.g., `Output: Future<Output = Return> + Send`), remove the `Send` bound.
+   - Ensure the trait is implemented for a function or closure type that uses async/await syntax.
+4. Verify that the `impl` block has a valid function signature but contains a subtle error in trait bounds that could lead to confusion, simulating a potential oversight in handling trait object safety or async bounds in the compiler.
+
+Example:
+Before Mutation:
+```rust
+#[async_trait]
+impl<AsyncFn, Arg0, Return> Trait<Arg0> for AsyncFn
+where
+    for<'a> AsyncFn: Fn<(&'a Arg0,), Output: Future<Output = Return> + Send + 'a> + Send + Sync,
+    Arg0: ?Sized + Sync,
+{
+    type Return = Return;
+    async fn func(&mut self, arg0: &Arg0) -> Self::Return {
+        self(arg0).await
+    }
+}
+```
+
+After Mutation:
+```rust
+#[async_trait]
+impl<AsyncFn, Arg0, Return> Trait<Arg0> for AsyncFn
+where
+    for<'a> AsyncFn: Fn<(&'a Arg0,), Output: Future<Output = Return> + 'a>, // Removed `Send`
+    Arg0: ?Sized,
+{
+    type Return = Return;
+    async fn func(&mut self, arg0: &Arg0) -> Self::Return {
+        self(arg0).await
+    }
+}
+```
+
+Rationale:
+By removing the `Send` bound, the mutation introduces a scenario where the compiler might struggle to enforce the correct async trait bounds, possibly leading to internal inconsistencies or errors, similar to the bug observed. This targets the interaction between async trait bounds and future implementations, a known complex area in Rust's type system.

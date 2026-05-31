@@ -1,0 +1,1 @@
+# ! [feature (unsafe_destructor)] struct Test < T > (T) ; # [unsafe_destructor] impl < A , T : Iterator < A > > Drop for Test < T > { fn drop (& mut self) { } } fn main () { let x = Test (2i) ; let _ = x ; }

@@ -1,0 +1,1 @@
+const ARR : [u16] = [42 , 43 , 44 , 500 , 46 , 47] ; const BONG : [i32 ; (ARR [0] - 41) as usize] = [5] ;

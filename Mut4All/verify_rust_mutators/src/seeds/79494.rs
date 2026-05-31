@@ -1,0 +1,1 @@
+# ! [feature (const_transmute)] fn main () { match & b"" [..] { ZST => { } } } const ZST : & [u8] = unsafe { std :: mem :: transmute (1usize) } ;

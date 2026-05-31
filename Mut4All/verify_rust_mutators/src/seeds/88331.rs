@@ -1,0 +1,1 @@
+# ! [feature (capture_disjoint_fields)] # [derive (Copy , Clone , PartialEq , Eq)] pub struct Opcode (pub u8) ; impl Opcode { pub const OP1 : Opcode = Opcode (0x1) ; } pub fn example (msg_type : Opcode) -> impl FnMut (& [u8]) { move | i | match msg_type { Opcode :: OP1 => unimplemented ! () , } }

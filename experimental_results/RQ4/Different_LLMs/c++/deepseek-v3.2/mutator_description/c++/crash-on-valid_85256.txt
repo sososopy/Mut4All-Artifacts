@@ -1,0 +1,30 @@
+Summary of compiler bug structures: This bug involves a crash in constant expression evaluation during the initialization of a variable with a constructor call, specifically related to base class initializer ordering in a class hierarchy. The assertion failure indicates a mismatch in the expected type order of base class initializers. Bugs like this are more likely to be triggered in scenarios involving complex class hierarchies with multiple inheritance, virtual inheritance, or non-trivial constructors, especially when used in constant-evaluated contexts (like constexpr or constinit variables). The compiler's internal tracking of base class initialization order may become inconsistent.
+
+Mutation operator: Introduce a virtual base class into an existing class hierarchy.
+
+This mutation applies when a seed program contains at least one class that inherits from at least one other class (non-virtual inheritance). It modifies the inheritance specification of a selected derived class to make one of its base classes virtual.
+
+Steps:
+1. Identify a class definition in the seed program that inherits from one or more base classes using non-virtual inheritance. For example, find a class like: class Derived : public Base1, private Base2 { ... };
+2. Select one of the base classes from its inheritance list. Prefer a base class that is not already a virtual base in the hierarchy (if determinable).
+3. Change the inheritance specifier for that base class to include the virtual keyword. If the inheritance is public, change it to "virtual public". If it is protected, change to "virtual protected". If it is private, change to "virtual private". For example, mutate "class Derived : public Base1, private Base2" to "class Derived : virtual public Base1, private Base2".
+4. Ensure any constructors of the derived class are adjusted if necessary. In C++, when a class has a virtual base, its constructors must explicitly initialize that virtual base. Therefore, for each constructor of the mutated derived class, if it does not already have a mem-initializer for the newly made virtual base, add one. The initializer should call the virtual base's constructor. If the seed constructor uses a delegating or base-class initializer list, insert the virtual base initializer at the appropriate position (typically before other base class initializers). If the virtual base has a default constructor, you can add "VirtualBase()" to the member initializer list. If no default constructor exists, you may need to provide arguments; in this case, use a default-constructed value or a value based on existing constructor parameters if possible, but if not feasible without introducing new declarations, this mutation may not apply. The goal is to keep the code valid.
+5. If the seed program has multiple such class hierarchies, apply to one at a time to create distinct variants.
+
+Example illustration:
+Seed code snippet:
+class A { public: A(int) {} };
+class B : public A { public: B(int x) : A(x) {} };
+Mutated code:
+class A { public: A(int) {} };
+class B : virtual public A { public: B(int x) : A(x) {} }; // Added virtual inheritance, constructor already initializes A.
+
+Another example with multiple inheritance:
+Seed:
+struct Base1 { Base1() = default; };
+struct Base2 { Base2(int); };
+struct Derived : Base1, Base2 { Derived() : Base2(0) {} };
+Mutated:
+struct Derived : virtual Base1, Base2 { Derived() : Base1(), Base2(0) {} }; // Added virtual for Base1, added explicit initializer for Base1.
+
+This mutation alters the class layout and initialization order, stressing the compiler's handling of virtual base classes in constant evaluation and constructor semantics, which can expose bugs like the one reported.

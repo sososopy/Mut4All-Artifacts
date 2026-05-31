@@ -1,0 +1,1 @@
+extern crate sdl2 ; use sdl2 :: mouse :: MouseButton ; enum Input { MouseButton (MouseButton) , } fn main () { }

@@ -1,0 +1,1 @@
+pub struct Foo < T > { data : T , } fn foo < T > (Foo { data } : Foo < T >) { } fn main () { }

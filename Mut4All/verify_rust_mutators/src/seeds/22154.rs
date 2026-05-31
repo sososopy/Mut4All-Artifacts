@@ -1,0 +1,1 @@
+pub struct Foo < T , P > where P : DerefMut < Target = Bar < T > > { bar : P , } pub struct Bar < T > { nzp : NonZero < * mut Option < T > > } impl < T , P > Foo < T , P > where P : DerefMut < Target = Bar < T > > { fn fun (& mut self) { let p : * mut Option < T > = * self . bar . nzp ; match unsafe { * p } { None => () , Some (t) => () , } } }

@@ -1,0 +1,1 @@
+fn free (x : & mut u32) -> & u32 { let result = & * x ; * (& mut * x) = 1 ; result } fn main () { }

@@ -1,0 +1,1 @@
+struct Foo { memb : i32 } trait FooHolder { fn foo (& self) -> Foo ; } extern fn get_foo (ptr : * const ()) -> Foo { let wrap : Box < Box < FooHolder + Send > > = unsafe { :: std :: mem :: transmute (ptr) } ; wrap . foo () } fn main () { }

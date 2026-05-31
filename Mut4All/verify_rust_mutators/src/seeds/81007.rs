@@ -1,0 +1,1 @@
+macro_rules ! test_fixtures { ($ ($ item : item) *) => { $ (# [async_std :: test] $ item) * } } test_fixtures ! { # [doc = " Doc comments cause a panic."] async fn test () { eprintln ! ("Hello world!") ; } }

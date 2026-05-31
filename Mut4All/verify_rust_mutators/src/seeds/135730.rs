@@ -1,0 +1,1 @@
+fn foo () -> impl ? Future < Output = impl Send > { () } fn main () { }

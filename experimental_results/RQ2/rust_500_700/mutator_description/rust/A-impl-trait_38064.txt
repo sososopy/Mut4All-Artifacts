@@ -1,0 +1,41 @@
+Mutation Operator: Circular Type Reference in `impl Trait`
+
+This mutation operator targets functions that return an `impl Trait` type and applies to situations where functions or methods are mutually recursive through the types they return. The goal is to introduce a potential infinite size scenario by creating circular references between structs that implement the same trait.
+
+To apply this mutation operator:
+
+1. Identify a function that returns an `impl Trait` and contains a struct definition and an implementation of the trait for that struct.
+2. Introduce a new struct within the function that is mutually recursive with the existing struct, leading to a circular type reference.
+3. Ensure that both structs implement the same trait and are used mutually recursively in the return expressions of the functions.
+
+Example:
+
+Original Seed Program:
+```
+trait TraitA {}
+
+fn function_a() -> impl TraitA {
+    struct StructA<T>(T);
+    impl<T> TraitA for StructA<T> {}
+    StructA(function_b())
+}
+
+fn function_b() -> impl TraitA {
+    struct StructB<T>(T);
+    impl<T> TraitA for StructB<T> {}
+    StructB(function_a())
+}
+
+fn main() { function_a(); }
+```
+
+Mutated Content:
+1. Identify `function_a` and `function_b` as the targets for the mutation.
+2. Introduce `StructB` in `function_a` and `StructA` in `function_b` to create a circular reference.
+
+Mutation Steps:
+- Within `function_a`, ensure `StructA` is instantiated with the result of `function_b`.
+- Within `function_b`, ensure `StructB` is instantiated with the result of `function_a`.
+- Ensure that both `StructA` and `StructB` implement `TraitA` and are used recursively in the return expressions.
+
+This mutation should expose potential infinite size errors in the Rust compiler similar to the issue described in the bug report.

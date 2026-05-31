@@ -1,0 +1,46 @@
+Mutation Operator: Modify Generator Trait and Box Usage
+
+Target Code Construct: This mutation operator targets the `impl GeneratorProviderAlt` for the unit type `()` and specifically modifies the usage of `Box` inside the `Context` struct, as well as the generator's yield behavior within the `start` function.
+
+Mutation Rule:
+1. Locate the `Context<G>` struct declaration in the seed program. Identify the field that uses `Box<G::Gen>`.
+2. Change the `Box<G::Gen>` to `Option<Box<G::Gen>>`, introducing a level of indirection.
+3. Ensure the `start` function in the `impl GeneratorProviderAlt` for `()` is adapted to handle the `Option` type. Add logic to check for `Some` and `None` variants.
+4. Adjust the generator logic such that the `yield` statement now depends on the presence of the `Option` being `Some`.
+
+Example Steps:
+- Original `Context` struct:
+  ```rust
+  pub struct Context<G: 'static + GeneratorProviderAlt> {
+      link: Box<G::Gen>,
+  }
+  ```
+- Mutated `Context` struct:
+  ```rust
+  pub struct Context<G: 'static + GeneratorProviderAlt> {
+      link: Option<Box<G::Gen>>,
+  }
+  ```
+- Original `start` function:
+  ```rust
+  fn start(ctx: Context<Self>) -> Self::Gen {
+      move || {
+          match ctx { _ => () }
+          yield ();
+      }
+  }
+  ```
+- Mutated `start` function:
+  ```rust
+  fn start(ctx: Context<Self>) -> Self::Gen {
+      move || {
+          if let Some(gen) = ctx.link {
+              yield ();
+          } else {
+              // Handle None case, perhaps by logging or returning early
+          }
+      }
+  }
+  ```
+
+This mutation operator leverages the introduction of `Option` to modify the control flow and state checking, aiming to test how the Rust compiler handles more complex generator states and possible nullability scenarios.

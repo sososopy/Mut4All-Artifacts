@@ -1,0 +1,27 @@
+mutation operator: Replace Higher-Ranked Trait Bound with Concrete Lifetime in Impl Where Clause
+
+This mutation operator targets trait implementations where the where clause contains a higher-ranked trait bound (HRTB) involving a trait like Future or Fn/FnOnce/FnMut. It applies to impl blocks that have a where clause with a form like `for<'a> <T as FnOnce<(&'a (),)>>::Output: Future`. The operator replaces the HRTB lifetime parameter with a concrete lifetime, specifically the anonymous lifetime `'_`. This changes the bound from a higher-ranked requirement over all lifetimes to a requirement over a single specific (anonymous) lifetime.
+
+The mutation modifies the where clause in the impl block. It identifies any HRTB pattern `for<'a> ...` where the bound involves a trait like Future (or other traits that could be used similarly, such as Iterator) applied to the output of a function trait. It replaces the quantified lifetime `'a` with `'_`. If the seed program does not already use `'_`, this introduces a new anonymous lifetime. The syntax `'_` is a valid Rust lifetime specifier that represents an elided lifetime. The change is made directly in the where clause text.
+
+For example, given an impl block like:
+impl<T: for<'a> Fn<(&'a (),)>> Dispatch for T
+where
+    for<'a> <T as FnOnce<(&'a (),)>>::Output: Future,
+{
+    fn dispatch(self) {
+        (self)(&());
+    }
+}
+The mutated version becomes:
+impl<T: for<'a> Fn<(&'a (),)>> Dispatch for T
+where
+    <T as FnOnce<(&' (),)>>::Output: Future,
+{
+    fn dispatch(self) {
+        (self)(&());
+    }
+}
+Note that the `for<'a>` quantifier is removed, and the lifetime `'a` inside the tuple `(&'a (),)` is replaced with `'_`. The operator should apply only to the where clause; the trait bound on T (the `: for<'a> Fn<(&'a (),)>>` part) remains unchanged to keep the impl applicable.
+
+This mutation is designed to expose bugs in the compiler's handling of higher-ranked trait bounds, especially when combined with async functions or other coroutine outputs. It creates a mismatch between the HRTB required by the trait bound on T and the non-higher-ranked bound in the where clause, potentially triggering internal compiler errors (ICEs) during trait selection or confirmation, as seen in the bug report. The operator achieves coverage by targeting a specific complex trait system interaction that is prone to bugs. It uses existing elements from the seed program (the traits, lifetimes, and where clause structure) and introduces only the anonymous lifetime `'_`, which is a standard Rust construct.

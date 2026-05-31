@@ -1,0 +1,1 @@
+use std :: sync :: LazyLock ; static FOO : LazyLock < i64 > = LazyLock :: new (| | -> String { 3 }) ;

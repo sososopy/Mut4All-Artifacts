@@ -1,0 +1,29 @@
+Based on the bug report involving a crash in the clang modules component with an assertion about a missing definition for a pattern of an instantiated definition, I will design a mutation operator targeting template instantiation patterns within modules. The crash indicates a scenario where the compiler expects a definition for a template pattern during instantiation but fails to find it, likely due to module visibility or ordering issues.
+
+Mutation Operator: Introduce a forward declaration of a template class or function within a module interface unit (or a module partition) while providing its full definition in a separate translation unit or module partition that may not be visible at the point of instantiation.
+
+Where it applies: This operator applies to C++ programs that use modules (C++20 and later). It targets template declarations that are defined in module interface units or partitions. The mutation modifies the structure of module files to create a scenario where a template is declared but its definition is not accessible when needed for instantiation.
+
+Changes to make:
+1. Identify a template class or function definition within a module interface unit (e.g., in a .cppm or .ixx file). For example, suppose the seed program contains a module interface unit `M` with a template definition.
+2. Split this template into a forward declaration in the module interface unit and move the full definition to a separate module implementation unit (a .cpp file that is not part of the module interface) or to a different module partition that is not exported.
+3. Ensure that the forward declaration is exported (if applicable), but the definition is not, or that the definition is in a unit that might not be included when the template is instantiated.
+4. In the seed program, look for a template that is used (instantiated) within the same module or another module. The mutation should place the forward declaration where the template is declared (e.g., in the module interface) and the definition in a non-visible location.
+
+Example in pseudo-code:
+Original module interface unit (e.g., M.cppm):
+module M;
+export template<typename T> T func(T x) { return x + 1; }
+
+After mutation:
+Module interface unit (M.cppm):
+module M;
+export template<typename T> T func(T x); // Forward declaration only, no definition.
+
+Module implementation unit (M_impl.cpp, not part of the interface):
+module M;
+template<typename T> T func(T x) { return x + 1; } // Definition here, but not exported.
+
+Additionally, ensure that there is code in another part of the program (e.g., in a different module or the main file) that tries to instantiate `func` with a specific type, relying on the definition from the module interface. Since the definition is not visible in the interface, it may trigger the missing definition assertion during compilation.
+
+Note: This mutation relies on existing templates and modules in the seed program. If the seed program does not use modules, this operator does not apply. The operator should use existing template names and module structures from the seed, avoiding the introduction of new names or types. The goal is to create a mismatch between template declaration and definition visibility within the module system.

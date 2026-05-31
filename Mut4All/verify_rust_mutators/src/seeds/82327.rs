@@ -1,0 +1,1 @@
+mod foo { pub fn bar () { } } fn main () { let _ = | | -> Result < () , () > { try ! (Ok (())) ; Ok (()) } ; macro_rules ! m { () => { $ crate :: foo :: bar () ; :: foo :: bar () ; } } m ! () ; }

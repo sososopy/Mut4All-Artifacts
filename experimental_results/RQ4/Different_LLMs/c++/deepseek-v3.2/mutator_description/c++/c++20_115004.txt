@@ -1,0 +1,18 @@
+mutation operator: Replace a concept definition with an empty constraint expression.
+
+This mutation operator targets concept definitions in C++20 that have a non-empty constraint expression. It applies when a concept is declared with a template parameter list and a constraint expression that is not simply `true` or `false` (like `0` in the bug report). The mutation changes the constraint expression to an empty one, which may be represented as missing or as a trivial expression that the compiler might interpret as null.
+
+Specifically, for any concept declaration of the form:
+template <parameters> concept name = constraint-expression;
+where constraint-expression is present and non-trivial (not simply `true` or `false`), mutate it to:
+template <parameters> concept name;
+This removes the `=` and the constraint-expression entirely, leaving the concept declared but not defined with an explicit constraint. In the parsing and normalization phases, this could lead to a null constraint expression pointer being passed to functions like `NormalizedConstraint::fromConstraintExpr`, potentially triggering assertion failures or crashes similar to the reported bug.
+
+Example in pseudo-code:
+Original seed code snippet:
+template <typename T> concept MyConcept = requires(T t) { t.f(); };
+After mutation:
+template <typename T> concept MyConcept;
+Note that this introduces an undeclared constraint. The compiler must handle this incomplete concept definition during template partial specialization ordering or other constraint normalization steps. The mutation should use existing names from the seed program; no new identifiers are introduced. The change is purely syntactic: delete the assignment and the constraint expression.
+
+This operator aims to expose bugs in the compiler's handling of concepts with missing or malformed constraints, particularly in contexts like partial specializations where constraints are compared.

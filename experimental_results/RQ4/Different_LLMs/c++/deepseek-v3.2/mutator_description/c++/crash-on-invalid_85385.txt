@@ -1,0 +1,15 @@
+Mutation operator: Replace CTAD (Class Template Argument Deduction) invocation with an explicit template specialization using deduced arguments.
+
+This mutation operator applies to any call to a template class or alias that relies on CTAD without explicit template arguments. It transforms the CTAD call into an explicit instantiation by first deducing the intended template arguments from the constructor call, then using those deduced types to form an explicit template specialization.
+
+For a seed program containing a CTAD call like `TemplateName(args)`, the operator will:
+1. Analyze the constructor arguments `args` to determine their types.
+2. Replace the CTAD call with `TemplateName<DeducedType1, DeducedType2, ...>(args)`, where the deduced types are derived from the argument types. If the template is an alias, the underlying template type is used.
+3. Ensure all deduced types are based on existing types in the seed program, such as the types of the arguments or related template parameters present in the scope.
+4. If the CTAD call is invalid in the original code (e.g., due to mismatched template parameters), the mutation may produce a valid or differently invalid explicit specialization, potentially exposing compiler crashes in deduction or instantiation logic.
+
+Example mutation:
+Original: `Bar(1);` where `Bar` is a template alias.
+After mutation: Deduce that `1` is of type `int`. The alias `Bar` is defined as `template <typename C, template<typename> typename TTP> using Bar = Foo<C, K<TTP>>;`. To form an explicit specialization, we need types for `C` and `TTP`. Using `int` for `C`, and for `TTP` we select an existing template in the seed program (e.g., if `template<typename> typename Iterator` exists, use `Iterator`). Thus, mutated code: `Bar<int, Iterator>(1);`. This changes the CTAD crash scenario to an explicit template argument scenario, testing compiler handling of alias specialization with template template parameters.
+
+Note: The operator prioritizes using existing templates and types from the seed. If no suitable template exists for a template template parameter, it may introduce a simple placeholder template (e.g., `template<typename> struct MutatedTP {};`) declared locally, to avoid ambiguity.

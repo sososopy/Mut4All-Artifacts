@@ -1,0 +1,1 @@
+# [target_feature (avx2)] const FOO : usize = 7 ;

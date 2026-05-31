@@ -1,0 +1,28 @@
+Mutation operator: Add recursive higher-ranked trait bounds with nested GAT references  
+Applies to: for<'a> bounds in where clauses involving GATs  
+
+Modifies where clauses that include generic associated types by introducing recursive trait bounds. For any where clause of the form:  
+`for<'a> SomeGAT<'a>: SomeTrait<...>`  
+
+Replace it with:  
+`for<'a> SomeGAT<'a>: SomeTrait<...>, for<'a> SomeGAT<'a>: NewTrait<SomeGAT<'a>>`  
+
+Example transformation:  
+Original:  
+where  
+    for<'a> Self::Item<'a>: FuncInput<'a, Self::Item<'a>>  
+
+Mutated:  
+where  
+    for<'a> Self::Item<'a>: FuncInput<'a, Self::Item<'a>>,  
+    for<'a> Self::Item<'a>: NestedTrait<Self::Item<'a>>  
+
+Requires introducing a new trait declaration:  
+trait NestedTrait<T> {  
+    type Assoc<'a> where T: 'a;  
+}  
+impl<T: 'static> NestedTrait<T> for T {  
+    type Assoc<'a> = T::Assoc<'a> where T: 'a;  
+}  
+
+This creates a circular dependency between GATs and higher-ranked bounds that may trigger type inference errors or ICEs in region checking. The mutation leverages existing GAT definitions and introduces a minimal, concrete trait to force recursive resolution attempts.

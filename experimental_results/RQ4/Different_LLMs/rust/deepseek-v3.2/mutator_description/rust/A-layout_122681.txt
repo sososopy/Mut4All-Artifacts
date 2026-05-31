@@ -1,0 +1,21 @@
+Mutation operator: Introduce a unit-like struct annotated with rustc_layout_scalar_valid_range_start or rustc_layout_scalar_valid_range_end and embed it within an enum variant that has a derived Default implementation.
+
+This mutation operator applies to Rust code containing enum definitions that derive the Default trait. The operator specifically targets enums that have at least one unit variant (a variant without fields) which is marked with the #[default] attribute. The mutation involves adding a new tuple variant to the enum, where the tuple contains a single field of a newly defined unit-like struct. This unit-like struct must be annotated with either #[rustc_layout_scalar_valid_range_start(X)] or #[rustc_layout_scalar_valid_range_end(Y)], where X and Y are integer literals. The struct must be defined immediately before the enum. The new tuple variant should be inserted among the existing variants of the enum. The goal is to create a scenario where the compiler must compute the layout of an enum variant that contains a type with a scalar valid range attribute, which is a known trigger for layout calculation bugs.
+
+For example, given a seed program with an enum like:
+enum ExampleEnum {
+    #[default]
+    FirstVariant,
+    SecondVariant(u32),
+}
+The mutation would add a struct definition before the enum:
+#[rustc_layout_scalar_valid_range_start(5)]
+struct MutatedStruct;
+Then modify the enum to include a new variant:
+enum ExampleEnum {
+    #[default]
+    FirstVariant,
+    SecondVariant(u32),
+    MutatedVariant(MutatedStruct),
+}
+The new struct MutatedStruct must be a unit-like struct (a struct with no fields). The integer literal for the scalar valid range attribute should be chosen such that it is a simple value like 0 or 1 to avoid complexity. The new variant name MutatedVariant should be a fresh name not conflicting with existing variant names in the enum. This mutation does not require changes to any other parts of the code, such as match expressions or constructors, as the presence of the derived Default implementation on the enum is sufficient to potentially trigger the layout computation during compilation. The mutation relies solely on the structural addition and does not assume any usage of the new variant in the code.

@@ -1,0 +1,27 @@
+Mutation operator: Insert zero-sized bit field after a non-static data member in a class definition.
+
+This mutation applies to any class or struct definition that contains at least one non-static data member. It inserts an unnamed bit-field of size zero immediately after an existing non-static data member within the same access specifier block. The insertion point should be chosen after a member that is not itself a zero-sized bit-field, preferably after the first member or after a member of integral or enumeration type to increase likelihood of compiler interaction with layout and special member functions.
+
+The operator modifies the class definition by adding the line "unsigned : 0;" (or using the same type as the preceding member if it is an integral or enumeration type) after a selected member declaration. If the class already contains a zero-sized bit-field, a different member should be selected for the insertion to avoid duplication in the same sequence. The goal is to perturb class layout calculations, which may affect implicitly-defined comparison operators, copy/move operations, and other compiler-generated functions.
+
+Example transformation:
+Original class snippet:
+class MyClass {
+    int x;
+    char c;
+public:
+    MyClass() = default;
+    bool operator==(const MyClass&) const = default;
+};
+
+Mutated class snippet:
+class MyClass {
+    int x;
+    unsigned : 0;
+    char c;
+public:
+    MyClass() = default;
+    bool operator==(const MyClass&) const = default;
+};
+
+The mutation should use an existing integral or enumeration type from the program context for the bit-field if possible (e.g., if the preceding member is "unsigned int y;", use "unsigned int : 0;"). If no suitable type exists, introduce "unsigned : 0;" as a new declaration. This targets compiler bugs in handling zero-sized bit-fields combined with defaulted special member functions.

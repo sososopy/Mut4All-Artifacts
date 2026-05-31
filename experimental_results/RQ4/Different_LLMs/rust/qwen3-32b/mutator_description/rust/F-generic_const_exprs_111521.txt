@@ -1,0 +1,49 @@
+Mutation operator: Introduce nested const generic parameter dependencies by replacing fixed array lengths with associated trait constants in method implementations. Apply to methods that return or use arrays with const size parameters derived from trait-implemented types.
+
+Example mutation:
+Original code:
+fn size(&self) -> [usize; 1] {
+    [self.len()]
+}
+
+Mutated code:
+fn size<const D: usize>(&self) -> [usize; D] {
+    let _ = D; // Force const evaluation
+    [self.len()]
+}
+
+This creates a dependency between the method's const parameter `D` and the trait's associated constant, increasing query complexity. The unused `D` reference forces the compiler to evaluate the const parameter in a way that may trigger cycle detection errors during parallel compilation.
+
+Apply to: Methods returning `[T; N]` where `N` is a fixed literal and the struct implements a trait with associated const `N`. Replace the literal with a generic `const N: usize` parameter and add a dummy reference to `N` in the body to increase const evaluation interdependencies.
+
+Mutation operator: Replace fixed const generic array sizes with generic parameters that reference associated constants from multiple nested trait bounds in function signatures.
+
+Example mutation:
+Original code:
+lazy_updim([3, 4])
+
+Mutated code:
+lazy_updim<[usize; T::DIM]>([3, 4])
+
+This forces the compiler to evaluate multiple nested trait const expressions simultaneously, increasing the chance of deadlock during const parameter resolution. The change exploits the parallel nature of const generic evaluation by creating dependencies between multiple trait bounds.
+
+Apply to: Function calls with array arguments where the array length is a fixed literal, and the function has generic const parameters with trait bounds. Replace the literal with a generic `const` parameter that references an associated constant from one of the trait bounds.
+
+Mutation operator: Add redundant const generic parameters to trait method implementations that indirectly reference other trait constants through nested where clauses.
+
+Example mutation:
+Original code:
+impl<T> TensorDimension for Vec<T> {
+    const DIM: usize = 1;
+}
+
+Mutated code:
+impl<T, const N: usize> TensorDimension for Vec<T>
+    where T: TensorDimension<Dim = N>
+{
+    const DIM: usize = N;
+}
+
+This creates a circular dependency between the trait implementation's const parameter and the trait's associated constant, increasing the likelihood of evaluation cycles during compilation.
+
+Apply to: Trait implementations with fixed associated const values where the type parameter implements the same or another trait with associated constants. Modify the implementation to use a generic const parameter and add a where clause that ties the const parameter to the trait's associated constant.

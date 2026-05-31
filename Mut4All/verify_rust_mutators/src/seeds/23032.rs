@@ -1,0 +1,1 @@
+type NamedClasses = & 'static [(& 'static str , & 'static [(char , char)])] ; static ASCII_CLASSES : NamedClasses = & [("alnum" , & ALNUM) ,] ; static ALNUM : & 'static [(char , char)] = & [('0' , '9') , ('A' , 'Z') , ('a' , 'z')] ; fn main () { }

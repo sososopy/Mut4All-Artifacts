@@ -1,0 +1,13 @@
+Mutation operator: Variadic friend operator template with mismatched pack expansion lengths in requires clause.
+
+This mutation operator targets C++20 modules combined with variadic templates and constrained friend operator declarations. It applies when a seed program contains a template struct with a variadic template parameter list and a friend function template declared within it.
+
+Specifically, the mutation modifies a friend operator template declaration inside a variadic template struct by introducing a requires clause that contains a pack expansion referencing both the outer and inner template parameter packs in a manner that can lead to mismatched lengths during instantiation. The mutation should be applied as follows: locate a template struct declaration with a variadic template parameter list (e.g., template<typename... Ts> struct S). Inside this struct, insert a friend function template (e.g., a friend operator==) that also has a variadic template parameter list (e.g., template<typename... Us>). Then, add a requires clause to this friend function template that uses a fold expression over a conjunction of a concept (which should be defined in the program) applied to pairs of Ts and Us packs, written as (... and C<Ts, Us>). The concept C must already exist in the seed program, or be a simple concept like template<typename, typename> concept C = true; if not present, declare it at global scope.
+
+The mutation should ensure the friend operator is defined (not just declared) within the struct, and the struct is exported if modules are used. Additionally, trigger an explicit instantiation of the struct with a different number of template arguments than used in the module interface unit, to potentially expose pack length mismatch errors or internal compiler assertions.
+
+Example transformation: Given a seed program with a variadic template struct, mutate by adding inside the struct: template<typename... Us> requires(... and C<Ts, Us>) friend bool operator==(S, S<Us...>) { return true; }.
+
+Then, in a separate translation unit (if modules are supported), instantiate the struct with a different number of arguments (e.g., S<int>), while the module interface may have instantiated S<>.
+
+This mutation aims to expose bugs in compiler handling of pack expansions in constraints during friend template instantiation across modules.

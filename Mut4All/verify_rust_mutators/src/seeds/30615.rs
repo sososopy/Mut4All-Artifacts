@@ -1,0 +1,1 @@
+fn main () { & 0u8 as * const u8 as * const PartialEq < u8 > ; }

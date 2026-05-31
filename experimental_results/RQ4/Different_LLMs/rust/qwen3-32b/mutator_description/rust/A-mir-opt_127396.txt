@@ -1,0 +1,13 @@
+Mutation operator: TransmuteMismatchedSize  
+Target: A transmute operation between types of the same size (e.g., `transmute::<T, T>`).  
+Action: Replace the source type with a variant that introduces a niche (e.g., wrap in `Option<T>`) and the target type with a type of different size (e.g., a larger primitive). This creates a size/alignment mismatch that may trigger MIR optimization errors during codegen.  
+
+Example (pseudo-code):  
+Original:  
+`let x: T = unsafe { transmute::<T, T>(y) };`  
+
+Mutated:  
+`let x: U = unsafe { transmute::<Option<T>, U>(y) };`  
+(Where `U` is a type with a size different from `Option<T>`, e.g., `u64` when `Option<T>` is `u32`-sized.)  
+
+This mutation leverages existing types in the seed program (`T`, `U`) and introduces a niche (via `Option<T>`) to create a layout discrepancy. It avoids introducing new elements by reusing existing types, ensuring compatibility with the program.

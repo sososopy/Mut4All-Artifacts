@@ -1,0 +1,1 @@
+pub extern crate kas_text ; pub mod text { pub use kas_text :: * ; }

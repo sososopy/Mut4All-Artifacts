@@ -1,0 +1,1 @@
+fn main () { while false { 1 = 1 ; } }

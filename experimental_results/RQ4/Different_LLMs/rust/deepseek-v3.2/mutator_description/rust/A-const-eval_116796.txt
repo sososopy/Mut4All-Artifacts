@@ -1,0 +1,21 @@
+mutation operator: convert a generic const parameter default expression from a closure expression to a zero-initialized value of the same type.
+
+This mutation applies to struct, enum, union, or trait definitions where a generic const parameter has a default value that is a closure expression (e.g., `fn()`, `Fn()`, or similar function pointer or closure types). It replaces the closure default expression with a zero-initialized form (e.g., `{ 0 as T }` for a function pointer type `T`). The mutation should only be applied if the default expression is syntactically a closure (like `|| {}` or `|args| body`) and the const parameter's type is a function pointer, fn item, or closure trait type.
+
+The change is: locate a const generic parameter with a default, check that its type is a function-like type (e.g., `fn()`, `fn(i32) -> bool`, etc.) and the default is a closure expression. Replace the entire closure default expression with a cast of zero to the parameter's type. For example, if the parameter is `const F: fn()`, and the default is `{ || {} }`, mutate it to `{ 0 as fn() }`. Ensure the zero value is appropriately cast to the exact type of the const parameter using `as`. Use an existing integer literal `0` from the seed program if available; otherwise, introduce the literal `0`.
+
+Example pseudo-code transformation:
+
+Seed code snippet:
+struct S<const C: fn() = { || {} }>;
+
+Mutated code:
+struct S<const C: fn() = { 0 as fn() }>;
+
+Another seed example:
+trait T<const F: fn(i32) -> bool = { |x| x > 0 }> {}
+
+Mutated code:
+trait T<const F: fn(i32) -> bool = { 0 as fn(i32) -> bool }> {}
+
+The mutation introduces a literal `0` and a cast `as`. The cast uses the const parameter's type as written in the definition. No new variables or types are introduced beyond the literal and cast. This mutation targets edge cases in const evaluation where non-valtree-compatible types (like function pointers) are used in generic const defaults, potentially exposing compiler internal errors during monomorphization or valtree conversion.

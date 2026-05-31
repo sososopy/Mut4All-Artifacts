@@ -1,0 +1,1 @@
+# [deriving (PartialEq)] struct Foo { bar : str }

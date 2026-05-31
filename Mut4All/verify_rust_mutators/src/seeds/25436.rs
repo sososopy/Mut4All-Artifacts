@@ -1,0 +1,1 @@
+macro_rules ! foo { ($ a : tt $ ($ b : tt) *) => { } } fn main () { }

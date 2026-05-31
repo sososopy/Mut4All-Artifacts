@@ -1,0 +1,1 @@
+pub trait Trait { } pub struct Struct < T : Trait > { member : T , } extern "C" { static VAR : Struct < u8 > ; } fn main () { }

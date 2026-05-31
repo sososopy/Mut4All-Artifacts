@@ -1,0 +1,1 @@
+macro_rules ! thing { ($ e : expr) => { thing ! ($ e , $ e) } ; ($ e0 : expr , $ e1 : expr) => { { let e = $ e0 ; assert ! (e == $ e1) ; } } } pub fn main () { thing ! (~ 17) ; }

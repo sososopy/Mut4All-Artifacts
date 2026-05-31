@@ -1,0 +1,1 @@
+use std :: mem ; fn main () { let _ : i8 = unsafe { mem :: transmute (true) } ; }

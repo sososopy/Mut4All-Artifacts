@@ -1,0 +1,1 @@
+use actix_web :: { HttpServer , App } ; mod fighter ; mod controller ; # [actix_web :: main] async fn main () -> std :: io :: Result < () > { HttpServer :: new (| | { App :: new () . service (controller :: hello) }) . bind ("[::]:4000") ? . run () . await }

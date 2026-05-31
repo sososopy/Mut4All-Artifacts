@@ -1,0 +1,1 @@
+trait Foo { type Assoc : PartialEq < Box < Self > > ; } impl Foo for u32 { type Assoc = Box < u32 > ; } fn foo < T : Foo + ? Sized > (u : Box < T > , v : T :: Assoc) -> bool { & v == & u } fn main () { let bar : Box < Foo < Assoc = Box < u32 > > > = Box :: new (4) ; foo (bar , Box :: new (5)) ; }

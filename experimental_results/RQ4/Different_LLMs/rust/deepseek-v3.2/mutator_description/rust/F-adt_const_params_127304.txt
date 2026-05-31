@@ -1,0 +1,37 @@
+mutation operator
+This mutation operator targets constant parameter expressions in generic arguments, specifically when a constant parameter is of a custom type that implements ConstParamTy and is used as a const argument in a function call. The operator changes the const argument from a simple constant expression to a more complex one that involves a call to a const function associated with the custom type, where the const function's return type matches the const parameter type but its definition may be incomplete or have unusual characteristics. The operator applies when there exists a struct that implements ConstParamTy and there is a generic function with a const parameter of that struct's type. The mutation modifies the const argument at the call site to use an associated const function call, ensuring the function exists in the seed program. If no such const function exists, the operator does not apply. The change is to replace the const argument with a call to a const function that returns the same type, using an existing const function from the seed program or introducing a minimal one if necessary. For introduction, add a const function in the impl block of the custom type that returns Self, with a body containing only a panic or a loop to make it divergent, or a simple expression if possible. This aims to trigger edge cases in const evaluation for adt const params.
+
+Example seed pseudo-code:
+struct MyType;
+impl ConstParamTy for MyType {}
+impl MyType {
+    const fn make() -> Self { MyType }
+}
+fn foo<const C: MyType>() {}
+fn main() {
+    foo::<{ MyType }>();
+}
+
+Mutated version:
+struct MyType;
+impl ConstParamTy for MyType {}
+impl MyType {
+    const fn make() -> Self { MyType }
+}
+fn foo<const C: MyType>() {}
+fn main() {
+    foo::<{ MyType::make() }>();
+}
+
+If the seed lacks a const function, introduce one:
+struct MyType;
+impl ConstParamTy for MyType {}
+impl MyType {
+    const fn new() -> Self { loop {} }
+}
+fn foo<const C: MyType>() {}
+fn main() {
+    foo::<{ MyType::new() }>();
+}
+
+The mutation specifically changes the const argument from a direct struct instance to a const function call returning that instance, focusing on scenarios where the const evaluation may mishandle such expressions, as seen in the bug report where MyStr::new is used.

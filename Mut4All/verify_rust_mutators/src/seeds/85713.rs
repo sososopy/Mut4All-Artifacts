@@ -1,0 +1,1 @@
+# [repr (align)] pub struct Foo ;

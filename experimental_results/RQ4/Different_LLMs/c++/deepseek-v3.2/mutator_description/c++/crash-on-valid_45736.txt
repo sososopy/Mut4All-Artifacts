@@ -1,0 +1,19 @@
+mutation operator
+target construct: template constraints and concept satisfaction in the context of overload resolution and implicit member generation.
+applies to: when a class template or a class with a constrained constructor is used, and the compiler may need to evaluate constraints during overload resolution for copy or move operations, or during the generation of implicit special member functions.
+mutation: introduce a constrained constructor that can participate in overload resolution with copy-initialization contexts, and ensure there is an overloaded function call that triggers constraint evaluation on the same type in a different context.
+steps:
+1. identify a class in the seed program that does not have a user-declared copy constructor.
+2. add a template constructor with a requires clause that uses a concept which depends on a function that is also overloaded in the same program. the concept should be defined in terms of a constexpr function template that takes a type tag.
+3. ensure there is an overloaded function with the same name that can be called on an object of the class type, leading to potential ambiguity or repeated constraint evaluation.
+example changes:
+given a seed program with a class named 'targetclass', add the following after any existing declarations:
+template<typename t> struct tag {};
+template<typename t> constexpr bool check(tag<t>) { return true; }
+template<typename t> concept matches = check(tag<t>{});
+then modify 'targetclass' to have:
+template<typename u> requires matches<u> explicit targetclass(u value) {}
+also, ensure there is a function named 'check' that can be called with a 'const targetclass&' argument, like:
+bool check(const targetclass&) { return true; }
+finally, create a function that calls 'check' with an object of a type that contains a 'targetclass' member, to trigger overload resolution and constraint satisfaction in multiple contexts.
+note: use existing names from the seed program where possible. if new names are introduced, they should be added as top-level declarations. avoid introducing undefined types or functions.

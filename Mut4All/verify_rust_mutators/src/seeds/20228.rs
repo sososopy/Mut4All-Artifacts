@@ -1,0 +1,1 @@
+struct S ; impl S { fn foo (& self) { let _ = move | | { self } ; } } fn main () { }

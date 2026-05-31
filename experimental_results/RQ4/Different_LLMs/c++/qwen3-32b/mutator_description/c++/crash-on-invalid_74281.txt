@@ -1,0 +1,63 @@
+Mutation operator: Insert nested struct with forward declaration inside function body  
+Applies to functions containing plain block scope  
+Modifies an existing function's body by adding:  
+struct X {  
+    struct X;  
+};  
+(Using an existing struct/class name X from the program)  
+
+Example transformation:  
+Original:  
+void f() { ... }  
+
+Modified:  
+void f() {  
+    struct X {  
+        struct X;  
+    };  
+    ...  
+}  
+
+This exploits the compiler's handling of forward declarations within struct definitions in function scope, which is invalid in C++ (C++ only allows struct definitions in namespace scope). The nested forward declaration creates a recursive parsing scenario that can trigger assertion failures or crashes in error recovery paths.  
+
+Mutation operator: Replace struct member with nested struct using same identifier  
+Applies to struct definitions containing members  
+Replaces a member declaration in the struct with:  
+struct X;  
+where X is the struct's own identifier  
+
+Example transformation:  
+Original:  
+struct Y {  
+    int a;  
+};  
+
+Modified:  
+struct Y {  
+    struct Y;  
+};  
+
+This creates a forward declaration of the struct within its own body, which is grammatically valid but semantically invalid. The parser must handle the forward declaration while still parsing the struct body, potentially leading to stack overflows or invalid state transitions in the parser.  
+
+Mutation operator: Duplicate struct definition within function scope  
+Applies to functions containing plain block scope  
+Modifies a function's body by adding two nested struct declarations with the same identifier:  
+struct X {  
+    int a;  
+};  
+struct X {  
+    int b;  
+};  
+
+Example transformation:  
+Original:  
+void g() { ... }  
+
+Modified:  
+void g() {  
+    struct X { int a; };  
+    struct X { int b; };  
+    ...  
+}  
+
+This exploits the compiler's handling of multiple struct definitions in the same scope. While C++ allows multiple declarations of the same struct in the same scope (as long as they are compatible), the second declaration here is a definition that conflicts with the first, potentially exposing bugs in name resolution or semantic analysis.

@@ -1,0 +1,1 @@
+use std :: path :: { Path , PathBuf } ; use std :: collections :: HashSet ; fn main () { let hm : HashSet < PathBuf > = HashSet :: new () ; let p = PathBuf :: new () ; let rp : & Path = & p ; assert ! (hm . contains (rp)) ; }

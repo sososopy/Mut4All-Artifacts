@@ -1,0 +1,27 @@
+Mutation Operator: Replace Struct Member Access with Invalid Member Access in Aggregate Initializer
+
+This mutation operator applies to C++ struct or class aggregate initializers where a member is initialized using a member access expression (e.g., `obj->member` or `obj.member`). The operator replaces the accessed member name with a member name that is not declared in the struct or class type of the accessed object. The goal is to produce an invalid member access within an initializer context, which may trigger assertion failures or crashes during constant expression evaluation or semantic analysis.
+
+Specifically, the operator targets expressions of the form:
+- `{ .member_name = accessing_expression }` within an aggregate initializer for a struct or class.
+- The `accessing_expression` must be a member access via pointer (`->`) or dot (`.`) operator.
+
+Where it applies: The mutation is applied when the seed program contains an aggregate initialization (e.g., using designated initializers or plain brace initialization) for a struct or class type, and at least one member is initialized using a member access expression that refers to a valid member of some object.
+
+Mutation steps:
+1. Identify an aggregate initializer in the seed program where a member is initialized via a member access expression (e.g., `obj->x` or `obj.y`).
+2. Determine the struct or class type of the object being accessed (e.g., from the declaration of `obj`).
+3. Select a member name that is not declared in that struct or class type. Preference is given to using a member name that exists in another struct or class type already present in the seed program, to avoid introducing undeclared identifiers. If no such name exists, introduce a new member name that is syntactically valid but not declared in the accessed type; this new name should be a simple identifier (e.g., `invalid_member`) and must not conflict with any existing names in scope.
+4. Replace the original member name in the access expression with the selected invalid member name. The object part of the expression (e.g., `obj`) remains unchanged.
+
+Example in pseudo-code:
+Original code snippet: Suppose the seed program has:
+struct A { int x; };
+struct B { int y; };
+A* ptr;
+B obj;
+Then an initializer like: `struct B b = { .y = ptr->x };` is mutated to: `struct B b = { .y = ptr->y };` because `ptr` is of type `A*`, and `y` is not a member of `struct A`. Note that `y` is a member of `struct B` already in the program, so it is used.
+
+If no suitable member name exists in other types, a new name like `z` could be introduced, ensuring `z` is not a member of the accessed type. The mutation yields: `struct B b = { .y = ptr->z };`.
+
+Natural language description: Change the member name in the member access expression within an aggregate initializer to a name that is not a member of the object's struct or class, using existing member names from other types if possible, or introducing a simple new identifier otherwise.

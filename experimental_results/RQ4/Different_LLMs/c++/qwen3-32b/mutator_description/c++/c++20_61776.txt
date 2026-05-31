@@ -1,0 +1,49 @@
+Mutation operator: Recursive requires clause in concept definition.  
+Target: Concepts using requires clauses with parameters of the same concept type.  
+How to apply: Replace a standard requires clause in a concept with a parameter that references the concept itself, creating a recursive dependency.  
+Example:  
+Original code:  
+template<typename T>  
+concept C = requires { T::value; };  
+
+Mutated code:  
+template<typename T>  
+concept C = requires (C auto x) { x; };  
+This introduces a cyclic dependency where the requires clause parameter 'x' is constrained by the same concept 'C' being evaluated, forcing the compiler to evaluate a dependent expression.  
+
+Mutation operator: Implicitly dependent parameters in constrained expressions.  
+Target: Function parameters or requires clause parameters with template constraints.  
+How to apply: Replace a function parameter or requires clause parameter with a constraint that references the enclosing template parameter, creating a dependent context.  
+Example:  
+Original code:  
+template<typename T>  
+concept D = requires (int x) { x + T::value; };  
+
+Mutated code:  
+template<typename T>  
+concept D = requires (D auto x) { x + T::value; };  
+This forces 'x' to depend on the concept 'D' being evaluated, creating a scenario where the parameter is value-dependent during constraint evaluation.  
+
+Mutation operator: Nested concept constraints in requires expressions.  
+Target: Requires expressions with nested constraints or chained requirements.  
+How to apply: Add a requires clause that evaluates a parameter constrained by the same concept, creating a recursive evaluation chain.  
+Example:  
+Original code:  
+template<typename T>  
+concept E = requires (T x) { x.f(); };  
+
+Mutated code:  
+template<typename T>  
+concept E = requires (T x) { E<decltype(x)> && x.f(); };  
+This creates a recursive constraint check where 'E' is evaluated within its own definition, triggering dependent expression evaluation.  
+
+Mutation operator: Self-referential constraint satisfaction checks.  
+Target: Static assertions or template instantiations that validate concepts.  
+How to apply: Replace direct concept validation in static_assert with an expression that evaluates an instance constrained by the same concept.  
+Example:  
+Original code:  
+static_assert(E<int>);  
+
+Mutated code:  
+static_assert(E<decltype(E<int> ? int() : int())>);  
+This creates a dependent type check where the validity of 'E' is evaluated within its own condition, introducing a recursive evaluation scenario.

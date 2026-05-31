@@ -1,0 +1,1 @@
+fn f () { } const C : fn () = f ; fn main () { match C { C => { } _ => { } } }

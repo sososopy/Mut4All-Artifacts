@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait , in_band_lifetimes , underscore_lifetimes)] fn foo < T > (items : & 'a [T]) -> impl Iterator < Item = (& 'a T , & 'a T) > + 'a { items . iter () . enumerate () . flat_map (move | (i , x1) | items [i ..] . iter () . map (move | x2 | (x1 , x2))) } fn main () { }

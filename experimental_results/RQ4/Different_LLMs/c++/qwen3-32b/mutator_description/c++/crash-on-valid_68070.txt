@@ -1,0 +1,25 @@
+Mutation operator: "Inject generic lambda with 'this' parameter and std::forward_like"
+Applies to: Functions or lambdas that capture variables and are called with rvalue references
+
+1. For any existing function or lambda that captures variables, transform it into:
+   - A generic lambda with a 'this' parameter (template <typename Self> ... (this Self&& self))
+   - Use std::forward_like<Self>() on at least one captured variable in the body
+2. Add #include <utility> if not already present
+3. Modify the calling context to use std::move() on the lambda instance
+
+Example transformation:
+Original:
+auto f = [x] { return x; };
+return f();
+
+Mutated:
+auto f = [x]<typename Self>(this Self&& self) {
+  return std::forward_like<Self>(x);
+};
+return std::move(f)();
+
+This targets the interaction between:
+- Generic lambda with 'this' parameter
+- std::forward_like usage
+- Captured variables in rvalue context
+- Template parameter type deduction

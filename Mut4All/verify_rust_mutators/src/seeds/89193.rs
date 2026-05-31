@@ -1,0 +1,1 @@
+# ! [feature (portable_simd)] use core_simd :: Simd ; fn main () { let indexes : [usize ; 4] = [0 , 1 , 2 , 3] ; let simd_indexes : Simd < usize , 4 > = Simd :: from_array (indexes) ; let slice : [usize ; 4] = [10 , 11 , 12 , 13] ; let result = Simd :: gather_or_default (& slice , simd_indexes) ; assert_eq ! (result , Simd :: from_array ([10 , 11 , 12 , 13])) ; }

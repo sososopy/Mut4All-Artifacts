@@ -1,0 +1,1 @@
+enum EnumA { JustA (i32) , Same (i32) } fn test () -> EnumA { EnumA :: JustA (2) } fn main () { loop { let p = match test () { EnumA (r) => r , EnumB :: Same (x) => x } ; } }

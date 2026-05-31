@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] pub trait Foo { type T ; type S : Bar < Self :: T > ; } pub trait Bar < T > { }

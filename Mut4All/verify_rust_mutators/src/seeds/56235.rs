@@ -1,0 +1,1 @@
+use std :: ffi :: OsStr ; fn foo () { match Some (OsStr :: new ("1")) { Some (OsStr :: new ("2")) => () , } }

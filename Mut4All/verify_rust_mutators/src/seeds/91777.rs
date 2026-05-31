@@ -1,0 +1,1 @@
+fn mutate_vec_at (map : & mut Vec < Vec < u8 > > , row_id : usize , cell_id : usize , store : & mut Vec < (usize , usize) >) { let mut val = map [row_id] [cell_id] ; if val != 0 { val += 1 ; if val > 9 { store . push ((row_id , cell_id)) ; val = 0 ; } map [row_id] [cell_id] = val ; } }

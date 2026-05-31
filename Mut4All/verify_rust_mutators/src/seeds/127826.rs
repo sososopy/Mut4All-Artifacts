@@ -1,0 +1,1 @@
+# ! [feature (const_trait_impl , effects , const_closures)] trait Bar { fn foo (& self) ; } impl Bar for () { } const Branch : () = { (const | | (& () as & dyn Bar) . foo ()) () ; } ;

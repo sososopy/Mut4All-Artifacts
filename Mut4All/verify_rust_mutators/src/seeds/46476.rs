@@ -1,0 +1,1 @@
+impl MediaLibrary { pub fn meta_fps_from_item_fp < 'a , P : Into < PathBuf > + 'a > (& 'a self , abs_item_path : P) -> impl Iterator < Item = & 'a Path > + 'a { let closure = move | | { if false { yield Path :: new ("foo.txt") } for meta_target in self . meta_targets { } } ; gen_to_iter (closure) } }

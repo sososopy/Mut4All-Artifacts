@@ -1,0 +1,1 @@
+pub trait ChanFx2 : Clone + Default { type Ctx < 'a > = ChannelProcessParams < 'a > ; fn process < 'a > (& mut self , msgs : Vec < MidiMsg > , params : & ChannelProcessParams < 'a > , ctx : & Self :: Ctx < 'a >) -> Vec < MidiMsg > ; }

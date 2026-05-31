@@ -1,0 +1,1 @@
+trait Trait1 < T > { } trait Trait2 < 'a > { type Ty ; } fn ice (param : Box < for < 'a > Trait1 < < () as Trait2 < 'a > > :: Ty > >) { } fn main () { }

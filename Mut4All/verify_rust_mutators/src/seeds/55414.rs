@@ -1,0 +1,1 @@
+macro_rules ! bug { () => { bug ! ("bug" + stringify ! (found)) ; } ; ($ test : expr) => { # [doc = $ test] struct Test { } } ; } bug ! () ;

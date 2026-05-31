@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] pub struct Foo { # [doc = " This type must have nontrivial drop glue"] field : String , } pub type Tait = impl Sized ; pub fn ice_cold (beverage : Tait) { let Foo { field } = beverage ; _ = field ; }

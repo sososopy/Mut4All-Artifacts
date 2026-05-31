@@ -1,0 +1,1 @@
+# ! [feature (async_await)] async fn bar () { } pub async fn foo () { std :: thread :: spawn (move | | ()) ; bar () . await ; }

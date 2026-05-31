@@ -1,0 +1,1 @@
+pub fn has_digit (s : & str) -> bool { s . contains (char :: is_digit) }

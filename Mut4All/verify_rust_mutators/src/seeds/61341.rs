@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] use std :: mem :: MaybeUninit ; # [repr (transparent)] pub struct OsThreadStack < const N : usize > (MaybeUninit < [u64 ; N] >) ; fn main () { }

@@ -1,0 +1,1 @@
+fn main () { let a : & [i32] = & [] ; (a as * const _) == (a as * const _) ; ("" as * const _) == ("" as * const _) ; }

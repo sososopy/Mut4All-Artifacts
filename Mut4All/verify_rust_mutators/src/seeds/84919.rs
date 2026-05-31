@@ -1,0 +1,1 @@
+# ! [feature (impl_trait_in_bindings)] struct A < 'a > (& 'a ()) ; trait Trait < T > { } impl < T > Trait < T > for () { } fn foo < 'a : 'a > () { let _x : impl Trait < A < 'a > > = () ; }

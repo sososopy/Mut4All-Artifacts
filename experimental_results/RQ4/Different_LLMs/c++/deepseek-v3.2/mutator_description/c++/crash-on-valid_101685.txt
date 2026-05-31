@@ -1,0 +1,28 @@
+mutation operator
+Target the use of address space attributes on templated type aliases within struct or class definitions. This operator applies when a template type alias includes an address space attribute and is used as a member type in a struct or class template. The mutation alters the address space value in the attribute to a different compile-time integer expression.
+
+Specifically, for a seed program containing a template type alias declaration of the form:
+template <int N> using AliasName = T [[clang::address_space(N)]] *;
+where this alias is used within a struct template like:
+template <int N> struct S { AliasName<N> member; };
+the operator mutates the address space value N in the alias declaration to a different integer constant expression. The new value should be derived from existing template parameters or constants in the seed program. For example, if the seed has template parameter int N, possible mutations include changing N to N+1, N-1, 0, or another constant integer present in the context, ensuring the expression is valid and does not introduce undeclared variables.
+
+The changes are made only to the type alias declaration; the struct definition remains unchanged. This can create mismatches or unexpected address space combinations that may expose compiler bugs.
+
+Example seed pseudo-code:
+template <int AS>
+using ASPtrTy = void [[clang::address_space(AS)]] *;
+template <int AS>
+struct EntryTy {
+    ASPtrTy<AS> Base;
+};
+
+Mutated version (changing AS to AS+1):
+template <int AS>
+using ASPtrTy = void [[clang::address_space(AS+1)]] *;
+template <int AS>
+struct EntryTy {
+    ASPtrTy<AS> Base;  // Note: still uses AS, not AS+1, potentially causing inconsistency
+};
+
+The mutation uses only existing template parameters (like AS) and operators (like +) to form new expressions, avoiding new data names or types. It aims to test compiler handling of address space attributes in templates, particularly during instantiation or type deduction.

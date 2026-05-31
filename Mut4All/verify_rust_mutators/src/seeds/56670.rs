@@ -1,0 +1,1 @@
+trait Foo where Self : Bar { type Context : Foo ; } trait Bar where Self : Foo { }

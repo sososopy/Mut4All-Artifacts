@@ -1,0 +1,1 @@
+# [derive (PartialEq , PartialOrd)] struct Centimeters (f64) ; # [derive (Show)] struct Inches (i32) ; impl Inches { fn to_centimeters (& self) -> Centimeters { let & Inches (inches) = self ; Centimeters (Inches as f64 * 2.54) } }

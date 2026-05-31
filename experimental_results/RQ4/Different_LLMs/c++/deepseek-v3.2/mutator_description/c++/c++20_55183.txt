@@ -1,0 +1,39 @@
+Based on the bug report, which involves a segfault in Clang while compiling C++20 code with a consteval constructor and a malformed for-loop, the structures that are more likely to trigger compiler bugs are: template metaprogramming combined with consteval functions, incomplete or syntactically incorrect loop constructs inside class member functions, and complex alias templates. These can cause the parser or constant evaluator to enter an inconsistent state, leading to a crash.
+
+Mutation Operator: Insert a consteval constructor call within a loop body that uses an alias template.
+
+This mutation targets code constructs where a class has a consteval constructor and a member function containing a loop. It applies when a seed program contains a class definition with at least one member function and a previously defined consteval constructor (or the ability to add one). The goal is to create a scenario where the compiler must evaluate a consteval expression during the parsing of a loop, which can stress the constant evaluation logic.
+
+The mutation operator should do the following:
+1. Identify a class in the seed program.
+2. Within a member function of that class, locate a loop (for, while, or do-while). If no loop exists, insert a simple for-loop that iterates using a variable of a type available in the current scope (e.g., int).
+3. Inside the loop body, insert a call to a consteval constructor. If the class already has a consteval constructor, use it. Otherwise, add a consteval constructor to the class before mutating the function. The constructor should be templated or non-templated, using types and parameters that are valid in the current context (e.g., taking an int parameter if an int variable is in scope).
+4. If using an alias template (like in the bug report), ensure the alias is defined or define one that resolves to the class type. The call should use the alias in a potentially ambiguous way, such as omitting template arguments where required, to mimic the triggering code pattern.
+5. Ensure all identifiers used are derived from existing elements in the seed program to avoid undeclared variables.
+
+Example in pseudo-code:
+Original seed code snippet:
+class MyClass {
+public:
+    void func() {
+        for (int i = 0; i < 10; ++i) {
+            // loop body
+        }
+    }
+};
+
+After mutation, assuming we add a consteval constructor:
+class MyClass {
+public:
+    template <typename T>
+    consteval MyClass(T param) {}
+    void func() {
+        for (int i = -1; i < 10; ++i) {
+            MyClass instance(i); // consteval constructor call inside loop
+        }
+    }
+};
+
+If an alias template exists, modify the call to use it incorrectly, e.g., alias<> instance(i); where alias is defined as template <typename...> using alias = MyClass;. This replicates the problematic pattern from the bug report.
+
+The mutation should avoid introducing new data names, types, or variables not present in the seed, and instead reuse existing ones or introduce only minimal necessary elements (like the constructor) with clear declarations.

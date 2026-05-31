@@ -1,0 +1,51 @@
+Mutation Operator: Enum Padding Manipulation
+
+Target Construct: Enums with Repr Attributes
+
+Where it Applies: This mutation operator applies to enums that are defined with a `#[repr]` attribute, specifically targeting those with `repr(align)` or other similar attributes that influence layout and alignment.
+
+Description: Enums with specified `repr` attributes, particularly those with alignment, can lead to unexpected padding in their memory layout. This can cause issues with field access and may trigger compiler bugs, as seen in the bug report. The mutation operator will focus on modifying the `repr` attributes and introducing additional fields of varying types and sizes to explore how padding and alignment are handled by the compiler.
+
+Mutation Steps:
+1. Identify enums with a `#[repr]` attribute in the seed program.
+2. Modify the `repr` attribute by switching from one to another (e.g., from `repr(align(8))` to `repr(C)` or `repr(packed)`) to explore different alignment behaviors.
+3. Introduce additional fields of different sizes and types to the enum variants, ensuring that these fields are initialized in the context of the seed program.
+4. Create a function that accesses these new fields and performs operations like field access or casting to smaller or larger types, which can expose layout-related inconsistencies.
+
+Example:
+Original Seed Code:
+```
+#[repr(align(8))]
+enum MyEnum {
+    Variant1 = 1,
+    Variant2 = 2,
+}
+
+fn main() {
+    let val = MyEnum::Variant1;
+    assert_eq!(val as u8, 1);
+}
+```
+
+Mutated Code:
+```
+#[repr(packed)]  // Changed from `repr(align(8))` to `repr(packed)`
+enum MyEnum {
+    Variant1 = 1,
+    Variant2 = 2,
+    Variant3(u16, u32),  // New variant with additional fields
+}
+
+fn main() {
+    let val = MyEnum::Variant3(5, 10);
+    match val {
+        MyEnum::Variant3(a, b) => {
+            assert_eq!(a as u8, 5);
+            assert_eq!(b as u16, 10);
+        },
+        _ => {}
+    }
+}
+```
+
+By varying the `repr` and introducing additional fields, this mutation operator is designed to trigger potential issues with layout and padding, thus uncovering bugs in the compiler related to these aspects.

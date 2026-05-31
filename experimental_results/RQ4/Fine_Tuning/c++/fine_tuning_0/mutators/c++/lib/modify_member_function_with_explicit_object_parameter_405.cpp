@@ -1,0 +1,65 @@
+//source file
+#include "../include/modify_member_function_with_explicit_object_parameter_405.h"
+
+// ========================================================================================================
+#define MUT405_OUTPUT 1
+
+void MutatorFrontendAction_405::Callback::run(const MatchFinder::MatchResult &Result) {
+  if (auto *DL = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("Classes")) {
+    if (!DL || !Result.Context->getSourceManager().isWrittenInMainFile(
+                   DL->getLocation()))
+      return;
+    if (DL->isCompleteDefinition() == false)
+      return;
+    //Get the source code text of target node
+    auto content =
+        stringutils::rangetoStr(*(Result.SourceManager), DL->getSourceRange());
+    int dice = getrandom::getRandomIndex(2);
+    std::string ins_type = "";
+    if (dice == 0)
+      ins_type = "private";
+    else if (dice == 1)
+      ins_type = "protected";
+    else if (dice == 2)
+      ins_type = "public";
+    else
+      assert(false && "Mut13: Dice should have 3 possible values!");
+    //Perform mutation on the source code text by applying string replacement
+    auto constexrdecl =
+        "\n\t/*mut13*/" + ins_type + ":\n\tstatic constexpr int mut_13=0;\n";
+    if (content.rfind('}') != string::npos)
+      content.insert(content.rfind('}'), constexrdecl);
+    //Replace the original AST node with the mutated one
+    Rewrite.ReplaceText(CharSourceRange::getTokenRange(DL->getSourceRange()), content);
+    cur_classes.push_back(DL);
+    cur_classes_type.push_back(dice);
+  } else if (auto *RS = Result.Nodes.getNodeAs<clang::ReturnStmt>(
+                 "Return0Stmt")) { // If there is a return 0 statement in the function, replace the return value with the inserted static const
+    if (!RS || !Result.Context->getSourceManager().isWrittenInMainFile(
+                   RS->getBeginLoc()))
+      return;
+
+    size_t index = getrandom::getRandomIndex(cur_classes.size() - 1);
+    if (cur_classes_type[index] != 2) // must be public
+      return;
+    //Get the source code text of target node
+    auto target = cur_classes[index];
+    //Perform mutation on the source code text by applying string replacement
+    auto ins = "/*mut13*/return " + target->getNameAsString() + "::mut_13";
+    //Replace the original AST node with the mutated one
+    Rewrite.ReplaceText(CharSourceRange::getTokenRange(RS->getSourceRange()), ins);
+  }
+}
+
+void MutatorFrontendAction_405::MutatorASTConsumer_405::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    //Define ASTMatchers to identify the target AST node for mutation
+    auto matcher = cxxRecordDecl().bind("Classes");
+    auto return0Stmt_macher =
+        returnStmt(hasReturnValue(integerLiteral(equals(0))))
+            .bind("Return0Stmt");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.addMatcher(return0Stmt_macher, &callback);
+    matchFinder.matchAST(Context);
+}

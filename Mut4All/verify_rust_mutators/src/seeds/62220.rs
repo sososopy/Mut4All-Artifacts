@@ -1,0 +1,1 @@
+pub type TruncatedVector < T , const N : usize > = Vector < T , { N - 1 } > ; impl < T , const N : usize > Vector < T , { N } > { # [doc = " Drop the last component and return the vector with one fewer dimension."] pub fn trunc (self) -> (TruncatedVector < T , { N } > , T) { } }

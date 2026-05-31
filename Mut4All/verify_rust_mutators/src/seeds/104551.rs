@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] fn main () { type T = impl Sized ; let (_a , _b) : T = (1u32 , 2u32) ; }

@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] pub trait Foo { extern "C" fn foo_ (& self , _ : ()) -> i64 { 0 } }

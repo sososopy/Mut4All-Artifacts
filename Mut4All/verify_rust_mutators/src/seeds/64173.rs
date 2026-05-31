@@ -1,0 +1,1 @@
+use core :: mem :: size_of ; struct Bug < 's > { array : [() ; size_of :: < & Self > ()] , }

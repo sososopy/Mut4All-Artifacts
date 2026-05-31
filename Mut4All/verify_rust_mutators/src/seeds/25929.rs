@@ -1,0 +1,1 @@
+macro_rules ! buh { ($ (# [$ attr : meta]) * fn bad () ;) => { $ (# [$ attr]) * fn bad () { } } } buh ! { # [doc = " \\[Not a link\\] (details)"] fn bad () ; }

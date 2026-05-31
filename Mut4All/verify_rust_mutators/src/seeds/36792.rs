@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] fn foo () -> impl Copy { foo }

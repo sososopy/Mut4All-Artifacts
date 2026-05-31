@@ -1,0 +1,1 @@
+struct Foo { name : Box < str > } impl Foo { fn new (name : Box < str >) -> Foo { Foo { name : name } } } fn main () { }

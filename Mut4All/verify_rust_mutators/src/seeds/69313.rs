@@ -1,0 +1,1 @@
+# [macro_use (shuffle)] extern crate packed_simd ; use packed_simd :: u8x16 ; pub fn boom (s : u8x16) -> u8x16 { unsafe { let first : u8x16 = shuffle ! (s , u8x16 :: splat (0) , [0 , 16 , 1 , 17 , 2 , 18 , 3 , 19 , 4 , 20 , 5 , 21 , 6 , 22 , 7 , 23]) ; first } }

@@ -1,0 +1,32 @@
+Mutation Operator: Replace a comparison operand with a ternary operator having a throw expression in one branch.  
+Applies to expressions used as left/right operands in binary comparisons (e.g., <=, >=, ==, !=).  
+
+Example transformation:  
+Original:  
+`x <= y`  
+
+Mutated:  
+`(condition ? throw <expr> : x) <= y`  
+OR  
+`x <= (condition ? throw <expr> : y)`  
+
+Where:  
+- `condition` is an existing boolean expression (e.g., true/false, existing bool variable).  
+- `<expr>` uses existing types/variables from the seed program (e.g., throw 0 for int, throw 3.14 for float).  
+
+Rationale: Forces the compiler to evaluate type constraints during comparison checking when one branch of the ternary is a throw. The assertion failure likely occurs because the throw expression lacks a valid integer type, exposing type-checking logic in `CheckTautologicalComparison`.  
+
+Implementation steps:  
+1. Identify a comparison operator in the seed program.  
+2. Select one operand of the comparison for mutation.  
+3. Replace the operand with a ternary expression where one branch is `throw` followed by an expression compatible with the existing type context.  
+4. Ensure the throw expression uses types/variables already present in the seed program to avoid invalid syntax.  
+
+Example in pseudo-code:  
+Before:  
+x <= 5  
+
+After:  
+(true ? throw 0 : x) <= 5  
+
+This triggers the compiler to analyze the throw expression's type during comparison checks, potentially violating the `BT->isInteger()` assertion if the type system fails to handle this edge case.

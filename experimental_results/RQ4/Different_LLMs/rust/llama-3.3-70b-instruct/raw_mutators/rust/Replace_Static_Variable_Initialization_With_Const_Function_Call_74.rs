@@ -1,0 +1,98 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{
+    collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *,
+};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Replace_Static_Variable_Initialization_With_Const_Function_Call_74;
+
+impl Mutator for Replace_Static_Variable_Initialization_With_Const_Function_Call_74 {
+    fn name(&self) -> &str {
+        "Replace_Static_Variable_Initialization_With_Const_Function_Call_74"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let Item::Static(static_item) = item {
+                let init = &static_item.expr;
+                let ty = &static_item.ty;
+                let ident = &static_item.ident;
+                let vis = &static_item.vis;
+
+                let const_fn_ident = Ident::new(&format!("init_{}", ident), Span::call_site());
+                let const_fn = Item::Fn(ItemFn {
+                    attrs: vec![],
+                    vis: Visibility::Inherited,
+                    sig: Signature {
+                        ident: const_fn_ident,
+                        generics: Generics::default(),
+                        inputs: vec![],
+                        output: ReturnType::Type(Default::default(), ty.clone()),
+                        variadic: false,
+                        asyncness: Async::None,
+                        unsafety: Unsafety::Normal,
+                        abi: Abi::Rust,
+                    },
+                    block: Block {
+                        stmts: vec![Stmt::Expr(Expr::Return(ReturnExpr {
+                            expr: init.clone(),
+                            semi_token: Some(Default::default()),
+                        }))],
+                    },
+                });
+
+                file.items.push(const_fn);
+
+                let new_init = Expr::Call(ExprCall {
+                    attrs: vec![],
+                    expr: Expr::Path(ExprPath {
+                        attrs: vec![],
+                        path: SynPath {
+                            leading_colon: None,
+                            segments: Punctuated::from_iter(vec![PathSegment {
+                                ident: const_fn_ident,
+                                arguments: PathArguments::None,
+                            }]),
+                        },
+                    }),
+                    paren_token: Default::default(),
+                    args: vec![],
+                });
+
+                let new_static_item = Item::Static(ItemStatic {
+                    attrs: static_item.attrs.clone(),
+                    vis: vis.clone(),
+                    mutability: static_item.mutability.clone(),
+                    ident: ident.clone(),
+                    ty: ty.clone(),
+                    expr: new_init,
+                    semi_token: static_item.semi_token.clone(),
+                });
+
+                *item = new_static_item;
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator replaces static variable initializations with const function calls. It introduces a new const function for each static variable, which returns the original initialization value. This transformation aims to test the compiler's ability to evaluate constants correctly and handle the interactions between const functions and static variables."
+    }
+}

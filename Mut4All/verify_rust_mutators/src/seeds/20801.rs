@@ -1,0 +1,1 @@
+struct T (u8) ; fn t () -> * mut T { unsafe { 0u8 as * mut T } } fn main () { let a = unsafe { * t () } ; }

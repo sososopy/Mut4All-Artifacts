@@ -1,0 +1,38 @@
+Mutation Operator - Parameter Pack Manipulation
+
+Target: Function Templates using Parameter Packs
+
+Mutation Rule:
+1. Identify a function template that accepts a parameter pack, as in the `invokeN` function template.
+2. Within the function template's body, locate where the parameter pack is unpacked and used, such as in a lambda expression or another function call.
+3. Introduce an additional unnecessary template parameter pack and use it within the body in a manner that could potentially conflict with the existing usage. This additional parameter pack should mimic possible misuse scenarios that could confuse the template argument deduction or instantiation process.
+
+Example Mutation:
+Original Code:
+```cpp
+template<size_t N>
+auto invokeN(auto... args) {
+    return [&]<size_t... Idxs>(std::index_sequence<Idxs...>) {
+        return [&](any<Idxs> auto..., auto, auto...) {
+            // Original code block
+        }(args...);
+    }(std::make_index_sequence<N>{});
+}
+```
+
+Mutated Code:
+```cpp
+template<size_t N>
+auto invokeN(auto... args) {
+    return [&]<size_t... Idxs>(std::index_sequence<Idxs...>) {
+        return [&](any<Idxs> auto..., auto, auto..., auto... extraArgs) {
+            // Intentionally add conflicting parameter pack
+        }(args..., extraArgs...);
+    }(std::make_index_sequence<N>{});
+}
+```
+
+Explanation:
+- This mutation introduces an additional parameter pack `extraArgs` within the lambda, potentially leading to conflicts or misuse during the instantiation process.
+- The example demonstrates a simple form of misuse by attempting to unpack `extraArgs` alongside the existing `args`, which might mislead the compiler's template argument deduction or overload resolution mechanisms.
+- Such mutations can explore the sensitivity of the compiler's handling of complex template constructs, particularly in the presence of parameter packs, which often expose edge cases.

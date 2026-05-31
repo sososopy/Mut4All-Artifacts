@@ -1,0 +1,21 @@
+Mutation operator: Introduce an intermediate base class with protected or private inheritance between a derived class and a template argument that is expected to be publicly accessible, then use a member access expression that requires access path calculation through multiple inheritance and template instantiation.
+
+Target code construct: This mutation applies to class hierarchies involving multiple inheritance and template specializations where the template argument includes a class type that is accessed via a member expression or conversion. Specifically, it targets scenarios where a template uses a class as a type argument, and that class is accessed through a member operator (like operator<<) that requires access checking through inheritance chains.
+
+Description: In the seed program, identify a class that is used as a template type argument (e.g., within TypeAndForceComplete<T, ...>). Ensure this class (T) inherits from another class (e.g., QGraphicsView) which itself inherits from a base class (e.g., QWidget). Then, modify the inheritance of one of the intermediate classes to be protected or private instead of public. This creates an access path where a public member (like data() in QWidget) becomes less accessible through the chain. When a template function (like qTryMetaTypeInterfaceForType) attempts to use T in a context that requires member access (e.g., via operator<< on QDebug with QByteArrayView which may involve conversions), the compiler must compute the access path through this non-public inheritance, potentially triggering the assertion failure because the computed path's access might exceed the direct access.
+
+Example: Suppose the seed contains:
+class Base { public: int x; };
+class Middle : public Base {};
+class Derived : public Middle {};
+template<typename T> void use(T t) { t.x; }
+
+Modify to:
+class Base { public: int x; };
+class Middle : protected Base {};  // Change to protected inheritance
+class Derived : public Middle {};
+template<typename T> void use(T t) { t.x; }
+
+When use<Derived> is instantiated, accessing x requires traversing the protected inheritance from Middle to Base, which may complicate access path calculation.
+
+Changes: Locate a class hierarchy in the seed where a class is used as a template type argument. Change the inheritance specifier of one intermediate class from public to protected or private. Ensure the template usage involves a member access or conversion that depends on the accessibility of that class's base members. Use existing class names from the seed; do not introduce new types. For instance, if the seed has CallGraphView inheriting from QGraphicsView and TraceItemView, and QGraphicsView inherits from QAbstractScrollArea, change one of these inheritances to protected (e.g., class QGraphicsView : protected QAbstractScrollArea). This mutation should be applied only if the template instantiation (like qt_incomplete_metaTypeArray) uses CallGraphView as a type argument and there is an expression that requires access checking through this chain (e.g., within operator<< or data() calls).

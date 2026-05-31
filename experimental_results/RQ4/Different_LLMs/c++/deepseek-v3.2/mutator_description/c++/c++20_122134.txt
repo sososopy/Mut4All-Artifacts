@@ -1,0 +1,15 @@
+mutation operator
+Target: Type alias templates that are used with CTAD (Class Template Argument Deduction) and involve default template arguments. Specifically applies when a type alias template refers to a class template that has a constrained constructor template (using concepts or SFINAE). The mutation changes the type alias template to include an explicit template argument list that matches the default argument, potentially altering the deduction process.
+
+Applicability: In any seed program that contains a type alias template declaration with a default template argument, where the aliased class template has at least one constructor that is a template (constrained or unconstrained). The mutation should be applied to the type alias template definition.
+
+Change: For each type alias template declaration of the form "template <...> using Alias = TemplateName<Args...>;" where at least one template argument in Args is a default argument (e.g., a non-type template parameter with a default value, or a type template parameter with a default type), replace the alias definition to explicitly specify the default argument. If the default argument is not already explicitly provided in the alias, add it. If the alias already explicitly provides an argument for that parameter, leave it unchanged. This mutation should only be applied if the aliased class template has at least one constructor that is itself a template (detectable by the presence of a template parameter list in the constructor declaration, e.g., "template <...> Constructor(...)").
+
+Example: Suppose the seed program contains:
+template <class T, int N = 0> struct S { template <typename U> S(U) {} };
+template <int N = 0> using Alias = S<int, N>;
+After mutation, the alias becomes:
+template <int N = 0> using Alias = S<int, 0>; // Explicitly use default argument 0
+Note: This mutation may also apply to type alias templates that use default type arguments, e.g., template <typename T = int> using Alias = S<T>; would become template <typename T = int> using Alias = S<int>;.
+
+Rationale: This mutation directly mimics the scenario in the bug report where CTAD for a type alias template with a default argument interacts with a constrained constructor template, potentially exposing compiler crashes or misbehavior during template argument deduction and constraint checking.

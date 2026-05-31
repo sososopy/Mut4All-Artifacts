@@ -1,0 +1,1 @@
+enum Foo { Bar } struct Bar ; fn main () { use Foo :: Bar ; Bar :: test () ; }

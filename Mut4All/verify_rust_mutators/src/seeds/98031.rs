@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; fn test < T > () { } struct Foo < T > (PhantomData < T >) ; impl < T > Foo < T > { const FOO_BAR : () = () ; fn bar () { test () ; Self :: FOO_BAR ; } }

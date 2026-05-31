@@ -1,0 +1,25 @@
+Mutation operator: Change a closure that captures `self` by mutable reference into one that captures `self` by value, triggering ownership transfer between closure and outer scope. Apply to closures defined within methods where `self` is used in the outer loop after closure invocation.  
+
+Example:  
+Original:  
+```rust  
+let run = |nframe| -> Result<_> {  
+    Self::check_kps(&nframe)?;  
+    self.nframe = nframe;  
+    self.do_reloc()?;  
+    Ok(self.nframe.clone())  
+};  
+```  
+
+Mutated:  
+```rust  
+let run = |mut inner_self, nframe| -> Result<_> {  
+    inner_self.nframe = nframe;  
+    inner_self.do_reloc()?;  
+    Ok(inner_self.nframe.clone())  
+};  
+// Outer loop becomes:  
+// let result = run(self.clone())?;  
+```  
+
+Triggers potential ICE by introducing ownership conflict between closure's moved `self` and subsequent loop operations on the same `self`. Requires existing `self` usage in both closure and outer scope.

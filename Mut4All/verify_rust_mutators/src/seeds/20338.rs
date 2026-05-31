@@ -1,0 +1,1 @@
+fn main () { main as _ ; }

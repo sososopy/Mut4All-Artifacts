@@ -1,0 +1,1 @@
+mod foo ; fn main () { }

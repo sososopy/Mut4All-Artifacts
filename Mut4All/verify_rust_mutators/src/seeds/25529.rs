@@ -1,0 +1,1 @@
+macro_rules ! f ("text" => { 0 }) ;

@@ -1,0 +1,1 @@
+# ! [feature (trait_alias)] use std :: ops :: { Deref , DerefMut } ; trait DoubleDerefMut < T > = DerefMut where < Self as Deref > :: Target : DerefMut < Target = T > ; fn _f () -> impl DoubleDerefMut < u32 > { Box :: new (Box :: new (0)) }

@@ -1,0 +1,52 @@
+Mutation Operator: Add a `const move` closure in a const function returning `impl Trait`, where the closure captures a local variable via a complex pattern match (e.g., slice decomposition) that introduces non-trivial type inference dependencies. This applies to const functions using `impl Trait` with unboxed closures and const effects.
+
+Example:
+Original code:
+const fn f() -> impl Fn() {
+    || {}
+}
+
+Mutated code:
+const fn f() -> impl Fn() {
+    const move || {
+        let arr: &[u8] = b"abc";
+        match arr {
+            [x, rest @ ..] => { .. },
+            [] => { .. },
+        }
+    }
+}
+
+Mutation Operator: Replace a non-const closure return in a const function with a closure that captures a local variable declared as a generic type (e.g., via type alias or parameterized structure). This applies to const functions using `impl Trait` with unboxed closures involving closure captures and const trait bounds.
+
+Example:
+Original code:
+const fn f<T>() -> impl Fn(T) {
+    || {}
+}
+
+Mutated code:
+const fn f<T>() -> impl Fn(T) {
+    const move || {
+        let x: T = unsafe { std::mem::zeroed() };
+        || x
+    }
+}
+
+Mutation Operator: Introduce a closure in a const function with `~const` trait bounds and a capture of a local variable with an explicit inline alignment attribute (e.g., `#[repr(align(N))]`). This applies to const functions using `~const` trait bounds with unboxed closures that capture aligned types.
+
+Example:
+Original code:
+const fn f() -> impl ~const Fn() {
+    || {}
+}
+
+Mutated code:
+const fn f() -> impl ~const Fn() {
+    #[repr(align(4))]
+    struct AlignedData([u8; 4]);
+    const move || {
+        let data: AlignedData = AlignedData([0; 4]);
+        || data
+    }
+}

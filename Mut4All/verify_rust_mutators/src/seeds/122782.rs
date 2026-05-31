@@ -1,0 +1,1 @@
+# ! [feature (lifetime_capture_rules_2024)] struct FileSystem ; impl FileSystem { fn build < 'a > (& mut self , commands : impl Iterator + 'a) -> Option < impl Iterator + 'a > { let further_commands = self . build (commands) ; self . build (further_commands ?) } }

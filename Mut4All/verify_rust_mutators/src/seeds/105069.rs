@@ -1,0 +1,1 @@
+use self :: A :: * ; use V ; use self :: B :: * ; enum A { V } enum B { V } fn main () { }

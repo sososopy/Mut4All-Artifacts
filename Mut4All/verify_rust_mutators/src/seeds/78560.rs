@@ -1,0 +1,1 @@
+# [derive (Clone)] struct Fn < A , B > { f02 : fn (A , B) } fn main () { }

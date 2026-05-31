@@ -1,0 +1,18 @@
+Mutation Operator 1: Replace CRTP static_cast<Derived>(*this) with static_cast<Derived*>(this)-> in consteval functions  
+Applies to: Method calls within consteval member functions of CRTP-derived classes that use value-based static_cast<Derived>(*this) to invoke a method from the derived type.  
+Change:  
+Original code:  
+return static_cast<Derived>(*this).toFunImpl<F>();  
+Mutated code:  
+return static_cast<Derived*>(this)->toFunImpl<F>();  
+Conditions:  
+1. The current class template parameter must be the CRTP base (e.g., template <typename Derived> class Base).  
+2. The method being called (e.g., toFunImpl) must exist in the Derived class.  
+3. The function must be declared consteval.  
+Rationale: This forces the compiler to evaluate pointer-based CRTP method dispatch in a consteval context, which may trigger undefined behavior or implementation bugs related to object lifetime and template instantiation in compile-time contexts.  
+
+Summary of compiler bug triggers:  
+1. CRTP in consteval functions where object lifetime rules are complex.  
+2. static_cast<Derived>(*this) in consteval contexts involving incomplete types.  
+3. Mixed use of value-based and pointer-based CRTP method dispatch in compile-time evaluation.  
+4. Template instantiation order ambiguities in CRTP hierarchies under consteval constraints.

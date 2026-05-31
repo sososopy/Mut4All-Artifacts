@@ -1,0 +1,1 @@
+# ! [feature (allocator_api)] use std :: alloc :: Global ; fn main () { f (32) ; } pub fn f < T > (val : T) { * Box :: new_in (val , & Global) ; }

@@ -1,0 +1,1 @@
+# [doc = " [&] and [`u8`]"] pub fn foo () { }

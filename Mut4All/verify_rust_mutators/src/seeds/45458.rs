@@ -1,0 +1,1 @@
+# ! [decorator] fn main () { decorated_method () ; }

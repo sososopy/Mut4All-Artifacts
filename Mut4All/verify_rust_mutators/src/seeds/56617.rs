@@ -1,0 +1,1 @@
+# ! [feature (trait_alias)] use core :: hash :: Hash ; trait Key = Hash ;

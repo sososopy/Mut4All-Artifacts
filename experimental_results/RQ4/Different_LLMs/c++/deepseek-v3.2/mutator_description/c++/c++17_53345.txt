@@ -1,0 +1,11 @@
+mutation operator
+
+Target code construct: if constexpr statements with malformed template arguments. This mutation applies to any if constexpr statement where the condition involves a template-id (a template name followed by template arguments). The operator mutates the template name within the condition to a similar but undeclared identifier, mimicking a typographical error, while preserving the template argument structure.
+
+Description: In an if constexpr statement where the condition is a template-id expression (e.g., Trait<T>::value, is_same_v<U, V>), replace the template name (the identifier before the angle brackets) with a misspelled version. The misspelled identifier should be lexically similar to the original but not declared in the current scope. For instance, if the original template name is 'similar', mutate to 'similer' (as seen in the bug report). The mutation must keep the template arguments (the angle brackets and their contents) unchanged. If the original condition does not involve a template-id (e.g., a plain boolean constant), this operator does not apply.
+
+Example: Suppose the seed program contains: if constexpr (std::is_integral<T>::value) { ... }. The mutation could produce: if constexpr (std::is_integraal<T>::value) { ... }, where 'is_integraal' is a misspelling of 'is_integral'. Note that 'std::is_integral' is a declared template; 'std::is_integraal' is not. The template argument '<T>' remains.
+
+Implementation steps: Locate all if constexpr statements in the seed program. For each, analyze the condition expression. If the condition is a template-id (identified by an identifier followed by '<'), extract the template name. Generate a misspelled variant by altering one character (e.g., duplicate a letter, omit a letter, substitute a vowel) ensuring the new identifier is not declared in the program. Replace the original template name with this misspelled variant in the source code. Do not modify any other part of the condition or the if constexpr statement.
+
+Rationale: This mutation targets a specific compiler crash triggered during constant evaluation of if constexpr when the template name is undeclared. It exploits the compiler's error recovery and constant expression evaluation logic, potentially exposing bugs in clang::Expr::EvaluateKnownConstInt and related semantic analysis phases.

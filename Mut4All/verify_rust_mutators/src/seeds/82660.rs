@@ -1,0 +1,1 @@
+struct SnapshotMetadata { builder : Box < dyn FnMut () -> String > , } pub struct SnapshotCollector { snapshot : Vec < SnapshotMetadata > , } impl SnapshotCollector { pub fn collect_snapshots (& mut self) { for meta in & self . snapshot { (meta . builder) () ; } } } fn main () { println ! ("Hello, world!") ; }

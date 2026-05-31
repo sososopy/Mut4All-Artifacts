@@ -1,0 +1,1 @@
+extern crate itertools ; use itertools :: Itertools ; fn equal_combinations_2 (a : Vec < u8 >) { a . iter () . cloned () . tuple_combinations :: < (_ , _) > () ; }

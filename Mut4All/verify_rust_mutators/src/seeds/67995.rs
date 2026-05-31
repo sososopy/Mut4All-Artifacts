@@ -1,0 +1,1 @@
+fn main () { evil () ; } trait Trait < T > { } fn evil () -> impl Trait < _ > { }

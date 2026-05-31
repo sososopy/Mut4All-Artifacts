@@ -1,0 +1,1 @@
+pub struct Bug { field : usize , } impl Bug { pub fn test (& self) { let cols = [self . field ; 0] ; cols [self . field] ; } }

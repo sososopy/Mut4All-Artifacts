@@ -1,0 +1,1 @@
+fn bar < F > () where F : Fn ([usize ; 1]) { } fn main () { }

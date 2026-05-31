@@ -1,0 +1,1 @@
+async fn copy () -> Result < () > { Ok (()) }

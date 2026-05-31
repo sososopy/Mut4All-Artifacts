@@ -1,0 +1,1 @@
+use std :: vec_ng :: Vec ; fn main () { let s = [1i , 2 , 3] ; let v : Vec < _ > = s . iter () . collect () ; }

@@ -1,0 +1,33 @@
+mutation operator: InherentAssocTypeSubtypingConflict  
+applies to function parameters involving higher-ranked function pointers or closures  
+transforms a concrete type in a function parameter to a nested inherent associated type expression with conflicting lifetime captures  
+
+example transformation:  
+before  
+fn f(_: for<'a> fn(&'a ()))  
+
+after  
+fn f(_: for<'a> fn(Foo<fn(&'a ())>::Assoc))  
+
+requires:  
+1. struct Foo in scope containing the impl<'a> Foo<fn(&'a ())> { type Assoc = &'a (); } definition  
+2. parameter must already be a higher-ranked function type  
+3. replacement must nest inherent associated type reference within the function's parameter type  
+
+mutation logic:  
+1. select a function parameter with form `for<'a> fn(T)`  
+2. replace T with `Foo<T_inner>::Assoc` where T_inner is:  
+   a. existing type containing a function pointer with lifetime  
+   b. recursively nested with inherent associated types from existing impls  
+3. ensure replacement creates a chain of associated type selections that may have differing subtyping constraints during type checking  
+
+covers:  
+- nested inherent associated types  
+- conflicting subtyping during trait selection  
+- higher-ranked lifetime interactions in function pointers  
+- type projection within function parameter types  
+
+mutation validation:  
+- must preserve original number of type parameters  
+- must use only existing type definitions in scope  
+- must maintain well-formed function signature syntax

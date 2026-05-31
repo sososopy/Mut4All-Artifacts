@@ -1,0 +1,29 @@
+Based on the bug report, which involves a crash when merging modules with deduction guides, structures that C++ compiler bugs are more likely to trigger include template specializations, deduction guides, module interfaces, and duplicate declarations across translation units. The bug occurs during linkage computation when merging declarations from multiple modules.
+
+mutation operator: Duplicate Deduction Guide Across Modules
+This operator targets deduction guides within class templates. It applies when a class template with a deduction guide is present in a seed program. The operator modifies the program structure by creating a scenario where the same deduction guide is declared in two separate modules that import each other, simulating the merging condition that triggered the bug. Specifically, it ensures the deduction guide is defined in a header file included by multiple module interface units, leading to potential duplicate declarations during module merging.
+
+Implementation steps:
+1. Identify a class template with a deduction guide in the seed program. If none exists, introduce a simple class template with a constructor and a corresponding deduction guide. For example, if the seed has a template like 'template<typename T> struct S { S(T); };', ensure a deduction guide 'template<typename T> S(T) -> S<T>;' is present.
+2. Create a header file containing the class template and its deduction guide.
+3. Create two module interface units (e.g., ModuleA and ModuleB). Both modules must include the header file. One module exports the template, while the other imports it. For instance, ModuleA exports the template, and ModuleB imports ModuleA but also includes the header, causing the deduction guide to appear in both modules' interfaces.
+4. Ensure the main program imports both modules to trigger merging.
+
+Example using pseudo-code:
+Original seed elements (if present): A class template 'MyTemplate' with a deduction guide.
+Header file (common.h):
+  template<typename T> struct MyTemplate { MyTemplate(T); };
+  template<typename T> MyTemplate(T) -> MyTemplate<T>;
+ModuleA.cppm:
+  export module ModuleA;
+  export import common.h; // Assuming common.h is adapted for modules, or use #include
+ModuleB.cppm:
+  export module ModuleB;
+  import ModuleA;
+  #include "common.h"
+Main program:
+  import ModuleA;
+  import ModuleB;
+If new elements are introduced, declare them as above: 'MyTemplate' is a generic template with a single-argument constructor and a deduction guide. The modules are created with explicit export/import declarations, and the header is included in both to induce duplication.
+
+Changes made: Introduce a header with the template and deduction guide, create two module interfaces that include this header, and set up imports to cause merging. This replicates the conditions where the compiler must handle duplicate deduction guides across modules, potentially exposing bugs in linkage assertion checks.

@@ -1,0 +1,1 @@
+# [macro_use] extern crate lazy_static ; lazy_static ! { pub static ref a : [u32 ; 1] = [1] ; pub static ref b : [u32 ; 1] = [1] ; pub static ref a_b : usize = a . len () * std :: mem :: size_of ::< u32 > () + b . len () * std :: mem :: size_of ::< u32 > () ; pub static ref c : [u8 ; a_b] = [1 , 2] ; } fn main () { }

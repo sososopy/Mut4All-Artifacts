@@ -1,0 +1,1 @@
+# ! [feature (let_else)] const _ : () = { fn foo (x : Option < u32 >) { let Some (_) = x else { panic ! () } ; } } ;

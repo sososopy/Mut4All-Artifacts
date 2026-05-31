@@ -1,0 +1,17 @@
+Based on the bug report, the compiler crashes when processing a file with many errors due to a low error limit. The crash occurs during parsing, specifically in destructor name handling after many errors have been emitted. This indicates that bugs may be triggered in error recovery scenarios, especially when the compiler is overwhelmed with errors and attempts to continue parsing. Structures that are more likely to trigger such bugs include code with multiple syntax errors, inconsistent declarations, and malformed constructs that require the compiler to perform error correction or fix-it suggestions.
+
+mutation operator: Introduce a syntax error that triggers a fix-it suggestion, then immediately follow it with a construct that requires the compiler to parse a destructor name within a complex scope, aiming to stress error recovery.
+
+This mutation applies to any class definition that has a destructor or where a destructor call can be syntactically placed. It targets code that already contains a class with a destructor, or introduces a simple class if none exists. The operator modifies a function body or a statement context.
+
+First, ensure there is a class with a destructor. If no such class exists, add a simple class definition before the mutation point: class D { public: ~D(); }; This uses existing or newly introduced names that are unique within the seed program.
+
+Then, at a mutation point within a function body or a statement block, insert two lines. The first line is a deliberate syntax error that the compiler is likely to try to correct, such as a missing semicolon on a simple statement. For example, take an existing statement like "int a = 5;" and change it to "int a = 5" (remove the semicolon). This error will trigger a fix-it suggestion.
+
+Immediately after that line, insert a second line that attempts to call a destructor using a complex nested scope, referencing the class D. For example, write "D::~D();" but place it in a context that might be ambiguous, such as within an incomplete expression or before a missing token. Alternatively, use "&D::~D" as part of an expression that is not fully formed.
+
+The mutation should use variables or types already present or introduced as described. The goal is to create a scenario where the compiler, after emitting an error for the missing semicolon, then tries to parse a destructor name while still in error recovery mode, potentially leading to a crash if the error limit is exceeded.
+
+Example mutation in pseudo-code: Original code has a function: void f() { int x = 0; } After mutation: void f() { int x = 0 D::~D(); } Here, the semicolon after "int x = 0" is removed, and "D::~D();" is appended without proper separation, creating a parsing challenge. This sequence may cause the compiler to emit an error for the missing semicolon and then attempt to parse "D::~D();" in a context where it expects a different token.
+
+The changes are: remove the semicolon from a statement, and append a destructor call using a class that exists in the program. Ensure the class D is defined if not already present.

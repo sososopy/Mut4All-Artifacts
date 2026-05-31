@@ -1,0 +1,1 @@
+# ! [crate_name = "Test"] # ! [crate_type = "dylib"] # [repr (C)] enum Foo { Foo_X = 0 , Foo_Y = Foo :: Foo_X , } # [repr (C)] enum Bar { Bar_X = 0 , Bar_Y = Foo :: Bar_X , }

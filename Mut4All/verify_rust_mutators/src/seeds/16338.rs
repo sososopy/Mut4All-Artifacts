@@ -1,0 +1,1 @@
+use std :: mem ; use std :: raw :: Slice ; unsafe fn foo < T > (s : & mut [T]) { let Slice { data : data , len : len } = mem :: transmute :: < & mut [T] , Slice < T > > (s) ; let Slice { data : data , len : len } = mem :: transmute :: < & mut [T] > (s) ; } fn main () { }

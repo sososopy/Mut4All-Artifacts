@@ -1,0 +1,1 @@
+trait FTErrorMethods { fn succeeded (self) -> bool ; } impl FTErrorMethods for int { fn succeeded (self) -> bool { self == 0 } } fn main () { 5 . succeeded () ; }

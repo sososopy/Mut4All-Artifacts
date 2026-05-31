@@ -1,0 +1,1 @@
+# ! [feature (asm)] extern "C" fn foo () { } fn main () { unsafe { asm ! ("mov x0, $0" :: "r" (foo) :: "volatile") ; } }

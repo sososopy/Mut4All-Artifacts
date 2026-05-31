@@ -1,0 +1,1 @@
+use core :: num :: NumCast ; trait Decode { fn decode (& self) -> Self ; } impl Decode for f32 { fn decode (& self) -> f32 { 3.2f32 } } fn decode_test < T : Float + Decode > (value : T) { let mut float_part = value . decode () ; float_part *= NumCast :: from (2.0) ; io :: println (fmt ! ("decode test: %?" , float_part)) } fn main () { decode_test (5.5f32) ; }

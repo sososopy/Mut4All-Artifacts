@@ -1,0 +1,1 @@
+# [repr (i32)] pub enum CEnum { Value1 = 1 , Value2 = 2 , }

@@ -1,0 +1,1 @@
+struct Struct ; fn main () { Struct += Struct ; }

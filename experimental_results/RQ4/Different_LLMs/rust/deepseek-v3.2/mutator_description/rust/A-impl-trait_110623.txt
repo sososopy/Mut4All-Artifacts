@@ -1,0 +1,19 @@
+mutation operator
+
+Target code construct: Replace an `impl Trait` in a return position with a concrete type that matches the actual returned value, but where the concrete type involves a generic lifetime parameter that is captured from the input and used recursively in a manner that may create complex region constraints. This applies specifically to functions that return `impl Trait` and have a recursive call where the returned `impl Trait` from the recursive call is used as an argument to another call of the same function.
+
+Detailed changes: Identify a function with a return type of `impl Trait + 'a` where `'a` is a lifetime parameter from the function's input (e.g., from an iterator argument). Replace the return type with a concrete type that explicitly captures the lifetime, such as `SpecificIteratorType<'a>`, where `SpecificIteratorType` is the actual iterator type being returned (e.g., `Map<...>` or `Filter<...>`). Ensure the function body remains unchanged. This mutation should be applied only if the function contains a recursive call that passes the result of another recursive call (or a modified version of it) as an argument, and the actual returned value in the body is an iterator derived from the input iterator.
+
+Example in pseudo-code:
+
+Original seed function:
+fn example<'a>(&mut self, iter: impl Iterator<Item = &'a str> + 'a) -> Option<impl Iterator<Item = &'a str> + 'a> {
+    // ... recursive calls that return Some(iter) or similar
+}
+
+Mutated function:
+fn example<'a>(&mut self, iter: impl Iterator<Item = &'a str> + 'a) -> Option<Map<..., ...> /* concrete type */> {
+    // Same body as original
+}
+
+To determine the concrete type, examine the return expressions in the function body. If the return value is derived from `iter` via iterator adapters (e.g., `iter.filter(...)`), then the concrete type should be the composition of those adapters (e.g., `Filter<..., ...>`). If the return value is `iter` itself, the concrete type is the type of the `iter` parameter (but note that the parameter is `impl Iterator`, so we need to use a generic placeholder; in practice, we can use a type alias or a similar construct from the seed program if available). If no suitable existing type exists, introduce a type alias at the module level: `type ConcreteIter<'a, I> = ...;` where `I` is the iterator type parameter, and use it in the return type. The mutation must ensure that the function signature change does not introduce undeclared types; use only types that are already in scope or are explicitly defined as part of the mutation.

@@ -1,0 +1,63 @@
+use syn::parse_quote;
+use crate::mutator::Mutator;
+use syn::FnArg;
+use syn::Type;
+use rand::thread_rng;
+use rand::Rng;
+
+pub struct Array_Dimension_Mismatch_In_MatchPatterns_369;
+
+impl Mutator for Array_Dimension_Mismatch_In_MatchPatterns_369 {
+    fn name(&self) -> &str {
+        "Array_Dimension_Mismatch_In_MatchPatterns_369"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                if func.sig.ident == "main" {
+                    continue;
+                }
+                for input in &mut func.sig.inputs {
+                    if let FnArg::Typed(pat_type) = input {
+                        if let Type::Array(array) = &*pat_type.ty {
+                            let mut current_depth = 1;
+                            let mut current_elem = &array.elem;
+                            while let Type::Array(inner) = &**current_elem {
+                                current_depth += 1;
+                                current_elem = &inner.elem;
+                            }
+                            let target_depth = if current_depth > 1 {
+                                current_depth - 1
+                            } else {
+                                current_depth + 1
+                            };
+                            if target_depth < current_depth {
+                                let mut new_type = (*array.elem).clone();
+                                let mut depth_to_go = target_depth;
+                                while depth_to_go > 1 {
+                                    if let Type::Array(inner) = new_type {
+                                        new_type = (*inner.elem).clone();
+                                        depth_to_go -= 1;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                pat_type.ty = Box::new(new_type);
+                            } else {
+                                let new_const_name_str = format!("N{}", thread_rng().gen_range(0..100));
+                                let new_const_name = syn::Ident::new(&new_const_name_str, proc_macro2::Span::call_site());
+                                let new_const = parse_quote!(const #new_const_name: usize);
+                                func.sig.generics.params.push(new_const);
+                                let new_array = parse_quote!([#array; #new_const_name]);
+                                pat_type.ty = Box::new(new_array);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator alters the array dimensionality of function parameters with generic const parameters. It either reduces or increases the nesting level of the array type, creating a mismatch between the actual array structure and the match patterns in the function body. This transformation exploits the compiler's handling of const generics and pattern matching, potentially leading to internal compiler errors (ICE) when type inference encounters inconsistent array structures."
+    }
+}

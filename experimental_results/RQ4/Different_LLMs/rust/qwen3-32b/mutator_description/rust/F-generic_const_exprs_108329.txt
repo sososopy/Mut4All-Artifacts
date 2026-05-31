@@ -1,0 +1,38 @@
+Mutation Operator: Introduce const generic slice range in method argument
+Target code construct: Slice operations within method calls that use const parameters
+Applies to: Functions with const generic parameters and array/vector fields accessed via slice syntax
+
+Example transformation:
+Original code:
+buf.copy_from_slice(self.buffer[..]);
+
+Mutated code:
+buf.copy_from_slice(self.buffer[..S]);
+
+Changes required:
+1. Identify a const parameter (e.g., 'const S: usize') defined at function/struct level
+2. Locate slice operations (x[..]) on arrays/vectors
+3. Replace slice end marker with const parameter reference
+4. Ensure the const parameter is in scope where the mutation is applied
+
+Covered features:
+- Const generics parameters
+- Array/vector slicing with const expressions
+- Type inference in method argument typechecking
+- Type relationships during trait resolution
+
+Example in context:
+struct Buffer<T, const N: usize> {
+    buffer: [T; N]
+}
+
+impl<T, const N: usize> Buffer<T, N> {
+    fn take(&mut self) -> Vec<T> {
+        let mut buf = Vec::with_capacity(self.buffer.len());
+        buf.copy_from_slice(self.buffer[..N]); // mutated slice range using const generic
+        self.index = N - 1;
+        buf
+    }
+}
+
+This mutation specifically targets the interaction between const generic parameters and slice operations during typechecking. When combined with method argument type inference, it can expose compiler bugs in how const expressions are evaluated and type relationships are established during the type-checking phase.

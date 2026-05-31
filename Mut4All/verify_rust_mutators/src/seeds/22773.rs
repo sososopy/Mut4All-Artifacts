@@ -1,0 +1,1 @@
+pub struct A < I : Iterator > { iter : I , buf : Vec < I :: Item > , } impl < I : Iterator > Iterator for A < I > where I : Iterator < Item = I :: Item > { fn next (& mut self) -> Option < I :: Item > { None } } fn main () { }

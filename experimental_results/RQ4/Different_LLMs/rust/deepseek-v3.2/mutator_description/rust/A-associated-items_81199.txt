@@ -1,0 +1,17 @@
+mutation operator: In a union with generic parameters, replace an associated type projection in a field type with its concrete type bound from the trait implementation for the generic parameter, but only when the associated type is used in a struct field within the union. This applies when a union contains a field whose type is a struct, and that struct uses an associated type projection like `<T as Trait>::Assoc` in one of its field types, where T is a generic parameter of the union. The mutation changes the struct field type from the associated type projection to the concrete type that the associated type is bound to for the generic parameter, based on the trait bounds present in the seed program. If multiple trait bounds could apply, choose the first bound found in the source. If no concrete bound is directly available, introduce a dummy type (e.g., `u32`) as a placeholder, ensuring it is a valid type in context. The goal is to potentially trigger normalization issues in the compiler when handling unions.
+
+Example: For a seed program snippet:
+union ExampleUnion<T: Pointee> {
+    field: ExampleStruct<T>,
+}
+struct ExampleStruct<T: Pointee> {
+    meta: <T as Pointee>::Metadata,
+}
+Assume there is an implementation like `impl Pointee for SomeType { type Metadata = usize; }` elsewhere. The mutation would change the struct field type in the union's usage context to the concrete type, e.g., change `<T as Pointee>::Metadata` to `usize` in the struct definition within the union's field type, resulting in:
+union ExampleUnion<T: Pointee> {
+    field: ExampleStructConcrete,
+}
+struct ExampleStructConcrete {
+    meta: usize,
+}
+Note: This mutation requires adjusting the struct definition to a new or existing concrete version, using types already present or introducing a simple valid type like `usize`. The mutation should only apply when the union is generic and the associated type projection is used in a struct field type inside the union.

@@ -1,0 +1,1 @@
+fn bump () -> Option < usize > { unreachable ! () } fn take_until (terminate : impl Fn () -> bool) { loop { if terminate () { return ; } else { bump () ; } } } fn main () { take_until (| | true) ; }

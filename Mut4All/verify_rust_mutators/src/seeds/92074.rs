@@ -1,0 +1,1 @@
+pub mod sub { pub enum En { A (B) , } pub struct B { inner : Vec < u8 > , } pub fn make_struct () -> Result < En , & 'static str > { Ok (En :: A (B { inner : vec ! [] })) } impl B { pub fn inner (& self) -> & Vec < u8 > { & self . inner } } }

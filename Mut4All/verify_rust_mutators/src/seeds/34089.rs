@@ -1,0 +1,1 @@
+enum List < T > { Elem (T , Box < List < T > >) , Nil } fn is_prime (x : i32 , primes : & List < i32 >) -> bool { if x < 2 { return false ; } match primes { & Nil => true , & Elem (curr_prime , Box (rest_primes)) => x == curr_prime || x % curr_prime != 0 && is_prime (x , & rest_primes) } } fn main () { }

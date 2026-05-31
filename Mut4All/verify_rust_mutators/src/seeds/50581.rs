@@ -1,0 +1,1 @@
+fn f () { | x : [u8 ; break] | loop { } ; } fn main () { macro_rules ! vec { (*) => () } }

@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] fn shuffle < const IDX : () > () { } pub fn foo () { shuffle :: < { () } > () ; }

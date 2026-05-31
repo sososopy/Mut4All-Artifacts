@@ -1,0 +1,1 @@
+pub trait Interner < T > { fn new () -> Self ; fn get (& 'self self , tag : uint) -> Option < & 'self T > ; } pub struct SimpleInterner < T : Eq + IterBytes + Hash + Clone > ; impl < T > Interner < T > for SimpleInterner < T > { pub fn new () -> SimpleInterner < T > { SimpleInterner } pub fn get (& 'self self , tag : uint) -> Option < & 'self T > { None } }

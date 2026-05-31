@@ -1,0 +1,1 @@
+# ! [crate_name = "foo"] mod auto { mod action_row { pub struct ActionRowBuilder ; } # [doc (hidden)] pub mod builders { pub use super :: action_row :: ActionRowBuilder ; } } pub use auto :: * ; pub mod builders { pub use crate :: auto :: builders :: * ; }

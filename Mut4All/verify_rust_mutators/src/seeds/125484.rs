@@ -1,0 +1,1 @@
+type hi_rustc_devs_you_are_the_best = std :: time :: Instant ; fn main () { }

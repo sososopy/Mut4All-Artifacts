@@ -1,0 +1,1 @@
+struct S < 'a > { a : & 'a str } impl < 'a > S < 'a > { pub fn new (input : & 'a str) -> S < 'a > { S { a : input , b : & char } } }

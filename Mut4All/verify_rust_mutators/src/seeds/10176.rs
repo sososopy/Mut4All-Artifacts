@@ -1,0 +1,1 @@
+fn f () -> int { (return 1 , return 2) } fn main () { }

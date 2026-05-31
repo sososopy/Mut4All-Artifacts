@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] fn a < const X : & 'static [u32] > () { } fn main () { a :: < { & [] } > () ; }

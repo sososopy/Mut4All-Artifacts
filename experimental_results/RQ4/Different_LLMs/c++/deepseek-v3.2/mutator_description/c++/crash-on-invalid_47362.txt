@@ -1,0 +1,40 @@
+Based on the bug report, the crash occurs during template instantiation related to exception specification substitution. The assertion failure indicates that the compiler encountered an uninstantiated exception specification type while processing a functionoid (likely a lambda) within a complex template-heavy library. This suggests that bugs are more likely to be triggered by intricate interactions between templates, exception specifications, and lambda expressions in modern C++ (C++17/20) contexts.
+
+Mutation Operator: Exception Specification Mutation in Template Context
+
+This operator targets function templates and member functions of class templates that have exception specifications. It modifies the exception specification to introduce potentially problematic forms during instantiation, especially when combined with lambda expressions or complex type deductions.
+
+Applicability: Apply to any function declaration (including member functions) within a template (class template or function template) that has an explicit exception specification (e.g., noexcept(true), noexcept(false), or throw(...)). The mutation should be applied when the template is instantiated with types that involve lambdas or other callable objects.
+
+Procedure:
+1. Locate a function declaration inside a template definition that has an exception specification.
+2. Replace the existing exception specification with a noexcept expression that depends on a template parameter or a trait that may not be fully instantiated at the point of substitution.
+   - For example, change `noexcept(true)` to `noexcept(std::is_nothrow_invocable_v<F>)` where `F` is a template parameter representing a callable type (like a lambda).
+   - Alternatively, change `noexcept` to `noexcept(noexcept(std::declval<F>()()))` (a nested noexcept operator).
+3. Ensure that the trait or expression used involves template parameters that are part of the current template context. Use existing template parameter names from the seed program. If necessary, introduce a helper trait alias in the template body before the function declaration, such as:
+   `using is_nothrow = std::is_nothrow_invocable<F>;`
+   Then use `noexcept(is_nothrow::value)`.
+4. Avoid introducing new types or functions not already present in the program. If `std::is_nothrow_invocable` is not available, use a simpler trait like `std::is_nothrow_move_constructible` on a relevant template parameter, provided it exists in the seed.
+
+Example Transformation:
+Original template code snippet (hypothetical):
+template <typename F>
+class CallableWrapper {
+public:
+    void operator()() noexcept(true) {
+        // some code
+    }
+};
+
+Mutated version:
+template <typename F>
+class CallableWrapper {
+private:
+    using nothrow_trait = std::is_nothrow_invocable<F>;
+public:
+    void operator()() noexcept(nothrow_trait::value) {
+        // some code
+    }
+};
+
+This mutation creates a scenario where the exception specification's instantiation depends on the completeness of `F`'s type information, potentially leading to an uninstantiated state during substitution, similar to the bug report.

@@ -1,0 +1,1 @@
+trait Xxx { } trait Yyy : Xxx { } trait Aaa { type Y : Yyy ; } trait Bbb { type B : for < 'a > std :: mem :: TransmuteFrom < () , () > ; } impl < T > Bbb for T where T : Aaa , _9F :: Y : , { type B = T :: Y ; }

@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; const N : usize = 1 ; pub struct Elem < M > { pub x : [usize ; N] , pub m : PhantomData < M > , } pub fn f () -> Elem < () > { g () } # [inline] pub fn g < M > () -> Elem < M > { Elem { x : [0 ; N] , m : PhantomData , } } pub fn main () { f () ; }

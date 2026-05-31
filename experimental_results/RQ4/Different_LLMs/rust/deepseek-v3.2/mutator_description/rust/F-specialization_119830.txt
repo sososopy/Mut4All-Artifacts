@@ -1,0 +1,14 @@
+Based on the bug report, which involves an internal compiler error (ICE) related to specialization and const trait implementations, we can infer that bugs are more likely to trigger in Rust compiler when dealing with overlapping trait implementations, especially when combined with experimental features like const traits and effects. The ICE occurs during the well-formedness checking of impls when there are unresolved inference variables, indicating that the compiler's logic for handling complex trait constraints under specialization can fail.
+
+Mutation Operator:
+This mutation operator targets trait implementations that use specialization and const contexts. It modifies a trait implementation by adding a const bound to a generic parameter in the where clause, specifically focusing on scenarios where a trait might have overlapping implementations with and without const modifiers. The operator applies to any trait implementation that uses the `const` keyword and has a generic parameter. If the seed program contains a trait implementation with a `const` modifier, and the trait is not marked as `#[const_trait]`, we mutate the where clause to introduce a const bound referencing another trait that exists in the program. This creates a situation similar to the bug report where the compiler must resolve const parameters and specialization overlaps.
+
+The mutation operator changes a trait implementation from `impl<T> const TraitName for T {}` to `impl<T> const TraitName for T where T: const ExistingTrait {}`. Here, ExistingTrait must be a trait already defined in the seed program. If no such trait exists, the mutation does not apply. This introduces an additional const bound that can lead to unresolved inference variables during specialization checking, potentially triggering an ICE.
+
+For example, if the seed program has:
+trait A {}
+trait B {}
+impl<T> const A for T {}
+We mutate to:
+impl<T> const A for T where T: const B {}
+This adds a const bound to the generic parameter T, referencing trait B. The mutation does not introduce new names; it uses an existing trait. The change is made only if the original impl uses `const` and there is at least one other trait defined in the program to serve as the bound. This operator aims to expose bugs in the compiler's handling of const specialization and unresolved types.

@@ -1,0 +1,39 @@
+Mutation Operator: Add Constraints to Unconstrained Type Parameters
+
+This mutation operator targets the implementation of traits and applies to type parameters that are declared but not constrained by the trait bounds, self type, or predicates within the implementation. Specifically, this operator focuses on type parameters like `J` in the provided example, which are declared in the `impl` block but are not used in any constraint or condition.
+
+To expose potential bugs related to unconstrained type parameters, the mutation operator adds constraints to such type parameters by introducing trait bounds or using the type parameter in existing conditions. This encourages the compiler to perform additional checks and evaluations, potentially triggering bugs in constraint resolution or trait implementation.
+
+Example:
+In the seed program, the type parameter `J` in the following `impl` block is unconstrained:
+
+```
+impl<I: Indices<N>, J: Indices<N>, const N: usize> Mul for Tensor<I, N>
+where
+    I: Concat<J>,
+    <I as Concat<J>>::Output: Indices<N>,
+    [u8; I::NUM_ELEMS]: Sized,
+    [u8; J::NUM_ELEMS]: Sized,
+    [u8; <I as Concat<J>>::Output::NUM_ELEMS]: Sized,
+{
+}
+```
+
+Mutation:
+Add a constraint to `J` by requiring it to implement a specific trait or by using it in an existing condition. For instance, require `J` to implement a trait `SomeTrait` or use it in a condition like `J: SomeTrait`:
+
+```
+trait SomeTrait {}
+
+impl<I: Indices<N>, J: Indices<N> + SomeTrait, const N: usize> Mul for Tensor<I, N>
+where
+    I: Concat<J>,
+    <I as Concat<J>>::Output: Indices<N>,
+    [u8; I::NUM_ELEMS]: Sized,
+    [u8; J::NUM_ELEMS]: Sized,
+    [u8; <I as Concat<J>>::Output::NUM_ELEMS]: Sized,
+{
+}
+```
+
+In this mutation, a new trait `SomeTrait` is introduced, and `J` is constrained to implement this trait. This will force the Rust compiler to check for implementations of `SomeTrait` for any types used as `J`, potentially exposing bugs in trait resolution or coherence checks.

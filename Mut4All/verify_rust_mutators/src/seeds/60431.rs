@@ -1,0 +1,1 @@
+use std :: mem ; pub trait Arena { type Dyn : ? Sized ; } pub struct DynRef { _dummy : [()] , } pub struct Ref < T , A : Arena > { _value : T , _dyn_arena : A :: Dyn , } pub struct Obstack ; impl Arena for Obstack { type Dyn = DynRef ; } fn main () { mem :: size_of :: < & Ref < u8 , Obstack > > () ; }

@@ -1,0 +1,1 @@
+macro_rules ! foo { () => { break 'x ; } } pub fn main () { 'x : loop { foo ! () } }

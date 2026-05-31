@@ -1,0 +1,1 @@
+fn main () { match some (true) { some (false) => { } whatever if false => { } some (true) => { } none => () } }

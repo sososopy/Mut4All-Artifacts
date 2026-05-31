@@ -1,0 +1,1 @@
+const VV : Vec < & 'static str > = vec ! ("A" , "B") . drain () . map (| s | s) . collect :: < Vec < & 'static str > > () ;

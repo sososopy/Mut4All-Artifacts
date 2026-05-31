@@ -1,0 +1,1 @@
+# ! [feature (nll)] extern crate itertools ; use itertools :: Itertools ; fn main () { b"abcdefg" . iter () . chunks (2) . into_iter () . map (| a | 1) ; }

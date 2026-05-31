@@ -1,0 +1,1 @@
+# [allow (dead_code)] fn uwu () -> impl ? Sized { }

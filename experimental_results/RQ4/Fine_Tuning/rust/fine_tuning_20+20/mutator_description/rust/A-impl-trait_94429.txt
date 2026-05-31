@@ -1,0 +1,43 @@
+Mutation Operator: Modify Generator Usage in Trait and Implementations
+
+Target Construct: Trait and Impl blocks that use the Generator trait.
+
+Mutation Rule:
+1. Identify traits in the code that have associated types defined as `impl Generator<Yield = (), Return = ()>`.
+2. Mutate the associated type to use a different `Yield` or `Return` type unexpectedly.
+3. Update the corresponding implementation to match the modified associated type but intentionally introduce a mismatch in runtime behavior.
+
+Step-by-Step Instructions:
+- Locate the trait where the type alias `impl Generator` is used. Example:
+  ```rust
+  trait Runnable {
+      type Gen: Generator<Yield = (), Return = ()>;
+      fn run(&mut self) -> Self::Gen;
+  }
+  ```
+
+- Modify the associated type `Gen` to yield a different type, such as:
+  ```rust
+  trait Runnable {
+      type Gen: Generator<Yield = u32, Return = String>;
+  }
+  ```
+
+- Adjust the implementation to match the new associated type but introduce a mismatch:
+  ```rust
+  impl Runnable for Implementor {
+      type Gen = impl Generator<Yield = u32, Return = String>;
+
+      fn run(&mut self) -> Self::Gen {
+          move || {
+              yield 1;  // Mismatch here if logic expects ()
+              return "done".to_string(); // Correct return but logic issue.
+          }
+      }
+  }
+  ```
+
+- Ensure the types used in the mutations are declared if they are not already present in the seed program.
+
+Rationale:
+This mutation operator targets the mismatch between the expected generator yield and return types and the actual implementation logic, focusing on the `Generator` trait usage in traits and their implementations. The intent is to trigger bugs related to type inference and generator logic handling in the Rust compiler.

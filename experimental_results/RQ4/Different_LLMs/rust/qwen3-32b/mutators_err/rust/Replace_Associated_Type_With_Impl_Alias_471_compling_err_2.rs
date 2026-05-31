@@ -1,0 +1,85 @@
+use proc_macro2::{Span,*};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command,*};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Replace_Associated_Type_With_Impl_Alias_471;
+
+impl Mutator for Replace_Associated_Type_With_Impl_Alias_471 {
+    fn name(&self) -> &str {
+        "Replace_Associated_Type_With_Impl_Alias_471"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Impl(item_impl) = item {
+                let has_associated_type = item_impl.items.iter().any(|i| {
+                    matches!(i, syn::ImplItem::Type(_))
+                });
+
+                if has_associated_type {
+                    let dummy_t_type = parse_quote! {
+                        impl SomeTrait
+                    };
+
+                    let dummy_t_item = parse_quote! {
+                        type DummyT<T> = #dummy_t_type;
+                    };
+
+                    file.items.insert(0, dummy_t_item);
+
+                    let param_name = item_impl.generics.params.iter()
+                        .find_map(|param| {
+                            if let syn::GenericParam::Type(type_param) = param {
+                                Some(type_param.ident.clone())
+                            } else {
+                                None
+                            }
+                        });
+
+                    if let Some(param) = param_name {
+                        let dummy_t_type_path = parse_quote! {
+                            DummyT<#param>
+                        };
+
+                        let trait_path = parse_quote! {
+                            SomeTrait<#dummy_t_type_path>
+                        };
+
+                        let predicate = parse_quote! {
+                            #param: #trait_path
+                        };
+
+                        if let Some(where_clause) = &mut item_impl.generics.where_clause {
+                            where_clause.predicates.push(predicate);
+                        } else {
+                            let where_clause = parse_quote! {
+                                where #predicate
+                            };
+                            item_impl.generics.where_clause = Some(where_clause);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

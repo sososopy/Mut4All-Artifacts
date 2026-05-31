@@ -1,0 +1,1 @@
+fn main () { loop { break 'a () } }

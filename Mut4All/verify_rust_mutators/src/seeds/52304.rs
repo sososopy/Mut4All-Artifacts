@@ -1,0 +1,1 @@
+# ! [feature (generators , generator_trait)] use std :: ops :: Generator ; fn example () -> impl Generator { | | { yield & 1 } }

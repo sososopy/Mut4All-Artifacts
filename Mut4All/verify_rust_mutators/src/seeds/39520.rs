@@ -1,0 +1,1 @@
+trait Foo < 'a , T : 'a > { fn print (& 'a self) { println ! ("foo") ; } } impl < 'a > Foo < 'a , & 'a () > for () { } trait Bar : for < 'a > Foo < 'a , & 'a () > { } impl Bar for () { } fn main () { (& () as & Bar) . print () ; }

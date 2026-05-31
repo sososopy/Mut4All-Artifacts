@@ -1,0 +1,1 @@
+use std :: mem :: size_of ; pub trait GemmKernel { type Elem ; } pub type T = f32 ; pub enum Gemm { } impl GemmKernel for Gemm { type Elem = T ; } fn gemm_packed < K > () where K : GemmKernel , { assert ! (size_of ::< K :: Elem > () <= 256) ; } fn main () { println ! ("Hello, world!") ; }

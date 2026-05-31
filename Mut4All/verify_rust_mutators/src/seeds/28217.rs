@@ -1,0 +1,1 @@
+# ! [feature (plugin)] # ! [plugin (json_macros)] extern crate rustc_serialize ; fn main () { let payload = json ! ({ "test" : "1" }) ; println ! (payload . to_string ()) ; }

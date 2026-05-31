@@ -1,0 +1,1 @@
+# [repr (i8)] # [derive (Debug)] enum Type { Type1 = 0 , Type2 = 1 } extern "C" fn test () -> Type { Type :: Type1 } fn main () { println ! ("{:?}" , test ()) }

@@ -1,0 +1,1 @@
+use std :: io :: Write ; struct A < W : std :: io :: Write > { file : Option < lzma :: LzmaWriter < W > > , } impl < W > A < W > { async fn init (& mut self) { self . file . unwrap () . write ("" . as_bytes ()) . unwrap () ; } } fn main () { }

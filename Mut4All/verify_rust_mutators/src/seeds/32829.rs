@@ -1,0 +1,1 @@
+macro_rules ! m { ($ e : expr) => ({ panic ! ("foo") ; $ e }) } static S : u64 = { m ! (0) } ; fn main () { println ! ("{:?}" , S) ; }

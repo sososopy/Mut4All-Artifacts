@@ -1,0 +1,11 @@
+Mutation Operator: Insert Undeclared Identifier in Template Argument List
+
+Targets: Template instantiation contexts where a template argument list is present. Specifically applies to template class or function declarations that have at least one template parameter, and within a template argument list (the angle brackets following a template name), where a type argument is expected.
+
+Change: In a template argument list, replace an existing type argument (or insert an additional argument if the list is non-empty) with an identifier that is not declared in the current scope. The identifier should be a simple name that does not correspond to any known type, variable, or template in the visible context. For example, if a seed program contains a template declaration like `template<typename T> class X;` and an instantiation like `X<int> obj;`, mutate the instantiation to `X<UndefinedType> obj;`, where `UndefinedType` is not declared anywhere. Alternatively, within a nested template argument, such as `One<ExistingType>`, mutate to `One<UndeclaredIdentifier>`. The mutation should be applied at a point where the template is being used (instantiated or referenced), not necessarily in its primary declaration.
+
+Example: Given a seed code snippet: `std::vector<MyClass> vec;` mutate to `std::vector<NonExistentType> vec;` where `NonExistentType` is not defined. Or for a more complex template: `Two<int, One<float>> x;` mutate to `Two<int, One<Missing>> x;`.
+
+Implementation: Scan the seed program for template argument lists (sequences within `<` and `>` that follow a template name). For each list, identify a position where a type is expected (based on context, typically any argument in a typename parameter). Replace the token at that position with a new identifier string that is not present in the program’s symbol table. If the list is empty or cannot be modified, skip. This mutation introduces an undeclared identifier specifically in a type context, mimicking the error in the bug report which involved `One<Unknown>`.
+
+Rationale: This targets compiler recovery logic after encountering an unknown identifier in a syntactically complex context (template arguments), which can lead to assertion failures or crashes during parsing or error recovery phases. It stresses the frontend’s handling of malformed type names within nested template structures.

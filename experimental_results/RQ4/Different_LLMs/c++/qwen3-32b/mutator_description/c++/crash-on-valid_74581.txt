@@ -1,0 +1,28 @@
+Mutation operator: Introduce a template constructor constraint involving std::is_constructible<std::decay_t<F>, F> in a class with an implicitly declared copy constructor.
+
+Target code structure: 
+A class with a default constructor and no explicitly defined copy constructor, where at least one template constructor has a constraint that recursively references the template parameter through std::decay_t.
+
+Example mutation:
+Original class declaration:
+class Example {
+public:
+    Example();
+    template<typename F> requires std::is_copy_constructible_v<F> Example(F);
+};
+
+Modified class declaration:
+class Example {
+public:
+    Example();
+    template<typename F> requires std::is_constructible_v<std::decay_t<F>, F> Example(F);
+};
+
+The mutation works by creating a constraint that evaluates constructibility between a type and its decayed version. This creates a circular dependency in constraint resolution when the class needs implicit copy constructor generation. The compiler must evaluate the constraint's validity during implicit special member function generation, leading to infinite recursion in constraint propagation when the template parameter F refers to the class itself.
+
+The mutation applies to any class with:
+1. A user-defined template constructor
+2. No explicitly defined copy constructor
+3. Usage of type traits that reference the template parameter in recursive type relationships
+
+When applied to a std::function context, this creates a scenario where the function object's template constructor constraints are evaluated during std::function's internal constructor selection, triggering the compiler's constraint evaluation engine with circular dependencies.

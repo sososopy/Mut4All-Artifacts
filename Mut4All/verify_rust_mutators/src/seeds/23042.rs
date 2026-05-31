@@ -1,0 +1,1 @@
+trait Foo { type Bar ; fn foo (& self) -> Self :: Bar ; } fn next (i : & Foo) { let _ = i . foo () ; } fn main () { }

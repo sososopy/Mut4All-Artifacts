@@ -1,0 +1,48 @@
+Mutation Operator: Modify Template Specialization and Enable If
+
+Target Code Construct: Template specialization in conjunction with the enable_if construct.
+
+Mutation Rule:
+1. Identify template functions or constructors that utilize `enable_if` to conditionally enable or disable certain instantiations. This often involves templates with parameters like `typename = typename enable_if<condition>::type`.
+
+2. Create a scenario where the condition used in the `enable_if` can lead to a substitution failure. This can be done by:
+   - Adding a new template specialization or overloading an existing template function such that the condition becomes ambiguous or fails in certain contexts.
+
+3. Specifically focus on modifying or adding template specializations in a way that introduces conflicting conditions for different template parameters.
+
+Step-by-step Instructions:
+- Locate a function or constructor that uses `enable_if` based on a condition (e.g., `always_false<T>`).
+- Introduce an additional specialization or overload that uses a slightly different condition, such as:
+  ```cpp
+  template<typename T, typename = typename enable_if<!always_false<T>>::type>
+  void data(T);
+  ```
+- This new overload should either directly contradict the existing condition or create a circular dependency that cannot resolve.
+
+Example:
+```cpp
+template<typename T>
+struct wrapper {
+    wrapper() = default;
+    wrapper(wrapper &&) = default;
+
+    template<typename U, typename = typename enable_if<always_false<U>>::type>
+    explicit wrapper(U);
+    
+    friend auto foo(wrapper w) {
+        data(w.m);
+    }
+
+    int m;
+};
+
+// Existing template function with enable_if
+template<typename T, typename = typename enable_if<always_false<T>>::type>
+void data(T);
+
+// Mutated code: New overload that could trigger substitution failure
+template<typename T, typename = typename enable_if<!always_false<T>>::type>
+void data(T);
+```
+
+This mutation leverages the combinatorial complexity of template specializations and conditional enablement (`enable_if`). By introducing a contradictory or circular condition that influences template resolution, it can expose subtle bugs in the compiler's template instantiation logic.

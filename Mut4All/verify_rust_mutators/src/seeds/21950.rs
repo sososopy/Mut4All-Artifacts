@@ -1,0 +1,1 @@
+use std :: ops :: Add ; fn main () { let x = & 10 as & Add ; }

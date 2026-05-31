@@ -1,0 +1,1 @@
+# ! [feature (default_type_params)] pub struct Foo < Bar = Bar > ; pub struct Baz (Foo) ; fn main () { }

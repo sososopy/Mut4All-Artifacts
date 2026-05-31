@@ -1,0 +1,1 @@
+async fn main () { [0usize ; 0xffff_ffff_ffff_ffff] . await ; }

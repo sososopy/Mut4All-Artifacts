@@ -1,0 +1,33 @@
+Mutation Operator: TemplateParameterPackExpansion
+This mutation operator targets template parameter packs in C++ code, aiming to expose bugs related to pack expansions, such as the one described in the given bug report. It applies to template definitions where parameter packs are used.
+
+The operator works by selecting a template definition with a parameter pack and then modifying the pack expansion in the template to introduce an unexpanded pack in a context where expansion is expected, similar to the bug report where the diagnose_if attribute is used with an unexpanded pack as its first argument.
+
+To apply this mutation, follow these steps:
+1. Identify a template definition that uses a parameter pack.
+2. Locate a point within the template where the pack is expanded (e.g., in a function parameter list, a diagnose_if attribute, etc.).
+3. Modify the code so that instead of expanding the pack, it remains unexpanded in a context where the compiler expects an expanded pack. This could involve removing an ellipsis (...) that triggers pack expansion or introducing a pack where a single argument is expected.
+
+Example:
+Original Code:
+template <typename... Ts> void f(Ts... args) {
+    // Function body
+}
+
+Mutated Code:
+template <typename... Ts> void f(Ts args) {
+    // Function body, Ts is now an unexpanded pack
+}
+
+Or, in the context of the diagnose_if attribute as seen in the bug report:
+Original Code:
+template <bool... vals> void f() {
+    [] () __attribute((diagnose_if(vals..., "message", "error"))) {}();
+}
+
+Mutated Code:
+template <bool... vals> void f() {
+    [] () __attribute((diagnose_if(vals, "message", "error"))) {}(); // vals is now an unexpanded pack
+}
+
+This mutation operator is designed to trigger crashes or compilation errors when the compiler encounters an unexpected unexpanded pack, thus helping to expose bugs related to template parameter pack handling.

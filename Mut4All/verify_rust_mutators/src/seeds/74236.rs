@@ -1,0 +1,1 @@
+mod private { pub struct Pub ; } pub use cfg_attr as attr ; pub use private :: Pub as Renamed ; fn main () { let () = dep :: Renamed ; }

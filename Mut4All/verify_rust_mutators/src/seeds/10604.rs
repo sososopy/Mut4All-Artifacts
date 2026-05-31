@@ -1,0 +1,1 @@
+pub fn main () { let _o = None :: < std :: unstable :: simd :: i32x4 > ; }

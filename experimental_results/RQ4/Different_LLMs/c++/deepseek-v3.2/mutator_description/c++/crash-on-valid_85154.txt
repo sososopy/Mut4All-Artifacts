@@ -1,0 +1,23 @@
+Mutation Operator: Dependent Lambda Attribute Mutation
+
+This mutation operator targets lambda expressions within template functions that have type-dependent parameters and are annotated with attributes. It specifically applies when a lambda with a single type-dependent parameter is decorated with a `[[clang::annotate_type]]` attribute or similar compiler-specific type attributes. The operator mutates the attribute by altering the placement and structure of the attribute relative to the lambda's parameter list and body.
+
+Where it applies: The operator applies to any lambda expression inside a template function or method, where the lambda's parameter types are dependent on the template parameters, and the lambda is annotated with a `[[clang::annotate_type]]` attribute or another compiler-specific type attribute that accepts a string literal argument.
+
+Changes to make:
+1. Identify a lambda within a template that has a type-dependent parameter (e.g., `(T)` where `T` is a template parameter) and is annotated with `[[clang::annotate_type("string")]]`.
+2. Mutate the attribute by moving it to different positions relative to the lambda:
+   a. Move the attribute before the lambda's capture list (if present).
+   b. Move the attribute between the parameter list and the return type (if specified).
+   c. Move the attribute after the lambda body (before the semicolon, if any).
+3. Alternatively, change the attribute's argument by modifying the string literal (e.g., from `"foo"` to `"bar"`), ensuring the new string is a valid literal that could be accepted by the compiler. If no other string literals exist in the seed program, introduce a new string literal such as `"mutated"`, but prefer to reuse existing string literals from the seed if available.
+4. Ensure that all variables, types, and functions used in the mutation already exist in the seed program. If introducing a new string literal, declare it as a plain C-style string literal (e.g., `"new_value"`) without adding new variables or types.
+
+Example in pseudo-code form:
+Original code snippet from seed: `(void) [] (T) [[clang::annotate_type("foo")]] { };`
+Mutated versions:
+- Move attribute before capture: `(void) [[clang::annotate_type("foo")]] [] (T) { };` (if no capture, place before `[]`)
+- Move attribute after parameter list: `(void) [] (T) [[clang::annotate_type("foo")]] -> void { };` (assuming a return type is added or exists)
+- Change attribute argument: `(void) [] (T) [[clang::annotate_type("bar")]] { };` (if `"bar"` exists in seed, otherwise use `"mutated"`)
+
+This mutation aims to stress the compiler's handling of attribute positions and arguments in dependent contexts, which may expose crashes or miscompilations related to lambda instantiation and attribute processing.

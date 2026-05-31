@@ -1,0 +1,30 @@
+Mutation operator: Introduce a method in a specialized impl block that is not declared in the trait, then attempt to call it from within the same impl block using Self::method_name().
+
+This mutation applies to Rust code that uses the specialization feature (#![feature(specialization)]) and contains at least one trait with a default impl (a blanket impl) and at least one more specific impl (a specializing impl). The mutation modifies the specializing impl block.
+
+Steps:
+1. Identify a trait in the seed program that has at least two impl blocks: one default (blanket) impl and one specializing impl. The specializing impl must have a where clause or apply to a specific type.
+2. Within the specializing impl block, add a new method definition that is not declared in the trait. The method should have a unique name not used elsewhere in the scope to avoid conflicts. For example, if the trait is named TraitX, add a method like `fn extra_method() -> ReturnType { ... }`. Use a return type that exists in the current scope (e.g., a primitive type like u32, or an existing type from the seed program). The method body can be simple, like returning a default value.
+3. Inside the same specializing impl block, add a call to this new method using Self::extra_method(). This call should be placed in an existing method of the impl block, or if no method exists, create a new method in the impl block that makes the call. Prefer to modify an existing method to keep changes minimal. For instance, inside an existing method `fn existing_method()`, insert a statement `let _ = Self::extra_method();`.
+
+Example based on common structures (avoiding names from the bug report):
+Suppose the seed program has:
+trait Example {
+    fn base() -> i32;
+}
+impl<T> Example for T {
+    default fn base() -> i32 { 0 }
+}
+impl<T: Clone> Example for T {
+    fn base() -> i32 { 1 }
+}
+After mutation, the specializing impl becomes:
+impl<T: Clone> Example for T {
+    fn base() -> i32 { 1 }
+    fn added_method() -> i32 { 42 } // New method not in trait
+    fn another() -> i32 {
+        let _ = Self::added_method(); // Call to the new method
+        Self::base()
+    }
+}
+Note: If the specializing impl already contains a method, modify it to include the call. If it does not, add a new method (like `another` above) that makes the call. Ensure any new identifiers do not conflict with existing ones in the seed program. This mutation aims to trigger compiler bugs related to specialization and method resolution, particularly in MIR generation or polymorphization, as seen in the index-out-of-bounds ICE.

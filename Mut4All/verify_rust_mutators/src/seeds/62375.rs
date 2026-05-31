@@ -1,0 +1,1 @@
+struct TypeA { attr : String , attr2 : usize , } struct TypeB { attr : usize , attr2 : Vec < String > , } enum En { Value (TypeA) , OtherValue (TypeB) , None } fn main () { let a = En :: Value (TypeA { attr : "Hello" . to_owned () , attr2 : 12 }) ; if a == En :: Value { println ! ("Value !") ; } }

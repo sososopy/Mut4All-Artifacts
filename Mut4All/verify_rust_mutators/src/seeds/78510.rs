@@ -1,0 +1,1 @@
+struct S ; impl S { # [derive (Debug)] fn f () { file ! () ; } } fn main () { }

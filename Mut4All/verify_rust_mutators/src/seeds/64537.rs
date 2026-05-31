@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] pub fn x < const I : usize > () { } pub fn y < const I : usize > () { x :: < { I } > () ; }

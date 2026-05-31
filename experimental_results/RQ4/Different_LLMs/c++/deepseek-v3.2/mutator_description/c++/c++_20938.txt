@@ -1,0 +1,11 @@
+Mutation Operator: Replace nullptr with a valid pointer of a compatible type in type-checking expressions.
+
+Target: This mutation applies to any expression where nullptr is used as an argument to a type-checking function or operator (such as isa<>, dyn_cast<>, cast<>, or similar template-based checks) within the code. It specifically targets scenarios where the compiler's internal logic (like Sema) performs diagnostics or finalization on potentially invalid declarations.
+
+Application: When the seed program contains a statement of the form `isa<T>(nullptr)` or similar (e.g., `dyn_cast<T>(nullptr)`), replace `nullptr` with a pointer to a valid, existing object of a type that is *not* T. The replacement pointer must be derived from the existing context of the seed program. For example, if the program has a variable `x` of type `U*` (where `U` is not `T` and is a valid, declared type), use `x`. If no such pointer exists, introduce a new null pointer of a different, explicitly declared type (e.g., `static int* dummy = nullptr;`) and use that, ensuring the new declaration does not conflict with existing names.
+
+Change: Locate all instances where `nullptr` is passed to a type-checking template function. For each, replace `nullptr` with a pointer that is not of type `T`. Prefer using an existing variable of a incompatible type. If necessary, declare a new global pointer variable of a simple, incompatible type (like `int*`) initialized to `nullptr` and use it.
+
+Example: In a seed code snippet containing `if (isa<FunctionDecl>(nullptr)) { ... }`, change it to use an existing pointer, such as `if (isa<FunctionDecl>(someVarDeclPointer)) { ... }` where `someVarDeclPointer` is of type `VarDecl*` (which is not `FunctionDecl`). If no such pointer exists, add `static int* dummy_ptr = nullptr;` at an appropriate scope and mutate to `if (isa<FunctionDecl>(dummy_ptr)) { ... }`.
+
+This mutation aims to expose crashes or incorrect behavior in compiler frontend code that assumes a nullptr input is handled specially, by forcing the type-checking logic to operate on a non-null, type-mismatched pointer, potentially triggering assertion failures or invalid memory accesses during semantic analysis on invalid code.

@@ -1,0 +1,1 @@
+unsafe fn add_1_2_3 () -> u32 { let mut out = 0 ; std :: arch :: x86_64 :: _addcarryx_u32 (1 , 2 , 3 , & mut out) ; out } fn main () { if is_x86_feature_detected ! ("adx") { println ! ("{}" , unsafe { add_1_2_3 () }) ; } }

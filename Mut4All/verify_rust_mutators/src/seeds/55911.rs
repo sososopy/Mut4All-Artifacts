@@ -1,0 +1,1 @@
+fn main () { let s = & [0x00 ; 4] [..] ; const MAGIC_TEST : & [u8] = b"TEST" ; match s { MAGIC_TEST => () , [0x00 , 0x00 , 0x00 , 0x00] => () , _ => () } }

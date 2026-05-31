@@ -1,0 +1,1 @@
+struct Foo { Bar : i32 , } impl Foo { extern fn X () -> i32 { 0 } } fn main () { }

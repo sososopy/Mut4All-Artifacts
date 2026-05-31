@@ -1,0 +1,23 @@
+Based on the bug report, the crash occurs during template instantiation and constraint checking involving a lambda expression inside a requires-clause. The problematic structure is a template constructor with a requires-clause that contains a lambda expression with a generic lambda template parameter. The crash likely stems from the interaction between template argument deduction, constraint satisfaction, and the instantiation of the lambda within the requires-clause when the constructor is invoked.
+
+Mutation Operator: Replace a generic lambda in a requires-clause with a non-generic lambda or a simple expression.
+
+This mutation applies to requires-clauses in template declarations (functions, classes, or constructors) that contain lambda expressions, particularly generic lambdas (those with template parameters inside the lambda). The mutation changes the lambda to a non-generic version that uses an existing type from the context or removes the lambda entirely by substituting it with a direct expression if possible.
+
+To apply this mutation, identify a requires-clause that contains a lambda expression. If the lambda is generic (e.g., `[]<typename Y>(T&){}(t)`), modify it to a non-generic lambda by replacing the template parameter with a concrete type already present in the surrounding template or function. If no suitable type exists, replace the entire lambda expression with a simple requirement that uses an existing variable or type, such as checking a member or calling a function.
+
+For example, in the seed code, the requires-clause is:
+requires requires(T t) {
+    []<typename Y>(A<Y>&){}(t);
+}
+This can be mutated to:
+requires requires(T t) {
+    []<typename Y>(A<Y>&){}(t); // Original
+    // Mutation: Replace generic lambda with non-generic using an existing type, e.g., A<int>
+    [](A<int>&){}(t);
+}
+Or, if the context provides a type name `X` from the enclosing template, mutate to:
+requires requires(T t) {
+    [](A<X>&){}(t);
+}
+If the lambda's purpose is to check that `t` can be passed to a function taking `A<Y>&`, consider replacing it with a direct expression like `t.x` (if `T` has a member `x`) or a static cast, but only if such expressions are valid in the original context. The mutation should use existing names (like `X`, `T`, `t`, or other declared types/variables) to avoid introducing new undeclared elements.

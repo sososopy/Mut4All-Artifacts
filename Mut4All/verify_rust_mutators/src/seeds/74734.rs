@@ -1,0 +1,1 @@
+fn do_it () { let b1 : Box < [usize] > = vec ! [1 , 2 , 3] . into () ; let p1 = b1 as * const _ ; }

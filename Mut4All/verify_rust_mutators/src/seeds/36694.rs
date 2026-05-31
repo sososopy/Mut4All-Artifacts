@@ -1,0 +1,1 @@
+trait Assoc < 'a > { type Type ; } impl < 'a > Assoc < 'a > for () { type Type = & 'a () ; } fn check_bounds < F > (_ : F) where F : for < 'a > Fn (< () as Assoc < 'a > > :: Type) { } fn f < 'a > (_ : < () as Assoc < 'a > > :: Type) { } fn main () { check_bounds (f) ; }

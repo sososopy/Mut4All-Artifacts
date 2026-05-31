@@ -1,0 +1,49 @@
+Mutation Operator: Modify Lifetime and Generic Arguments in Trait Bounds
+
+This mutation operator targets Rust trait bounds, particularly in scenarios where traits use associated types with generic parameters or lifetimes. It specifically applies to scenarios where bounds are not correctly specified, as seen in the bug report where a trait's associated type expects a lifetime or generic argument that is either missing or incorrectly provided.
+
+1. Identify declarations of functions, structs, or other items that specify trait bounds using associated types with generic parameters or lifetimes.
+
+2. For any such trait bound, alter the lifetime or generic argument specification by:
+   a. Adding an extra, unnecessary lifetime or generic argument.
+   b. Removing an existing lifetime or generic argument.
+   c. Changing an existing lifetime or generic argument to another type or lifetime.
+
+This manipulation is designed to trigger errors related to mismatched or unexpected lifetimes and generic arguments, which are common in bugs involving generic constant expressions or generic associated types.
+
+Example Pseudo-code:
+
+Original Code:
+```rust
+trait MyTrait {
+    type Associated<'a, T>;
+}
+
+fn example_function<T>(arg: T) where T: MyTrait<Associated<'static, i32> = &'static i32> {
+    // function body
+}
+```
+
+Mutated Code:
+1. Add an extra, unnecessary lifetime:
+```rust
+fn example_function<T>(arg: T) where T: MyTrait<Associated<'static, 'extra, i32> = &'static i32> {
+    // function body
+}
+```
+
+2. Remove an existing lifetime:
+```rust
+fn example_function<T>(arg: T) where T: MyTrait<Associated<> = &'static i32> {
+    // function body
+}
+```
+
+3. Change an existing lifetime:
+```rust
+fn example_function<T>(arg: T) where T: MyTrait<Associated<'other, i32> = &'static i32> {
+    // function body
+}
+```
+
+By applying these mutations, we can expose possible inconsistencies in how the Rust compiler handles trait bounds with associated types, lifetimes, and generic parameters, especially in the context of incomplete or experimental features like `generic_const_exprs`.

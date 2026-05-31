@@ -1,0 +1,1 @@
+# [proc_macro_derive (EthabiContract , attributes (ethabi_contract_options))] pub fn ethabi_derive (input : TokenStream) -> TokenStream { }

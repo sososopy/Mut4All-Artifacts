@@ -1,0 +1,1 @@
+pub trait AbstractRenderer { } fn _create_render (_ : & ()) -> AbstractRenderer { match 0u { _ => unimplemented ! () } } fn main () { }

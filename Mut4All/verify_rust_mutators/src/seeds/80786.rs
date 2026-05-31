@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; fn main () { let mut res : HashMap < u16 , Vec < u16 > > = HashMap :: new () ; let masks : Vec < u16 > = (0 ..= 0xffffu16) . filter (| & x | false) . to_owned () . collect () ; for & x in masks . iter () { res . insert (x , masks . iter () . filter (| & y | false) . collect ()) ; } }

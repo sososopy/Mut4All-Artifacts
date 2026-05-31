@@ -1,0 +1,1 @@
+# [inline] pub fn be_u24 (i : & [u8]) -> IResult < & [u8] , u32 > { if i . len () < 3 { need_more (i , Needed :: Size (3)) } else { let res = ((i [0] as u32) << 16) + ((i [1] as u32) << 8) + (i [2] as u32) ; Ok ((& i [3 ..] , res)) } }

@@ -1,0 +1,1 @@
+# ! [feature (generators)] trait Future { type Item ; } struct Join < T : Future > (T :: Item) ; impl < F : Fn () -> () > Future for F { type Item = () ; } fn join < T : Future < Item = () > > (_ : T) -> Join < T > { Join (()) } fn ice < 'a > () -> impl Send + 'a { join (| | ()) } fn main () { | | { let _f = ice () ; yield ; } ; }

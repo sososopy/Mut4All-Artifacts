@@ -1,0 +1,40 @@
+Mutation Operator: Struct Template Specialization Misuse
+
+Target: Struct Template
+
+Mutation Rule:
+1. Identify a struct that contains a template specialization with a condition, such as enable_if.
+2. Within the struct, locate a method or function that relies on this template specialization condition.
+3. Modify the condition in the template specialization to an invalid or non-computable expression, using existing type or template parameters.
+4. Ensure that the modified condition cannot be resolved to true or false during compilation, potentially by using a type or value that is not fully defined within the context.
+
+Example:
+Original Code:
+```
+struct Example
+{
+  template <bool B, typename T = void> struct conditional_type;
+  template <typename T> struct conditional_type<true, T> { typedef T Type; };
+
+  template <typename U>
+  static typename conditional_type<Foo<U>::value, void>::Type perform()
+  {
+  }
+};
+```
+
+Mutated Code:
+```
+struct Example
+{
+  template <bool B, typename T = void> struct conditional_type;
+  template <typename T> struct conditional_type<true, T> { typedef T Type; };
+
+  template <typename U>
+  static typename conditional_type<Foo<U>::undefined_value, void>::Type perform()
+  {
+  }
+};
+```
+
+In this mutation, `undefined_value` is an intentionally invalid or non-existent member of `Foo<U>`, causing the template specialization condition to become non-evaluable, which could lead to a compiler crash or error during template instantiation. Use care to ensure that the mutation involves a construct present in the seed program and respects its context.

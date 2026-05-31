@@ -1,0 +1,1 @@
+pub enum Foo { Bar { name : String } , } fn main () { let foo = Foo :: Bar { name : format ! ("test") } ; match foo { Foo :: Bar { name } => { } , } ; }

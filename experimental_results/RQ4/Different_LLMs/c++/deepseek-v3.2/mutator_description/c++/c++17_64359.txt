@@ -1,0 +1,40 @@
+Based on the bug report showing a crash during template instantiation in Clang 18, I recommend targeting template-related code constructs. Specifically, the crash occurs during template argument deduction and instantiation involving member functions and nested contexts. The following mutation operator focuses on creating ambiguous template member function calls within nested contexts.
+
+Mutation Operator: Introduce ambiguous member function template calls within nested class templates.
+
+1. Target: This mutation applies to class templates containing member function templates, especially when used within nested template classes or dependent contexts. The crash likely involves complex template argument deduction and instantiation paths.
+
+2. Mutation Description: For a class template with a member function template, insert a call to that member function template within a nested template class or a dependent context, where the call arguments are designed to be ambiguous or require non-trivial deduction. The call should use existing template parameters and variables from the surrounding context.
+
+3. Steps:
+   - Locate a class template declaration in the seed program.
+   - Within that class template, identify or add a member function template (if not present, add a simple one).
+   - Inside a nested template class (or within a member function of the outer class template), create a call to the member function template.
+   - Use template parameters and existing variables as arguments to the call, ensuring the call is dependent (e.g., relies on template parameters of the enclosing context).
+   - Optionally, introduce a slight ambiguity by using an argument that could match multiple possible template parameter types, or by mixing dependent and non-dependent expressions.
+
+Example: Suppose the seed program contains:
+template<typename T>
+class Outer {
+    template<typename U>
+    U memberFunc(U param) { return param; }
+};
+
+Mutation: Add a nested template class inside Outer that calls memberFunc with a dependent argument:
+template<typename T>
+class Outer {
+    template<typename U>
+    U memberFunc(U param) { return param; }
+
+    template<typename V>
+    class Inner {
+        void example() {
+            T val = T{}; // Use existing template parameter T
+            auto result = memberFunc(val); // Call memberFunc with argument of type T, which is not the same as U
+        }
+    };
+};
+
+This creates a scenario where memberFunc is called with an argument of type T, but memberFunc's template parameter U is not explicitly specified, leading to deduction where U must match T. The nested template context (Inner) adds complexity to the instantiation path.
+
+Rationale: This mutation mimics the conditions that led to the crash—template instantiation in nested contexts, member function template calls, and dependent types. It increases the likelihood of triggering similar deduction and instantiation bugs in the compiler.

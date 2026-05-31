@@ -1,0 +1,28 @@
+mutation operator
+Target: Lambda expressions that contain nested generic lambdas with template parameters and requires-clauses, especially when used in decltype contexts or alias templates.
+
+Applicability: When a seed program contains a lambda expression with a template parameter list (a generic lambda) and that lambda's body or trailing return type includes another lambda that also has template parameters and/or a requires-clause.
+
+Mutation: For each outermost lambda that is a generic lambda (i.e., has a template parameter list), if its body contains an inner lambda that is also a generic lambda, modify the inner lambda's template parameter list and its invocation in a way that creates a mismatch or unusual pattern. Specifically, change the inner lambda's template parameter list to introduce a parameter pack that is not used in its function parameter list, and ensure the inner lambda's call operator has a requires-clause that is always satisfied but references the template parameters in a non-trivial way. Additionally, ensure the outer lambda's return type or a surrounding context (like a decltype) attempts to instantiate a template alias that uses the inner lambda in a call expression with an argument count that does not match the inner lambda's function parameter count.
+
+Procedure:
+1. Locate an outer generic lambda L_outer with template parameters <class T1, class... Ts> (or similar) and a body that contains an inner generic lambda L_inner.
+2. Change L_inner's template parameter list from its original form to <class U1, class... Us> if not already a pack, or ensure it includes a pack.
+3. Change L_inner's call operator parameter list to a single parameter of a type that does not depend on Us (e.g., a built-in type like int). For example, if originally L_inner was [](auto x){}, change to []<class U1, class... Us>(int) {}.
+4. Add a requires-clause to L_inner's call operator that uses a simple requirement involving Us, such as requires (sizeof...(Us) >= 0) or requires { typename existing_type_in_program; } (using an existing type from the seed to avoid introducing new names).
+5. In the outer lambda's body or in a surrounding decltype, create a usage where L_inner is called with zero arguments (or a number of arguments not matching its single parameter). For instance, if L_inner is now callable with one int, but the call site uses L_inner() (no arguments), this creates a mismatch.
+6. Ensure this call is used in a context that forces template argument deduction or substitution, such as inside a decltype for an alias template.
+
+Example in pseudo-code (using existing names from the seed if possible):
+Original seed snippet might have:
+auto outer = []<class T>(T) {
+    return []<class U>(U) { return 0; };
+};
+
+Mutated version:
+auto outer = []<class T>(T) {
+    return []<class U, class... Us>(int) requires (sizeof...(Us) >= 0) { return 0; };
+};
+using Alias = decltype(outer(0)());  // Note: calling with zero arguments, but inner lambda expects one int.
+
+Note: The mutation should use existing type names from the seed program for template parameters (like T, U) or introduce simple identifiers like U1, Us if needed, but ensure they are not ambiguous. The requires-clause should reference existing types or constants to avoid undefined identifiers. The key is to create a pattern where template instantiation leads to an attempt to access a function parameter that does not exist due to mismatch in argument count, triggering assertion failures like getParamDecl with illegal index.

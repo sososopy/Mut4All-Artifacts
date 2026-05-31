@@ -1,0 +1,1 @@
+# ! [feature (generators , generator_trait)] use std :: ops :: { GeneratorState , Generator } ; macro_rules ! yield_from { ($ generator : expr) => { unsafe { loop { match $ generator . resume () { GeneratorState :: Yielded (y) => yield y , GeneratorState :: Complete (ret) => break ret , } } } } ; } fn main () { | | { yield_from ! (|| { yield ; }) ; return ; } ; }

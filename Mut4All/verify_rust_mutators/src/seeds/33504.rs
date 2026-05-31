@@ -1,0 +1,1 @@
+struct Test ; fn main () { | | { let Test = 1 ; } ; }

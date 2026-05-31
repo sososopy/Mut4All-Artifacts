@@ -1,0 +1,27 @@
+Mutation operator: Introduce a conflicting module declaration sequence that mismatches global module fragment state, specifically by altering the order or presence of module export and global module fragment directives without corresponding adjustments to the module interface unit structure.
+
+Target: This operator applies to C++20 module interface units (files with .cppm extension or similar) that use export module declarations. It mutates the module declaration sequence to create a state mismatch between the presence of a global module fragment (GMF) and the compiler's internal tracking flag SeenGMF.
+
+Procedure: Examine the seed program for any module interface unit. If it contains an export module declaration without a preceding global module fragment (i.e., no module; directive at the top), insert a global module fragment block immediately before the export module line. Conversely, if the seed program already has a global module fragment (module; followed by some code) before the export module declaration, remove the global module fragment block entirely, leaving only the export module declaration and its contents. Ensure that any declarations originally inside the global module fragment are moved to the module purview after the export module line if removal occurs, preserving their syntax but potentially altering visibility.
+
+Example mutation on a seed program without GMF:
+Original seed code snippet in module interface unit:
+export module M;
+export int f() { return 1; }
+Mutated code:
+module;
+int hidden() { return 2; }
+export module M;
+export int f() { return 1; }
+
+Example mutation on a seed program with GMF:
+Original seed code snippet in module interface unit:
+module;
+int hidden() { return 2; }
+export module M;
+export int f() { return 1; }
+Mutated code:
+export module M;
+export int f() { return 1; }
+
+This mutation operator directly triggers the assertion mismatch by toggling the global module fragment presence relative to the compiler's internal SeenGMF state, replicating the conditions leading to the crash in the bug report.

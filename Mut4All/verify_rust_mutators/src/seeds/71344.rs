@@ -1,0 +1,1 @@
+fn main () { } struct DirEnts < 'a > { _cluster : :: std :: marker :: PhantomData < & 'a () > , } impl < 'a > DirEnts < 'a > { # [allow (dead_code)] fn next (& mut self) -> [u8 ; 12] { let (outname ,) = ([0u8 ; 12 + 0] ,) ; outname } }

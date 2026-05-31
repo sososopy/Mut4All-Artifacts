@@ -1,0 +1,107 @@
+use proc_macro2::{Span,*};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command,*};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Introduce_Nested_Trait_Associations_With_Specialization_Conflicts_260;
+
+impl Mutator for Introduce_Nested_Trait_Associations_With_Specialization_Conflicts_260 {
+    fn name(&self) -> &str {
+        "Introduce_Nested_Trait_Associations_With_Specialization_Conflicts_260"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Trait(trait_item) = item {
+                // Check if the trait has an associated type named Output
+                let has_output = trait_item.items.iter().any(|item| {
+                    if let syn::TraitItem::Type(ty) = item {
+                        ty.ident == "Output"
+                    } else {
+                        false
+                    }
+                });
+                if has_output {
+                    // Find all impls of this trait in the file
+                    let trait_name = &trait_item.ident;
+                    let mut impls: Vec<_> = file.items.iter_mut()
+                        .filter_map(|i| {
+                            if let syn::Item::Impl(impl_item) = i {
+                                if let Some((_, ref path, _)) = impl_item.trait_ {
+                                    if path.is_ident(trait_name) {
+                                        return Some(impl_item);
+                                    }
+                                }
+                                None
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    if !impls.is_empty() {
+                        // Find a specific impl (non-default)
+                        let specific_impl = impls.iter().find(|impl_item| {
+                            // Check if the impl is for a specific type (not a default)
+                            if let Some((_, ref path, _)) = impl_item.trait_ {
+                                if path.is_ident(trait_name) {
+                                    if let syn::Type::Path(type_path) = &**impl_item.self_ty {
+                                        if let Some(segment) = type_path.path.segments.last() {
+                                            // Check if it's a concrete type, not a generic
+                                            if !segment.arguments.is_empty() {
+                                                return false;
+                                            }
+                                            return true;
+                                        }
+                                    }
+                                }
+                            }
+                            false
+                        });
+                        if let Some(impl_item) = specific_impl {
+                            if let syn::Type::Path(type_path) = &**impl_item.self_ty {
+                                if let Some(segment) = type_path.path.segments.last() {
+                                    let t_type = segment.ident.clone();
+                                    // Create new trait OtherTrait
+                                    let new_trait = parse_quote! {
+                                        trait OtherTrait {
+                                            type Nested;
+                                        }
+                                    };
+                                    file.items.push(syn::Item::Trait(new_trait));
+                                    // Create impl for OtherTrait for <T as Assoc>::Output
+                                    let assoc_path = parse_quote! { #trait_name };
+                                    let nested_path = parse_quote! { <#t_type as #assoc_path>::Output };
+                                    let impl_other = parse_quote! {
+                                        impl OtherTrait for #nested_path {
+                                            type Nested = <Self as #assoc_path>::Output;
+                                        }
+                                    };
+                                    file.items.push(syn::Item::Impl(impl_other));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

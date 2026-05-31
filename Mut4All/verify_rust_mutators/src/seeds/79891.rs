@@ -1,0 +1,1 @@
+lazy_static ! { static ref COLOR_PATTERN : Regex = Regex :: new (r"(\w* \w*) bag") . unwrap () ; static ref QUANTITY_PATTERN : Regex = Regex :: new (r"(\d*) (\w* \w*) bag") . unwrap () ; }

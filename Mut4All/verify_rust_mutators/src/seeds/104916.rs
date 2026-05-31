@@ -1,0 +1,1 @@
+# ! [feature (associated_type_bounds)] trait B { type AssocType ; } fn f () where dyn for < 'j > B < AssocType : 'j > : , { } fn main () { }

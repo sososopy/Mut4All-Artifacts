@@ -1,0 +1,1 @@
+const FOO : [u32 ; 3] = [1 , 2 , 3] ; const BAR : u32 = FOO [5] ; fn main () { let _ = BAR ; }

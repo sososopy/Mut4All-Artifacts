@@ -1,0 +1,33 @@
+Mutation Operator: Change crate type for async trait definitions
+
+This mutation operator applies to Rust source files that contain an async trait definition (using the async_fn_in_trait feature) and have an explicit crate type attribute (#![crate_type]). The operator modifies the crate type to alternative forms that might expose similar bugs in different compilation contexts.
+
+Target code construct: Any Rust source file containing both #![crate_type = ...] attribute and async trait definitions using #![feature(async_fn_in_trait)].
+
+Operation: Replace the existing crate_type attribute value with a different valid crate type. If multiple crate_type attributes exist, mutate each one independently. The operator should only apply when the async_fn_in_trait feature is enabled and at least one async trait method exists.
+
+Transformation rules:
+1. If the file contains #![crate_type = "lib"], change it to #![crate_type = "rlib"]
+2. If the file contains #![crate_type = "rlib"], change it to #![crate_type = "dylib"]
+3. If the file contains #![crate_type = "dylib"], change it to #![crate_type = "cdylib"]
+4. If the file contains #![crate_type = "cdylib"], change it to #![crate_type = "staticlib"]
+5. If the file contains #![crate_type = "staticlib"], change it to #![crate_type = "lib"]
+6. For binary crate types (#![crate_type = "bin"]), leave unchanged as async traits in binaries might follow different code paths
+7. If multiple crate_type attributes exist (e.g., #![crate_type = "lib", crate_type = "rlib"]), mutate each one according to the above rules independently
+
+Example transformation:
+Original code:
+#![crate_type = "lib"]
+#![feature(async_fn_in_trait)]
+trait T {
+    async fn foo();
+}
+
+Mutated code:
+#![crate_type = "rlib"]
+#![feature(async_fn_in_trait)]
+trait T {
+    async fn foo();
+}
+
+Rationale: Different crate types may trigger different compiler paths during metadata encoding and HIR processing. The original bug occurred specifically with lib crate type, but similar issues might exist with other crate types. This mutation explores edge cases in how async trait closures are handled across different compilation outputs.

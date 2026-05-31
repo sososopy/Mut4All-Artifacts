@@ -1,0 +1,1 @@
+# [coverage] fn main () { }

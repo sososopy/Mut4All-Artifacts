@@ -1,0 +1,12 @@
+Mutation operator: Replace a mutable borrow dereference in a pattern match guard with an immutable borrow dereference, but only when the dereferenced value is used in a destructuring pattern (like `if let Some(x) = *expr`). This targets scenarios where the compiler's non-lexical lifetime (NLL) analysis for destructors might incorrectly handle the interaction between the borrow's lifetime and the pattern-bound variable's lifetime.
+
+This operator applies when the seed code contains an expression of the form `if let PAT = *borrow_mut_expr { ... }` or `while let PAT = *borrow_mut_expr { ... }`, where `borrow_mut_expr` is a method call that returns a mutable borrow (like `RefCell::borrow_mut()`, `&mut self.method()`, etc.) and `PAT` is a destructuring pattern (like `Some(v)`, `Ok(v)`, `(a, b)`, etc.). The mutation changes the mutable borrow method to its immutable counterpart (e.g., `borrow_mut()` to `borrow()`) if such a method exists in the same type. This creates a type mismatch because the pattern expects ownership or a mutable reference but receives an immutable reference, potentially triggering lifetime or type system bugs related to destructors and NLL.
+
+The mutation steps are:
+1. Identify all `if let` or `while let` expressions in the seed.
+2. For each, check if the right-hand side of the pattern match is a dereference (`*`) of a method call expression.
+3. Verify that the method call's name ends with `_mut` (e.g., `borrow_mut`, `iter_mut`, `get_mut`) and returns a mutable reference.
+4. If the seed program contains a corresponding immutable method for the same receiver (e.g., `borrow` for `RefCell`, `iter` for a collection), replace the mutable method call with the immutable one. Do not introduce new methods; use only those already present in the seed's context.
+5. Ensure the pattern (`PAT`) remains unchanged.
+
+Example: Seed code snippet: `if let Some(n) = *(some_refcell.borrow_mut()) { println!("{}", n); }`. After mutation: `if let Some(n) = *(some_refcell.borrow()) { println!("{}", n); }`. Here, `borrow_mut` is replaced with `borrow`, assuming `some_refcell` is of a type like `RefCell` that has both methods. This may lead to a compiler error or ICE because the dereference of an immutable borrow (`&Option<T>`) cannot move out the `Option<T>` value in the pattern, conflicting with destructor expectations under NLL.

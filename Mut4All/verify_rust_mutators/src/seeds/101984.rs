@@ -1,0 +1,1 @@
+use dioxus :: prelude :: * ; struct Wrapper { router : matchit :: Router < (Component , Box < Self >) > , } impl Wrapper { fn at (& self , path : & str) -> Result < (Component , Box < Self >) , matchit :: MatchError > { let (cmp , router) = self . router . at ("/") ? ; todo ! () } }

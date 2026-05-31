@@ -1,0 +1,1 @@
+fn main () -> () { let ref y = 5 ; let z = & y ; }

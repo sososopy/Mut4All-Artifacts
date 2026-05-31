@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] pub trait EphemeralContext { type Context < 'c > where Self : 'c ; fn handle (& self) -> Vec < Box < dyn 'static + for < 'c > FnOnce (& Self :: Context < 'c >) > > ; fn run_requests < 'c > (& mut self , context : & Self :: Context < 'c >) ; } fn main () { }

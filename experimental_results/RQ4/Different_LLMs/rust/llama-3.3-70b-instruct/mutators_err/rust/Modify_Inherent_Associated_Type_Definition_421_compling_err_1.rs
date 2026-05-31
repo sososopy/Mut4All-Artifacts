@@ -1,0 +1,62 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_Inherent_Associated_Type_Definition_421;
+
+impl Mutator for Modify_Inherent_Associated_Type_Definition_421 {
+    fn name(&self) -> &str {
+        "Modify_Inherent_Associated_Type_Definition_421"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Impl(item_impl) = item {
+                for impl_item in &mut item_impl.items {
+                    if let syn::ImplItem::Type(item_type) = impl_item {
+                        let new_type = get_new_type(file);
+                        item_type.ty = new_type;
+                    }
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator modifies inherent associated type definitions in the given Rust code. It replaces the type of each inherent associated type with another type that already exists in the program, potentially leading to type mismatches or inference failures. This transformation aims to test the compiler's handling of inherent associated types and their interactions with other types in the program."
+    }
+}
+
+fn get_new_type(file: &syn::File) -> Box<syn::Type> {
+    let mut types = Vec::new();
+    for item in &file.items {
+        if let syn::Item::Struct(item_struct) = item {
+            types.push(item_struct.ident.clone());
+        }
+        if let syn::Item::Enum(item_enum) = item {
+            types.push(item_enum.ident.clone());
+        }
+    }
+    let mut rng = thread_rng();
+    let new_type_ident = types.choose(&mut rng).unwrap();
+    let new_type = parse_quote! { #new_type_ident };
+    Box::new(new_type)
+}

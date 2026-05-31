@@ -1,0 +1,1 @@
+fn main () { { extern fn foo () { } } { extern fn foo (_bar : uint) { } } }

@@ -1,0 +1,1 @@
+# ! [feature (asm)] # [inline] pub unsafe fn inw () { asm ! ("") ; }

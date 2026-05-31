@@ -1,0 +1,31 @@
+//source file
+#include "../include/insert_recursive_template_instantiation_484.h"
+
+// ========================================================================================================
+#define MUT484_OUTPUT 1
+
+void MutatorFrontendAction_484::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *CTD = Result.Nodes.getNodeAs<clang::ClassTemplateDecl>("TemplateDecl")) {
+        if (!CTD || !Result.Context->getSourceManager().isWrittenInMainFile(
+                       CTD->getLocation()))
+            return;
+
+        templates.push_back(CTD);
+
+        // Get the source code text of target node
+        auto templateName = CTD->getNameAsString();
+        std::string recursiveInstantiation = "template<> struct " + templateName + "<0> { using type = " + templateName + "<1>; };";
+
+        // Perform mutation on the source code text by applying string replacement
+        Rewrite.InsertTextAfterToken(CTD->getEndLoc(), "\n/*mut484*/" + recursiveInstantiation);
+    }
+}
+
+void MutatorFrontendAction_484::MutatorASTConsumer_484::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    // Define an ASTMatcher to identify the target AST node for mutation
+    DeclarationMatcher matcher = classTemplateDecl().bind("TemplateDecl");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

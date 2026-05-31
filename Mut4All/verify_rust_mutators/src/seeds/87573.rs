@@ -1,0 +1,1 @@
+# ! [feature (no_core , lang_items)] # ! [no_core] static STATIC_BOOL : bool = true ; # [lang = "sized"] trait Sized { } # [lang = "copy"] trait Copy { } # [lang = "sync"] trait Sync { } impl Sync for bool { } # [lang = "drop_in_place"] fn main () { while false { } }

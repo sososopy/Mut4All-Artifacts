@@ -1,0 +1,38 @@
+Mutation Operator: Replace static dyn* initializer with mismatched async expression
+
+Based on the bug report, the bug involves an internal compiler error (ICE) when using `dyn*` with an async block as a static initializer. The ICE occurs because the compiler tries to read a primitive value from an async block, which is not possible due to its complex type.
+
+The bug is triggered by the combination of:
+- `dyn*` feature (incomplete)
+- `const_async_blocks` feature
+- Static variable initialization with an async block
+- The async block returning a primitive type (like integer)
+
+Given this, mutation operators should focus on constructs that involve:
+1. Static/const declarations with `dyn*` types
+2. Async blocks in const contexts
+3. Combinations of incomplete features (like `dyn_star` and `const_async_blocks`)
+4. Type mismatches between expected dyn* trait objects and provided values
+
+
+Target: Static or const declarations using `dyn*` types initialized with async blocks.
+
+Description: This mutation changes the async block expression in a static/const dyn* declaration to create a type mismatch while preserving the dyn* and async structure. The mutation should:
+- Keep the `dyn*` type annotation
+- Keep the async block structure
+- Change the inner expression to something that cannot be easily coerced to the expected trait object
+
+Example: If the original code has `static S: dyn* Send + Sync = async { 42 };`, mutate it to:
+`static S: dyn* Send + Sync = async { SomeStruct::new() };` where `SomeStruct` is a type that exists in the program but doesn't implement the required traits (Send/Sync).
+
+Implementation rules:
+1. Find static/const declarations with `dyn*` type and async block initializers
+2. Identify available struct/enum types in the current scope that don't obviously implement the required traits
+3. Replace the async block's expression with a constructor call for such a type
+4. If no suitable type exists, introduce a simple struct definition that likely doesn't implement the traits (e.g., a struct with a non-Send field like a raw pointer)
+
+Example mutation process:
+Original: `static S: dyn* Send + Sync = async { 42 };`
+Mutated: Add `struct NonSend { ptr: *const i32 }` if not present, then change to `static S: dyn* Send + Sync = async { NonSend { ptr: 0 as *const i32 } };`
+
+This mutation preserves the problematic combination (dyn* + async block) while creating a more complex type mismatch scenario.

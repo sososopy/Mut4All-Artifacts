@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] pub trait Foo < 'a , T > { fn foo (& self) ; } pub fn foo < 'a , T > (x : & 'a Foo < 'a , T >) { let x : & 'a Foo < T > = x ; x . foo () ; }

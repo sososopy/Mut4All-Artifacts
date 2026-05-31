@@ -1,0 +1,1 @@
+# ! [feature (universal_impl_trait , conservative_impl_trait)] fn bar < 'a , 'b > (data : impl Iterator < Item = & 'a str > + 'b , x0 : usize , y0 : usize , spam : & 'b [& 'b [u8]]) -> impl Iterator < Item = u8 > + 'b where 'a : 'b { data . map (move | baz | { let (x2 , y2) = baz . bytes () . fold ((x0 , y0) , | (x , y) , c | (x , y)) ; spam [y2] [x2] }) } fn main () { }

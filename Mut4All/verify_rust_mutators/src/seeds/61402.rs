@@ -1,0 +1,1 @@
+use nalgebra :: Vector3 ; # [derive (Debug , Clone , Copy)] # [repr (C , packed)] struct Vertex { pos : Vector3 < f32 > , clr : Vector3 < f32 > , }

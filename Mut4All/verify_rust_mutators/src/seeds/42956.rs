@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] impl A for i32 { type Foo = u32 ; } impl B for u32 { const BAR : i32 = 0 ; } trait A { type Foo : B ; } trait B { const BAR : i32 ; } fn generic < T : A > () { println ! ("{}" , T :: Foo :: BAR) ; }

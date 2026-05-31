@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] # ! [feature (const_evaluatable_checked)] use std :: mem :: { size_of , transmute_copy } ; fn main () { unsafe { let c : & str = convert_from_slice ([0 ; 16]) ; } } unsafe fn convert_from_slice < T > (source : [u8 ; size_of :: < T > ()]) -> T where [u8 ; size_of :: < T > ()] : Sized { let target : T = transmute_copy (& source) ; target }

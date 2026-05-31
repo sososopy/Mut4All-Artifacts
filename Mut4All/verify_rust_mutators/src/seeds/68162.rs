@@ -1,0 +1,1 @@
+extern crate spin ; fn main () { static SINGLETON_STATIC : spin :: Once < _ > = spin :: Once :: new () ; SINGLETON_STATIC . call_once (| | 0u32) ; }

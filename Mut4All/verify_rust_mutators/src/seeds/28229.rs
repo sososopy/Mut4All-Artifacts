@@ -1,0 +1,1 @@
+fn func () { } fn main () { run (func) ; run (func) ; } fn run < T > (f : T) where T : Fn () + Copy { f () ; }

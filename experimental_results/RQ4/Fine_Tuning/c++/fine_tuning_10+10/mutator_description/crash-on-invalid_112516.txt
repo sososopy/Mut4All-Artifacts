@@ -1,0 +1,39 @@
+
+Mutation Operator 1: Misuse of Macros with Struct Members
+
+Target: Preprocessor macro usage within constexpr contexts involving struct members.
+
+Step-by-step Mutation Rule:
+1. Identify a macro definition that compares or modifies its parameters, e.g., `#define macro_name(x, y) ((x) < (y) ? (x) : (y))`.
+2. Locate a function where this macro is used within a `constexpr` declaration.
+3. Ensure that one of the macro arguments involves a member of a struct pointer, e.g., `st->member`.
+4. Replace the macro usage with a direct equivalent computation inside the `constexpr` involving the struct member.
+
+Example Transformation:
+Original Code:
+```
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
+struct data {
+    int value;
+};
+
+void func(struct data *d) {
+    constexpr int result = max(5, d->value);
+}
+```
+
+Mutated Code:
+```
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
+struct data {
+    int value;
+};
+
+void func(struct data *d) {
+    constexpr int result = ((5) > (d->value) ? (5) : (d->value));
+}
+```
+
+Rationale: Macros involving struct member access may cause unexpected behavior or crashes when used inside `constexpr` contexts due to potential misuse of pointers or uninitialized memory, especially when interacting with certain compiler optimizations or semantic checks. By transforming the macro usage into direct expressions, it exposes potential compiler weaknesses in handling these constructs.

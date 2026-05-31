@@ -1,0 +1,1 @@
+fn main () { let mut graph : petgraph :: Graph < i32 , i32 > = petgraph :: Graph :: new () ; (| | graph . add_node (0)) () ; }

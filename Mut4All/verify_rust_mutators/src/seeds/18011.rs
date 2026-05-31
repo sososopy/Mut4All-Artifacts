@@ -1,0 +1,1 @@
+struct A ; pub trait B < 'a > { fn is (& 'a self , other : & 'a B < 'a >) -> bool { self . get_a () as * const A == other . get_a () as * const A } fn get_a < 'b , 'a : 'b > (& 'a self) -> & 'b A ; } fn main () { }

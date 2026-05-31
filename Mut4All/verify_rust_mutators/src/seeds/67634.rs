@@ -1,0 +1,1 @@
+fn main () { let _ = vec ! [0] . iter () . flat_map (| a | vec ! [0] . iter () . map (| _ | & a)) . collect :: < Vec < _ > > () ; }

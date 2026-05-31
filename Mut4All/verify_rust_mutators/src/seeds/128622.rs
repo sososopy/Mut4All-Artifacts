@@ -1,0 +1,1 @@
+struct S { # [should_panic :: skip] field : u8 , }

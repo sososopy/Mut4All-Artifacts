@@ -1,0 +1,31 @@
+Mutation operator: Introduce an inherent associated type with a higher-ranked lifetime in a function that returns a reference, and replace the return type with the associated type's reference, ensuring the closure captures a local variable.  
+Applies to: Functions returning references and closures with explicit lifetime parameters.  
+
+Example:  
+Original code:  
+fn ret_ref() -> &i32 {  
+    let x = 0;  
+    &x  
+}  
+
+Mutated code:  
+struct S;  
+impl S {  
+    type P<'a> = &'a i32;  
+}  
+type Function = for<'a> fn(&'a i32) -> S::P<'a>;  
+
+fn ret_ref() -> S::P<'_> {  
+    let x = 0;  
+    let f: Function = |y| y;  
+    f(&x)  
+}  
+
+Requires:  
+1. Declare struct S and associated type P in the same scope.  
+2. Replace return type with the associated type using a higher-ranked lifetime.  
+3. Introduce a closure with a for<'a> bound that uses the associated type.  
+4. Ensure the closure captures a local variable (e.g., x) referenced in its body.  
+5. Use the 'polonius=next' flag to trigger the differing borrow-checker analysis.  
+
+This mutation increases the complexity of lifetime inference and borrow-checking interactions, exposing inconsistencies between NLL and Polonius scopes when inherent associated types are involved.

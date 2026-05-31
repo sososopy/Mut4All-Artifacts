@@ -1,0 +1,28 @@
+Mutation Operator 1: Introduce_lifetime_ref_in_const_block_for_generic_params
+Target: Function calls with a generic const parameter that is a simple literal (e.g., `test::<3>()`) and the function is defined within a scope that has a lifetime parameter (e.g., `fn wrapper<'a>() { ... }`).
+
+Mutation: Replace the literal const value with a block that:
+1. Declares a dummy variable bound to a reference using the outer function's lifetime parameter (e.g., `let _: &'a ();`)
+2. Returns the original literal as the final expression of the block.
+
+Example Transformation:
+Before:
+fn wrapper<'a>() {
+   some_func::<3>();
+}
+
+After:
+fn wrapper<'a>() {
+   some_func::<{
+      let _: &'a ();
+      3
+   }>();
+}
+
+Conditions:
+- The outer function must have a lifetime parameter (e.g., `'a`)
+- The mutation applies to any literal const parameter expression
+- The block must preserve the original value as its final expression
+- The dummy reference must use the declared lifetime from the outer scope
+
+This mutation creates a scenario where const evaluation must handle lifetime relationships within generic const expressions, directly targeting the interaction between `generic_const_exprs` and borrowck's region handling that caused the original ICE.

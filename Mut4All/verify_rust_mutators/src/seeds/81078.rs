@@ -1,0 +1,1 @@
+use std :: rc :: Rc ; use std :: cell :: RefCell ; use std :: borrow :: { Borrow , BorrowMut } ; fn main () { let value = Rc :: new (RefCell :: new (5)) ; * value . borrow_mut () += 10 ; println ! ("{:?}" , value) ; }

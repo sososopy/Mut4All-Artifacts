@@ -1,0 +1,27 @@
+Mutation Operator: Introduce templated lambda with parameter pack and fold expression in nested template context.  
+Applies to: A function template containing a lambda expression within its body, where the lambda may be invoked with template arguments.  
+
+Steps:  
+1. Modify the lambda to be a templated entity by adding a parameter pack (e.g., `[]<T... Args>()` where `T` is a type placeholder like `int` or `auto` depending on usage).  
+2. In the lambda’s body, insert a fold expression (e.g., `(E...,)` where `E` is an expression using `Args` such as `(... = Args)` or `(E && ...)`) that expands the parameter pack.  
+3. Immediately invoke the lambda with explicit template arguments containing multiple values (e.g., `.template operator()<X, Y, Z>()` where `X/Y/Z` are literal values or types from the surrounding context).  
+
+Example:  
+*Original seed code fragment*  
+```cpp  
+template<typename T>  
+void f() {  
+    []{ /* ... */ }();  
+}  
+```  
+*After mutation*  
+```cpp  
+template<typename T>  
+void f() {  
+    []<T... Args>() {  
+        ([], Args{} && ...,);  
+    }.template operator()<int, float, char>();  
+}  
+```  
+
+Coverage: Targets template instantiation interactions with lambda parameter packs and fold expressions, which are known to stress template instantiation and AST handling in compilers. Reuses existing types (`T`) and function templates from the seed program. Avoids introducing new semantics beyond the syntactic structure.

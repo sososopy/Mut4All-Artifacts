@@ -1,0 +1,1 @@
+use rustc_apfloat :: ieee :: Single ; use rustc_apfloat :: Float ; fn main () { let x : Single = "0" . parse :: < Single > () . unwrap () ; println ! ("{x}, {:#x}" , x . to_bits ()) ; }

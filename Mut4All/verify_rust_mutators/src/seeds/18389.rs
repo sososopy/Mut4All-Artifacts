@@ -1,0 +1,1 @@
+# ! [feature (unboxed_closures)] # ! [feature (associated_types)] use std :: any :: Any ; use std :: intrinsics :: TypeId ; pub trait Pt { } pub trait Rt { } trait Private < P : Pt , R : Rt > { fn call (& self , p : P , r : R) ; } pub trait Public : Private < < Self as Public > :: P , < Self as Public > :: R > { type P ; type R ; fn call_inner (& self) ; } fn main () { }

@@ -1,0 +1,1 @@
+use core :: num :: Zero ; pub struct X < T > { a : T } impl < T : Zero + Eq + Zero > Zero for X < T > { fn zero () -> X < T > { X { a : Zero :: zero () } } } macro_rules ! constants { () => { let _0 : X < int > = Zero :: zero () ; } } fn test_X () { constants ! () ; }

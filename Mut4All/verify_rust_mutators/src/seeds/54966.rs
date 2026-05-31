@@ -1,0 +1,1 @@
+fn generate_duration () -> Oper < impl FnMut () > { }

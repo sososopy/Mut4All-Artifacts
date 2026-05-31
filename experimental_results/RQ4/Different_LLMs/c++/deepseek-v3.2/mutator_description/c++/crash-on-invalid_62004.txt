@@ -1,0 +1,17 @@
+The bug report indicates a crash triggered by the new constant expression interpreter when a consteval constructor contains a static variable in a consteval function used within a constant expression, leading to a frame offset assertion failure. Structures that C++ compiler bugs are more likely to trigger include consteval functions with static variables, constinit objects, constant expressions involving division or other operations that may cause undefined behavior, and interactions between static storage duration and constant evaluation.
+
+Mutation operator: Introduce static variables in consteval functions used within constant expressions.
+
+Target: This mutation applies to consteval functions in C++20 and later. It targets consteval function definitions that are used in constant contexts, such as within consteval constructors, constinit initializers, or other constant expressions.
+
+Changes: For any consteval function in the seed program that does not already contain a static variable, add a static variable declaration inside the function body. This static variable should be of a simple type, such as int, and should be initialized to a constant value like 0. If the function already returns a value, ensure the static variable does not interfere with the existing return logic; it can be unused or used in a side effect. If the function body is empty or lacks a static variable, insert one. For example, if a consteval function exists:
+
+Original: consteval int func() { return 5; }
+
+Mutated: consteval int func() { static int counter = 0; return 5; }
+
+If the function is used in a constant expression, such as in a consteval constructor or constinit object, this mutation may trigger frame management issues in the constant interpreter. The static variable introduces persistent state across evaluations, which can complicate the interpreter's stack frame handling, especially when the function is called multiple times during constant evaluation.
+
+Preference: Use existing types from the seed program for the static variable. If int is not available, use a fundamental type like bool or char that is present. Avoid introducing new types unless necessary; if needed, declare the static variable as static int var = 0; using int as a default fundamental type.
+
+Example in natural language: In a consteval function, add a static local variable initialized to a constant value, without altering the function's primary return statement or behavior. This mutation aims to expose bugs related to static variable handling in constant expression evaluation, particularly in contexts like consteval constructors or constinit initializations where the interpreter may mishandle frame offsets.

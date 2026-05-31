@@ -1,0 +1,1 @@
+fn moo () { # [get ("/moo")] fn get () -> String { "moo" . to_string () } }

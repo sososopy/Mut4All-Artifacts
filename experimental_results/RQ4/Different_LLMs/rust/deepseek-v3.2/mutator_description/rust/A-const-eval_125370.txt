@@ -1,0 +1,23 @@
+mutation operator
+
+Target: This mutation operator targets constant items (const) and static items (static) within const contexts (specifically const fn bodies and other const contexts where loops are allowed). It applies when a constant item is declared within a const fn or at module/block scope with a const context, and its initializer expression is a non-diverging expression (i.e., an expression that is not a loop {}, break, return, or panic). The operator replaces the initializer expression with an infinite loop expression (loop {}).
+
+Application: For any const or static item declaration within a const context, if its initializer expression is not already a diverging expression (specifically not a loop without a break value, a break, a return, or a panic/never expression), mutate it by replacing the initializer with loop {}. Use the existing item's name and type annotation. Do not change the item's type or name. Ensure the mutated code is still syntactically valid Rust. If the original initializer is a block expression, replace the entire block with loop {}. If the original initializer is a simple literal or path, replace that token sequence with loop {}. This mutation should be applied regardless of the presence of type annotations on the constant.
+
+Example: Given a seed program with a const item inside a const fn:
+const fn foo() -> i32 {
+    const X: i32 = 42;
+    0
+}
+Mutate to:
+const fn foo() -> i32 {
+    const X: i32 = loop {};
+    0
+}
+
+Example: Given a seed program with a static item at module scope:
+static S: &str = "hello";
+Mutate to (if in a const context, but static at module scope is always in a const context):
+static S: &str = loop {};
+
+Rationale: The bug report shows an ICE triggered by a constant (FIELD2) inside a const fn (read_field2) that has an infinite loop initializer. The ICE involves the typeck results data structure failing to place a HIR node due to the presence of the loop. This suggests that the compiler's handling of constants with infinite loops, especially nested within const fn items, is prone to internal consistency errors. By systematically replacing constant initializers with loop {}, we stress the compiler's ability to manage const evaluation control flow and type checking in edge cases where the value never resolves. This operator aims to expose bugs similar to the reported issue where the compiler's internal data structures become inconsistent when dealing with divergent constant expressions within const contexts.

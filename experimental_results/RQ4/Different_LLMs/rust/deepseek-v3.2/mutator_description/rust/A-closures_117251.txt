@@ -1,0 +1,13 @@
+Mutation Operator: Closure Return Type Mismatch Introduction
+
+This mutation operator targets closures where the return type is inferred or explicitly stated. It modifies the closure to return a type that is intentionally mismatched with the expected return type based on the surrounding context, aiming to trigger ICEs or unexpected behaviors in the type-checking phase.
+
+Applicability: This operator applies to any closure expression within the seed program. It specifically targets closures that have a body returning a value (i.e., not diverging with `!`). The operator changes the returned expression to one of a different type, while attempting to keep the mutation syntactically valid.
+
+Procedure: For a given closure, identify its body. If the body is an expression (including block expressions that end with an expression), replace the final returned expression with a new expression of a mismatched type. Prefer to use existing variables, literals, or function calls from the surrounding scope to construct the mismatched expression. If no suitable existing expression is available, introduce a simple default value of a fundamentally different type (e.g., if the expected return type is integer-like, use a boolean or string literal, or a unit type `()`). The introduced literal should be of a basic type (e.g., `true`, `false`, `""`, `()`, `0.0`) that is clearly incompatible.
+
+Example: Suppose the seed program contains: `let f = || { 42 };`. The closure is inferred to return `i32`. The mutation could change it to `let f = || { true };`, making it return `bool` instead. If the closure is used in a context expecting `i32`, this creates a type mismatch.
+
+Another example: For a closure defined as `|x| x + 1` used where an `Fn(i32) -> i32` is expected, mutate it to `|x| ()` to return the unit type `()`.
+
+The operator must ensure the mutated closure body remains syntactically correct Rust. It should avoid introducing undefined variables. The goal is to create a deliberate type conflict to stress the compiler's type-checking and error-handling routines for closures.

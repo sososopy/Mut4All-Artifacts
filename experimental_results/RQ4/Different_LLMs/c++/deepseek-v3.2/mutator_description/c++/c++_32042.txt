@@ -1,0 +1,39 @@
+Mutation Operator: Static Const Template Member Initialization Swap
+
+Applies to: Static const member variables within class templates that are initialized inline using a constant expression.
+
+Description: Replace the inline initialization of a static const template class member with a separate out-of-class definition, and vice versa. This targets compiler crashes or miscompilations related to the point of initialization for static const members in templates.
+
+Transformation Rules:
+1. When encountering a class template with a static const member variable that is initialized inline (e.g., `static const int value = 42;`), remove the initializer from the declaration. Then, add a separate definition outside the class (but within the same translation unit) of the form: `template<typename T> const int ClassName<T>::value = 42;`. Ensure the type and initializer match the original.
+2. Conversely, if a static const template member is declared without an initializer inside the class and has a separate out-of-class definition, move the initializer to an inline initialization within the class declaration and remove the external definition.
+
+Example (Inline to Out-of-Class):
+Original Code Snippet:
+template<typename T>
+struct S {
+    static const int size = 256;
+};
+
+Mutated Code:
+template<typename T>
+struct S {
+    static const int size;
+};
+template<typename T> const int S<T>::size = 256;
+
+Example (Out-of-Class to Inline):
+Original Code Snippet:
+template<typename T>
+struct S {
+    static const int size;
+};
+template<typename T> const int S<T>::size = 256;
+
+Mutated Code:
+template<typename T>
+struct S {
+    static const int size = 256;
+};
+
+Note: This mutation should only be applied if the initializer is a constant expression valid for both inline and out-of-class definitions (e.g., literals, sizeof, arithmetic on constants). It avoids introducing new types or variables, using only elements present in the seed program.

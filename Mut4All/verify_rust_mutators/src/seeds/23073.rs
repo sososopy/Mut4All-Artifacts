@@ -1,0 +1,1 @@
+trait Foo { type T ; } trait Bar { type Foo : Foo ; type FooT = < < Self as Bar > :: Foo as Foo > :: T ; }

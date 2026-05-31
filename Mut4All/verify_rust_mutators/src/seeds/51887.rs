@@ -1,0 +1,1 @@
+use ansi_term ; use self :: ansi_term :: Colour :: Red ; fn main () { println ! ("{}" , Red . paint ("hi")) ; }

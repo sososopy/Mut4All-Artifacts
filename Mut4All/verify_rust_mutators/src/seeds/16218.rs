@@ -1,0 +1,1 @@
+trait Bar < 'a > { } trait Foo < 'a > { fn bar < 'a , T : Bar < 'a > > (self) -> & 'a str ; } impl < 'a > Foo < 'a > for & 'a str { fn bar < T : Bar < 'a > > (self) -> & 'a str { fail ! () } } fn main () { }

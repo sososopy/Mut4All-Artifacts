@@ -1,0 +1,1 @@
+# ! [no_std] # ! [no_main] extern crate panic_halt ; # [repr (C)] enum Foo { Bar } # [arduino_uno :: entry] fn main () -> ! { loop { } }

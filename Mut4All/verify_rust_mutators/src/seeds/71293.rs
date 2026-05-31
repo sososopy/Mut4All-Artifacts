@@ -1,0 +1,1 @@
+pub fn get () { loop { } } extern crate lazy_static ; pub const THREAD_ID : fn () = lazy_static :: get ;

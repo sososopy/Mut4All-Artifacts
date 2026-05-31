@@ -1,0 +1,13 @@
+Mutation Operator: InherentAssocTypeInHigherRankedBinder  
+Target: Inherent associated types used within a higher-ranked function type parameter.  
+
+Description: Modify a function parameter type that references an inherent associated type to include nested binders. Specifically, wrap the inherent associated type in a higher-ranked function (`for<...> fn(...)`) where the outer binder introduces a new lifetime or type parameter, creating multiple layers of bound variables. This increases the DebruijnIndex complexity and stresses the region constraint solver.  
+
+Example: Given an original impl block like  
+`impl<T> Struct<T> { type Assoc = T; }`  
+and a function signature like  
+`fn example(_: Struct<&()>::Assoc) {}`,  
+mutate it to  
+`fn example(_: for<'a> fn(Struct<fn(&'a Struct<&'a ()>::Assoc)>::Assoc)) {}`.  
+
+This mutation leverages existing types and lifetimes in the seed program, nesting the inherent associated type `Assoc` inside a higher-ranked function with a second binder. The compiler must resolve the correct DebruijnIndex for each binder, potentially exposing bugs in region comparison logic.

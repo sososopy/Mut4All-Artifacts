@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] pub trait Foo { type Bar = () ; fn foo (& self) ; } impl Foo for String { fn foo (& self) { println ! ("FOO {}" , self) ; } } pub fn main () { let s = "foo" . to_string () ; s . foo () ; }

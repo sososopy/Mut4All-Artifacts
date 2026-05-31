@@ -1,0 +1,1 @@
+struct Cell < T > { value : T , } fn main () { let Cell { value : _ } = 0u ; }

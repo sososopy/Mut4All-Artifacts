@@ -1,0 +1,1 @@
+# ! [feature (explicit_generic_args_with_impl_trait)] fn f < T : ? Sized > (_ : impl AsRef < T >) { } fn g < T : ? Sized , U : ? Sized > (_ : impl AsRef < T > , _ : impl AsRef < U >) { } fn main () { f :: < [u8] > ("a") ; f :: < [u8] > (b"a") ; g :: < [u8] , [u8] > ("a" , b"a") ; }

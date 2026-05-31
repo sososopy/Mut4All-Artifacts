@@ -1,0 +1,1 @@
+enum E { A = { let 0 = 0 ; 0 } } fn main () { }

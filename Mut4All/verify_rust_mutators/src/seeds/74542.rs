@@ -1,0 +1,1 @@
+# ! [no_std] pub fn pass_array (data : & [u8 ; 16]) { } pub struct S { data : () , } fn work (s : & S) { pass_array (unsafe { & * (s . data as * const _ as * const [u8 ; 16]) }) ; }

@@ -1,0 +1,1 @@
+impl < 'r , T > Iterator for EinaList < 'r , T > { fn next (& mut self) -> Option < & 'r T > { let v = list_data_get (self . _eo) ; * self = match list_next (self . _eo) { None => EinaList { _eo : ptr :: null_mut () } , Some (l) => EinaList { _eo : l } } ; return v } }

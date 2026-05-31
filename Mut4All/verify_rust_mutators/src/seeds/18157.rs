@@ -1,0 +1,1 @@
+extern "C" fn printme (ev : * const c_int , flags : c_short , args : * const c_int) { println ! ("hello") ; }

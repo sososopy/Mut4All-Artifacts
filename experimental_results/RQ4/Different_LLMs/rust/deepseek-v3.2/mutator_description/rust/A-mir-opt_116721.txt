@@ -1,0 +1,9 @@
+mutation operator: Insert a where clause requiring Clone for an unsized type parameter that appears in a slice or DST context. Apply this when a function has a generic type parameter that is used as the element type of a slice (e.g., &[T], Box<[T]>) and the function does not already have a where clause requiring Clone for the unsized slice type [T]. Specifically, add a where clause of the form `[T]: Clone` after any existing where clauses. This mutation targets functions that take a slice (reference or boxed) of a generic type T but do not constrain the unsized slice type itself. The goal is to trigger MIR optimizations that may incorrectly assume slices are scalar values.
+
+For example, given a seed function:
+fn example<T>(x: &[T]) { }
+Mutated to:
+fn example<T>(x: &[T]) where [T]: Clone { }
+If the seed already has a where clause, append the new clause:
+fn example<T: Copy>(x: &[T]) where [T]: Clone { }
+This mutation applies only to functions where T is a generic parameter and appears as the element type in a slice (like &[T] or Box<[T]>). Do not apply if the function already contains `[T]: Clone` or `[T]: Copy` in its where clause. Use existing type parameter names from the seed; do not introduce new types or variables.

@@ -1,0 +1,1 @@
+fn main () { let n = 0u ; let f = move | | n += 1 ; }

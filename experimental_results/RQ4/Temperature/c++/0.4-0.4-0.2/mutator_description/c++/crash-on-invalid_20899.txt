@@ -1,0 +1,39 @@
+Mutation Operator: Template Specialization Misuse
+
+Target Code Construct: Template function within a class or struct.
+
+Mutation Rule:
+1. Identify a template function within a class or struct that uses a template specialization or SFINAE (Substitution Failure Is Not An Error) mechanism.
+2. Modify the template specialization condition to reference an undeclared or non-existent member or type within the template parameter, which would lead to substitution failure.
+3. Ensure that the modified condition is syntactically valid but semantically incorrect, causing the compiler to attempt a substitution that results in an error.
+
+Example:
+Original Code:
+```
+struct Example
+{
+  template <bool B, typename T = void> struct enable_if;
+  template <typename T> struct enable_if<true, T> { typedef T Type; };
+
+  template <typename T>
+  static typename enable_if<SomeTrait<T>::value, void>::Type function()
+  {
+  }
+};
+```
+
+Mutated Code:
+```
+struct Example
+{
+  template <bool B, typename T = void> struct enable_if;
+  template <typename T> struct enable_if<true, T> { typedef T Type; };
+
+  template <typename T>
+  static typename enable_if<NonExistentTrait<T>::value, void>::Type function()
+  {
+  }
+};
+```
+
+In this mutation, `SomeTrait<T>::value` is replaced with `NonExistentTrait<T>::value`, where `NonExistentTrait` is not declared anywhere in the code. This causes the compiler to attempt to instantiate the template with a non-existent trait, triggering a substitution failure and potentially causing the compiler to crash if not handled properly.

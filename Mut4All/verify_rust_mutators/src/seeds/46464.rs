@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] fn parser < 'a > (input : & 'a str) -> impl Iterator < Item = impl Iterator < Item = i32 > + 'a > + 'a { input . lines () . map (| line | { line . split_whitespace () . map (| cell | cell . parse () . unwrap ()) }) }

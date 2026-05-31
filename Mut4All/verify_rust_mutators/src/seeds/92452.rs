@@ -1,0 +1,1 @@
+use t :: SomeTrait ; struct A { } impl SomeTrait for A { }

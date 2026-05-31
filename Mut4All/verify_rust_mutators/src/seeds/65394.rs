@@ -1,0 +1,1 @@
+pub const JSON : serde_json :: Value = serde_json :: json ! ({ "foo" : "bar" }) ;

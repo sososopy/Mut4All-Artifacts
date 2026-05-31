@@ -1,0 +1,1 @@
+# [test_case] fn print_to_screen () { let to_screen = "Prints to Screen" ; println ! ("{}" , to_screen) ; let buffer = WRITER . lock () ; for (i , c) in to_screen . chars () . enumerate () { assert_eq ! (char :: from ((buffer . chars [BUFFER_HEIGHT - 2] [i]) . read () . ascii_char) , c) ; } }

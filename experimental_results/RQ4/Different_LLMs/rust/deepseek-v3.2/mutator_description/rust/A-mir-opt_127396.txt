@@ -1,0 +1,13 @@
+mutation operator: transmute niche enum to mismatched primitive type
+
+This mutation operator targets unsafe transmute expressions where a niche-carrying enum type (like Option<T> or Result<T, E>) is transmuted to a primitive type (like integer or float) with a different size or alignment than the enum's layout. The bug is triggered when the transmuted-to type's alignment requirement exceeds the alignment of the source enum's allocation, causing a panic in code generation, particularly under optimization.
+
+The operator applies when the seed program contains an unsafe block with a std::mem::transmute call where the source expression is of an enum type known to have niche optimization (e.g., Option<NonZeroU32>, Result<u32, SomeError>) and the target type annotation is a primitive integer or floating-point type. The mutation changes the target type to a primitive type with a larger alignment than the original enum's size might guarantee, such as transmuting to u64 when the enum might be 4 bytes, or to f64 which often requires 8-byte alignment.
+
+To implement, locate every unsafe transmute expression where source type is an enum (detected by type name starting with Option or Result, or any enum with non-zero niches). For each, if the target type is a primitive (like u8, i32, u64, f32, f64), replace it with a primitive type that has alignment greater than the likely size of the enum. Specifically, if the original target type is 32-bit or smaller, mutate to u64 or f64. If the original target type is already 64-bit, mutate to a type with stricter alignment, like changing u64 to f64 if f64 has higher alignment on the target platform, or to u128 if supported. Use types already present in the seed program if possible; if u64 or f64 are not present, introduce them by adding a type annotation, ensuring they are primitive types that are valid in the context.
+
+Example mutation: Original code: let x: u32 = unsafe { std::mem::transmute(enum_var) }; Mutated code: let x: u64 = unsafe { std::mem::transmute(enum_var) }; Here, enum_var is of type Option<u16>. The change from u32 to u64 increases alignment requirement potentially beyond the enum's allocation alignment.
+
+Another example: Original: let y: i32 = unsafe { transmute(opt) }; Mutated: let y: f64 = unsafe { transmute(opt) }; This changes to a floating-point type which may have different alignment constraints.
+
+The operator must ensure the mutated code still compiles syntactically; thus, only change the type annotation in the let binding or variable declaration. Do not introduce new variables or functions; reuse existing names. The mutation should be applied once per transmute occurrence, generating one variant per seed.

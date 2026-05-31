@@ -1,0 +1,1 @@
+enum T { } enum Y { } trait Tr < T > { } impl Tr < T > for Y { } fn main () { < T as Tr < Y > > :: f () ; }

@@ -1,0 +1,11 @@
+Mutation operator: const_trait_impl_const_fn_return_closure_with_borrow_pattern
+
+This mutation operator targets const functions that return an opaque impl Trait type, where the returned value is a closure that contains a match expression with a binding pattern that borrows data. Specifically, it applies when a const function uses the feature `#![feature(const_trait_impl)]` and returns `impl ~const Fn()`, and the closure body includes a match on a reference (like `&[u8]`) with a pattern that binds a subslice using `remainder @ ..`. The operator modifies the match pattern to change the binding from a borrow to a move or to alter the pattern structure, which can affect lifetime and const qualification analysis.
+
+The mutation changes the match pattern `[first, remainder @ ..]` to `[first, ..]` (removing the binding `remainder`). This removes the named binding for the remainder subslice, which may alter how the compiler handles lifetimes and const validation within the closure. The operator should only apply if the seed code contains a match pattern with a `@` binding on a slice pattern.
+
+Example transformation:
+Original: `match sl { [first, remainder @ ..] => { ... }, [] => panic!() }`
+Mutated: `match sl { [first, ..] => { ... }, [] => panic!() }`
+
+The mutation must preserve the existing variable names and types; no new elements are introduced. This targets edge cases in const trait impl and closure handling, as seen in the bug report where an internal compiler error occurs due to expected type for param issues during const checking.

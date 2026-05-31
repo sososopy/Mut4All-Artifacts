@@ -1,0 +1,28 @@
+Mutation operator: Introduce a self-referential constraint in a requires clause that involves std::decay_t applied to a template parameter.
+
+This operator targets template member functions (typically constructors or conversion operators) that use C++20 requires clauses. It applies when a seed program contains a template member function with a requires clause that uses a type trait that could become self-referential. The mutation modifies the requires clause to create a self-dependency by using std::decay_t on the template parameter within a type trait that compares the decayed type with the original template parameter type.
+
+Specifically, for a template member function of a class or struct with a template parameter F and a requires clause that currently uses some type trait (e.g., std::is_invocable_v<F>), replace that trait with std::is_constructible_v<std::decay_t<F>, F>. This creates a constraint where satisfaction depends on itself because std::is_constructible_v checks if the first type (std::decay_t<F>) can be constructed from the second type (F), but here std::decay_t<F> is derived from F, potentially leading to infinite recursion during constraint checking.
+
+Steps:
+1. Identify a template member function (e.g., a constructor, conversion operator, or regular member function) within a class or struct that has a requires clause.
+2. In the requires clause, locate a type trait expression (like std::is_invocable_v<F, Args...> or std::is_same_v<F, int>). If no requires clause exists, this operator does not apply.
+3. Replace the identified type trait expression with std::is_constructible_v<std::decay_t<F>, F>, where F is the template parameter of the member function. Ensure that std::decay_t and std::is_constructible_v are available (they are from the <type_traits> header, which may need to be included if not already).
+4. If the seed program does not include <type_traits>, add the line #include <type_traits> at the top of the file, provided it does not cause conflicts (e.g., duplicate includes).
+5. Ensure the mutation only applies once per requires clause to avoid unnecessary complexity.
+
+Example based on a seed program snippet:
+Original seed code:
+struct S {
+    template <typename Func>
+    requires std::is_invocable_v<Func, int>
+    S(Func&& f) {}
+};
+Mutated code:
+struct S {
+    template <typename Func>
+    requires std::is_constructible_v<std::decay_t<Func>, Func>
+    S(Func&& f) {}
+};
+
+Note: The operator assumes the template parameter is named F or similar; adjust to match the actual template parameter name in the seed (e.g., if the parameter is named T, use std::is_constructible_v<std::decay_t<T>, T>). The goal is to create a self-referential constraint that may trigger compiler crashes during constraint satisfaction or instantiation, similar to the bug report.

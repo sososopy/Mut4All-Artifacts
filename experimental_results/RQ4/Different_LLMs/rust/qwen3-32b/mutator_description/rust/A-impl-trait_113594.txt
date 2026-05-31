@@ -1,0 +1,24 @@
+Mutation Operator: TAIT Drop Glue Destructuring Mutation  
+Applies to: Functions that return an ADT with non-trivial drop and are deconstructed in a consumer function.  
+Action: Replace the return type of a function with `pub type Tait = impl Sized` (TAIT) for its ADT, then modify a consumer function to accept `Tait` and destructure its contents.  
+
+Example:  
+Original code:  
+```rust  
+pub struct Foo { field: String }  
+pub fn create() -> Foo { Foo { field: "bar".to_string() } }  
+pub fn use_foo(f: Foo) { let Foo { field } = f; }  
+```  
+
+Mutated code:  
+```rust  
+pub struct Foo { field: String }  // Non-trivial drop  
+pub type Tait = impl Sized;  
+pub fn create() -> Tait { Foo { field: "bar".to_string() } }  
+pub fn use_foo(beverage: Tait) {  
+    let Foo { field } = beverage;  // Destructuring triggers drop logic  
+    _ = field;  
+}  
+```  
+
+This mutation forces the compiler to handle drop glue for a non-ADT (Foo) via TAIT, exposing ICEs in elaborated drop logic if the compiler fails to validate ADT types during deconstruction.

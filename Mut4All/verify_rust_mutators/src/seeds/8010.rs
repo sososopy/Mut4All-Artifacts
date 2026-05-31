@@ -1,0 +1,1 @@
+trait Thing { fn foo (& mut self) { (self , self) ; } } fn main () { }

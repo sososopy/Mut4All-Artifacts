@@ -1,0 +1,1 @@
+use std :: env ; static home : String = match env :: home_dir () { Some (ref p) => p . to_str () . unwrap () . to_owned () , None => "./" . to_string () , } ;

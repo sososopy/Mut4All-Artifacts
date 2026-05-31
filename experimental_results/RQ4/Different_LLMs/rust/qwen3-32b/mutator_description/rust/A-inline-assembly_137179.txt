@@ -1,0 +1,21 @@
+Mutation Operator: Replace a `sym` operand in an inline assembly macro with a nested const generic expression involving a closure or block that evaluates to a simple zero-sized value (e.g., `0`), targeting existing generic functions and inline assembly macros in the seed program. Apply to any `sym` reference in `global_asm!` or `asm!` macros that bind a generic function with a const parameter.
+
+Example:  
+Original code:  
+```rust
+global_asm!(concat!("mov rax, {}"), sym bar::<{ 42 }>);  
+fn bar<const N: usize>() {}
+```
+
+Mutated code:  
+```rust
+global_asm!(concat!("mov rax, {}"), sym bar::<{ || { 42 }; 0 }>);  
+fn bar<const N: usize>() {}
+```  
+
+Changes:  
+1. Replace the const generic `{ 42 }` with `{ || { 42 }; 0 }` (a nested closure/block that evaluates to `0`).  
+2. Ensure the closure/block uses existing const values or expressions from the seed program.  
+3. Retain the same macro structure to maintain syntactic validity while introducing nested def-IDs.  
+
+Applies to: Inline assembly macros with `sym` operands referencing generic functions with const parameters. New elements (closures, nested blocks) are valid Rust constructs, and existing const values/expressions are reused from the seed program.

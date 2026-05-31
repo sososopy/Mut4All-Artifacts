@@ -1,0 +1,21 @@
+Based on the bug report, the crash occurs during overload resolution when a function template with a parameter pack is called with mismatched template arguments and function arguments. The compiler crashes while trying to diagnose the bad overload candidate, specifically when accessing a parameter declaration out of bounds (assertion `i < getNumParams()` fails). This suggests bugs are more likely in complex scenarios involving template argument deduction, parameter packs, and overloaded function calls with mismatched arguments.
+
+Mutation Operator: Introduce mismatched template arguments in a call to a function template with a parameter pack.
+
+This mutation targets calls to function templates that use parameter packs (template <class... T>). It applies when the seed program contains at least one function template declaration with a parameter pack and a call to that template (or a similar template). The mutation alters the explicit template arguments provided in the call to create a mismatch with the actual function arguments.
+
+The operator works as follows:
+1. Identify a call expression that invokes a function template with a parameter pack, e.g., `func<Args...>(args...)`.
+2. Change the number or types of explicit template arguments so they do not align with the number or types of the function arguments. For example, if the template expects a pack `a...` and the call provides arguments `(x, y)`, mutate the template arguments to be `func<T1, T2, T3>(x, y)` (adding an extra template argument) or `func<T1>(x, y)` (providing fewer template arguments). Alternatively, change the types to incompatible ones, like replacing `int` with a type not present in the arguments.
+3. Use existing types and names from the seed program. If new types are needed, introduce them by using a fundamental type (e.g., `float`, `char`) or a type alias already defined in the program. Avoid introducing undeclared types.
+4. Ensure the mutation does not create syntactically invalid code (like missing parentheses). The call should remain a valid expression but with a mismatched template argument list.
+
+Example based on the bug report's code:
+Original: `template <class... a> int b(a...); int d() { return b<int, int>(0, d); }`
+Mutation: Change the call to `b<int, int, float>(0, d)` (adding an extra template argument `float`). This results in three template arguments but only two function arguments, causing a mismatch during deduction.
+
+General pseudo-code example:
+Seed has: `template <typename... Ts> void foo(Ts... params);` and a call `foo<int, double>(1, 2.0);`.
+Mutated to: `foo<int, double, char>(1, 2.0);` (extra template argument) or `foo<int>(1, 2.0);` (insufficient template arguments).
+
+This mutation is likely to expose compiler bugs in overload resolution and template argument deduction for parameter packs, especially in error diagnosis paths.

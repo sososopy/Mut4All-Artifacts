@@ -1,0 +1,1 @@
+macro_rules ! foo { { $ a : expr $$ $ b : expr } => { { 0 } } ; } fn main () { println ! ("Hello, world!") ; }

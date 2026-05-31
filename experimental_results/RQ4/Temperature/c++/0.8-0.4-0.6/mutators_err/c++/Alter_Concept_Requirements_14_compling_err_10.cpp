@@ -1,0 +1,70 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/Decl.h"
+#include "clang/Tooling/Tooling.h"
+
+using namespace clang;
+using namespace clang::ast_matchers;
+
+/**
+ * alter_concept_requirements_14
+ */ 
+class MutatorFrontendAction_14 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(14)
+
+private:
+    class MutatorASTConsumer_14 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_14(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+    };
+};
+
+//source file
+#include "../include/alter_concept_requirements_14.h"
+
+// ========================================================================================================
+#define MUT14_OUTPUT 1
+
+void MutatorFrontendAction_14::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (const auto *CD = Result.Nodes.getNodeAs<ConceptDecl>("Concept")) {
+        if (!CD || !Result.Context->getSourceManager().isWrittenInMainFile(
+                     CD->getLocation()))
+            return;
+
+        const auto *requiresExpr = CD->getBody();
+        if (!requiresExpr)
+            return;
+
+        auto sourceRange = requiresExpr->getSourceRange();
+        auto requiresText = Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), *(Result.SourceManager), LangOptions());
+
+        std::string mutatedText = "requires " + requiresText.str();
+        Rewrite.InsertTextBefore(sourceRange.getBegin(), mutatedText);
+    }
+}
+
+void MutatorFrontendAction_14::MutatorASTConsumer_14::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+
+    DeclarationMatcher matcher = conceptDecl().bind("Concept");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

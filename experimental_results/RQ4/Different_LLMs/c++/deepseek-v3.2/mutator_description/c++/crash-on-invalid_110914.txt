@@ -1,0 +1,39 @@
+The bug report shows a crash in the clang compiler when handling the `__builtin_assume_aligned` builtin function with invalid arguments. Specifically, the crash occurs when the second argument to `__builtin_assume_aligned` is an integer (16) but the first argument is not a pointer (here it's an int variable `arg`). The compiler attempts to emit an alignment assumption check and crashes due to an incompatible integer to pointer conversion.
+
+Based on this bug report, structures that are more likely to trigger C++ compiler bugs include:
+- Uses of builtin functions with mismatched or invalid argument types.
+- Alignment-related builtins (`__builtin_assume_aligned`, `__builtin_assume`, `__builtin_aligned`) where the pointer argument is not actually a pointer.
+- Invalid integer to pointer conversions in builtin contexts.
+- Compiler internal functions that perform alignment checks on non-pointer values.
+
+Mutation operator design:
+
+Mutation operator: Replace a pointer argument in a builtin alignment function with a non-pointer type (e.g., integer, float, or a non-pointer variable).
+
+Target: The `__builtin_assume_aligned` builtin function call.
+
+Procedure:
+1. Identify a call to `__builtin_assume_aligned` in the seed program.
+2. The first argument of `__builtin_assume_aligned` must be a pointer expression.
+3. Mutate by replacing the first argument with a non-pointer expression. Choose from:
+   - An integer literal (e.g., 0, 42).
+   - A floating-point literal (e.g., 3.14).
+   - An integer variable that exists in the current scope (if any).
+   - A floating-point variable that exists in the current scope (if any).
+   - A character literal (e.g., 'a').
+   - A boolean literal (true or false).
+4. Ensure the second argument remains an integer constant representing alignment (e.g., 16, 32, 64).
+5. If no non-pointer variable exists in scope, introduce a new integer variable declaration before the call. For example, add `int temp = 0;` and use `temp` as the first argument.
+
+Example mutation (pseudo-code):
+Original: `unsigned char *ptr = __builtin_assume_aligned(some_ptr, 16);`
+Mutated: `unsigned char *ptr = __builtin_assume_aligned(42, 16);`
+
+Or if a variable `int val` exists:
+Mutated: `unsigned char *ptr = __builtin_assume_aligned(val, 16);`
+
+If no suitable variable exists, add a declaration:
+`int dummy = 5;`
+`unsigned char *ptr = __builtin_assume_aligned(dummy, 16);`
+
+This mutation operator is designed to expose bugs in the compiler's handling of builtin alignment functions when given invalid pointer arguments, which aligns with the crash observed in the bug report.

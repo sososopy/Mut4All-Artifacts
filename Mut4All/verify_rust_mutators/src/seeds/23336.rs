@@ -1,0 +1,1 @@
+use communication :: channels :: Data ; pub trait UnaryLogic { type D : Data ; } pub struct Test < D : Data > { data : D , } pub struct UnaryScope < L : UnaryLogic > { input : Test < L :: D > , }

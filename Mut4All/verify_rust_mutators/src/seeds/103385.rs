@@ -1,0 +1,1 @@
+fn a < T > (x : Box < T >) { } async fn b () { } fn main () { a (b ()) ; }

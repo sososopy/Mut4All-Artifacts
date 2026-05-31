@@ -1,0 +1,1 @@
+fn main () { let string = String :: from_utf8_lossy (& [21u8 ; u32 :: MAX as usize]) . to_string () ; println ! ("{}" , std :: mem :: size_of_val (string . as_str ())) ; }

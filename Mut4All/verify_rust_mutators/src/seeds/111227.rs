@@ -1,0 +1,1 @@
+# ! [debugger_visualizer (natvis_file = "foo.xml")]

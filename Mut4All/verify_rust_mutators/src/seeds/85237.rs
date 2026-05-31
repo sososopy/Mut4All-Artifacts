@@ -1,0 +1,1 @@
+extern crate rand ; # [derive (Debug , Copy , Clone , PartialEq , Eq , Hash)] pub struct PieceShape ([(isize , isize) ; 4]) ; impl PieceShape { pub fn iter (& self) -> std :: slice :: Iter < Item = (isize , isize) > { self . 0 . iter () } pub fn iter_mut (& mut self) -> std :: slice :: IterMut < Item = (isize , isize) > { self . 0 . iter_mut () } } fn main () { }

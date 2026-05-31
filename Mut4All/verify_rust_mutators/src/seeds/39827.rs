@@ -1,0 +1,1 @@
+fn main () { let mut x = () ; unsafe { std :: ptr :: write_volatile (& mut x , ()) ; } }

@@ -1,0 +1,19 @@
+mutation operator: Insert an erroneous lifetime parameter into the return type of an async trait method.
+
+This mutation operator targets async trait methods. It applies when the seed program contains a trait definition that includes an async method with an explicit return type that is a reference (e.g., &T, &mut T) but where the lifetime of that reference is elided. The operator modifies the method signature by inserting an undeclared lifetime parameter into the return type annotation.
+
+Specifically, locate any trait definition containing an async method. If that method's declared return type is a reference with an elided lifetime (for example, &() or &mut SomeType), change that return type to explicitly name a lifetime that is not declared in the method's generic parameters or the trait's generic parameters. The new lifetime identifier should be a single quote followed by a lowercase letter not already in scope for that method signature. For instance, change `-> &()` to `-> &'a ()` where `'a` is not introduced in the method's `<...>` generics list. If the trait itself has generic parameters, do not add the lifetime to the trait's parameter list.
+
+The goal is to create a scenario where the async method's return type is a reference bound to an undeclared lifetime, which can disrupt the compiler's internal handling of inference variables for the async coroutine's return type. This mimics the core condition that triggered the ICE in the bug report, where a mismatch between expected and actual inference states occurs.
+
+Example transformation:
+Original seed code snippet:
+trait Example {
+    async fn method(&self) -> &i32;
+}
+Mutated code:
+trait Example {
+    async fn method(&self) -> &'a i32; // 'a is not declared
+}
+
+The operator must only apply when the original return type is a reference with an elided lifetime. It should not be applied if the return type already contains explicit lifetime parameters or is not a reference type. This mutation introduces a concrete error (E0261 for undeclared lifetime) but may also lead to an internal compiler error during the coroutine analysis phase, similar to the reported issue.

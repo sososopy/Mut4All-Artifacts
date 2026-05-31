@@ -1,0 +1,33 @@
+mutation operator: Replace closure invocation with an indirect call through a function pointer variable.
+
+This mutation applies to any closure invocation where a closure is stored in a variable and then called directly. The mutation changes the direct call to an indirect call via a function pointer, introducing a temporary function pointer variable derived from the closure. This transformation may expose bugs related to MIR inlining, especially around value stealing and query invalidation, as it adds a layer of indirection that may affect how the compiler tracks and optimizes closures.
+
+Specifically, the mutation targets code where a closure is assigned to a variable and then invoked. For each such occurrence, modify the code to first coerce the closure to a function pointer using the as keyword, store that function pointer in a new variable, and then call through that function pointer. Use a new variable name that does not conflict with existing names in the scope; if needed, append a suffix like '_ptr' to the original variable name. Do not introduce new types or functions beyond this coercion.
+
+For example, given seed code:
+fn main() {
+    let func = || 123u8;
+    func();
+}
+
+Mutated code becomes:
+fn main() {
+    let func = || 123u8;
+    let func_ptr = func as fn() -> u8;
+    func_ptr();
+}
+
+If the closure has parameters, adjust the function pointer type accordingly. For instance:
+fn main() {
+    let func = |x: i32| x + 1;
+    func(5);
+}
+
+Becomes:
+fn main() {
+    let func = |x: i32| x + 1;
+    let func_ptr = func as fn(i32) -> i32;
+    func_ptr(5);
+}
+
+This mutation should be applied to all closures that are called directly after being stored in a variable, regardless of their capture status or complexity. Ensure that the function pointer type matches the closure's signature exactly. If the closure environment is non-empty (i.e., captures variables), this mutation may not apply directly because such closures cannot be coerced to function pointers; in such cases, skip mutation to avoid compilation errors. However, for closures with no captures (as in the bug report example), it is safe and likely to trigger similar MIR optimization issues.

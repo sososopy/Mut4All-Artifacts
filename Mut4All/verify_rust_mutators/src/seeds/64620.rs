@@ -1,0 +1,1 @@
+# ! [feature (generators)] pub fn crash (arr : [usize ; 1]) { yield arr [0] ; }

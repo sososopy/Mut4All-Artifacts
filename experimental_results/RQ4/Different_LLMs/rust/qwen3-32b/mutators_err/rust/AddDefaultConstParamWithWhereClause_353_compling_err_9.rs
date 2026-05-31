@@ -1,0 +1,209 @@
+use syn::parse_quote;
+use crate::mutator::Mutator;
+use syn::GenericParam;
+use syn::Ident;
+use proc_macro2::Span;
+use syn::ItemConst;
+use syn::Item;
+use syn::Expr;
+use syn::ExprPath;
+use syn::Type;
+use syn::TypeArray;
+use syn::TypeTuple;
+use syn::token::Bracket;
+use syn::token::Paren;
+use syn::token::Colon;
+use syn::token::Where;
+use syn::punctuated::Punctuated;
+use syn::WherePredicate;
+use syn::PredicateType;
+use syn::WhereClause;
+
+pub struct AddDefaultConstParamWithWhereClause_353;
+
+impl Mutator for AddDefaultConstParamWithWhereClause_353 {
+    fn name(&self) -> &str {
+        "AddDefaultConstParamWithWhereClause_353"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut to_modify = Vec::new();
+
+        for (index, item) in file.items.iter().enumerate() {
+            if let syn::Item::Struct(struct_item) = item {
+                let mut has_const = false;
+                let mut first_const_name = None;
+                for param in &struct_item.generics.params {
+                    if let GenericParam::Const(const_param) = param {
+                        has_const = true;
+                        first_const_name = Some(const_param.ident.clone());
+                        break;
+                    }
+                }
+                if has_const {
+                    if let Some(const_name) = first_const_name {
+                        to_modify.push( (index, const_name, true) );
+                    }
+                }
+            } else if let syn::Item::Enum(enum_item) = item {
+                let mut has_const = false;
+                let mut first_const_name = None;
+                for param in &enum_item.generics.params {
+                    if let GenericParam::Const(const_param) = param {
+                        has_const = true;
+                        first_const_name = Some(const_param.ident.clone());
+                        break;
+                    }
+                }
+                if has_const {
+                    if let Some(const_name) = first_const_name {
+                        to_modify.push( (index, const_name, false) );
+                    }
+                }
+            }
+        }
+
+        to_modify.reverse();
+        for (original_index, const_name, is_struct) in to_modify {
+            let default_name = Ident::new("DEFAULT", Span::call_site());
+            let default_type = if is_struct {
+                let item = &file.items[original_index];
+                if let syn::Item::Struct(struct_item) = item {
+                    struct_item.generics.params.iter()
+                        .find(|p| matches!(p, GenericParam::Const(_)))
+                        .and_then(|p| {
+                            if let GenericParam::Const(c) = p {
+                                Some(c.ty.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or_else(|| {
+                            Type::Verbatim(Default::default())
+                        })
+                } else {
+                    Type::Verbatim(Default::default())
+                }
+            } else {
+                let item = &file.items[original_index];
+                if let syn::Item::Enum(enum_item) = item {
+                    enum_item.generics.params.iter()
+                        .find(|p| matches!(p, GenericParam::Const(_)))
+                        .and_then(|p| {
+                            if let GenericParam::Const(c) = p {
+                                Some(c.ty.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or_else(|| {
+                            Type::Verbatim(Default::default())
+                        })
+                } else {
+                    Type::Verbatim(Default::default())
+                }
+            };
+            let default_value = parse_quote!(42);
+            let default_const = ItemConst {
+                attrs: Vec::new(),
+                vis: syn::Visibility::Inherited,
+                const_token: Default::default(),
+                ident: default_name.clone(),
+                colon_token: Default::default(),
+                ty: Box::new(default_type),
+                eq_token: Default::default(),
+                expr: Box::new(default_value),
+                semi_token: Default::default(),
+                generics: Default::default(),
+            };
+            file.items.insert(original_index, Item::Const(default_const));
+
+            let modified_item = &mut file.items[original_index + 1];
+            if is_struct {
+                if let syn::Item::Struct(struct_item) = modified_item {
+                    for param in &mut struct_item.generics.params {
+                        if let GenericParam::Const(const_param) = param {
+                            if const_param.ident == const_name {
+                                const_param.default = Some(parse_quote!(DEFAULT));
+                            }
+                        }
+                    }
+                    let len_expr = Expr::Path(ExprPath {
+                        qself: None,
+                        path: syn::Path::from(const_name.clone()),
+                        attrs: Vec::new(),
+                    });
+                    let array_ty = Type::Array(TypeArray {
+                        bracket_token: Bracket::default(),
+                        elem: Box::new(Type::Tuple(TypeTuple {
+                            paren_token: Paren::default(),
+                            elems: Punctuated::new(),
+                        })),
+                        len: Box::new(len_expr),
+                    });
+                    let where_pred = WherePredicate::Type(PredicateType {
+                        lifetimes: None,
+                        bounded_ty: Box::new(array_ty),
+                        colon_token: Colon::default(),
+                        bounds: Punctuated::new(),
+                    });
+                    if let Some(where_clause) = &mut struct_item.generics.where_clause {
+                        where_clause.predicates.push(where_pred);
+                    } else {
+                        struct_item.generics.where_clause = Some(WhereClause {
+                            where_token: Where::default(),
+                            predicates: {
+                                let mut preds = Punctuated::new();
+                                preds.push(where_pred);
+                                preds
+                            },
+                        });
+                    }
+                }
+            } else {
+                if let syn::Item::Enum(enum_item) = modified_item {
+                    for param in &mut enum_item.generics.params {
+                        if let GenericParam::Const(const_param) = param {
+                            if const_param.ident == const_name {
+                                const_param.default = Some(parse_quote!(DEFAULT));
+                            }
+                        }
+                    }
+                    let len_expr = Expr::Path(ExprPath {
+                        qself: None,
+                        path: syn::Path::from(const_name.clone()),
+                        attrs: Vec::new(),
+                    });
+                    let array_ty = Type::Array(TypeArray {
+                        bracket_token: Bracket::default(),
+                        elem: Box::new(Type::Tuple(TypeTuple {
+                            paren_token: Paren::default(),
+                            elems: Punctuated::new(),
+                        })),
+                        len: Box::new(len_expr),
+                    });
+                    let where_pred = WherePredicate::Type(PredicateType {
+                        lifetimes: None,
+                        bounded_ty: Box::new(array_ty),
+                        colon_token: Colon::default(),
+                        bounds: Punctuated::new(),
+                    });
+                    if let Some(where_clause) = &mut enum_item.generics.where_clause {
+                        where_clause.predicates.push(where_pred);
+                    } else {
+                        enum_item.generics.where_clause = Some(WhereClause {
+                            where_token: Where::default(),
+                            predicates: {
+                                let mut preds = Punctuated::new();
+                                preds.push(where_pred);
+                                preds
+                            },
+                        });
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator introduces a default const parameter using a const item in the same scope and adds a where clause that references the const parameter in a const expression. This exploits potential issues in the compiler's substitution logic during specialization checks by combining default const parameters and where clauses with array length constraints."
+    }
+}

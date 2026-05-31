@@ -1,0 +1,1 @@
+struct X < const N : usize = { async move { } } > ;

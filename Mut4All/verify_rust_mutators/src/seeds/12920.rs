@@ -1,0 +1,1 @@
+pub fn foo () { if 1 == 1 { return ; } println ! ("test") ; }

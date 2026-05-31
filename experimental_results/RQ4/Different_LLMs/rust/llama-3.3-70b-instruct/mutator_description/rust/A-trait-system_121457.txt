@@ -1,0 +1,32 @@
+Mutation operator: ModifyImplTraitWithLifetime 
+This operator targets any associated function in an implementation of a trait for a reference type that returns an impl trait with a lifetime parameter. It will modify the lifetime parameter of the returned impl trait to a new lifetime parameter that is not in scope, similar to the error encountered in the provided bug report. The new lifetime parameter will be introduced in the function signature. 
+
+For example, given the following trait and implementation:
+```
+trait Iterable {
+    type Item<'a>
+    where
+        Self: 'a;
+
+    fn iter(&self) -> impl Iterator<Item = Self::Item<'_>>;
+}
+
+impl<'a, I: 'a + Iterable> Iterable for &'a I {
+    type Item<'a> = I::Item<'a>;
+
+    fn iter(&self) -> impl Iterator<Item = Self::Item<'_>> {
+        // implementation
+    }
+}
+```
+The mutation operator will modify the implementation to:
+```
+impl<'a, I: 'a + Iterable> Iterable for &'a I {
+    type Item<'a> = I::Item<'a>;
+
+    fn iter(&self) -> impl Iterator<Item = Self::Item<'missing>> {
+        // implementation
+    }
+}
+```
+This mutation operator can help trigger bugs in the Rust compiler related to handling of lifetimes in impl trait and trait systems, as seen in the provided bug report. It achieves high coverage across different program structures and features by targeting a specific but common code construct, and uses existing variables and types in the seed program to minimize changes.

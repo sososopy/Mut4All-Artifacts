@@ -1,0 +1,1 @@
+macro_rules ! get_ms_bit_index { ($ a : ident , $ b : ident) => { if $ a > $ b { return $ a } else { return $ b } } } pub mod bitfield { pub const BIT_INDEX_0 : u32 = 8 ; pub const BIT_INDEX_1 : u32 = 0 ; pub const WORD_MS_BIT_INDEX : u32 = get_ms_bit_index ! (BIT_INDEX_0 , BIT_INDEX_1) ; } fn main () { }

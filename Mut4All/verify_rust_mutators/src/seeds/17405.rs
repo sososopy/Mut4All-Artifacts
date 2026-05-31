@@ -1,0 +1,1 @@
+enum Foo { Bar (int) } fn main () { match Bar (1i) { Foo { i } => () } }

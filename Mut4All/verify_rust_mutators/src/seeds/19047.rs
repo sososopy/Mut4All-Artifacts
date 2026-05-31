@@ -1,0 +1,1 @@
+pub struct Cursor { conn : Connection , stmt : * mut sqlite3_stmt , pzTail : * const c_char } impl Cursor { extern fn foo () { } }

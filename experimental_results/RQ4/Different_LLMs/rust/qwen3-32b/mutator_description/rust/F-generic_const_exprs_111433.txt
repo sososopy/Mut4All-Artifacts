@@ -1,0 +1,26 @@
+Mutation Operator: Introduce generic lifetime parameters and `Sized` trait bounds in `const fn` used within array size expressions, where the lifetime is not bound to a `ReLateBound` or `ReEarlyBound` region during constant evaluation. This applies to `const fn` that return `usize` and are used in array size contexts within a function with its own lifetime parameters.
+
+Example:
+Original code:
+```
+const fn compute_size() -> usize {
+    10
+}
+
+fn test() {
+    let _: [u8; compute_size()];
+}
+```
+
+Mutated code:
+```
+const fn compute_size<'a>() -> usize where &'a (): Sized {
+    10
+}
+
+fn test<'a>() {
+    let _: [u8; compute_size::<'a>()];
+}
+```
+
+The mutation introduces a lifetime parameter `'a` to the `const fn` and a `where` clause requiring `&'a (): Sized`, then modifies the array size expression in a function with the same lifetime parameter to pass it explicitly. This alters the region inference context during const evaluation, potentially triggering the ICE when the compiler fails to map `ReFree` to a valid region vid.

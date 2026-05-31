@@ -1,0 +1,1 @@
+macro_rules ! implement_migration { ($ (update ($ ($ updates : expr) ,+)) ;+;) => (fn from_wire_format (v : u64) { match v { $ (expand_updates ! ($ updates) ,*) _ => { } , } }) }

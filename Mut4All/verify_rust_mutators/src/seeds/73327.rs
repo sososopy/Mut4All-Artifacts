@@ -1,0 +1,1 @@
+fn load < R > (_r : R) { } # [inline (always)] pub fn load_from_memory_with_format (buf : & [u8]) { let b = :: std :: io :: Cursor :: new (buf) ; load (b) }

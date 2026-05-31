@@ -1,0 +1,1 @@
+pub struct T < 'a > { raw_data : & 'a str } pub fn f < 'a > (a : T < 'a >) -> _ { g (a) } pub fn g < 'a > (_ : T < 'a >) -> _ { }

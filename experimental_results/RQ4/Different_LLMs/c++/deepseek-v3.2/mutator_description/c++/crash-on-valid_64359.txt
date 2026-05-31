@@ -1,0 +1,47 @@
+Based on the bug report analysis, the crash occurs during template instantiation involving complex nested template structures, member function calls, and possibly lambda expressions within class templates. The stack trace shows repeated cycles of template deduction, substitution, and instantiation, particularly around TransformBase and Bindings types. This indicates that C++ compiler bugs are more likely to be triggered by deep recursive template instantiations, complex type transformations in nested contexts, and interactions between lambdas, member functions, and template argument deduction.
+
+Mutation Operator: Insert Recursive Template Instantiation via Nested Lambda in Member Function Template
+
+This mutation operator targets member function templates within class templates. It inserts a lambda expression inside the member function that captures *this and recursively instantiates the same member function template with modified template arguments, creating a deep instantiation chain that stresses the template substitution and deduction machinery.
+
+Applicability: Applies to any member function template within a class template in the seed program. The class must have at least one template parameter, and the member function must be a template.
+
+Procedure: 
+1. Identify a member function template within a class template. Let the class template be named ClassTemplate with template parameters TParams. Let the member function template be named memberFunc with template parameters UParams.
+2. Inside the body of memberFunc, before any return statement, insert a lambda expression that captures *this by reference.
+3. The lambda should have an auto return type and take a single parameter of type const auto& (or a similar generic parameter).
+4. Inside the lambda body, include a recursive call to this->memberFunc with template arguments that depend on the lambda's parameter and the class template parameters, such as using decltype on a combination of these to form a new type.
+5. Ensure the lambda is invoked with a trivial argument (e.g., 0 or nullptr) to potentially trigger instantiation, but wrap the invocation in a conditional that always evaluates to false (e.g., if constexpr (false)) to avoid infinite recursion at runtime while still requiring the compiler to consider the template instantiation during parsing and semantic analysis.
+
+Example in pseudo-code form:
+Original code snippet:
+template <typename T>
+class MyClass {
+public:
+    template <typename U>
+    void memberFunc(U param) {
+        // existing code
+    }
+};
+
+Mutated code snippet:
+template <typename T>
+class MyClass {
+public:
+    template <typename U>
+    void memberFunc(U param) {
+        // Inserted mutation
+        if constexpr (false) {
+            auto recursive_lambda = [this](const auto& dummy) -> void {
+                using NewType = decltype(dummy + sizeof(T));
+                this->memberFunc<NewType>(dummy);
+            };
+            recursive_lambda(0);
+        }
+        // existing code
+    }
+};
+
+Changes made: Added a lambda inside memberFunc that captures *this and recursively calls memberFunc with a new template argument NewType derived from dummy and T. The call is guarded by if constexpr (false) to prevent execution but still be parsed and instantiated.
+
+Note: This mutation uses existing elements from the seed program (the class template, member function template, and their parameters) and introduces a lambda with generic parameters, which is valid C++. It aims to expose bugs in template instantiation paths similar to the crash observed.

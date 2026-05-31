@@ -1,0 +1,1 @@
+extern crate libc ; fn main () { unsafe { let data = libc :: malloc (100) ; let data_vec = data as * mut [u8] ; } }

@@ -1,0 +1,1 @@
+use std :: mem ; pub struct MatrixPtr < T > { stride : uint , data : [T] , } fn main () { println ! ("{}" , mem :: size_of ::< Box < MatrixPtr < u8 >>> ()) ; }

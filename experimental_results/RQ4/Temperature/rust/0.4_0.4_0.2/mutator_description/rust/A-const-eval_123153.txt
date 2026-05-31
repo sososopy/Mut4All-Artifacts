@@ -1,0 +1,31 @@
+Mutation Operator: Modify Static Initialization with Interior Mutability
+
+Description:
+This mutation operator targets static variables that are initialized using types with interior mutability, such as `OnceLock`, `Mutex`, or `RwLock`. The operator modifies the initialization pattern to introduce potential const-evaluation issues by altering the initialization sequence or the types involved.
+
+Where It Applies:
+The operator applies to static variables that are initialized with types providing interior mutability. It is particularly relevant in contexts where static initialization interacts with const evaluation, potentially leading to inconsistencies or ICEs (Internal Compiler Errors).
+
+Mutation Steps:
+1. Identify a static variable initialized with a type that provides interior mutability, such as `OnceLock`, `Mutex`, or `RwLock`.
+2. Introduce a new static variable of the same type, ensuring it is initialized using a method that defers initialization (e.g., `OnceLock::new()`).
+3. Modify the initialization of the original static variable to include a reference to the newly introduced static variable, creating a dependency chain.
+4. Ensure that the new static variable is declared and initialized in a way that does not immediately resolve its value, potentially introducing const-evaluation challenges.
+
+Example:
+Original Code:
+```rust
+use std::sync::OnceLock;
+static LAZY_INIT: OnceLock<u32> = OnceLock::new();
+```
+
+Mutated Code:
+```rust
+use std::sync::OnceLock;
+static NEW_LAZY_INIT: OnceLock<u32> = OnceLock::new();
+static LAZY_INIT: OnceLock<u32> = OnceLock::new();
+// Introduce a dependency chain
+static LAZY_INIT_REF: &[&OnceLock<u32>] = &[&NEW_LAZY_INIT, &LAZY_INIT];
+```
+
+This mutation operator aims to expose potential issues in the Rust compiler's handling of const evaluation and static initialization, particularly when dealing with types that provide interior mutability.

@@ -1,0 +1,1 @@
+# ! [feature (generators , nll)] fn foo (x : & mut u32) { move | | { { let s = & mut * x ; yield ; * s += 1 ; } let t = & mut * x ; yield ; * t += 1 ; } ; } fn main () { foo (& mut 0) ; }

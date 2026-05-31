@@ -1,0 +1,1 @@
+# ! [feature (const_panic)] fn main () { const _ : () = panic ! (true) ; }

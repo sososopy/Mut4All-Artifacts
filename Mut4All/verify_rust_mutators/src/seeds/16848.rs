@@ -1,0 +1,1 @@
+fn main () { let filename : & str = & filename_of_foo () ; println ! ("The filename is {}" , filename) ; } fn filename_of_foo () -> str { let path : Path = Path :: new ("./bar/foo") ; let filename : & str = path . filename_str () . unwrap () ; * filename }

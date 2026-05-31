@@ -1,0 +1,37 @@
+Mutation Operator: Modify Trait Implementation Bounds
+
+Target: This mutation operator applies to trait implementations in seed programs where generic types are used without specific constraints.
+
+Description: Introduce a trait bound on a generic type in a trait implementation that previously did not specify any bounds. This mutation helps uncover issues related to type inference and trait bounds during compilation, which are common triggers for Rust compiler bugs related to type inference.
+
+Steps:
+1. Identify a trait implementation with a generic type parameter that currently does not have any trait bounds.
+2. Introduce a new trait bound for the generic type parameter. Use a standard trait from the Rust language, such as `Copy`, `Clone`, or `Debug`.
+3. Ensure that the added bound does not alter any existing function signatures within the trait implementation.
+
+Example:
+Original Code:
+```
+impl<T> Graph for AdjacentListGraph<T> {
+  type EdgeType = Edge<T>;
+
+  fn adjacent_edges(&self, node_id: u32) -> Box<dyn Iterator<Item = &Self::EdgeType> + '_> {
+    if self.not_valid_node_id(node_id) { panic!("Node does not exist in the graph"); }
+    unsafe { Box::new(self.adjacent_lists.get_unchecked(node_id as usize).iter()) }
+  }
+}
+```
+
+Mutated Code:
+```
+impl<T: Clone> Graph for AdjacentListGraph<T> {
+  type EdgeType = Edge<T>;
+
+  fn adjacent_edges(&self, node_id: u32) -> Box<dyn Iterator<Item = &Self::EdgeType> + '_> {
+    if self.not_valid_node_id(node_id) { panic!("Node does not exist in the graph"); }
+    unsafe { Box::new(self.adjacent_lists.get_unchecked(node_id as usize).iter()) }
+  }
+}
+```
+
+Explanation: In the mutated code, a `Clone` trait bound was added to the generic type `T` in the `Graph` implementation for `AdjacentListGraph`. This changes the context in which type inference occurs, potentially triggering issues in the compiler related to how generic types and trait bounds are handled.

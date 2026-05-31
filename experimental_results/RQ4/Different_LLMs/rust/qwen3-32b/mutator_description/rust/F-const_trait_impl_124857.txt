@@ -1,0 +1,33 @@
+Mutation Operator: Add a generic const parameter to a method in a const trait without constraining it, leading to potential inference conflicts when combined with multiple impls that use ~const bounds.
+
+Example:
+Original:
+#[const_trait]
+trait Bar {
+    fn example();
+}
+impl const Bar for i32 {
+    fn example() {}
+}
+impl<T> const Bar for T where T: ~const Bar {
+    fn example() {}
+}
+
+Mutated:
+#[const_trait]
+trait Bar {
+    fn example<const C: bool>();
+}
+impl const Bar for i32 {
+    fn example<const C: bool>() {}
+}
+impl<T> const Bar for T where T: ~const Bar {
+    fn example<const C: bool>() {}
+}
+
+Changes:
+1. Introduced a new generic const parameter `C` (type `bool`) to the method `example` in the `Bar` trait.
+2. Modified all method impls to include `const C: bool` in their signatures.
+3. No additional constraints are provided for `C`, creating an inference scenario where overlapping impls may conflict.
+4. Maintains existing `#[const_trait]` attribute and impl relationships.
+5. Triggers potential ICE in the coherence solver when trying to resolve const inference in overlapping impls.

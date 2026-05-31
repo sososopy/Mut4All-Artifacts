@@ -1,0 +1,1 @@
+use std :: { ffi :: OsStr , path :: Path } ; fn main () { match Path :: new ("test.log") . extension () { Some (OsStr :: new ("log")) => println ! ("log") , _ => println ! ("not log") , } }

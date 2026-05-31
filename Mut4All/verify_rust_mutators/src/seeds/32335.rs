@@ -1,0 +1,1 @@
+extern crate xml ; use xml :: reader :: XmlEvent ; struct Foo { tmp : XmlEvent :: StartDocument }

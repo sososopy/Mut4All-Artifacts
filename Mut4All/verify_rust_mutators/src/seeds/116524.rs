@@ -1,0 +1,1 @@
+pub struct First { pub a : String , pub b : String , } impl First { pub fn first_fn (& self , aas : Somethingthing) -> () { println ! ("b") ; } pub fn second_fn () -> () { pub struct Somethingthing { pub aa : String , pub bb : String , } println ! ("a") ; } } fn main () { }

@@ -1,0 +1,1 @@
+use std :: ops :: { Add , Sub } ; type Test = Add + Sub ; fn main () { }

@@ -1,0 +1,1 @@
+impl PartialOrd for Word { fn partial_cmp (& self , other : & Word) -> Option < Ordering > { match self . length . cmp (& other . length) { Greater => Some (Less) , Less => Some (Greater) , Equal => Self (self . format () . cmp (& other . format ())) , } } }

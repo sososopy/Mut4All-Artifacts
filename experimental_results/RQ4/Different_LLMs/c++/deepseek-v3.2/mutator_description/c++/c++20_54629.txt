@@ -1,0 +1,15 @@
+Mutation Operator: Replace constraint requirement in concept with logically opposite requirement.
+
+This mutation operator targets concepts used in constrained partial specialization of templates. It applies when a concept definition contains a requirement clause (requires expression) that imposes a size constraint or other measurable condition. The mutation replaces the condition with its logical opposite, for example changing "requires sizeof(t) > N" to "requires sizeof(t) <= N" or "requires sizeof(t) < N" to "requires sizeof(t) >= N". This should be applied to concepts that are used to constrain template partial specializations.
+
+The operator must locate concept definitions that contain requires-expressions with comparison operators (> >= < <= == !=) applied to sizeof or other compile-time evaluable expressions. When such a concept is used as a constraint on a partial specialization (template <class T> requires Concept<T> struct Template<T>), the condition within the concept's requires-expression is inverted.
+
+For example, if the seed program contains:
+template <class T>
+concept C = requires (T t) { requires sizeof(t) > 4; };
+template <class T> requires C<T> struct Template<T> {};
+The mutation would produce:
+template <class T>
+concept C = requires (T t) { requires sizeof(t) <= 4; };
+template <class T> requires C<T> struct Template<T> {};
+No new types, variables, or functions are introduced. Only the comparison operator and possibly the constant value are modified. If the original uses sizeof(t) > N, it becomes sizeof(t) <= N. If original uses sizeof(t) >= N, it becomes sizeof(t) < N. Equality (==) becomes inequality (!=) and vice versa. The constant N remains unchanged unless it is a variable from the seed program, which also remains unchanged. The mutation only alters the relational operator within the requires-expression of the concept.

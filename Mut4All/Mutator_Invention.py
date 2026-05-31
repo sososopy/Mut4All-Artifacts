@@ -4,10 +4,10 @@ import argparse
 import json
 import time
 
-PROXY = "http://127.0.0.1:7890"
-
 # GPT API KEY
-OPENAI_API_KEY = ""
+API_KEY = ""
+URL = ""
+MODEL = ""
 INPUT_FILE = ""
 BUG_LABELS_PATH = ""
 LANGUAGE = ""
@@ -17,7 +17,7 @@ MAX_RETRIES = 20
 
 # load
 def load_config(config_path, language):
-    global INPUT_FILE, BUG_LABELS_PATH, LANGUAGE, OUTPUT_FILE,TOKEN_JSON,OPENAI_API_KEY
+    global INPUT_FILE, BUG_LABELS_PATH, LANGUAGE, OUTPUT_FILE,TOKEN_JSON,API_KEY,URL,MODEL
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -25,14 +25,16 @@ def load_config(config_path, language):
             raise ValueError(f"Unsupported language: {language}.")
         
         # API_KET is initialized
-        OPENAI_API_KEY = config[language]["api_key"]
+        API_KEY = config[language]["api_key"]
+        URL = config[language]["url"]
+        MODEL = config[language]["model"]
         INPUT_FILE = config[language]["bug-labels_name"]
         BUG_LABELS_PATH = config[language]["bug_labels_file"]
         LANGUAGE = language
         OUTPUT_FILE = config[language]["mutation_output_file"]
         TOKEN_JSON = config[language]["token_json"]
         # check the correctness of the assignment
-        if not all([INPUT_FILE, BUG_LABELS_PATH, LANGUAGE, OUTPUT_FILE,TOKEN_JSON,OPENAI_API_KEY]):
+        if not all([INPUT_FILE, BUG_LABELS_PATH, LANGUAGE, OUTPUT_FILE,TOKEN_JSON,API_KEY,URL,MODEL]):
             raise ValueError("One or more configuration variables are empty. Please check the configuration file.")
         return config
     except FileNotFoundError:
@@ -45,11 +47,12 @@ def extract_Tag(line):
     return line.strip() or None
 
 def send_to_gpt(Tag, file_content):
-    url = "https://api.openai.com/v1/chat/completions"
+    # select url
+    url = URL
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENAI_API_KEY}"
+        "Authorization": f"Bearer {API_KEY}"
     }
 
     prompt_system = f"""
@@ -68,7 +71,7 @@ def send_to_gpt(Tag, file_content):
     """
     data = {
         # select model
-        "model": "",
+        "model": MODEL,
         "messages": [
             {"role": "system", "content": prompt_system},
             {"role": "user", "content": prompt_user}
@@ -76,45 +79,65 @@ def send_to_gpt(Tag, file_content):
         "temperature": 0.8
     }
 
-    proxies = {
-        "http": PROXY,
-        "https": PROXY
-    }
+    last_error = None
 
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.post(url, headers=headers, json=data, proxies=proxies)
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data,
+                timeout=(10, 300)
+            )
             response.raise_for_status()
-            break
-        except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
+
+            response_data = response.json()
+
+            if "choices" not in response_data:
+                raise ValueError(f"Invalid response format: {response_data}")
+
+            message = response_data["choices"][0].get("message", {})
+            mutation_description = message.get("content")
+
+            if mutation_description is None:
+                raise ValueError(f"Model returned empty content: {response_data}")
+
+            if not isinstance(mutation_description, str):
+                raise ValueError(
+                    f"Model returned non-string content: {type(mutation_description)}; data={response_data}"
+                )
+
+            mutation_description = mutation_description.strip()
+
+            token_usage = {
+                "prompt_tokens": response_data.get("usage", {}).get("prompt_tokens", 0),
+                "completion_tokens": response_data.get("usage", {}).get("completion_tokens", 0),
+            }
+
+            return mutation_description, token_usage
+
+        except (requests.exceptions.RequestException,
+                requests.exceptions.JSONDecodeError,
+                ValueError,
+                TypeError) as e:
+            last_error = e
+            print(f"[send_to_gpt] Attempt {attempt + 1}/{MAX_RETRIES} failed: {type(e).__name__}: {e}")
+
+            try:
+                print(f"[send_to_gpt] Raw response preview: {response.text[:500]}")
+            except Exception:
+                pass
+
             if attempt < MAX_RETRIES - 1:
                 time.sleep(7)
             else:
                 print("Max retries exceeded. Unable to complete request.")
-
-    # response = requests.post(url, headers=headers, json=data, proxies=proxies)
-    response_data = response.json()
-
-    if "choices" in response_data:
-        mutation_description = response_data['choices'][0]['message']['content']
-        token_usage = {
-            "prompt_tokens": response_data.get("usage", {}).get("prompt_tokens", 0),
-            "completion_tokens": response_data.get("usage", {}).get("completion_tokens", 0),
-        }
-        # print({token_usage['prompt_tokens']})
-        # print({token_usage['completion_tokens']})
-        return mutation_description,token_usage
-    else:
-        error_msg = f"Error: {response_data}."
-        return error_msg, {"error": "No choices in response."}
+                raise last_error
 
 # save mutation description
 def save_mutation_description(Tag, original_filename, mutation_description):
     output_directory = OUTPUT_FILE
-    
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
+    os.makedirs(output_directory, exist_ok=True)
 
     output_filename = f"{Tag}_{original_filename}"
     file_path = os.path.join(output_directory, output_filename)
@@ -144,6 +167,9 @@ def save_token(input_token,output_token,output_filename):
     if not isinstance(existing_data, list):
         existing_data = [existing_data]
     existing_data.append(token_data)
+    token_dir = os.path.dirname(TOKEN_JSON)
+    if token_dir:
+        os.makedirs(token_dir, exist_ok=True)
     with open(TOKEN_JSON, 'w', encoding='utf-8') as f:
         json.dump(existing_data, f, indent=4, ensure_ascii=False)
 
@@ -173,12 +199,13 @@ def process_txt_files(Tag,Bug_labels_file_path):
 
 def main(args):
     load_config(args.config, args.language)
+    #print(API_KEY)
     with open(INPUT_FILE, 'r', encoding='utf-8') as file:
         for line in file:
             Tag = extract_Tag(line)
             if Tag:
                 print(f"Processing bug labels: {Tag}.")
-                Bug_labels_file_path = f"{BUG_LABELS_PATH}\\{Tag}"
+                Bug_labels_file_path = f"{BUG_LABELS_PATH}/{Tag}"
                 process_txt_files(Tag, Bug_labels_file_path)
             else:
                 print(f"Skipping invalid line: {line.strip()}.")

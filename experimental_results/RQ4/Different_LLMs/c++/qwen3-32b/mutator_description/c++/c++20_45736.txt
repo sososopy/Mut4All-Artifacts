@@ -1,0 +1,45 @@
+Mutation operator: ConstructorWithConceptDependentFunction
+Applies to: Class constructors that initialize members which require concept satisfaction, where the concept depends on a function defined for the same class type
+Modifies: Adds a requires clause to a constructor that depends on a concept checking a function which is itself called with the class instance, creating a circular dependency in constraint evaluation
+
+Example:
+Original code:
+class Outer {
+public:
+  Outer(Inner value) : member(value) {}
+  Inner member;
+};
+
+Modified code:
+template<typename T>
+concept HasValid = valid_function(T());
+
+class Outer {
+public:
+  template<typename U> 
+  requires HasValid<U>
+  Outer(U value) : member(value) {}
+  Inner member;
+};
+
+bool valid_function(Outer const &) {
+  return valid_function(outer.member);
+}
+
+// Existing function (not modified)
+bool valid_function(Inner const &) {
+  return true;
+}
+
+The mutation creates a scenario where:
+1. The Outer constructor requires a concept that checks valid_function
+2. valid_function is overloaded, one version for Outer and one for Inner
+3. When evaluating the Outer constructor's constraints, valid_function(Outer) is checked
+4. But valid_function(Outer) calls valid_function(Inner) which requires the Outer constructor's concept
+5. This circular dependency triggers infinite recursion or assertion failure during semantic analysis
+
+The mutation leverages:
+- Existing class structure and existing valid_function
+- Template constructor with requires clause
+- Overloaded function that creates circular dependency with concept checking
+- Direct member access in function call that triggers the circular evaluation

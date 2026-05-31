@@ -1,0 +1,1 @@
+fn foo < F > (f : F) where F : for < 'a > Fn (& 'a str) -> & 'a str { } fn bar < F > (f : F) where F : Fn (& str) -> & str { } fn main () { foo (| a : & str | a) ; bar (| a : & str | a) ; }

@@ -1,0 +1,1 @@
+trait Foo { type PublicKey < 'a > : From < & 'a [u8] > ; } fn main () { println ! ("hello, world!") }

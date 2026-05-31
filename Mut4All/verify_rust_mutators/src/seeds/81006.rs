@@ -1,0 +1,1 @@
+fn fmt (& self , formatter : & mut fmt :: Formatter) -> fmt :: Result { write ! (formatter , "{}\t{} → {}\t{} → {}\t{} MHz\t{}\t{} dB\t{} km\tSpotQ {}" , self . datetime () . format ("%Y-%m-%d %H:%M") , self . call_tx , self . call_rx , self . grid_tx , self . grid_rx , self . frequency , self . snr , self . distance , self . spotq ()) }

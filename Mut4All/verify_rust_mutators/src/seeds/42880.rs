@@ -1,0 +1,1 @@
+type Value = String ; fn main () { let f = | & Value :: String (_) | () ; let vec : Vec < Value > = Vec :: new () ; vec . last () . map (f) ; }

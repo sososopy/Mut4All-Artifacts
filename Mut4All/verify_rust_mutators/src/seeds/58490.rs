@@ -1,0 +1,1 @@
+# [macro_use] extern crate cfg_if ; mod test ; mod foo ; cfg_if ! { if # [cfg (unix)] { # [macro_export] macro_rules ! foo { ($ x : expr , $ y : expr) => { ($ x + $ y) } ; } } } # [macro_export] macro_rules ! foo { ($ x : expr , $ y : expr) => { ($ x + $ y) } ; } use crate :: foo ; # [test] fn test_true () { assert_eq ! (foo ! (1 , 2) , 3) ; }

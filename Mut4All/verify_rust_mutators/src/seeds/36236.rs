@@ -1,0 +1,1 @@
+use std :: str ; fn main () { const filename : & 'static str = "myfile" ; format ! ("File {} not found." , &* filename) ; }

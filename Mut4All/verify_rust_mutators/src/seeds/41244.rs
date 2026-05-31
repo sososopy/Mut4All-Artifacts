@@ -1,0 +1,1 @@
+# ! [feature (plugin)] # ! [feature (custom_attribute)] # ! [plugin (myplugin)] # [check] fn main () { let x = hello_AA ! () ; println ! ("x.x = {}" , x . x) ; }

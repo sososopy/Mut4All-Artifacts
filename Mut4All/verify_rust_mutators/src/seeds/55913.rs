@@ -1,0 +1,1 @@
+use std :: slice :: Iter ; # [derive (Clone , Copy)] pub struct Word8 ([usize ; 8]) ; impl Word8 { pub fn iter (& self) -> Iter < usize > { self . 0 . iter () } } fn bug (word : Word8) -> u64 { word . iter () . for_each (| wire | match 0 { u64 :: max_value () => 0 , }) ; 0 }

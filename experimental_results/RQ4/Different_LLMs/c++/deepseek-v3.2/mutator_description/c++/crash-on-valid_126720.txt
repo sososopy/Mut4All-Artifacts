@@ -1,0 +1,41 @@
+mutation operator: Explicit Object Parameter Template Instantiation Duplication
+
+This mutation operator targets member functions with explicit object parameters (C++23) inside template classes or structs. It applies when a class or struct template contains a non-static member function that uses an explicit object parameter (e.g., using `this` syntax), and the function body contains a call to itself or another member function that leads to template instantiation context.
+
+The operator duplicates the call expression that triggers template instantiation within the member function body, creating a second, identical call. This can stress the compiler's handling of recursive template instantiation patterns involving the explicit object parameter, potentially exposing crashes or infinite recursion detection flaws.
+
+Specifically, for a member function defined as:
+```
+void func(this ClassTemplate<T>& self) {
+    self.func(); // or other member call causing instantiation
+}
+```
+The mutation changes it to:
+```
+void func(this ClassTemplate<T>& self) {
+    self.func(); // original call
+    self.func(); // duplicated call
+}
+```
+The operator only applies if the class or struct is a template, the member function uses an explicit object parameter, and the body contains at least one call expression that involves the explicit object parameter (or another member) which would cause template instantiation. The duplication uses the exact same call expression; no new variables or types are introduced.
+
+For example, given the seed code:
+```
+template <typename T>
+struct Quaternionz {
+    void inverse(this Quaternionz<T>& a) {
+        a.inverse() * 0;
+    }
+};
+```
+The mutated code becomes:
+```
+template <typename T>
+struct Quaternionz {
+    void inverse(this Quaternionz<T>& a) {
+        a.inverse() * 0;
+        a.inverse() * 0;
+    }
+};
+```
+Note that both calls are identical, preserving all operators and arguments. This mutation relies solely on existing elements in the seed program; no new declarations are needed.

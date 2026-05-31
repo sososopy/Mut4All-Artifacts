@@ -1,0 +1,1 @@
+fn ice (x : Box < dyn Iterator < Item = () > >) { * x } fn main () { }

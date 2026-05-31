@@ -1,0 +1,1 @@
+struct Point { pub x : u64 , pub y : u64 , } const TEMPLATE : Point = Point { x : 0 , y : 0 } ; fn main () { let x = | | { Point { nonexistent : 0 , .. TEMPLATE } } ; }

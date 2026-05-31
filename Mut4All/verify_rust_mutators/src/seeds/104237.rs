@@ -1,0 +1,1 @@
+const FOO : dyn Fn () -> _ = "" ; static BOO : dyn Fn () -> _ = "" ; fn main () { }

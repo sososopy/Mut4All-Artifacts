@@ -1,0 +1,1 @@
+use std :: mem ; use std :: marker :: PhantomData ; pub struct Server < 'a > { thing : PhantomData < & 'a u8 > , } impl < 'a > Server < 'a > { async fn run_1 (& self) { let data = & mut [0u8 ; mem :: size_of :: < u32 > ()] ; self . run_2 () . await } async fn run_2 (& self) { } } fn main () { }

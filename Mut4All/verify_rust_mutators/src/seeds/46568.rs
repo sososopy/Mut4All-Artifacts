@@ -1,0 +1,1 @@
+use std :: rc :: { Rc } ; use std :: marker :: { PhantomData } ; pub trait Arrow < 'a , A , B > where A : 'a , B : 'a { fn bind < C , Y > (self , y : Y) -> Bind < B , Self , Y > where Self : Sized + 'a , Y : Arrow < 'a , B , C > { } } pub struct Bind < B , X , Y > { mid : PhantomData < B > , fst : X , snd : Rc < Y > , }

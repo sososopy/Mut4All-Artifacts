@@ -1,0 +1,1 @@
+# ! [feature (nll)] struct Node { elem : i32 , next : Option < Box < Node > > , } fn main () { let mut node = Node { elem : 5 , next : None , } ; let mut src = & mut node ; while let Some (node) = { src } . next . as_mut () . map (| node | & mut * node) { src = node ; } src . next = None ; }

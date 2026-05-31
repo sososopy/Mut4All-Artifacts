@@ -1,0 +1,1 @@
+static mut foo : Option < unsafe extern "C" fn (_ , ...) > = None ; fn main () { }

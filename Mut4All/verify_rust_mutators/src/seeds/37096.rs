@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] extern crate futures ; use futures :: Future ; pub fn give_future () -> impl Future < Item = u32 , Error = () > { futures :: finished (1) } pub fn bug () { let fut1 = futures :: finished (1) ; let fut2 = futures :: finished (()) . and_then (| _ | { give_future () }) ; fut1 . join (fut2) ; }

@@ -1,0 +1,1 @@
+fn main () { enum Foo { F1 } let foo : * const Foo = F1 as * const Foo ; }

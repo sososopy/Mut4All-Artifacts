@@ -1,0 +1,17 @@
+Mutation operator: Replace constrained variable template declaration with an unconstrained variable template that uses the same concept as a type constraint in a different syntactic form.
+
+This mutation targets variable templates that are declared with a requires clause or a concept as a template parameter. It applies when the seed program contains a variable template declared with a concept constraint, either via a requires clause or a concept name directly in the template parameter list. The mutation changes the syntactic form of the constraint while attempting to preserve the semantic intent, potentially exposing bugs in constraint checking or evaluation during constant expression evaluation.
+
+Specifically, when encountering a variable template like:
+template <typename T> requires Concept<T> constexpr T var = initializer;
+or
+template <Concept T> constexpr T var = initializer;
+the operator will mutate it to:
+template <Concept T> constexpr T var = initializer;
+if the original used a requires clause, or to:
+template <typename T> requires Concept<T> constexpr T var = initializer;
+if the original used the concept directly. If both forms are not present in the seed, no mutation occurs.
+
+The operator must use the concept name that already exists in the seed program. The variable name and initializer remain unchanged. This mutation can trigger re-evaluation of constraints under different parsing contexts, which may lead to crashes or incorrect behavior in compilers when handling invalid code or during constant expression evaluation, as seen in the bug report where a crash occurred on a constrained variable template with a long literal initializer.
+
+Example in pseudo-code: Original: template <typename T> requires Test<T> constexpr T e_v = 2.71828182845904523536028747135L; Mutated: template <Test T> constexpr T e_v = 2.71828182845904523536028747135L;

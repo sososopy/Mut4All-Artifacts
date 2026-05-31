@@ -1,0 +1,26 @@
+Mutation Operator: ReplaceStandardConstraintWithCustomConceptInPartialSpecialization
+
+Applies to: Partial specializations of class templates that use standard type traits (e.g. std::is_base_of_v, std::is_same_v) in their requires-clauses.
+
+Transformation: For each partial specialization template with a constraint using a standard type trait, replace the constraint with a custom concept that checks the same type relationship via a requires clause with template instantiation validation. The concept must use a lambda accepting a reference to the type and testing template instantiation feasibility.
+
+Example:
+Before:
+template<typename T> requires std::is_base_of_v<Base, T>
+struct Specializer { ... };
+
+After:
+template<typename T> requires []<typename U>(U& u) { 
+    return requires { typename Checker<U>(); }; 
+}(declval<T&>())
+struct Specializer { ... };
+
+// Requires new declaration:
+template<template<typename> class Template, typename Type>
+concept IsTemplateInstanceOf = requires { 
+    []<typename T1>(Template<T1> &) {}(declval<Type&>()); 
+};
+
+Note: Existing declval and Checker must already exist in the seed program for this to work. If not, add minimal declarations like:
+template<typename> struct Checker;
+template<typename T> constexpr T declval();

@@ -1,0 +1,1 @@
+use std :: fmt ; pub struct S < T > { t : T } impl < T : fmt :: Show > Drop for S < T > { fn drop (& mut self) { println ! ("dropping S {{ t: {:?} }}" , self . t) ; } } struct NoShow ; fn main () { let s1 = S { t : 1u8 } ; let s2 = S { t : 2u16 } ; let s3 = S { t : NoShow } ; }

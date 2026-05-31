@@ -1,0 +1,42 @@
+//source file
+#include "../include/Mutator_318.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Basic/SourceManager.h"
+#include "clang/AST/DeclCXX.h"
+#include "clang/AST/Expr.h"
+#include "clang/AST/Stmt.h"
+#include "clang/AST/Type.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/ParentMap.h"
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/AST/ExprCXX.h"
+#include "clang/AST/DeclTemplate.h"
+#include "clang/AST/DeclFriend.h"
+#include "clang/AST/DeclObjC.h"
+#include "clang/AST/DeclOpenMP.h"
+#include "clang/AST/Decl.h"
+#include "clang/AST/DeclBase.h"
+#include "clang/AST/DeclarationName.h"
+
+using namespace clang;
+using namespace clang::ast_matchers;
+
+void MutatorFrontendAction_318::MutatorASTConsumer_318::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder Finder;
+    Callback TheCallback(TheRewriter);
+    Finder.addMatcher(functionDecl(isDeleted(), isConstexpr()).bind("constexprDeletedFunc"), &TheCallback);
+    Finder.matchAST(Context);
+}
+
+void MutatorFrontendAction_318::Callback::run(const MatchFinder::MatchResult &Result) {
+    const FunctionDecl *FD = Result.Nodes.getNodeAs<FunctionDecl>("constexprDeletedFunc");
+    if (!FD) return;
+    
+    if (FD->isConstexpr()) {
+        SourceRange ConstexprRange = FD->getSourceRange();
+        SourceLocation ConstexprLoc = ConstexprRange.getBegin();
+        Rewrite.ReplaceText(ConstexprLoc, "const");
+    }
+}

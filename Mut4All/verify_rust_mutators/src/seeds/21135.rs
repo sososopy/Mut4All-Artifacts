@@ -1,0 +1,1 @@
+# ! [feature (unsafe_destructor)] # ! [allow (dead_code)] struct Foo < T > ; struct Bar < T , U > ; # [unsafe_destructor] impl < T , U > Drop for Foo < Bar < T , U > > { fn drop (& mut self) { } } fn main () { let x : Foo < Bar < u8 , u8 > > ; }

@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; struct B < T , const N : T > (PhantomData < [T ; N] >) ; fn main () { }

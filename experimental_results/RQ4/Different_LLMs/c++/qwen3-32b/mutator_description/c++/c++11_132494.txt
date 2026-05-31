@@ -1,0 +1,37 @@
+Mutation Operator 1: Replace a template type trait condition that uses a member pointer of a class with an incomplete scoped enum type, targeting template type traits implemented via SFINAE-friendly member pointers. Apply this to any template type trait checking for class-ness by substituting an incomplete enum struct declaration in place of a class type parameter. 
+
+Example:
+Original code: 
+template<class T> void test(int T::*); 
+template<class T> struct checker : decltype(test<T>(0)) {};
+
+Mutation:
+enum struct E; 
+checker<E> e; // Triggers assertion failure in ASTContext::getTypeDeclType if compiler misclassifies an incomplete enum as a class
+
+This applies to code constructs using member pointer type checks via template functions and type_traits templates. It exploits the fact that scoped enums (enum struct) cannot have member pointers but compilers may incorrectly attempt to process them during template instantiation. The mutation preserves existing template structure while substituting an incomplete enum type that already exists in the seed program. 
+
+Mutation Operator 2: Introduce a forward-declared enum struct as template argument for template type traits that expect a complete class type during template instantiation. This applies to template type traits using member pointer syntax or template argument deduction involving class types. 
+
+Example:
+Original code: 
+template<class T> struct is_class : decltype(test<T>(0)) {};
+
+Mutation:
+enum struct E; 
+is_class<E> e; 
+static_assert(e::value); 
+
+This exploits the boundary condition between enum types and class types in C++11 template type traits. The mutation leverages existing enums in the program and reuses their forward declarations in contexts where the compiler expects a class type during template instantiation. 
+
+Mutation Operator 3: Substitute an incomplete enum struct for a class type in decltype-based type trait expressions that require member pointer validity checks. Apply to any decltype expression involving member pointer types. 
+
+Example:
+Original code: 
+decltype(&C::X) x;
+
+Mutation:
+enum struct E; 
+decltype(&E::X) x; 
+
+This creates invalid member pointer expressions with scoped enums while maintaining the same template structure. The original code would compile for class types, but mutation exposes compiler logic that fails to properly detect scoped enums as non-class types.

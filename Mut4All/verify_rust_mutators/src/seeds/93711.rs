@@ -1,0 +1,1 @@
+fn main () { struct Snapshot { person : Person , snapshot_name : String , } struct Person { name : String , surname : String , } impl Person { fn create_snapshot (& self) -> Snapshot { Snapshot { person : Person { .. self . clone () } , snapshot_name : "Person snapshot" . to_owned () } } } }

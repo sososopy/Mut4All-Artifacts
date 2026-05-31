@@ -1,0 +1,1 @@
+fn main () { let mut buffer = Vec :: new () ; std :: io :: stdin () . read_line (& mut buffer) ; }

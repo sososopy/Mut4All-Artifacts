@@ -1,0 +1,59 @@
+Based on the provided bug report, the crash is associated with the usage of templates and the interaction with nested name specifiers. Specifically, the crash occurs in the function `k` where template nesting and member access within a decltype specifier are utilized. The following mutation operator is designed to exploit these constructs, potentially uncovering similar bugs:
+
+Mutation Operator: Nested Template Member Access Mutation
+
+Target Code Construct: Template Functions with Nested Name Specifiers
+
+Mutation Rule:
+1. Identify a template function (or member function within a templated class/struct) in the seed program.
+2. Within the function, locate a member access expression involving a template class with nested templates or name specifiers.
+3. Modify the member access to introduce additional layers of template nesting and member resolution. Specifically:
+   a. If the original expression is of the form `t.U::template B<V>::MEM`, transform it to add an additional template layer, such as `t.U::template B<V>::template C<W>::MEM`.
+   b. Ensure `C` is a valid template class within the scope, or modify an existing class to be a template if necessary.
+4. Introduce code to declare and define the additional template class `C` within the appropriate scope. This class should:
+   a. Be a template class with a single type parameter, such as `template <class W> struct C`.
+   b. Include a member definition or alias that facilitates the additional member access.
+5. Ensure that the types and qualifiers are used consistently with the existing program constructs to avoid syntax errors unrelated to the intended mutation.
+
+Example (Pseudo-code):
+Original Code:
+```cpp
+template <class T>
+struct A {
+  template <class V>
+  struct B {
+    int MEM;
+  };
+};
+
+template <class T, class U, class V>
+auto k(T t, U u, V v) -> decltype(t.U::template B<V>::MEM) {}
+
+int main() {
+  A<int>::B<D> obj;
+  k(obj, A<int>(), D());
+}
+```
+
+Mutated Code:
+1. Introduce a new template class within `A`:
+```cpp
+template <class T>
+struct A {
+  template <class V>
+  struct B {
+    template <class W>
+    struct C {
+      int MEM;
+    };
+  };
+};
+```
+
+2. Modify the function `k` to use the new nested template:
+```cpp
+template <class T, class U, class V>
+auto k(T t, U u, V v) -> decltype(t.U::template B<V>::template C<V>::MEM) {}
+```
+
+This mutation operator extends the depth of template nesting and member access, leveraging potential areas of instability in compiler handling of complex template hierarchies.

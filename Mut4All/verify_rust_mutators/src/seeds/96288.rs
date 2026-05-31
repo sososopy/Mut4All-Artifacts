@@ -1,0 +1,1 @@
+# ! [deny (broken_intra_doc_links)] # ! [feature (no_core , lang_items)] # ! [no_core] # ! [crate_type = "rlib"] # ! [doc = " A [`char`] and its [`char::len_utf8`]."] # [lang = "char"] impl char { pub fn len_utf8 (self) -> usize { 42 } } # [lang = "sized"] pub trait Sized { } # [lang = "clone"] pub trait Clone : Sized { } # [lang = "copy"] pub trait Copy : Clone { }

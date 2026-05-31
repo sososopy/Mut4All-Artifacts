@@ -1,0 +1,1 @@
+# ! [feature (never_type)] fn main () { println ! ("{:?}" , unsafe { std :: mem :: transmute ::< () ,!> (()) }) ; }

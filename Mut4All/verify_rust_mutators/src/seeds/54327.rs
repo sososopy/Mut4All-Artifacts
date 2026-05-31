@@ -1,0 +1,1 @@
+macro_rules ! const_assert { ($ cond : expr) => { let _ = [() ; 0 - (! ($ cond) as usize)] ; } ; } fn main () { } fn test < T > () { const_assert ! (:: std :: mem :: size_of ::< Box < T >> ()) ; }

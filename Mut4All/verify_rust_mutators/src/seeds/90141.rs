@@ -1,0 +1,1 @@
+use std :: rc :: Rc ; struct S < N , T > (Rc < (N , T) >) ; impl < N , T > S < N , T > { fn new () -> Self { loop { } } } pub fn test () { let code = S :: < () , () > :: new () ; let _ = | | code ; }

@@ -1,0 +1,39 @@
+Mutation Operator: RPITIT Lifetime Bound Removal or Introduction
+
+This mutation operator targets trait method signatures using RPITIT (return position impl trait in trait) that include explicit lifetime bounds on the return type. It applies to any trait method declared with `impl Trait` return type in a trait definition, where the return type has a lifetime bound like `+ 'lifetime`. The operator modifies the lifetime bound by either removing it or introducing a new lifetime bound if none exists, using lifetimes already present in the method signature.
+
+Specifically, for a trait method signature of the form:
+```
+fn method<'a, 'b>(...) -> impl Sized + 'a { ... }
+```
+The mutation can either:
+1. Remove the lifetime bound `+ 'a` from the return type, changing it to `-> impl Sized`.
+2. If the return type already has no lifetime bound, introduce a lifetime bound using one of the lifetime parameters declared in the method signature. For example, if the method has `<'a>` but the return type is `impl Sized`, mutate to `impl Sized + 'a`.
+
+If the method signature has no lifetime parameters, the operator does not apply. The operator prefers using existing lifetime parameters from the method signature. It does not introduce new lifetime parameters or use undeclared lifetimes.
+
+Example: Given a seed program with trait:
+```
+trait Foo {
+    fn bar<'a>() -> impl Sized + 'a {}
+}
+```
+Mutation could remove `+ 'a`, resulting:
+```
+trait Foo {
+    fn bar<'a>() -> impl Sized {}
+}
+```
+Alternatively, if seed has:
+```
+trait Foo {
+    fn bar<'a>() -> impl Sized {}
+}
+```
+Mutation could introduce bound:
+```
+trait Foo {
+    fn bar<'a>() -> impl Sized + 'a {}
+}
+```
+This operator targets the interaction between RPITIT and lifetime bounds, which is a known source of ICEs as shown in the bug report.

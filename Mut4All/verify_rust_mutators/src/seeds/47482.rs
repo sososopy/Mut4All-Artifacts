@@ -1,0 +1,1 @@
+# ! [feature (generators)] use std :: rc :: Rc ; use std :: cell :: RefCell ; fn main () { let thing : Rc < RefCell < Option < String > > > = Rc :: new (RefCell :: new (None)) ; let _ = | | { thing . borrow_mut () . unwrap () ; yield ; } ; }

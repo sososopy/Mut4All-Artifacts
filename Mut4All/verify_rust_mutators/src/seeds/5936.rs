@@ -1,0 +1,1 @@
+pub trait AsciiCast < 'self , T > { fn to_ascii (& 'self self) -> T ; fn is_ascii (& 'self self) -> bool ; }

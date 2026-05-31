@@ -1,0 +1,1 @@
+trait Stringify { fn to_string (& self) -> String ; } impl Stringify for u32 { fn to_string (& self) -> String { format ! ("u32: {}" , * self) } } impl Stringify for f32 { fn to_string (& self) -> String { format ! ("f32: {}" , * self) } } fn print < T : Stringify > (x : T) { println ! ("{}" , x . to_string ()) ; } fn main () { print (5) ; print (5.0) ; }

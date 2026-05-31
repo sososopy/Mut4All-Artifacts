@@ -1,0 +1,17 @@
+Mutation Operator: Introduce a const generic parameter that depends on a lifetime parameter via a const function within a nested or local context.
+
+This mutation operator targets const generic expressions that depend on lifetime parameters. It applies to functions that already use const generics or could potentially use them. The mutation modifies a function by adding a new const generic parameter whose value is determined by a const function that takes a lifetime parameter as part of its where clause. The const function is then used to define an array type or array expression within the function body. Specifically, for a given function `fn foo<'a>(...) { ... }`, if the function body does not already contain an array whose length is a const expression depending on `'a`, insert such an array. If the function already contains suitable const expressions, modify them to introduce a dependency on the lifetime via a new const helper function.
+
+Step 1: Identify a function in the seed program that has a lifetime parameter, e.g., `fn example<'a>() { ... }`.
+Step 2: If not already present, add the `#![feature(generic_const_exprs)]` crate attribute and `#![allow(incomplete_features)]` to the top of the module containing the function, but only if the seed program does not already have them. This ensures the feature is enabled.
+Step 3: Inside the function `example`, add a const helper function. This helper should be defined as `const fn helper<'b>() -> usize where &'b (): Sized { N }` where `'b` is a new lifetime parameter for the helper, and `N` is a constant integer expression (e.g., `3`). The where clause `where &'b (): Sized` is used to make the lifetime `'b` appear in the const function's signature in a way that the compiler must consider during region checking.
+Step 4: Modify the body of `example` to include a statement that uses `helper::<'a>()` as a const generic argument. For instance, add `let _: [u8; helper::<'a>()];` or `let _ = [0; helper::<'a>()];`. This creates a const generic expression that depends on the lifetime `'a` via the const helper function.
+Step 5: Ensure that the const helper function is only used within the mutated function to avoid name conflicts. If the seed program already has a const function with a similar name, use a distinct name by appending a suffix like `_mutated`.
+
+Example illustration:
+Original function in seed: `fn sample<'x>() { let x = 5; }`
+After mutation:
+`fn sample<'x>() { const fn inner<'a>() -> usize where &'a (): Sized { 3 } let _: [u8; inner::<'x>()]; let x = 5; }`
+Note that the example uses generic names `inner`, `'a`, `'x`, and `usize` to illustrate the change. The mutation should adapt to the existing names in the seed program, using the function's lifetime parameter (e.g., `'x`) in the call to `inner`. The integer `3` can be any small constant; prefer using a literal that is already present in the seed program or a default like `0`.
+
+This mutation increases the likelihood of triggering region conversion errors during borrow checking of const generics, as seen in the bug report, by forcing the compiler to handle lifetime-dependent const expressions in array lengths.

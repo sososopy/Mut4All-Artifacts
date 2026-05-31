@@ -1,0 +1,1 @@
+pub enum Enum { A , B , } fn foo (s : & [Enum]) { match s [1 - 1] { Enum :: A => true , _ => false } ; } fn main () { foo (& [Enum :: A]) ; }

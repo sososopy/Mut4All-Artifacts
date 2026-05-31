@@ -1,0 +1,1 @@
+fn f () { match None { Err (_) => () } }

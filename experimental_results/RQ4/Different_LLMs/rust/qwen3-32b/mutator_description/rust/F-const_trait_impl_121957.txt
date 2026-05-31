@@ -1,0 +1,32 @@
+Mutation operator: const_trait_param_mismatch
+Applies to: trait method implementations using const_traits and effects features
+Targets: methods in #[const_trait] traits with ~const bounds and type parameters
+
+Action:
+1. In a trait method declaration with one or more type parameters (e.g., T: ~const Aux), 
+2. In the impl block for that trait, modify the method's parameters:
+   - Replace all type parameters with lifetime parameters (e.g., change 'T' to 'a)
+   - Or add arbitrary lifetime parameters without corresponding type parameters
+   - Or remove all type parameters while keeping lifetime parameters
+   - Ensure the ~const marker is preserved on trait bounds
+
+Example:
+Original:
+trait Main {
+    fn compute<T: ~const Aux>() -> u32;
+}
+
+impl const Main for () {
+    fn compute<T>() -> u32 { 0 }
+}
+
+Mutated:
+trait Main {
+    fn compute<T: ~const Aux>() -> u32;
+}
+
+impl const Main for () {
+    fn compute<'a, 'b: 'a>() -> u32 { 0 }
+}
+
+This creates a parameter count mismatch between trait (1 type param) and impl (0 type params + 2 lifetimes), triggering the ICE when const evaluation is attempted. The mutation uses existing lifetimes from the original code (if present) or introduces new ones using 'a, 'b patterns.

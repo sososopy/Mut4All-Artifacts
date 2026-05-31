@@ -1,0 +1,1 @@
+extern { fn foo (...) ; } fn main () { unsafe { foo (1 , 2 , 3) ; } }

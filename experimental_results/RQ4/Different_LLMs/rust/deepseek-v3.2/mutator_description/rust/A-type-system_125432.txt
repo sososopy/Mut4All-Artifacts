@@ -1,0 +1,37 @@
+mutation operator: Mutate match arm patterns that assign to the matched variable within a match expression that also has a pattern that binds a variable.
+
+This mutation applies to match expressions where the matched expression is a mutable variable and at least one arm modifies that variable (e.g., through assignment) while another arm uses a pattern that binds a variable to the inner value of the matched type (like Some(variable)). The mutation changes the pattern that binds a variable to a wildcard pattern or a pattern that ignores the inner value, thereby potentially altering the control flow and type-checking assumptions.
+
+Specifically, for a match expression matching on a mutable variable of type Option<T> or similar enum, if there is an arm with pattern Some(ident) and the match body uses that ident, and another arm modifies the matched variable (e.g., x = Some(value);), mutate the Some(ident) pattern to _ (if the ident is used in the arm body) or to Some(_) (if the ident is not used but the pattern is Some(ident)). This changes the binding and may expose issues in the compiler's handling of control flow and type states.
+
+Example transformation:
+Original code snippet: 
+let mut x = None;
+match x {
+    None => {
+        x = Some(0);
+    }
+    Some(right) => consume(right),
+}
+Mutated code:
+let mut x = None;
+match x {
+    None => {
+        x = Some(0);
+    }
+    _ => consume(right), // right is now undeclared, causing a compiler error or altering analysis
+}
+But to keep the code compiling for the seed, if the variable right is used, we must replace its usage. Since the mutation operator should produce compilable seeds for testing, we instead mutate to Some(_) and adjust the arm body to not use the binding. If the arm body uses the binding, we must replace the identifier with a valid expression. We introduce a new variable of the same type using a dummy value. For example, if T is i32, we use a default like 0. We declare a new variable right with let right = default_value; at the start of the arm body. The default_value should be a literal or constructor that matches the type T. If T is not easily defaultable, we use panic!() to avoid complex inference.
+
+Thus, the mutated code becomes:
+let mut x = None;
+match x {
+    None => {
+        x = Some(0);
+    }
+    Some(_) => {
+        let right = 0; // assuming the original type of right is i32
+        consume(right);
+    },
+}
+The mutation operator must inspect the type of the bound variable in the original pattern to generate an appropriate default. If the type is not inferable from context, the mutation should not apply. The operator applies only when the matched variable is mutated in another arm and the pattern binds a variable. This targets the specific scenario that triggered the ICE, where the compiler's confirmation step for method calls may encounter a None value due to complex control flow.

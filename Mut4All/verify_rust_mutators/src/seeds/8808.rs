@@ -1,0 +1,1 @@
+trait Foo { fn method (& self) { } } trait Bar { fn method (& self) { } } impl Foo for uint { } impl Bar for uint { } fn main () { 1u . method () ; }

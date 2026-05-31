@@ -1,0 +1,1 @@
+struct Bar (Vec < u8 >) ; impl Bar { fn new (values : & [u8]) -> Self { Bar (values . into ()) } fn get (& self , index : usize) -> u8 { self . 0 [index] } } # [test] fn test () { let foo = Bar :: new (& [0u8 ; 4294967295]) ; assert_eq ! (foo . get (1) , 0) ; } fn main () { println ! ("hello world") ; }

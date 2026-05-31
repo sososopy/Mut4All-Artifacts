@@ -1,0 +1,1 @@
+use paste :: paste ; enum MyEnum { A , B , } macro_rules ! my_macro { ($ t : ty , $ x : ident) => { paste ! { match x { [< "MyEnum::" $ x >] => "there" , _ => "world" } } } ; } fn main () { let x = MyEnum :: A ; let y = my_macro ! (A , x) ; println ! ("Hello {}" , y) ; }

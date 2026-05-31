@@ -1,0 +1,50 @@
+Based on the bug report, the crash occurs in Clang when handling a fold expression inside a nested lambda that has a template parameter pack, all within a templated entity. The structures that are more likely to trigger C++ compiler bugs in this context are combinations of: template instantiation, nested lambdas, parameter packs, and fold expressions. Specifically, the interaction of these features during template substitution or instantiation phases seems error-prone.
+
+Mutation Operator:
+
+Target: This mutation operator applies to any lambda expression that contains a fold expression. The goal is to nest such a lambda inside another lambda, and then place the entire construct within a templated context (like a template function or class) to stress the compiler's instantiation mechanisms.
+
+Procedure: For each fold expression found in a lambda within the seed program, we will create a new templated function (if one does not already exist in a suitable scope) that encloses the original lambda. Then, we will modify the original lambda to be nested inside another lambda, and adjust the fold expression to use a parameter pack from the inner lambda.
+
+Steps:
+1. Identify a lambda expression in the seed program that contains a fold expression. Let this lambda be defined as: `[]<typename... Ts>(args) { body_with_fold_expr; }`.
+2. If the seed program does not already have a template function in the global or an appropriate namespace that can be used, create a new template function. This new function should have a template parameter, for example, `template<int N = 0> void mutate_func() { }`. Place this function in the same scope as the original lambda, ensuring no naming conflicts.
+3. Take the original lambda and wrap it inside another lambda. The outer lambda should also be generic, capturing any necessary variables. The inner lambda (the original one) should be invoked inside the outer lambda's body, with its template arguments provided explicitly if needed.
+4. Ensure the fold expression in the inner lambda uses a parameter pack that is defined in the inner lambda's template parameters. If the original fold expression does not use a pack, introduce a pack expansion by modifying the fold expression to expand over a pack.
+5. Finally, instantiate the outer templated function (either the newly created one or an existing one) to trigger compilation of the nested structure.
+
+Example in pseudo-code:
+
+Assume the seed program has:
+```
+auto l = []<int... Is>() {
+    return (Is + ...);
+};
+```
+
+Mutated version:
+```
+template<int = 0>
+void mutate_func() {
+    auto outer = []() {
+        auto inner = []<int... Is>() {
+            return (Is + ...);
+        };
+        inner.template operator()<1,2,3>();
+    };
+    outer();
+}
+
+void caller() {
+    mutate_func();
+}
+```
+
+Changes made:
+- Introduced a template function `mutate_func` with a defaulted non-type template parameter.
+- Wrapped the original lambda (now named `inner`) inside an outer lambda (`outer`).
+- The outer lambda is called inside `mutate_func`.
+- The inner lambda is explicitly instantiated with pack arguments `<1,2,3>` to force instantiation.
+- A caller function invokes `mutate_func` to ensure the template is instantiated.
+
+Note: This mutation uses existing types and variables from the seed where possible. If new names are introduced (like `mutate_func`, `outer`, `inner`, `caller`), they are chosen to avoid conflicts and are clearly defined. The mutation increases complexity by adding nesting and template context, which can expose bugs in the compiler's handling of such intertwined features.

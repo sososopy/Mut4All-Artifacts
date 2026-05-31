@@ -1,0 +1,1 @@
+fn iter_call () -> impl Iterator < Item = String > { yield foo } fn main () { }

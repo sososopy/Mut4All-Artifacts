@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] trait Foo { type A ; } fn bar (x : & Foo) { } pub fn main () { }

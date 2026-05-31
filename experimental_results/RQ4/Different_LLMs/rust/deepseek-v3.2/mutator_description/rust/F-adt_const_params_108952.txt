@@ -1,0 +1,28 @@
+Based on the bug report involving adt_const_params and an internal compiler error (ICE) triggered by a const parameter with a generic type, the following mutation operator is designed to expose similar bugs.
+
+Mutation operator: Mutate the type of a const generic parameter in a struct or enum definition to be a generic struct that has lifetime parameters but is used without providing those lifetime arguments.
+
+This operator applies when a struct or enum definition uses a const generic parameter whose type is a user-defined struct that is generic over lifetimes. The mutation changes the const parameter type to reference the generic struct without specifying its lifetime arguments, thereby creating a situation where the compiler must handle an incomplete generic type in a const parameter context.
+
+Specifically, for any struct or enum definition that includes a const generic parameter of the form `const NAME: TYPE`, if TYPE is a struct defined elsewhere in the seed program that is generic over one or more lifetimes, replace TYPE with the same struct name but without its lifetime arguments. Ensure that the struct being referenced is indeed generic over lifetimes by checking its definition. If the seed program does not contain such a struct, this mutation does not apply.
+
+Example: Suppose the seed program contains a struct definition:
+struct LifetimeGeneric<'a>(&'a ());
+And later, a struct definition uses a const generic parameter:
+struct Example<const C: SomeType>(...);
+If SomeType is a non-generic type, this mutation does not apply. However, if the seed program also contains:
+struct Another<const D: LifetimeGeneric>(...);
+Then this is already a candidate. But for mutation, we target cases where the const parameter type is currently non-generic or fully specified. For instance, if we have:
+struct Wrapper<'a>(LifetimeGeneric<'a>);
+struct Example<const C: Wrapper<'static>>(...);
+This mutation would not apply because Wrapper<'static> has lifetime arguments provided. Instead, we look for a place where we can introduce a generic struct without arguments. Since the seed program must contain a lifetime-generic struct, we can mutate a const parameter type to that struct without arguments. For example, if the seed program has:
+struct MyStruct<const N: usize>;
+We can change it to:
+struct MyStruct<const N: LifetimeGeneric>;
+But only if LifetimeGeneric is defined in the seed program. This mimics the bug report where `LifetimeGeneric` is used without its lifetime argument in a const parameter type.
+
+To implement: In the seed program, identify all struct definitions that are generic over lifetimes. For each, locate all const generic parameters in other struct or enum definitions whose type is not one of these lifetime-generic structs. Replace the type of one such const parameter with the name of a lifetime-generic struct (without its lifetime arguments). Prefer to use a lifetime-generic struct that is defined in the same module or scope to avoid visibility issues. If multiple such structs exist, choose one arbitrarily. If no const generic parameters exist, this mutation cannot be applied.
+
+Changes: Only the type of the const parameter is altered. No new items are introduced; the lifetime-generic struct must already exist. The mutation may produce code that is inherently erroneous, but the goal is to test the compiler's handling of such erroneous input, potentially revealing ICEs.
+
+Note: This mutation may require the adt_const_params feature to be enabled. If the seed program does not already have #![feature(adt_const_params)], add it at the crate root. This is acceptable because the bug is specific to this feature.

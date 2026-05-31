@@ -1,0 +1,30 @@
+Mutation operator:
+
+Target: Where-clause predicates and array size expressions that involve generic constant parameters.
+
+Applicability: This mutation applies to any where-clause predicate of the form `[(); <expr>]:` or array type `[T; <expr>]` where `<expr>` is a constant expression containing generic parameters (like `N`, `L`). The mutation also applies to similar constant expressions in other contexts like trait bounds or value positions if they involve generic parameters.
+
+Operation: For each constant expression `<expr>` that contains a generic parameter, create a mutated version by introducing an extra addition or subtraction of the same generic parameter. Specifically, locate sub-expressions where a generic parameter appears. Then, modify the expression by adding or subtracting the same generic parameter in a way that creates a redundant arithmetic operation.
+
+Example transformations:
+
+Original where-clause: `[(); (L - 1) + 1 + L]:`
+Mutated version 1: `[(); (L - 1) + 1 + L + L]:`   (adds extra L)
+Mutated version提取 2: `[(); (L - 1) + 1 + L - L]:`   (subtracts L then adds it back)
+
+Original array type: `[u8; { { N } }]`
+Mutated version: `[u8; { { N + N } }]`   (changes N to N + N)
+
+Original function call: `foo::<_, L>([(); L + 1 + L]);`
+Mutated version: `foo::<_, L>([(); L + 1 + L + L]);`
+
+The mutation should use existing generic parameters from the context. No new parameters, types, or variables should be introduced. The mutation creates expressions that are syntactically valid but may trigger edge cases in const evaluation similar to the original bug.
+
+Implementation steps:
+1. Identify all constant expressions in where-clauses, array sizes, and similar positions.
+2. For each expression, check if it contains any generic constant parameters (identifiers that are declared as const parameters in the surrounding generic parameter list).
+3. For each occurrence of a generic parameter in the expression, create a mutation by replacing that occurrence with `(parameter + parameter)` or `(parameter - parameter)`.
+4. Alternatively, append `+ parameter` or `- parameter` to the entire expression if syntactically valid.
+5. Ensure the mutated expression remains well-formed (proper parentheses, correct types).
+
+This mutation is designed to create the kind of complex, redundant constant expressions that triggered the original ICE, testing the compiler's ability to handle repeated generic parameters in arithmetic expressions during const evaluation.

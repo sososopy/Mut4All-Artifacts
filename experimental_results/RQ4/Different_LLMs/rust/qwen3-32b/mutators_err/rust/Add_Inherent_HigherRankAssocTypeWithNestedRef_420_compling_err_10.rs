@@ -1,0 +1,105 @@
+use syn::parse_quote;
+use crate::mutator::Mutator;
+
+pub struct Add_Inherent_HigherRankAssocTypeWithNestedRef_420;
+
+impl Mutator for Add_Inherent_HigherRankAssocTypeWithNestedRef_420 {
+    fn name(&self) -> &str {
+        "Add_Inherent_HigherRankAssocTypeWithNestedRef_420"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut structs_to_process = Vec::new();
+        {
+            for (index, item) in file.items.iter_mut().enumerate() {
+                if let syn::Item::Struct(item_struct) = item {
+                    if let Some(first_lt) = item_struct.generics.lifetimes().next() {
+                        structs_to_process.push((index, first_lt.lifetime.clone()));
+                    }
+                }
+            }
+        }
+
+        for (index, first_lt) in structs_to_process {
+            let struct_name;
+            let struct_name_clone;
+            let struct_generics;
+            {
+                let item = &file.items[index];
+                if let syn::Item::Struct(item_struct) = item {
+                    struct_name = &item_struct.ident;
+                    struct_name_clone = struct_name.clone();
+                    struct_generics = item_struct.generics.clone();
+                } else {
+                    continue;
+                }
+            }
+
+            let mut found_impl = false;
+            let mut handler_index = None;
+            for (i, item) in file.items.iter().enumerate() {
+                if let syn::Item::Impl(item_impl) = item {
+                    if item_impl.trait_.is_none() && 
+                       item_impl.self_ty == Box::new(syn::Type::Path(syn::TypePath {
+                           qself: None,
+                           path: syn::Path {
+                               leading_colon: None,
+                               segments: {
+                                   let mut segs = syn::punctuated::Punctuated::new();
+                                   segs.push(syn::PathSegment {
+                                       ident: struct_name_clone.clone(),
+                                       arguments: syn::PathArguments::None,
+                                   });
+                                   segs
+                               },
+                           },
+                       })) {
+                        found_impl = true;
+                        handler_index = Some(i);
+                    }
+                }
+            }
+            
+            if found_impl {
+                if let Some(i) = handler_index {
+                    if let syn::Item::Impl(item_impl) = &mut file.items[i] {
+                        let mut has_focus = false;
+                        let mut has_handler = false;
+                        for impl_item in &mut item_impl.items {
+                            if let syn::ImplItem::Type(assoc_type) = impl_item {
+                                if assoc_type.ident == "Focus" {
+                                    has_focus = true;
+                                } else if assoc_type.ident == "Handler" {
+                                    has_handler = true;
+                                }
+                            }
+                        }
+                        
+                        if !has_focus {
+                            let focus = parse_quote! {
+                                pub type Focus<T> = #first_lt mut User;
+                            };
+                            item_impl.items.push(syn::ImplItem::Type(focus));
+                        }
+                        if !has_handler {
+                            let handler = parse_quote! {
+                                pub type Handler = for<'b> fn(#struct_name ::<'b> Focus<Self::Handler>);
+                            };
+                            item_impl.items.push(syn::ImplItem::Type(handler));
+                        }
+                    }
+                }
+            } else {
+                let new_impl = parse_quote! {
+                    impl #struct_generics #struct_name #struct_generics {
+                        pub type Focus<T> = #first_lt mut User;
+                        pub type Handler = for<'b> fn(#struct_name ::<'b> Focus<Self::Handler>);
+                    }
+                };
+                file.items.push(syn::Item::Impl(new_impl));
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator targets structs with explicit lifetime parameters and introduces an inherent associated type with a higher-rank function signature that references another associated type in a cyclic manner. This creates a self-referential type dependency that challenges the compiler's ability to resolve complex trait bounds and nested lifetime relationships."
+    }
+}

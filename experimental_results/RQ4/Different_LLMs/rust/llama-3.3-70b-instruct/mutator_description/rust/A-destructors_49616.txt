@@ -1,0 +1,18 @@
+Mutation Operator: Replace Destructor Call with Drop Function Call 
+This mutation operator targets the usage of destructors in Rust code, specifically focusing on the interaction between smart pointers and the borrow checker. It applies to code constructs involving RefCell, Rc, or other smart pointers where the borrow checker's behavior is crucial.
+
+The operator works by identifying points where a value is being dropped or goes out of scope and replacing the implicit drop with an explicit call to the Drop trait's drop function. This can help expose bugs related to non-lexical lifetimes (NLL) and the behavior of destructors, as seen in the provided bug report.
+
+For example, given a code snippet like the one in the bug report:
+let s = RefCell::new(Some(10));
+if let Some(n) = *(s.borrow_mut()) {
+    println!("num: {}", n);
+}
+
+This mutation operator might transform it into:
+let s = RefCell::new(Some(10));
+if let Some(n) = *(s.borrow_mut()) {
+    println!("num: {}", n);
+    std::mem::drop(n); // Explicit drop call added
+
+By introducing explicit drop calls at strategic points, this operator can help test the compiler's handling of lifetimes and the activation of destructors, potentially revealing issues similar to the one reported in the bug, where the interaction between borrowing, mutability, and the dropping of values leads to an internal compiler error (ICE). This approach is widely adaptable and can be applied to various parts of a program, making it a useful tool for testing the compiler's behavior with regards to NLL and destructor handling.

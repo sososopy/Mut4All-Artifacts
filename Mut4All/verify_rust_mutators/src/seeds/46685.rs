@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] # ! [feature (universal_impl_trait)] use std :: fmt :: Debug ; fn foo < 'a > (x : & 'a impl Debug) -> impl Into < & 'a impl Debug > { x } fn main () { }

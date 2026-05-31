@@ -1,0 +1,1 @@
+fn main () { debug_assert ! ("me" , "me") ; }

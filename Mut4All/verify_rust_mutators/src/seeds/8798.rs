@@ -1,0 +1,1 @@
+use self :: b :: * ; mod b ; mod c ; fn main () { }

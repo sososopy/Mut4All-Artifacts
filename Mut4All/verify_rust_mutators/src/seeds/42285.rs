@@ -1,0 +1,1 @@
+pub struct HexByteString (String) ; impl HexByteString { pub fn new < T : Into < String > > (init_value : T) -> Result < HexByteString > { match init_value . into () { consts :: EMPTY_STRING => Err (Error :: EmptyValue (msgs :: ERR_EMPTY_VALUE . to_string ())) , s @ _ => Ok (HexByteString (s)) , } } }

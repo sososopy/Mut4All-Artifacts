@@ -1,0 +1,1 @@
+trait Tr { extern "rust-call" fn dm4 () { } }

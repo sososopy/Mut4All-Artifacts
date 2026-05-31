@@ -1,0 +1,1 @@
+struct Foo ; fn ice (x : Foo) { let Some (ref y) = Some (x . nonexistent_method ()) ; y . clone () ; } fn main () { }

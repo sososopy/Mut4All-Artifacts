@@ -1,0 +1,1 @@
+fn foo < T > (_x : & T) { } static FOOS : & 'static [fn (& uint)] = & [foo] ; fn main () { }

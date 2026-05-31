@@ -1,0 +1,23 @@
+mutation operator: replace trait bound with a higher-ranked trait bound that introduces an escaping bound variable in a nested context where the compiler performs substitution.
+
+this mutation operator applies when a function or method has a generic type parameter with a trait bound that involves a reference type. it targets the scenario where the trait bound is changed to a higher-ranked trait bound (for<'a> ...) and the generic parameter is used in a context where the compiler performs type substitution, specifically inside an associated function or method call of that trait.
+
+step 1: locate a function with a generic type parameter f that has a trait bound f: fnonce(&mut t) or similar, where t is a type present in the seed program (e.g., u8, i32, a struct). ensure the function body uses f in a direct call or method call.
+
+step 2: change the trait bound to a higher-ranked trait bound: f: for<'b> fnonce(&'b mut t). this introduces a bound variable 'b.
+
+step 3: inside the function body, replace the usage of f with an explicit trait method call that requires substitution. specifically, use the fully qualified syntax <f as fnonce(&mut t)>::call_once(f, arg). the key is that the type argument in the qualified path is &mut t without the bound variable, but the bound on f has the bound variable 'b. this creates a mismatch where the substitution may incorrectly handle the escaping bound variable.
+
+step 4: ensure the argument passed to call_once is of the correct type &mut t. use a value that can be coerced to &mut t, such as a mutable reference to a variable of type t declared locally. for example, if t is u8, declare let mut x: u8 = 0; and pass &mut x.
+
+example transformation:
+original code snippet:
+fn example<f>(f: f) where f: fnonce(&mut u8) {
+    f(&mut 0);
+}
+mutated code snippet:
+fn example<f>(f: f) where f: for<'b> fnonce(&'b mut u8) {
+    let mut x: u8 = 0;
+    <f as fnonce(&mut u8)>::call_once(f, &mut x);
+}
+note: the seed program must already have the fnonce trait in scope (it is in the prelude). the mutation introduces a higher-ranked bound and a qualified call. the type u8 should be replaced with whatever type t is used in the original seed code. this mutation is designed to trigger bugs related to escaping bound variables during substitution in the trait system.

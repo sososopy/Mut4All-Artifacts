@@ -1,0 +1,1 @@
+const ZERO : u8 = 0 ; fn main () { match 0 { _ => ZERO } ; }

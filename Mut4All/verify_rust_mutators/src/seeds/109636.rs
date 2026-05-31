@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] type Iter < 'a > = impl Iterator < Item = u32 > + 'a ; fn whee () -> for < 'a > fn (& 'a [u32]) -> Iter < 'a > { | a | a . iter () . copied () }

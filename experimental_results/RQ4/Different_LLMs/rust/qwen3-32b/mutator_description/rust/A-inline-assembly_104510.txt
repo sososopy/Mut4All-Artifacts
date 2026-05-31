@@ -1,0 +1,22 @@
+Mutation operator: InlineAssemblyWithInvalidType
+Applies to struct field declarations and unsafe function bodies that can contain inline assembly
+Modifies an existing struct field to use an undefined type and introduces inline assembly in an unsafe function context
+Example:
+Original code:
+struct X { a: Vec<i32> }
+unsafe fn foo(x: &X) {
+    // function body
+}
+
+Mutated code:
+struct X { a: InvalidType }
+//~^ ERROR cannot find type `InvalidType` in this scope
+unsafe fn foo(x: &X) {
+    let p = x as *const _;
+    core::arch::asm!(
+        "nop",
+        in("rax") p,
+    );
+}
+
+This mutation targets the compiler's error handling for missing types combined with inline assembly processing. The undefined type in the struct declaration creates a type error that is not properly handled when the compiler subsequently processes the inline assembly in the same function. The mutation preserves any existing variables and types that already exist in the seed program, only introducing the undefined type name 'InvalidType' as a replacement for a valid type in the struct field.

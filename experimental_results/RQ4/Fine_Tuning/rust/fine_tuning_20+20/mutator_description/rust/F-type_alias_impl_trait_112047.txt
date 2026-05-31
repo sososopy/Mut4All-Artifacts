@@ -1,0 +1,43 @@
+Mutation Operator: Recursive Trait Method Call Mutation
+
+Target: Traits and trait method implementations
+
+Step-by-Step Instructions:
+1. Identify a trait that contains an async method. For example, a trait `ExampleTrait` with an async method `async_fn`.
+2. Check if there is an existing implementation of this trait for a concrete type or a generic type with trait bounds.
+3. In the implementation of the async method, introduce an indirect recursive call chain:
+   a. Within the `async_fn` implementation, call another method (either from the same trait or another trait that the type implements) that eventually triggers a call back to `async_fn` asynchronously.
+   b. Ensure that the method call chain involves at least one `.await` point that will resume back into the original trait method, creating a cycle.
+4. Make sure that the recursive interaction involves multiple traits if possible, relying on their respective async methods, similar to the interaction between `First` and `Second` traits in the provided bug example.
+5. If necessary, declare any additional traits or methods that create a meaningful chain, ensuring they adhere to Rust's syntax rules.
+
+Example:
+```rust
+pub trait ExampleTrait {
+    type Other: OtherTrait;
+    async fn async_fn(self) -> Self::Other;
+}
+
+struct Example;
+
+impl ExampleTrait for Example {
+    type Other = Example;
+    async fn async_fn(self) -> Self::Other {
+        self.other_fn().await
+    }
+}
+
+pub trait OtherTrait {
+    async fn other_fn(self);
+}
+
+impl<T> OtherTrait for T
+where
+    T: ExampleTrait,
+{
+    async fn other_fn(self) {
+        self.async_fn().await;
+    }
+}
+```
+This creates an indirect recursive call between `async_fn` and `other_fn`, similar to the interaction between `First` and `Second` in the bug report.

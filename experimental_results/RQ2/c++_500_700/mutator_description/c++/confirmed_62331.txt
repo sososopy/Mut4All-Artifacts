@@ -1,0 +1,68 @@
+Mutation Operator: Modify Template Parameter Instantiation
+
+Target: Class template instantiation (particularly when dealing with nested templates and default arguments).
+
+Mutation Rule:
+1. Identify a class template instantiation in the code. Specifically, look for instantiations where a nested template is involved, such as `A1<SomeImpl>` in the example.
+2. Modify the instantiation by introducing a template specialization with a different template argument type.
+3. Ensure that the new template argument is already declared in the code or declare it explicitly if necessary.
+4. Apply the mutation to a position where default template arguments are involved in the original code, as this might trigger unexpected behaviors in the compiler.
+
+Example:
+Original Code:
+```cpp
+template <typename>
+struct SomeImpl {};
+
+template <template <typename> class T1>
+class A1 {
+   public:
+    template <typename T2>
+    void b(T1<T2> = T1<T2>());
+};
+
+template <>
+template <typename T2>
+void A1<SomeImpl>::b(SomeImpl<T2>) {}
+
+void bug1() {
+    A1<SomeImpl> a;
+    a.b<int>();
+}
+
+int main() {}
+```
+
+Mutated Code:
+```cpp
+template <typename>
+struct SomeImpl {};
+
+template <typename>
+struct OtherImpl {}; // New template argument type introduced
+
+template <template <typename> class T1>
+class A1 {
+   public:
+    template <typename T2>
+    void b(T1<T2> = T1<T2>());
+};
+
+template <>
+template <typename T2>
+void A1<SomeImpl>::b(SomeImpl<T2>) {}
+
+// Add specialization for OtherImpl
+template <>
+template <typename T2>
+void A1<OtherImpl>::b(OtherImpl<T2>) {}
+
+void bug1() {
+    A1<OtherImpl> a; // Modify instantiation to use the new template argument type
+    a.b<int>();
+}
+
+int main() {}
+```
+
+This mutation operator modifies the instantiation of a class template by altering the template argument to a different type and providing a specialization for the new type. This can potentially expose issues in the compiler's handling of template specializations, especially when default arguments are involved.

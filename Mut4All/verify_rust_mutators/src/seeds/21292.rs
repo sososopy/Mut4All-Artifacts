@@ -1,0 +1,1 @@
+trait DeclaredTrait { type Type ; } impl DeclaredTrait for i32 { type Type = i32 ; } struct Struct < B : DeclaredTrait > { b1 : B , b2 : < B as DeclaredTrait > :: Type , } fn main () { let e = Struct { b1 : 0 , b2 : 0 , } ; }

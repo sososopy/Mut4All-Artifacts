@@ -1,0 +1,1 @@
+type HashMap < K , V > = hashbrown :: HashMap < K , V , ahash :: RandomState > ; fn main () { let vec = HashMap :: new () ; }

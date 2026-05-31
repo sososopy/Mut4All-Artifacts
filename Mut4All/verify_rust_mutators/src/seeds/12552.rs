@@ -1,0 +1,1 @@
+fn main () { let t = Err (0) ; match t { Some (k) => match k { a => println ! ("{}" , a) } , None => () } }

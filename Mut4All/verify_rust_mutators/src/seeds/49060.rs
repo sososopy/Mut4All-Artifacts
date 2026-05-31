@@ -1,0 +1,1 @@
+static A : & mut [i32] = & mut [0 ; 5] ; fn main () { A [3] = 3 ; }

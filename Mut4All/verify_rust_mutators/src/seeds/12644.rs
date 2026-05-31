@@ -1,0 +1,1 @@
+pub struct Deg { d : f64 } pub trait Angle : Equiv < Self > { } impl Angle for Deg { } impl < T : Angle > Equiv < T > for T { fn equiv (& self , other : & T) -> bool { return true ; } } pub fn main () { }

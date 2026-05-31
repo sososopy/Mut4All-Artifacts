@@ -1,0 +1,1 @@
+fn get_contents () -> impl Iterator { yield "hello" ; }

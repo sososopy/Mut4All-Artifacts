@@ -1,0 +1,1 @@
+# [derive (Debug)] struct NoneSense < T > { shouldBeVecT : vec ! [T] } fn main () { }

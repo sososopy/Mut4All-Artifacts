@@ -1,0 +1,21 @@
+mutation operator: Replace a concrete constant array length in a slice pattern with a generic constant expression that is not yet evaluated.
+
+This operator applies to match arms that contain slice patterns with explicit lengths. Specifically, when a match expression is applied to a slice or array with a generic constant length parameter, and one of the patterns uses a concrete integer literal for the length, replace that literal with a generic constant expression that references the same generic parameter used in the type of the matched value. The operator ensures that the generic constant expression is not trivially evaluable at pattern compilation time, potentially leading to an internal compiler error when the compiler expects a concrete integer but encounters an unevaluated constant.
+
+In seed programs, locate a function or method that uses a generic const parameter N in an array or slice type, and within that function, there is a match expression on a value of that type. Identify a match arm that uses a slice pattern with a concrete length, for example `[x, y]` or `[]`. Replace that concrete length pattern with a pattern that uses a constant expression dependent on N, such as `[..; N]` or `[..; N - 1]`, provided such an expression is syntactically valid in a pattern context. If the seed program does not already have a generic const parameter, introduce one by adding a const generic parameter to the function, for example `const N: usize`, and adjust the function signature accordingly. The mutated code must keep all existing variable names and types unchanged.
+
+Example transformation: Given a seed program snippet:
+fn foo<const N: usize>(arr: [u8; N]) {
+    match arr {
+        [] => {},
+        [x, ..] => {},
+    }
+}
+Change the pattern `[]` to `[..; N]` (if N is zero, this pattern matches an empty array, but the compiler must handle the unevaluated constant). The mutated code becomes:
+fn foo<const N: usize>(arr: [u8; N]) {
+    match arr {
+        [..; N] => {},
+        [x, ..] => {},
+    }
+}
+This introduces a pattern where the length is a generic constant expression, which may not be evaluated during pattern compilation, potentially triggering bugs similar to the reported ICE.

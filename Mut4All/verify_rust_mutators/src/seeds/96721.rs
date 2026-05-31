@@ -1,0 +1,1 @@
+macro_rules ! foo { () => { "bar.rs" } ; } mod abc ; fn main () { }

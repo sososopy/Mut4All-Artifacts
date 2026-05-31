@@ -1,0 +1,1 @@
+use std :: ops :: Add ; use std :: cell :: RefCell ; # [derive (Debug)] struct Bla { hello : String } static FOO : RefCell < Option < Bla > > = RefCell :: new (None) ; fn main () -> String { let mut output = String :: new () ; output . add (& format ! ("FOO: {:#?}" , FOO . into_inner () . unwrap ())) ; output }

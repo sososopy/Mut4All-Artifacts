@@ -1,0 +1,17 @@
+Mutation operator: Replace dependent context call to conversion operator template with explicit type conversion in member function template definitions.
+
+This mutation operator applies when a class template contains a conversion function template (a member operator T() where T is a template parameter), and within a member function definition of that class template (outside the class body), there is a call to that conversion operator. The operator changes the call from using the conversion operator syntax to a C-style or functional cast expression targeting the same type.
+
+Specifically, it locates expressions of the form `operator Type()` within member function definitions of class templates, where the conversion operator being called is itself a template defined in the class. It replaces that expression with `(Type) 0` or `Type(0)`, preferring to use an existing integer literal or a default-constructed value if such an expression is already present in the surrounding context to maintain validity. The primary change is to remove the explicit `operator` keyword call, which is a dependent name in the template definition context, and substitute a cast that forces instantiation and deduction in a different manner.
+
+For example, given the seed code pattern:
+template <typename U> struct A {
+   template <typename T> operator T();
+   void f();
+};
+template <typename U>
+void A<U>::f() {
+   0, operator int();
+}
+
+The mutation would change the line `0, operator int();` to `0, (int)0;` or `0, int(0);`. The existing literal `0` is reused to provide a value for the cast. The mutation aims to alter the dependency context of the conversion, potentially exposing bugs in template argument deduction for conversion function templates when called from within a template definition. The new expression should be semantically similar but syntactically distinct, avoiding the dependent operator call that triggered the original assertion failure.

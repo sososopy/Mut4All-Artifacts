@@ -1,0 +1,25 @@
+Mutation Operator: NestedClosureRegionConflict
+
+Targets nested closures within `match`/`if let` arms that capture variables with overlapping lifetimes. Applies to code where a closure is defined inside another closure's success branch and both capture variables bound in outer scopes.
+
+Mutates: Replace a top-level closure with a nested structure where the inner closure explicitly captures variables from the outer scope while retaining original variable bindings. This stresses region inference between nested closures and parent scopes.
+
+Example:
+Before:
+fn f() { 
+   let x = ...;
+   match outer(x, |a| process(x, a)) { ... }
+}
+
+After:
+fn f() { 
+   let x = ...;
+   match outer(x, {
+      |a| {
+         let y = x; 
+         |b| nested(y, b)
+      }
+   }) { ... }
+}
+
+Requires: Outer closure context preserves variable bindings from parent scope. Inner closure must capture at least one variable from outer scope's environment. Existing function 'nested' must accept the captured variable and a new parameter.

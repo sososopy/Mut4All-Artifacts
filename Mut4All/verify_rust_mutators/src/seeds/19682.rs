@@ -1,0 +1,1 @@
+extern crate xml ; use xml :: reader :: events :: XmlEvent ; fn main () { let e = XmlEvent :: ProcessingInstruction { name : "Test" . to_string () , data : None } ; match e { XmlEvent :: ProcessingInstruction { name , data } => { println ! ("name: {}, data: {}" , name , data) ; } , _ => { } } }

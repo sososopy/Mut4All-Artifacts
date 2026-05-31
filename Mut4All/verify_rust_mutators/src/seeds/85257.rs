@@ -1,0 +1,1 @@
+fn main () { println ! ("Hello, World!") ; let mut vec = Vec :: new () ; vec . push (1) ; vec . push (2) ; }

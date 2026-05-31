@@ -1,0 +1,1 @@
+fn main () { macro_rules ! foo (($ a : expr) => { { let mut x = ~ [0] ; x . push ($ a) ; x . push ($ a) ; } }) ; foo ! (1) ; }

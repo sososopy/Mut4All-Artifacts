@@ -1,0 +1,1 @@
+fn main () { enum Stuff { Bar = 100 } log (error , Bar) ; }

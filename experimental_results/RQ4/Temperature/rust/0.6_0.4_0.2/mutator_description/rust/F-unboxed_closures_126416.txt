@@ -1,0 +1,26 @@
+Mutation Operator: Modify Trait Bound in Function Signature
+
+Target: This mutation operator targets the trait bounds specified in function signatures, specifically within generic functions or methods that use higher-ranked trait bounds (HRTBs) involving unboxed closures.
+
+Description: The mutation operator modifies the trait bounds in the function signature to include additional traits or to adjust existing ones. This helps expose bugs related to trait resolution and higher-ranked lifetimes, which are particularly prone to triggering internal compiler errors (ICEs) due to their complexity.
+
+Example Mutation:
+Original Code:
+```
+fn do_something_wrapper<O, F>(&mut self, _: F)
+where
+    F: for<'a> FnOnce(<F as Output<i32>>::Type),
+{
+}
+```
+
+Mutated Code:
+```
+fn do_something_wrapper<O, F>(&mut self, _: F)
+where
+    F: for<'a> FnOnce(<F as Output<i32>>::Type) + for<'a> Output<'a, i32>,
+{
+}
+```
+
+Explanation: In the mutated code, the trait bound on `F` is expanded to include `for<'a> Output<'a, i32>`. This additional bound is suggested by the compiler error messages and aims to expose any latent issues in the interaction between the higher-ranked trait bounds and the unboxed closure handling in the Rust compiler. Such mutations are likely to produce new compiler errors or ICEs, revealing deeper issues in the trait resolution logic.

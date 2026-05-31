@@ -1,0 +1,37 @@
+Mutation Operator: Alter Lifetime Context in Associated Types
+
+This mutation operator targets the context and scope of lifetimes in associated types, particularly when used within `impl` blocks. The operator specifically applies to associated types that are defined with lifetimes and are used recursively within other associated types or function signatures.
+
+Description:
+1. When a struct or an `impl` block contains an associated type with a lifetime parameter (e.g., `&'a ()`), modify the lifetime context by changing the depth of the lifetime's scope. This involves altering the `DebruijnIndex` or moving the bound region to a different lifetime context.
+2. Adjust the usage of the associated type within function signatures or other type declarations to reflect the changed lifetime context, observing the effects on type inference and region constraints.
+3. Ensure that the lifetime changes are syntactically correct to compile but may semantically challenge the region inference mechanism.
+
+Example of Mutation:
+Given a piece of Rust code with a structure and its implementation:
+
+Original Seed Program:
+```
+struct Container<T>(T);
+
+impl<'b> Container<fn(&'b ())> {
+    type Nested = &'b ();
+}
+
+fn process(_: for<'b> fn(Container<fn(Container<fn(&'b ())>::Nested)>::Nested)) {}
+```
+
+After Applying Mutation:
+1. Change the lifetime parameter in the `Container` implementation to a deeper index or another context:
+```
+impl<'c> Container<fn(&'c ())> {
+    type Nested = &'c ();
+}
+```
+
+2. Update the function signature to reflect the new lifetime context:
+```
+fn process(_: for<'c> fn(Container<fn(Container<fn(&'c ())>::Nested)>::Nested)) {}
+```
+
+The mutation adjusts the lifetime context from `'b` to `'c`, requiring the compiler to relate these lifetimes with potentially different scopes and constraints, which may reveal weaknesses in how the compiler manages lifetime relationships and associated types.

@@ -1,0 +1,1 @@
+# [repr (C)] pub struct Foo (u32) ; pub extern fn bar () -> Foo { Foo (0) } fn main () { }

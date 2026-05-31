@@ -1,0 +1,43 @@
+Mutation Operator: ReplaceInheritedConstructor
+This mutation operator targets code constructs that involve explicit specialization of base inherited constructors in C++11. It applies to code that uses inherited constructors, which are a feature introduced in C++11 allowing a derived class to inherit constructors from its base class.
+
+The operator works by identifying instances where a derived class explicitly specializes a constructor inherited from its base class and then replacing the specialized constructor with a non-specialized version, or vice versa. This can potentially expose bugs related to how the compiler handles constructor inheritance and specialization, such as the one described in the bug report where an assertion fails due to issues with canonical declarations of methods.
+
+To apply this operator, first, identify all occurrences of inherited constructors in the seed program. An inherited constructor is declared using the `using` keyword followed by the base class name and the constructor parameters. For example, if there's a base class `Base` with a constructor `Base(int)`, a derived class `Derived` might inherit this constructor using `using Base::Base;`.
+
+Once such a construct is found, the mutation involves replacing the inherited constructor declaration with an explicitly defined constructor in the derived class that calls the base class constructor using the `: base(base_args)` syntax, or vice versa. If the derived class already has an explicitly defined constructor that calls the base class constructor, replace it with an inherited constructor declaration.
+
+For instance, given:
+```cpp
+class Base {
+public:
+    Base(int x) {}
+};
+
+class Derived : public Base {
+public:
+    using Base::Base; // Inherited constructor
+};
+```
+The mutation could result in:
+```cpp
+class Derived : public Base {
+public:
+    Derived(int x) : Base(x) {} // Explicitly defined constructor
+};
+```
+Or, if starting with an explicit constructor:
+```cpp
+class Derived : public Base {
+public:
+    Derived(int x) : Base(x) {}
+};
+```
+The mutation could replace it with:
+```cpp
+class Derived : public Base {
+public:
+    using Base::Base; // Inherited constructor
+};
+```
+This mutation operator aims to test the compiler's handling of inherited constructors and their explicit specializations, potentially uncovering bugs similar to the one reported, where the compiler crashes due to assertion failures related to the canonical status of declarations.

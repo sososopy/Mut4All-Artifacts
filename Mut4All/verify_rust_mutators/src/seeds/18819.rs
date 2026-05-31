@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] trait Foo { type Item ; } struct X ; impl Foo for X { type Item = bool ; } fn print_x (_ : & Foo , extra : & str) { println ! ("{}" , extra) ; } fn main () { print_x (X) ; }

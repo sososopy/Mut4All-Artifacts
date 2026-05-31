@@ -1,0 +1,1 @@
+# ! [feature (trait_alias)] use std :: ops :: Neg ; trait Number = Sized + Neg < Output = Self > ;

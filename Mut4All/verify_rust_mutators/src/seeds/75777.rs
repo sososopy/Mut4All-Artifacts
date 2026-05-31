@@ -1,0 +1,1 @@
+use futures :: future :: { self , BoxFuture } ; fn inject < 'a , Env : 'a , A : 'a + Send > (v : A) -> Box < dyn FnOnce (& 'a Env) -> BoxFuture < 'a , A > > { let fut : BoxFuture < 'a , A > = Box :: pin (future :: ready (v)) ; Box :: new (move | _ | fut) } fn main () { }

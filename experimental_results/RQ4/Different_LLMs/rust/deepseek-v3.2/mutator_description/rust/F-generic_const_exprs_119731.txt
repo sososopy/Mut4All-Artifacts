@@ -1,0 +1,23 @@
+mutation operator: introduce overlapping generic impls with mismatched const generics where one uses a concrete constant expression and the other uses a generic const parameter from the struct definition.
+
+This mutation applies when there are struct definitions with const generic parameters, and there is at least one impl block for that struct. The mutation duplicates an existing impl block, but modifies its const generic arguments to create a potential overlap with another impl, specifically by replacing a concrete const argument with a generic const parameter from the struct definition, or vice versa, ensuring the two impls have the same number of generic parameters but differing in whether a const argument is concrete or generic.
+
+Steps:
+1. Identify a struct definition that has at least one const generic parameter, for example: `struct S<const N: usize, const M: usize> { _p: () }`.
+2. Identify an existing impl block for that struct, for example: `impl S<5, 10> { fn method() {} }`.
+3. Create a new impl block by copying the existing one, but change one of the const generic arguments. If the original impl uses a concrete constant (like `5`), replace it with a generic const parameter from the struct definition (like `N`). Conversely, if the original impl uses a generic const parameter, replace it with a concrete constant that is already defined in the seed program (like a constant item `const C: usize = 5;`). Ensure the new impl has the same number of generic parameters as the struct; if the struct has multiple const generic parameters, the new impl must still specify all of them, but only one is changed.
+4. If the struct also has type generic parameters, they must be kept identical in both impls to maintain syntactical correctness. For example, if the struct is `struct S<T, const N: usize>`, and there is an impl `impl S<i32, 5>`, the new impl could be `impl S<i32, N>`. This requires introducing a generic type parameter in the impl if not already present: `impl<T> S<T, N>`. To avoid introducing new type parameters, prefer to mutate impls that already match the struct's generic arity.
+5. The mutation must ensure that the two impls (original and new) are both valid Rust syntax individually, but they may cause overlap errors. The goal is to trigger compiler internal errors during overlap checking, especially with generic_const_exprs feature.
+
+Example based on seed structures:
+Original seed has: `struct v17<const v10: usize, const v7: v11> { _p: () }` and `impl v17<512, v0> { ... }` and `impl<const v10: usize> v17<v10, v2> { ... }`.
+Mutation could add a third impl: `impl<const v10: usize> v17<v10, v0> { ... }`. This new impl uses the generic `v10` for the first const parameter (like the second impl) and the concrete constant `v0` for the second const parameter (like the first impl). This creates a potential overlap with both existing impls and may stress the const evaluation during overlap checking.
+
+Generalized pseudo-code example:
+Seed struct: `struct Container<const A: usize, const B: usize> {}`.
+Seed impl1: `impl Container<5, 10> { fn f() {} }`.
+Seed impl2: `impl<const A: usize> Container<A, 10> { fn g() {} }`.
+Mutation adds impl3: `impl<const A: usize> Container<A, 5> { fn h() {} }`.
+Here, impl3 overlaps with impl1 on `Container<5,5>` and with impl2 on `Container<A,5>` where A=5. The compiler must evaluate const generics to resolve overlaps.
+
+Note: The mutation should use existing constant names and types from the seed program. Do not introduce new constants unless they are simple literals like `0` or `1` that are always valid. Prefer to reuse existing constant items, array lengths, or literals already present in the seed.

@@ -1,0 +1,1 @@
+pub trait BuildAlgorithmStateFn { fn build (& self) -> Box < dyn AlgorithmStateFn < Output = () > > ; } pub trait AlgorithmStateFn : FnMut () -> < Self as AlgorithmStateFn > :: Output { type Output ; }

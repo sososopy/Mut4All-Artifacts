@@ -1,0 +1,1 @@
+fn main () { format_args ! (r#concat ! ("¡        {")) ; }

@@ -1,0 +1,22 @@
+mutation operator: Expand variadic using declaration with duplicate base class member access.
+
+This mutation operator targets class definitions that contain a using declaration with a pack expansion, specifically within a class template that inherits from a parameter pack. It applies when a template class inherits from a parameter pack `args...` and contains a using declaration of the form `using args::member ...;`. The operator mutates by duplicating one of the base class specifiers in the using declaration expansion, creating a scenario where the same member name is introduced multiple times from potentially the same ultimate virtual base, which may stress compiler handling of such duplicate introductions in C++20.
+
+The change must be made to the using declaration line. For a seed line `using args::member ...;`, replace it with `using args::member ..., args::member ...;`. However, to use only existing names, we must replicate one of the pack elements. Since `args` is a pack, we cannot directly name a single type from it. Therefore, we restructure by introducing a helper. First, ensure the class template has a private, unused type alias such as `using __first_t = __type_pack_element<0, args...>;`. If such a metaprogramming utility is not present, we must declare it. We will add before the class definition: `template<int, typename...> struct __type_pack_element;` and then a specialization `template<typename T, typename... Rest> struct __type_pack_element<0, T, Rest...> { using type = T; };`. Then inside the class template, add `using __first = typename __type_pack_element<0, args...>::type;`. Finally, change the using declaration to `using __first::member ..., args::member ...;`. This duplicates the member access from the first base alongside the full pack.
+
+For example, given the seed code:
+template<typename...args>
+struct X : public args... {
+    using args::k ...;
+};
+
+After mutation, it becomes:
+template<int, typename...> struct __type_pack_element;
+template<typename T, typename... Rest> struct __type_pack_element<0, T, Rest...> { using type = T; };
+template<typename...args>
+struct X : public args... {
+    using __first = typename __type_pack_element<0, args...>::type;
+    using __first::k ..., args::k ...;
+};
+
+This ensures the member `k` appears twice in the using declaration expansion if the pack has at least one type, potentially triggering bugs related to duplicate using declarations in variadic inheritance contexts under C++20.

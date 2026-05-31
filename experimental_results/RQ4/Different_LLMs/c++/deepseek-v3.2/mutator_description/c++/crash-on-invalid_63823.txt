@@ -1,0 +1,20 @@
+Based on the bug report, the crash occurs during template instantiation when a template argument's kind mismatch triggers an assertion in TemplateInstantiator::TransformTemplateTypeParmType. The bug involves template type parameter substitution with lambda expressions and nested template constructs. C++ compiler bugs often manifest in complex template instantiation scenarios, especially when non-type template arguments (like lambdas) interact with type-dependent constructs.
+
+Mutation operator: Replace a non-type template argument with a dependent type argument in a nested template context.
+
+This mutation targets template argument lists in template specializations or alias declarations where a non-type template argument (like a lambda) is used. The operator replaces such an argument with a type argument that depends on previously defined template parameters, creating a mismatch during substitution.
+
+Applicability: Apply to any template specialization or alias that uses a non-type template argument (e.g., a lambda, integer, or pointer) within a context where template parameters are already defined. Specifically, target the template arguments in constructs like `template<...> using alias = ...;` or `template<...> struct S;` with instantiation.
+
+Procedure: 
+1. Identify a template specialization or alias declaration in the seed program that has at least one template parameter and uses a non-type template argument in its definition or instantiation.
+2. Locate the non-type template argument within that template's argument list.
+3. Replace that non-type template argument with a type argument formed by applying a type transformation to an existing template parameter. For example, if the template has a parameter `T`, replace the non-type argument with `typename T::type` or `decltype(T{})`, assuming such dependencies are syntactically valid based on the seed's existing types.
+4. Ensure the replacement does not introduce undefined types; use only type dependencies that are already present or can be constructed from existing template parameters (e.g., using `typename` specifiers if the seed has nested types).
+5. If the seed lacks suitable type dependencies, introduce a simple type transformation like `T*` (pointer type) or `T&` (reference type), which are generally valid without additional declarations.
+
+Example in pseudo-code:
+Original seed snippet: `template<auto X> struct S;` or `template<typename T, auto V> using A = something<V>;`
+Mutation: Change `auto X` or `V` to `typename T::type` (if `T` is a template parameter with a nested type in the seed) or to `T*` (if `T` is a type parameter).
+
+Note: This mutation aims to create a scenario where the template argument kind (type vs. non-type) mismatches during substitution, potentially triggering the assertion similar to the bug report. It should be applied to templates that are instantiated later in the code, such as within static assertions or variable definitions, to ensure the instantiation path is exercised.

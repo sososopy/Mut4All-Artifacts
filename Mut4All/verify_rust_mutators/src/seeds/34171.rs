@@ -1,0 +1,1 @@
+macro_rules ! m { ($ i : item) => { error ! { $ i } } } fn main () { m ! (# [cfg (any ())] fn g () { }) ; }

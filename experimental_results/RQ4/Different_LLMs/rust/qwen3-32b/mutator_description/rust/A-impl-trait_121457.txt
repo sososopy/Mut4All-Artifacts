@@ -1,0 +1,30 @@
+Mutation Operator: TraitImplWithShadowsAndIncompleteRPITIT
+Target code constructs: Trait implementations of reference types with associated types and RPITIT returns that shadow lifetimes.
+
+Apply where: In an impl block for a reference type implementing a trait with an associated type that has a lifetime parameter.
+
+Modify: 
+1. Declare a new lifetime parameter 'a in the impl block that shadows the trait's lifetime.
+2. In the associated type declaration, omit the body and apply a lifetime bound that duplicates the shadowed 'a.
+3. For a method returning RPITIT, reference an undeclared lifetime in the returned associated type.
+
+Example transformation:
+// Original in trait:
+trait Trait {
+    type Item<'a> where Self: 'a;
+    fn method(&self) -> impl '_;
+}
+
+// In impl block for reference:
+impl<'a, T: 'a + Trait> Trait for &'a T {
+    type Item<'a> // <-- mutation: add shadowed lifetime parameter 
+    where 
+        Self: 'a; // <-- mutation: apply shadowed lifetime bound
+
+    fn method(&self) -> impl Iterator<Item = Self::Item<'missing>>; // <-- mutation: use undeclared lifetime
+}
+
+Changes required:
+- Add the shadowed lifetime 'a in the impl block's header.
+- Omit the body for the associated type and apply a redundant bound on the shadowed 'a.
+- In the method return type, reference a lifetime 'missing not declared in any clause.

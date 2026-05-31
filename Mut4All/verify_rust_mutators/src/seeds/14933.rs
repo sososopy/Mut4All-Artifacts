@@ -1,0 +1,1 @@
+type Bigrat < T = BigRational > = T ;

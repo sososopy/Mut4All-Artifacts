@@ -1,0 +1,1 @@
+struct X { } fn f () { let x = X ("ö") ; }

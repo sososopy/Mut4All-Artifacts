@@ -1,0 +1,31 @@
+mutation operator: Introduce a temporary binding that extends the lifetime of a reference used in an async block or future combinator, potentially creating hidden lifetime constraints.
+
+This operator targets functions that return an opaque future type (e.g., `impl Future<Output = T>`) and contain async blocks. It applies when there is a reference inside the async block that is used in a function call that expects a reference with a specific lifetime, particularly when that function call involves another future that may capture the reference. The mutation inserts a new `let` binding that holds the reference, then uses that binding in the original call. This can alter lifetime inference by introducing an additional temporary scope.
+
+The operator must use only variables and types already present in the seed program. No new types or functions are introduced. The change is made inside an async block or a future-returning function.
+
+Step 1: Locate an async block within a function that returns an opaque future (like `impl Future`).
+Step 2: Inside that async block, identify a function call where one of the arguments is a reference (e.g., `&var`). Ensure the function called is defined in the seed (not a standard library function) and its signature involves lifetimes or generic parameters.
+Step 3: Insert a new let binding immediately before that function call. The binding should be a new variable name not already used in the current scope. Use a name like `temp_ref`. Assign the reference to this binding.
+Step 4: Replace the original reference argument in the function call with the new binding.
+
+Example seed pseudo-code:
+fn foo() -> impl Future<Output = i32> {
+    async {
+        let x = 5;
+        some_function(&x);
+        // ... other code
+    }
+}
+
+After mutation:
+fn foo() -> impl Future<Output = i32> {
+    async {
+        let x = 5;
+        let temp_ref = &x;
+        some_function(temp_ref);
+        // ... other code
+    }
+}
+
+This mutation may expose bugs in region inference by creating an additional temporary that could affect how the borrow checker computes constraints for opaque future captures, particularly around the `best_blame_constraint` logic.

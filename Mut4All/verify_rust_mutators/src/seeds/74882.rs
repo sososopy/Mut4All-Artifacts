@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] # ! [allow (incomplete_features)] use blake3 :: Hasher ; pub struct Foo { hasher : Hasher , }

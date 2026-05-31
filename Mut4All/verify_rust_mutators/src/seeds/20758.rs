@@ -1,0 +1,1 @@
+use std :: ops :: BitAnd ; struct A ; impl BitAnd for A { pub fn bitand (self , other : A) -> A { return self ; } }

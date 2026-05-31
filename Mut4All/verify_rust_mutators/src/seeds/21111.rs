@@ -1,0 +1,1 @@
+trait Trait { fn func (_ : Option < Self >) ; } impl Trait for str { fn func (_ : Option < str >) { } }

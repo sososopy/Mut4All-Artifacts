@@ -1,0 +1,1 @@
+# [repr (C)] # [derive (Copy , Clone)] pub enum Ipc { CREAT = 0o0001000 , NOWAIT = 2048 , } pub struct MsgBuf { pub mtype : u32 , pub mtext : [u8 ; Ipc :: MSG_BUFF as usize] , } fn main () { }

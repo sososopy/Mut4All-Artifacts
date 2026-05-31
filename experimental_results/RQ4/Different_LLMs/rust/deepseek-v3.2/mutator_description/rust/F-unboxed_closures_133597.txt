@@ -1,0 +1,17 @@
+mutation operator
+Target code construct: trait method signatures that return impl Trait and involve Fn-family traits with unboxed closures syntax. Specifically, when a trait method returns impl Trait + FnOnce<Args> (using angle bracket notation for Fn-family traits), and the trait is implemented for a concrete type.
+
+Where it applies: In any trait definition that contains a method returning impl Trait combined with FnOnce, FnMut, or Fn using angle bracket notation (e.g., FnOnce<()>). The mutation modifies the method signature in the trait implementation to either add, remove, or alter lifetime bounds on the method's generic parameters or the impl Trait return type.
+
+Mutation operation: For a trait method with signature `fn method<'a: 'b>() -> impl Sized + FnOnce<()>;` (or similar), where lifetimes may be present, mutate the lifetime bounds in the method signature within the impl block. If the trait method has a lifetime parameter with a bound (e.g., `'a: 'b`), change the bound to a different lifetime that exists in scope (e.g., `'a: 'a` or `'a: 'static` if `'static` is available). If the trait method has no lifetime parameters, introduce a new lifetime parameter with a trivial bound (e.g., `fn method<'a>() -> impl Sized + FnOnce<()> where 'a: 'a`). Use lifetimes that are already present in the surrounding code (from the trait, impl, or enclosing item) to avoid introducing undeclared names. If no lifetimes exist, declare a new lifetime parameter `'a` at the appropriate scope (e.g., on the impl block or within the method) and use it in the bound.
+
+Example: Given a seed program with a trait `Trait` and impl:
+trait Trait {
+    fn get() -> impl Sized + FnOnce<()>;
+}
+impl Trait for Type {
+    fn get() -> impl Sized + FnOnce<()> {
+        || {}
+    }
+}
+Mutate the impl method signature to add a lifetime bound: change to `fn get<'a>() -> impl Sized + FnOnce<()> where 'a: 'a { || {} }` if no lifetimes are present, or if a lifetime `'b` exists, change to `fn get<'a: 'b>() -> impl Sized + FnOnce<()> { || {} }`. Ensure the mutation only alters the signature within the impl block, keeping the trait definition unchanged. The goal is to create a mismatch or edge case in lifetime handling combined with unboxed closure return types.

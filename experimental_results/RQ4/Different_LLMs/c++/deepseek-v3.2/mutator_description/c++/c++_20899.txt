@@ -1,0 +1,19 @@
+mutation operator
+Target Construct: Template instantiation with dependent types where the dependent expression resolves to a value that leads to an invalid or incomplete type context, specifically focusing on scenarios where a template's condition (like a static member access) might be improperly evaluated or lead to a nullptr-like scenario during compiler internal checks.
+
+Application: This operator applies when a class or struct template contains a static member method or function template whose return type is conditionally defined using a metafunction (e.g., enable_if) that depends on a trait or static member (e.g., Foo<T>::bar) of a template parameter. The mutation alters the dependency to simulate an invalid or unresolved condition.
+
+Mutation Procedure: For each struct or class template definition in the seed program that contains a static member function template using a dependent type condition (like enable_if<Foo<T>::bar, void>::Type), mutate the dependent expression by replacing the member access (e.g., Foo<T>::bar) with a synthesized static member that is declared but never defined. Specifically, change "Foo<T>::bar" to "Foo<T>::bar_undefined", where bar_undefined is a new static constexpr member that is declared within the template Foo (or a similar trait class) but with no definition provided. If Foo is not defined in the seed, introduce a forward declaration: template<typename> struct Foo; and inside it, add "static constexpr bool bar_undefined;". This ensures the expression is syntactically valid but refers to an undefined symbol, potentially triggering internal compiler errors during instantiation.
+
+Example: Original code snippet:
+template <typename T>
+static typename enable_if<Foo<T>::bar, void>::Type method() { }
+
+Mutated code snippet:
+template <typename T>
+static typename enable_if<Foo<T>::bar_undefined, void>::Type method() { }
+
+With addition in global scope if Foo is not defined:
+template<typename> struct Foo { static constexpr bool bar_undefined; };
+
+This mutation introduces an unresolved static member, which may cause the compiler to crash or misbehave when trying to evaluate the template condition, similar to the dyn_cast nullptr issue.

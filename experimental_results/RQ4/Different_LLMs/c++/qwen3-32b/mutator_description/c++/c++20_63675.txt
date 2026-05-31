@@ -1,0 +1,169 @@
+Mutation Operator: NestedLambdaCaptureInTemplate  
+Applies to a lambda expression inside a function template that uses a variable from the outer scope without capturing it. The operator forces the lambda to capture the outer variable by reference or value, increasing template substitution complexity.  
+
+Example (pseudo-code):  
+Original:  
+template <class T>  
+void f() {  
+   T x;  
+   auto l = [](int a) { return x + a; };  
+   use(l);  
+}  
+
+Mutated:  
+template <class T>  
+void f() {  
+   T x;  
+   auto l = [&](int a) { return x + a; };  // or [x](int a) { ... }  
+   use(l);  
+}  
+
+Changes:  
+1. Replace a lambda with an explicit capture of an outer variable with a capture-less lambda  
+2. Convert the lambda to capture the variable by value or reference (apply to all lambdas with external variables in function templates)  
+
+Mutation Operator: RequiresClauseWithCapturedLambda  
+Applies to class templates or requires expressions that use a lambda. The operator adds a requires clause that evaluates a member of a captured lambda, creating nested template constraints.  
+
+Example (pseudo-code):  
+Original:  
+struct S {  
+   int value;  
+};  
+
+template <class T>  
+void g(T t) { ... }  
+
+Mutated:  
+struct S {  
+   int value;  
+   template <class U>  
+   concept C = []{ auto l = [v = U::value]{ return v; }; return l(); }();  
+};  
+
+template <class T> requires T::C<T>  
+void g(T t) { ... }  
+
+Changes:  
+1. Add a nested lambda with a capture inside a requires expression  
+2. Use the captured variable in a concept constraint check  
+3. Apply to all requires expressions and class templates with static member access  
+
+Mutation Operator: TemplateRecursiveCaptureChain  
+Applies to nested template instantiations where lambdas use captured variables from template parameters. The operator creates a chain of template instantiations with captured lambda parameters.  
+
+Example (pseudo-code):  
+Original:  
+template <class T>  
+T* h() { return new T; }  
+
+template <class T>  
+void k(T t) { ... }  
+
+Mutated:  
+template <class T>  
+void h() {  
+   auto l = [t = T::value]{ return t; };  
+   k<decltype(l)>(l);  
+}  
+
+template <class T>  
+void k(T t) {  
+   auto m = [v = T::result]{ return v; };  
+   h<decltype(m)>(m);  
+}  
+
+Changes:  
+1. Replace direct template calls (T::value) with captured lambda parameters  
+2. Create mutual recursive template instantiations through lambda captures  
+3. Apply to all template parameter uses in nested function calls  
+
+Mutation Operator: ConceptWithCapturedExprRequirement  
+Applies to concept declarations. The operator modifies an expression requirement to include a lambda capturing a template-dependent expression.  
+
+Example (pseudo-code):  
+Original:  
+template <class T>  
+concept MyConcept = requires(T t) { t.add(); };  
+
+Mutated:  
+template <class T>  
+concept MyConcept =  
+   requires {  
+      { [](auto x) { T t; return x + t.value; }(42) } -> same_as<T>;  
+   };  
+
+Changes:  
+1. Replace direct requires expressions with nested lambdas capturing template parameters  
+2. Ensure the lambda uses template-dependent expressions in its body  
+3. Apply to all expression requirements in concepts  
+
+Mutation Operator: CompoundStmtTemplateCapture  
+Applies to compound statements in template functions. The operator introduces a lambda capture inside a compound statement during template argument deduction.  
+
+Example (pseudo-code):  
+Original:  
+template <class T>  
+void process(T t) {  
+   if (t.isValid()) return t;  
+}  
+
+Mutated:  
+template <class T>  
+void process(T t) {  
+   auto l = [ctx = t.getContext()]{ return ctx; };  
+   if (l().isValid()) return t;  // or use in another template context  
+}  
+
+Changes:  
+1. Replace calls to template-dependent expressions with lambda captures  
+2. Add at least one capture in every compound statement of template functions  
+3. Use captured expressions in conditional logic or return statements  
+
+Mutation Operator: ConstCastCaptureInTemplate  
+Applies to const_cast expressions in template functions. The operator wraps const_cast in a lambda with a capture, adding layering to template substitution.  
+
+Example (pseudo-code):  
+Original:  
+template <class T>  
+void bar(T* ptr) {  
+   const_cast<int*>(ptr);  
+}  
+
+Mutated:  
+template <class T>  
+void bar(T* ptr) {  
+   auto l = [val = ptr]{ return const_cast<int*>(val); };  
+   return l();  
+}  
+
+Changes:  
+1. Replace direct const_cast usage with a captured lambda  
+2. Add at least one capture to every const_cast in template functions  
+3. Use the captured variable in expressions requiring type substitution  
+
+Mutation Operator: TemplateArgumentDeductionWithLambdaCapture  
+Applies to template argument deduction contexts. The operator replaces direct template arguments with lambdas that capture dependent expressions.  
+
+Example (pseudo-code):  
+Original:  
+template <class T>  
+void func(T arg) { ... }  
+
+int main() {  
+   func(42);  
+}  
+
+Mutated:  
+template <class T>  
+void func(T arg) { ... }  
+
+int main() {  
+   auto l = [val = 42]{ return val; };  
+   func(l());  
+}  
+
+Changes:  
+1. Replace literals with lambda captures in template argument positions  
+2. Add at least one capture to every lambda used in template arguments  
+3. Apply to all direct call expressions in template deduction contexts

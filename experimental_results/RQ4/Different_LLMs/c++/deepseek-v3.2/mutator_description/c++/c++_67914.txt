@@ -1,0 +1,36 @@
+Mutation Operator: Template Specialization Parameter Removal.
+
+This operator targets explicit template specializations where the specialized template has multiple parameters. It applies when there is an explicit specialization of a class template, and the specialization lists all template parameters but some are not used in the specialization's argument list. The operator mutates by removing one template parameter from the specialization's parameter list that corresponds to an argument which is a non-dependent type or value in the specialization's template argument list. Specifically, if the specialization's template argument for a given position is a concrete type (e.g., 'float', 'int') or an integer constant (e.g., '1', '16'), and not a template parameter from the primary template, then that parameter is removed from the specialization's template parameter list. This can create a mismatch between the number of parameters in the specialization and the primary template.
+
+For a seed program containing:
+template <typename T1, typename T2, int N>
+struct Primary {};
+
+template <>
+struct Primary<float, int, 16> {};
+
+The operator could produce:
+template <typename T2>
+struct Primary<float, int, 16> {};
+
+In the bug report example, the problematic specialization is:
+template <typename Derived_>
+struct StaticArrayImpl< float, 16, 1, Mask< float, 16 > > : KMaskBase< Derived_ > {};
+
+Here, the primary template is:
+template < typename, int, bool, typename >
+struct StaticArrayImpl;
+
+The specialization uses 'float', '16', '1', and 'Mask<float, 16>' as arguments. The first three arguments are concrete (non-dependent). The operator would remove the corresponding template parameters, potentially resulting in:
+template <typename Derived_>
+struct StaticArrayImpl< float, 16, 1, Mask< float, 16 > > : KMaskBase< Derived_ > {};
+
+But note the primary expects 4 parameters, and this specialization still has 1 parameter, which is correct for the mutation. A more illustrative mutation from a seed might be to start from a specialization that uses all parameters, like:
+template <typename Value_, int Size_, bool IsMask_, typename Derived_>
+struct StaticArrayImpl<Value_, Size_, IsMask_, Derived_> {};
+
+And mutate to:
+template <typename Value_, int Size_, typename Derived_>
+struct StaticArrayImpl<Value_, Size_, 1, Derived_> {};
+
+The operator should only apply if the removed parameter's corresponding argument in the specialization is not a template parameter from the primary's parameter list. This mutation is likely to trigger compiler bugs in template instantiation and partial specialization matching, particularly in complex nested contexts as seen in the crash.

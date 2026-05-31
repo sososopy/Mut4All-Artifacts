@@ -1,0 +1,1 @@
+struct Person { age : uint , phone : uint , } fn main () { let fernando = Person { age : 29 , phone : 456 } ; let age = { let Person { age : ref my_age , age : _ } = fernando ; my_age } ; println ! ("{}" , age) ; }

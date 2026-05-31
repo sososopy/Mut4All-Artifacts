@@ -1,0 +1,1 @@
+enum Bug { V1 = return [0] [0] }

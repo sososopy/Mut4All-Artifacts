@@ -1,0 +1,1 @@
+use std :: fmt :: Debug ; # [derive (Debug)] pub enum E { A (TraitChild) , } pub trait TraitParent : Debug { } pub trait TraitChild : TraitParent { }

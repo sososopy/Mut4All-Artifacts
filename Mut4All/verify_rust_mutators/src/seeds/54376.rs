@@ -1,0 +1,1 @@
+# ! [feature (asm)] fn main () { unsafe { asm ! ("callq $0" : : "0" (foo)) } ; } extern "C" { fn foo (a : usize) ; }

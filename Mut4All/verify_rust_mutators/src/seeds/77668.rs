@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] pub fn bar < P > (_baz : P ,) { hide_foo () () ; } fn hide_foo () -> impl Fn () { foo } fn foo () { }

@@ -1,0 +1,22 @@
+mutation operator: Replace a delete expression with a delete expression that uses a mismatched operator delete signature when a global operator delete is declared. This applies when a delete expression is found and there exists at least one global operator delete declaration in the program.
+
+Description: The bug report indicates a crash when using precompiled headers and a delete expression after a custom operator new declaration. The mutation modifies a delete expression to potentially mismatch with the available operator delete declarations, which may trigger assertion failures or crashes in the compiler's deallocation function lookup logic. Specifically, if the seed program contains a global operator delete declaration (any signature), change the delete expression to use a pointer cast that may alter the type used for lookup, or change between array and non-array delete forms. However, to keep the mutation general and avoid introducing new types, we focus on toggling the array form of delete when possible. If the delete expression is a non-array delete (i.e., delete ptr), change it to an array delete (i.e., delete[] ptr). Conversely, if it is an array delete, change it to a non-array delete. This change may expose bugs in the compiler's handling of operator delete lookup, especially in contexts like precompiled headers or CUDA compilation.
+
+Implementation steps:
+1. Identify all delete expressions in the seed program. For each delete expression, note whether it is an array delete (delete[]) or a non-array delete (delete).
+2. Check if there exists at least one global operator delete declaration (including placement forms) in the program. If not, this mutation operator does not apply.
+3. For each delete expression, if it is a non-array delete, mutate it to an array delete by replacing the keyword "delete" with "delete[]". If it is an array delete, mutate it to a non-array delete by replacing "delete[]" with "delete". The operand (the pointer expression) remains unchanged.
+4. Ensure the mutation is applied only once per seed program instance to avoid combinatorial explosion; typically, apply it to the first eligible delete expression found.
+
+Example:
+Original code snippet: 
+void foo() { delete ptr; }
+Mutated code: 
+void foo() { delete[] ptr; }
+
+Original code snippet: 
+void bar() { delete[] arr; }
+Mutated code: 
+void bar() { delete arr; }
+
+Note: This mutation relies on existing variables (ptr, arr) and does not introduce new names or types. It directly alters the delete expression form, which may lead to mismatches with declared operator delete functions, potentially revealing compiler bugs in deallocation function resolution.

@@ -1,0 +1,1 @@
+extern crate x86_64 ; fn main () { use x86_64 :: structures :: paging :: page_table :: PageTable ; # [repr (C , packed)] struct SomeStruct { page_table : PageTable , } }

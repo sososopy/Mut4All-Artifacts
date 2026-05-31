@@ -1,0 +1,1 @@
+use std :: any :: Any ; fn foo (_x : & u8) { } fn main () { let _x = & foo as & Any ; }

@@ -1,0 +1,32 @@
+Mutation Operator: PseudoDestructorPackExpansionInsertion  
+Applies to: Functions within variadic templates that use a pointer variable (e.g., `*p`) and are not explicitly marked as `const`.  
+
+Action: Replace an existing expression involving a pointer (e.g., `(*p).member()`) with a pseudo-destructor call using a pack expansion of the template type. For example:  
+`(*p).~T...();` or `(*p).~T...[]();`  
+
+Conditions:  
+1. The template must have at least one variadic parameter (e.g., `template <typename...>`).  
+2. A pointer variable (e.g., `p`) must exist and be used in the function body.  
+3. The replacement must not introduce new variables or types (use existing ones).  
+
+Example:  
+Original:  
+```cpp  
+struct Example {  
+    void g(int* p) {  
+        (*p).value = 0;  
+    }  
+};  
+```  
+
+Mutated:  
+```cpp  
+template <typename... Ts>  
+struct Example {  
+    void g(int* p) {  
+        (*p).~Ts...();  
+    }  
+};  
+```  
+
+This mutation forces the compiler to process an unsupported pseudo-destructor with a variadic pack expansion, potentially triggering assertion failures during semantic analysis.

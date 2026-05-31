@@ -1,0 +1,14 @@
+mutation operator: Replace an associated type bound with a higher-ranked trait bound that references the same associated type but in a different generic context, specifically targeting trait method signatures where the associated type has a lifetime parameter and the method uses a where clause or type bound that includes a constraint like Copy on a placeholder that does not match the associated type's definition.
+
+This operator applies to trait definitions where an associated type has a lifetime parameter, and within a method signature of that trait, the associated type is used with an additional trait bound (e.g., Copy) attached incorrectly via a colon syntax in a generic argument. The mutation changes the bound to a higher-ranked trait bound that introduces a new generic lifetime parameter, which is constrained to outlive the associated type's lifetime, while keeping the incorrect trait bound on the placeholder.
+
+Steps:
+1. Identify a trait definition with an associated type that has a lifetime parameter, such as `type Item<'a>;`.
+2. Locate a method within this trait where the return type or an argument type uses `Self::Item` with a generic argument that includes a trait bound via colon syntax, like `Self::Item<SomeParam: SomeTrait>`.
+3. Replace that usage with a higher-ranked trait bound form: `for<'b> Self::Item<'b>: SomeTrait`, where 'b is a new lifetime parameter, and ensure the original incorrect bound (e.g., `Copy`) is applied to a placeholder within the angle brackets if present. Specifically, if the original is `Option<Self::Item<As1: Copy>>`, mutate to `Option<Self::Item<for<'b> As1: Copy>>`, but note that this introduces a syntax that may not be standard Rust; instead, adjust to use a where clause: change the method signature to include `where for<'b> Self::Item<'b>: Copy` and keep the return type as `Option<Self::Item<As1>>` without the colon bound inside the angle brackets.
+4. Ensure that any new lifetime parameter introduced (like 'b) is declared in the method's generic parameters if not already present, and that it does not conflict with existing lifetimes. Use a fresh lifetime name that does not appear in the current scope, such as 'mutated.
+
+Example based on the seed:
+Original trait method: `fn next<'a>(&'a mut self) -> Option<Self::Item<As1: Copy>>;`
+Mutated version: `fn next<'a>(&'a mut self) -> Option<Self::Item<As1>> where for<'mutated> Self::Item<'mutated>: Copy;`
+This mutation introduces a higher-ranked trait bound on the associated type, which may expose compiler bugs related to handling associated type bounds and lifetime interactions in trait definitions. The change relies on existing elements (Self::Item) and introduces a new lifetime 'mutated in the where clause, which is syntactically valid but may lead to unexpected behavior or internal compiler errors.

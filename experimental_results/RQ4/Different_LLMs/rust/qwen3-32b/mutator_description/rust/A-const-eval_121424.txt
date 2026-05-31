@@ -1,0 +1,18 @@
+Mutation Operator: Replace a Copy-bound generic struct's type parameter with a DST that does not satisfy Copy, within a const context.  
+Applies to structs with a 'T: Copy' bound and a const declaration using them.  
+
+Example mutation steps:  
+1. Locate a struct definition like `struct S<T: Copy>(...)`  
+2. Find an existing const declaration using `S` with a concrete type  
+3. Replace the concrete type parameter with a DST type that is not Copy (e.g., `[u8]` or `str`)  
+4. Ensure the mutated const remains a valid expression in its context  
+
+Example pseudo-code before mutation:  
+struct S<T: Copy>(T);  
+const C: S<u8> = S(0);  
+
+After mutation:  
+struct S<T: Copy>(T);  
+const C: S<[u8]> = S([0; 4]);  // [u8] is DST and not Copy  
+
+This creates a const evaluation scenario where the compiler attempts to handle a ScalarPair layout for a non-Copy DST, likely triggering ICEs in write_immediate_to_mplace logic when the type system constraints are violated but not properly checked during const evaluation.

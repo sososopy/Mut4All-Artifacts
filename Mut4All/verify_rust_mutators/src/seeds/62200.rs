@@ -1,0 +1,1 @@
+impl < 'b , B : Ty < 'b > , I : SIterator , F > SIterator for FilterMap < I , F > where F : FnMut (< I as Ty > :: V) -> Option < < B as Ty > :: V > { } pub trait SIterator : for < 'a > Ty < 'a > { } pub trait Ty < 'a > { type V ; }

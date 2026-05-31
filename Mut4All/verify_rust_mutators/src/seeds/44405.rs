@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; fn main () { let mut map : HashMap < i32 , Vec < i32 > > = HashMap :: new () ; let mut i = 1 ; map . insert (i , Vec :: new ()) ; map [& mut i] . push (3) ; }

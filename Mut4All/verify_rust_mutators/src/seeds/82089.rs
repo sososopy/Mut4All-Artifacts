@@ -1,0 +1,1 @@
+# ! [feature (allocator_api)] use bumpalo :: Bump ; fn main () { let bump = Bump :: new () ; let _ : Vec < Box < i64 , & Bump > , & Bump > = Vec :: new_in (& bump) ; }

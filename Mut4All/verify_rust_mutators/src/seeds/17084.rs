@@ -1,0 +1,1 @@
+use std :: io :: MemWriter ; fn main () { let (foo , bar) = (() , ()) ; let ref mut sink = MemWriter :: new () ; (writeln ! (sink , "{} {}" , foo) , bar) . unwrap () ; }

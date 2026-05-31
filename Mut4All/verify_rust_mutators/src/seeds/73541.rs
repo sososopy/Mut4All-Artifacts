@@ -1,0 +1,1 @@
+async fn c () { 'a : loop { macro_rules ! b { () => { continue 'a } } async { loop { b ! () ; } } ; } } fn main () { }

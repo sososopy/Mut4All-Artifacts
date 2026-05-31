@@ -1,0 +1,1 @@
+# ! [feature (impl_trait_in_bindings)] fn main () { const C : impl Copy = 0 ; match C { C | _ => { } } }

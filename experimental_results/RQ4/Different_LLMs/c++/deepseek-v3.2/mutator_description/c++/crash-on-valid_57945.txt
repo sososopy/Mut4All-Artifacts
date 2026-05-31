@@ -1,0 +1,15 @@
+mutation operator: Convert a variable template with a constrained lambda initializer into a variable template with a constrained function object type and a separate lambda expression initializer that is conditionally constrained. This applies when a variable template is declared with an initializer that is a lambda expression with a requires-clause directly attached to the lambda introducer. The mutation changes the declaration to separate the constraint onto a function object type, then initializes the variable with a lambda that conditionally inherits that constraint via a trailing requires-clause, potentially altering the point of constraint checking. The goal is to perturb the interaction between variable template instantiation and constraint satisfaction for lambda call operators.
+
+Specifically, for a seed program containing a variable template declaration of the form:
+template<typename T>
+auto var = []() requires constraint_expression { };
+
+Change it to:
+template<typename T>
+struct helper {
+    static void func() requires constraint_expression;
+};
+template<typename T>
+auto var = []() requires requires { helper<T>::func(); } { };
+
+If the helper struct or its member function conflicts with existing names, generate a unique name by appending a suffix like "_mut" to the variable template name to form the helper name. Ensure the helper is defined in the same scope as the variable template. The helper's member function should be declared but not defined, as only its constraint is needed. The lambda body remains unchanged. This mutation introduces a new struct and a static member function declaration; these are simple declarations that should not cause compilation errors in valid code. The mutation alters the nesting of constraints, which may expose compiler bugs in constraint checking for variable templates with lambdas.

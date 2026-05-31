@@ -1,0 +1,1 @@
+extern crate syntax ; use std :: gc :: Gc ; use syntax :: { ast , codemap } ; fn main () { let v = vec ! [] ; match * v . get [0] { codemap :: Spanned { node : ast :: MetaWord (ref trace_type) } => trace_type . get () . to_string () , _ => unreachable ! () } }

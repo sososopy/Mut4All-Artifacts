@@ -1,0 +1,1 @@
+pub enum Foo { Test (# [doc (hidden)] Option < () >) , }

@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; struct Foo < T : Bar > (PhantomData < T >) ; trait Bar : Sized { fn bar (n : usize) -> Foo < Self > ; } struct A ; struct B ; impl Bar for A { fn bar (n : usize) -> Foo < A > { unimplemented ! () } } impl Bar for B { fn bar (n : usize) -> Foo < A > { unimplemented ! () } } fn main () { }

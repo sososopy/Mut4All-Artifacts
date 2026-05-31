@@ -1,0 +1,1 @@
+# [proc_macro] pub fn proc_macro_ice (_ : proc_macro :: TokenStream) -> proc_macro :: TokenStream { let output = quote :: quote ! { #! [deny (missing_docs)] # [derive (serde :: Serialize)] # [allow (missing_docs)] pub struct ICE () ; } ; output . into () }

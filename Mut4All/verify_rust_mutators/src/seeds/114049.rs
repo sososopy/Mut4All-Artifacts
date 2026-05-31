@@ -1,0 +1,1 @@
+pub struct MyStruct { pub x : f64 , } fn main () { let mut v : Vec < MyStruct > = vec ! [] ; v . sort_by (| a , b | a . partial_cmp (b) . unwrap ()) ; }

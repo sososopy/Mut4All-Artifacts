@@ -1,0 +1,1 @@
+use std :: arch :: asm ; fn main () { unsafe { asm ! ("vfmadd132ps {a},{b},{c} " , a = out (zmm_reg) _ , b = out (zmm_reg) _ , c = out (zmm_reg) _ ,) ; } }

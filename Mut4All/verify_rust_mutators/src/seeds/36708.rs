@@ -1,0 +1,1 @@
+use std :: ops :: Div ; struct Foo (u64) ; impl Div for Foo { type Output = Self ; fn div (self , rhs : Self) -> Self :: Output { Foo (0) } } fn main () { }

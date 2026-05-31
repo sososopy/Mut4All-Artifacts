@@ -1,0 +1,23 @@
+mutation operator: Introduce mismatched lifetimes between input and output impl trait in async functions.
+
+This mutation operator applies to async functions that use impl trait in both parameter and return position. The mutation creates a mismatch in lifetime parameters between the input and output impl trait types.
+
+Specifically, locate an async function where the return type is an impl trait that depends on one or more lifetime parameters. Then, modify the function signature such that the input impl trait type uses a different lifetime parameter than the one used in the output impl trait type. The mutation should ensure that the lifetimes are declared in the function's generic parameter list.
+
+For example, if the seed program contains an async function like:
+async fn example<'a, 'b>(input: impl SomeTrait<'a>) -> impl SomeTrait<'b> {}
+
+The mutation would change it to:
+async fn example<'a, 'b>(input: impl SomeTrait<'b>) -> impl SomeTrait<'a> {}
+
+Here, the input impl trait now uses lifetime 'b, while the output impl trait uses lifetime 'a, reversing their original dependencies.
+
+If the seed program only has one lifetime parameter in the function, introduce a second lifetime parameter. For example, if the original is:
+async fn example<'a>(input: impl SomeTrait<'a>) -> impl SomeTrait<'a> {}
+
+Introduce a new lifetime 'b and change the signature to:
+async fn example<'a, 'b>(input: impl SomeTrait<'a>) -> impl SomeTrait<'b> {}
+
+The new lifetime 'b should be added to the generic parameter list. It should not be used elsewhere in the function body unless already present.
+
+This mutation targets the compiler's handling of lifetime substitution when impl trait types are involved in async functions, which is the context of the reported bug. The change creates a scenario where the compiler may attempt to substitute a region parameter that is out of range due to mismatched lifetime indices.

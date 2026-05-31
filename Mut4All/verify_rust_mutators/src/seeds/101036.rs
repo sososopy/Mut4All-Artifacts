@@ -1,0 +1,1 @@
+# [repr (u8)] enum T < const N : u8 = { T :: < 0 > :: A as u8 + T :: < 0 > :: B as u8 } > { A = 1 , B }

@@ -1,0 +1,1 @@
+use clippy :: a :: b ; fn main () { }

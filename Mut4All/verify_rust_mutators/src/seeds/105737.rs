@@ -1,0 +1,1 @@
+impl Vec < lol > { } fn lol () { }

@@ -1,0 +1,1 @@
+extern crate time ; fn main () { let max = 10 ; let mut total : f64 = 0.0 ; for i in 1 .. max { let start_time = time :: precise_time_ns () ; let end_time = time :: precise_time_ns () ; let duration = (end_time - start_time) as f64 / 1000000.0 ; println ! ("Time diff: {} ms" , duration) ; total += duration ; } println ! ("Avg: {}" , total / max) ; }

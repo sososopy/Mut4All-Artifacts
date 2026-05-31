@@ -1,0 +1,1 @@
+# [derive (Clone , Debug)] struct Foo ; pub trait Bar { fn shrink (& self) -> Box < Iterator < Item = Self > > ; } impl Bar for Foo { fn shrink (& self) -> Box < Iterator < Item = Foo > > { Box :: new (None . into_iter ()) } } fn main () { }

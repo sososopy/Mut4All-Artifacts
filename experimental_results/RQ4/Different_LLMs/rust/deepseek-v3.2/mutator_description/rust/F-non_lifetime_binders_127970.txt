@@ -1,0 +1,15 @@
+Summary of structures where Rust compiler bugs are more likely to trigger: The bug report involves the incomplete feature `non_lifetime_binders`. Specifically, it triggers an internal compiler error (ICE) when a where-clause contains a higher-ranked const binder (`for<const C: usize> [(); C]: 'a`) combined with a lifetime bound. The ICE occurs during well-formedness checking, indicating that the compiler fails to properly handle bound const variables escaping their scope when constructing a dummy binder. This suggests that bugs are more likely in the interaction between generic lifetime parameters, higher-ranked const binders, and type well-formedness constraints, especially within where clauses on functions.
+
+Mutation Operator: This operator targets where-clauses in functions that use higher-ranked trait bounds (HRTBs) with const generics. It modifies the where-clause by introducing a const generic parameter in a higher-ranked binder that is then used in a type that has a lifetime bound. The operator applies to any function with a where-clause that already contains a const parameter or can be extended to include one. The mutation changes the where-clause to include a `for<const C: usize>` binder applied to an array type `[(); C]` with a lifetime bound tied to an existing lifetime parameter.
+
+Step-by-step mutation process:
+1. Identify a function in the seed program that has at least one lifetime parameter (e.g., `'a`) and a where-clause. If no where-clause exists, add one.
+2. In the where-clause, add a new predicate: `for<const C: usize> [(); C]: 'a`, where `'a` is an existing lifetime parameter from the function's generic parameters. If the function has multiple lifetime parameters, choose one arbitrarily.
+3. Ensure that the const parameter `C` is declared within the higher-ranked binder (`for<const C: usize>`). The type `[(); C]` is an array of unit type with size `C`. The lifetime bound `: 'a` applies to this array type.
+4. If the seed program already uses const generics or higher-ranked binders, adapt the mutation to integrate with existing structures, but prioritize introducing this specific form if not present.
+
+Example mutation:
+Original function: `fn example<'a, T>(x: T) where T: 'a {}`
+Mutated function: `fn example<'a, T>(x: T) where T: 'a, for<const C: usize> [(); C]: 'a {}`
+
+Note: This mutation requires the `#![feature(non_lifetime_binders)]` attribute at the crate root. If the seed program does not already have this feature, add it. However, if the seed program cannot accommodate feature attributes (e.g., due to testing constraints), the mutation may only apply to programs already using this feature. The mutation should avoid introducing undeclared variables or types; it reuses existing lifetime parameters and introduces only the const binder `C` within the higher-ranked context.

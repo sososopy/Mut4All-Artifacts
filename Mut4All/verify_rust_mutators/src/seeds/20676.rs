@@ -1,0 +1,1 @@
+fn main () { let a : & fmt :: Show = & 1i ; format ! ("{:?}" , a) ; }

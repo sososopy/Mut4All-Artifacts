@@ -1,0 +1,1 @@
+const DEV_MODE : bool = match env :: var ("GITLINKS_DEV_MODE") { Ok (something) => true , Err (e) => false } ;

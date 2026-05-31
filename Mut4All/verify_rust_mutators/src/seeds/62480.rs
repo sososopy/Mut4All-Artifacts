@@ -1,0 +1,1 @@
+# ! [feature (label_break_value)] fn main () { let a = 'a : { let a = | x : i32 | break 'a ; 1 } ; }

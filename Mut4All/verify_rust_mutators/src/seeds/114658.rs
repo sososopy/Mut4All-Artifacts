@@ -1,0 +1,1 @@
+# ! [allow (incomplete_features , dead_code)] # ! [feature (inline_const_pat)] fn uwu () { } fn owo () { let x = [] ; if false { match x [123] { const { uwu } => { } , _ => { } } } }

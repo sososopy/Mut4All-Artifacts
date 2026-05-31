@@ -1,0 +1,1 @@
+type ExternCallback = extern "C" fn (* const u8 , u32 , str) ; pub struct Client < 'a > { conn_tx_bind : ExternCallback , }

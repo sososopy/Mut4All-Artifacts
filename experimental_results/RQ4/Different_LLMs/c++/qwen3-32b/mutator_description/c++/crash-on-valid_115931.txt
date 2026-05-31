@@ -1,0 +1,35 @@
+Mutation operator: LambdaGenericCaptureScopeTransform  
+Applies to: non-generic lambda expressions that capture variables from outer scopes (capture-by-value or capture-by-reference)  
+Effect: Convert a non-generic lambda into a generic lambda by adding auto parameters while preserving its capture list. The lambda must be nested within a function or another lambda scope. Ensure the transformed lambda uses captured variables from outer scopes in its body.  
+Example:  
+Original:  
+```cpp  
+int x = 5;  
+auto l = [&] { return x; };  
+```  
+Mutated:  
+```cpp  
+int x = 5;  
+auto l = [](auto a, auto b) { return x; };  
+```  
+Note: This transformation preserves the capture list ( [&] becomes implicit capture) but introduces auto parameters. The lambda remains valid C++23 and creates a scenario where generic lambda parameters interact with captured outer variables. The assertion in the bug report specifically checks for generic lambda conditions in capture resolution.  
+
+Mutation operator: NestedLambdaCaptureChain  
+Applies to: functions containing multiple nested lambda scopes  
+Effect: Introduce a chain of lambdas where each lambda captures variables from the outer scope using different capture modes (mix of explicit captures and implicit capture). At least one inner lambda must be generic.  
+Example:  
+Original:  
+```cpp  
+int x = 10;  
+auto outer = [&] { int y = 20; auto inner = [&] { return x + y; }; return inner(); };  
+```  
+Mutated:  
+```cpp  
+int x = 10;  
+auto outer = [&] {  
+    int y = 20;  
+    auto inner = [](auto a) { return x + y; }; // generic lambda with implicit capture  
+    return inner(0);  
+};  
+```  
+Note: This transformation creates a layered scope structure with a generic lambda that implicitly captures variables from multiple outer scopes. The interaction between implicit capture and generic parameter handling can expose assertion failures in compiler scoping logic.

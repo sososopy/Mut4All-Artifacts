@@ -1,0 +1,1 @@
+type Foo = Box < Bar > + Baz ;

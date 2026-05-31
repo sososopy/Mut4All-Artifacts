@@ -1,0 +1,1 @@
+enum X { A = X :: A as isize } fn main () { }

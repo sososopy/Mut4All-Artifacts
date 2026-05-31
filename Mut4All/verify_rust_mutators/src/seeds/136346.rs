@@ -1,0 +1,1 @@
+fn main () { let buf = Vec :: new () ; let b = std :: io :: Cursor :: new (buf) ; let writer = deltalake :: arrow :: json :: WriterBuilder :: new () . build (b) ; }

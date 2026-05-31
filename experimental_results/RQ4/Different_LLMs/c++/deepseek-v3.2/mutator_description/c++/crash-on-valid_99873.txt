@@ -1,0 +1,15 @@
+mutation operator
+This mutation operator targets template member functions that are explicitly specialized within a class template definition, specifically when the specialization uses decltype on a non-static data member. The operator applies when a class template contains a member function template that is explicitly specialized for a specific type, and within that specialization, a decltype expression refers to a member of a class type (like S::Value). The mutation changes the decltype argument from a member access expression to a direct type name or a different valid expression, aiming to expose bugs in the compiler's handling of placeholder types during member function template specialization instantiation.
+
+Given a seed program containing a structure or class with non-static data members and a class template with a member function template that has an explicit specialization using decltype on such a member, the mutation modifies the decltype argument. Specifically, if the decltype argument is of the form ClassName::MemberName, it is replaced with the type of that member as it is declared in the class, using an existing type from the seed program if possible. If the member's type is a built-in type (e.g., int, float) or a user-defined type already present in the seed, that type is used directly. If no such type is readily available, a simple built-in type like int is introduced, but this should be done only if the seed program already includes such a type in its context to avoid introducing undeclared elements.
+
+For example, consider a seed program snippet:
+struct S {
+    int Value;
+};
+template <int I> class C {
+public:
+    template <typename T> T F() { return T(); }
+    template <> S F() { return {F<decltype(S::Value)>()}; }
+};
+The mutation would change the line `template <> S F() { return {F<decltype(S::Value)>()}; }` to `template <> S F() { return {F<int>()}; }`, assuming int is the type of S::Value and is already present. The mutation ensures that the type used in the template argument is valid and declared, avoiding ambiguous terms. The goal is to test the compiler's ability to handle the substitution of decltype with concrete types during the instantiation of the explicit specialization, potentially triggering crashes similar to the bug report where unexpected placeholder builtin types cause unreachable code execution.

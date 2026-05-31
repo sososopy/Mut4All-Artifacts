@@ -1,0 +1,1 @@
+struct Foo { x : int } extern { fn qux ((x , y) : ()) ; } fn main () { }

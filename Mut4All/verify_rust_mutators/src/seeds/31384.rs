@@ -1,0 +1,1 @@
+const fn f (_ : ()) -> usize { 1 } fn main () { [0 ; f ({ })] ; }

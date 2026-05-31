@@ -1,0 +1,22 @@
+Mutation operator: Generic Lambda Inheritance with Explicit Trailing Return Type Replacement  
+
+This mutation operator targets generic lambda expressions used as base classes in CRTP patterns with explicit trailing return types. It applies when a generic lambda (with auto parameters) is passed as a template argument to a base class that uses decltype expressions involving the lambda's operator() in a trailing return type. The operator modifies the trailing return type specification by replacing the original decltype expression with an alternative valid decltype that still references the lambda's operator() but changes the expression's composition.  
+
+Specifically, for any class template inheriting from a template parameter Func where:  
+- Func is instantiated with a generic lambda type  
+- A member function template uses a trailing return type with decltype(Func::operator()(..., ...), void()) or similar  
+- The decltype contains a comma operator or nested expression  
+
+The mutation changes the decltype expression to a functionally equivalent but syntactically different form that may expose ICEs in compiler template instantiation and lambda handling.  
+
+Example transformation:  
+Original: -> decltype(Func::operator()(args...), void())  
+Mutated:  -> decltype(static_cast<Func*>(this)->operator()(args...), void())  
+
+Or alternatively:  
+Original: -> decltype(Func::operator()(args...), void())  
+Mutated:  -> decltype(this->Func::operator()(args...), void())  
+
+The mutation uses only elements present in the original code (Func, args, this pointer) without introducing new types or variables. The change alters the way the compiler resolves the dependent name and the *this* context during return type deduction for the operator() template, potentially triggering crashes in generic lambda and inheritance handling.  
+
+This operator applies to seed programs containing CRTP with generic lambdas, trailing return types with decltype, and comma operator expressions in decltype. It avoids undefined behavior by maintaining valid C++ syntax and preserving the original expression's void return type guarantee.

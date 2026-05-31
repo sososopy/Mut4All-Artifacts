@@ -1,0 +1,1 @@
+static BUG : fn (_) -> u8 = | _ | 8 ;

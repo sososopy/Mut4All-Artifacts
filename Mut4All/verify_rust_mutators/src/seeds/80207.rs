@@ -1,0 +1,1 @@
+use std :: ops :: BitOr ; pub trait IntWrapper { type InternalStorage ; } impl < T > BitOr for dyn IntWrapper < InternalStorage = T > where Self : Sized , T : BitOr + BitOr < Output = T > , { type Output = Self ; fn bitor (self , _other : Self) -> Self { todo ! () } }

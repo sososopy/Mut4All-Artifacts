@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] trait ATrait < T > { type Output ; fn return_output () -> < Self as ATrait < T > > :: Output ; }

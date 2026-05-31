@@ -1,0 +1,1 @@
+use std :: iter :: IntoIterator :: IntoIter ; fn main () { let mul2 = | x : IntoIter | x . iter () . map (| x | x) ; }

@@ -1,0 +1,1 @@
+# ! [no_std] # ! [no_core] # [lang = "sized"] pub (crate) unsafe auto trait Freeze { } # [start] fn main () -> isize { unsafe { libc :: printf (() . cast :: < i8 > () , c) ; } 0 }

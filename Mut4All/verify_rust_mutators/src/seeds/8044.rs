@@ -1,0 +1,1 @@
+pub struct BTree < V > { node : TreeItem < V > , } pub enum TreeItem < V > { TreeLeaf { value : V } , } pub fn leaf < V > (value : V) -> TreeItem < V > { TreeLeaf { value : value } } fn main () { BTree :: < int > { node : leaf (1) } ; }

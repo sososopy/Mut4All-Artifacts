@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] pub fn function_with_str < const STRING : & 'static str > () { } pub fn use_it () { function_with_str :: < "Hello, world!" > () }

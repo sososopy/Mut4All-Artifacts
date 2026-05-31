@@ -1,0 +1,1 @@
+trait ToIdent { } struct Ctx ; fn builder < 'a , T : ToIdent > (ctx : & 'a Ctx , name : T) -> ArgBuilder { } struct ArgBuilder < T : Fn () > ; fn main () { }

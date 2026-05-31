@@ -1,0 +1,1 @@
+trait Foo { const N : usize ; } fn main () { struct MyFoo ; let n = 0 ; impl Foo for MyFoo { const N : usize = n ; } }

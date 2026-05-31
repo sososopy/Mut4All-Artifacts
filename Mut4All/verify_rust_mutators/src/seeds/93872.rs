@@ -1,0 +1,1 @@
+pub fn foo () { let _ = Box :: new ([() ; 1 << 63]) ; }

@@ -1,0 +1,1 @@
+# ! [feature (extern_types)] extern "C" { type Foo ; static FOO : Foo ; } fn main () { let foo = unsafe { & FOO } ; }

@@ -1,0 +1,1 @@
+# ! [crate_name = "foo"] # ! [feature (rustdoc_internals)] # [doc (keyword = "match")] mod foo { } # [doc (keyword = "foo")] mod bar { }

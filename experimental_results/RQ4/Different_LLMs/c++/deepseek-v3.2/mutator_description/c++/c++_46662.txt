@@ -1,0 +1,51 @@
+Mutation Operator: Destructor Declaration Inversion in Nested Class Context
+
+This mutation operator targets class declarations that contain nested class definitions, specifically focusing on the presence or absence of explicitly declared destructors. It applies when a seed program contains a class definition (outer class) which itself contains a nested class definition (inner class). The operator modifies the destructor declaration status of the inner class relative to the outer class's current state.
+
+The mutation changes the inner class definition by either adding an explicitly defaulted destructor if one is not present, or removing an existing explicitly declared destructor (if it is defaulted or defined). The goal is to create a mismatch or unexpected state in the compiler's tracking of "DeclaredSpecialMembers" flags, particularly for destructors, during semantic analysis of nested type contexts.
+
+Where it applies:
+- The seed program must contain at least one class definition (struct/union/class) that contains another complete class definition as a member.
+- The nested (inner) class definition is the target for mutation.
+
+Changes to make:
+1. Identify an outer class `Outer` containing a nested class `Inner`.
+2. Examine the `Inner` class definition for a user-declared destructor.
+3. If `Inner` does NOT have a user-declared destructor, add one: inside the `Inner` class body, insert `~Inner() = default;`.
+4. If `Inner` DOES have a user-declared destructor (e.g., `~Inner() = default;` or `~Inner() {}`), remove that declaration entirely from the class body.
+5. Ensure all used identifiers (like `Inner`) are the actual names from the seed program. Do not introduce new types, variables, or functions not already present.
+
+Example in pseudo-code:
+Original seed snippet:
+struct Outer {
+    struct Inner {
+        int member;
+        // No explicit destructor
+    };
+};
+
+After mutation (case: adding destructor):
+struct Outer {
+    struct Inner {
+        int member;
+        ~Inner() = default; // Added explicit defaulted destructor
+    };
+};
+
+Alternatively, if the original had a destructor:
+struct Outer {
+    struct Inner {
+        int member;
+        ~Inner() = default;
+    };
+};
+
+After mutation (case: removing destructor):
+struct Outer {
+    struct Inner {
+        int member;
+        // Destructor declaration removed
+    };
+};
+
+The mutation should use the existing class names from the program (e.g., if the nested class is named `NestedType`, use `~NestedType() = default;`). This operator is designed to trigger inconsistencies in the compiler's internal bookkeeping for special member functions, especially in nested contexts where state computation may be deferred or mishandled.

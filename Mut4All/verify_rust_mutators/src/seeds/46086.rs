@@ -1,0 +1,1 @@
+fn main () { main2 :: < () > () ; } fn main2 < T > () { let c = | _x | { } ; c (& mut 1) ; }

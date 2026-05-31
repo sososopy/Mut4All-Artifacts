@@ -1,0 +1,1 @@
+fn main () { let r : & [int] = & [1 , 2 , 3] ; let _ = r as * const [int] as uint ; }

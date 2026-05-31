@@ -1,0 +1,21 @@
+mutation operator
+
+Target code construct: field access expressions on non-struct, non-enum, non-union types (non-ADT). Applies to any expression of the form `<expr>.<ident>` where `<expr>` is a place expression. The mutation changes the type of the expression being accessed to a non-ADT type while keeping the field access syntactically valid, aiming to trigger internal compiler errors when the compiler incorrectly assumes the base expression has an ADT type during certain passes.
+
+Mutation steps:
+1. Identify a field access expression `<base>.<field_name>` in the seed program where `<base>` is an expression.
+2. Replace `<base>` with an expression that evaluates to a non-ADT type, such as an array, slice, primitive, or tuple (if the original `<base>` is not already such a type). Prefer to use existing variables or literals from the seed program to construct the new base expression.
+3. Ensure the new base expression is syntactically correct and type-checkable in the context, but its type must not be a struct, enum, or union.
+4. Keep the field name `<field_name>` unchanged; it can be any identifier, including one that does not correspond to a real field, to simulate a missing field access.
+
+If the seed program lacks suitable non-ADT expressions, introduce a new array literal using an existing type from the program. For example, if the program contains a type `T` (like `i32` or a user-defined type), create `[<existing_value>; <size>]` as the base expression, where `<existing_value>` is a default value like `0` for integers or `()` for unit, and `<size>` is a positive integer constant like `1`. Use a primitive type if no user-defined types exist.
+
+Example mutation for a seed program snippet:
+Original: `let x = SomeStruct { field: 1 }; x.some_field;`
+Mutated: `let x = SomeStruct { field: 1 }; [0; 1].some_field;`
+Here, `[0; 1]` is an array (non-ADT), and `some_field` is the original field name.
+
+Example mutation for a seed program snippet without user-defined types:
+Original: `let y = 42; y.some_method;`
+Mutated: `let y = 42; [(); 1].some_method;`
+Here, `[(); 1]` is an array of unit type (non-ADT), and `some_method` is the original field name.

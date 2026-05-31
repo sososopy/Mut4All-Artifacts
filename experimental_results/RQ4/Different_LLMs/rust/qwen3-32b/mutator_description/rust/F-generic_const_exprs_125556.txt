@@ -1,0 +1,20 @@
+Mutation operator: ConstGenericImplOverlap
+Target code construct: Structs with generic const parameters and multiple impl blocks
+Applies to: Struct definitions with const parameters and their impl blocks
+Requires: Existing const parameters in struct definition
+Changes: Create two impl blocks for the same struct using: 1) specific const values and 2) undefined identifiers in const parameters. Ensure the second impl uses a const parameter with array type (e.g., [[T; N]; N]) to trigger type validation errors.
+
+Example mutation for struct S<const N: usize> { ... }:
+Original:
+impl S<100> { ... }
+impl S<200> { ... }
+
+Mutated:
+impl S<100> { ... }
+impl S<undefined_const, [[usize; 4]; 4]> { ... }
+
+Must preserve: Existing struct name and const parameter name
+Must add: Undefined identifier in const parameters
+Must enable: #![feature(generic_const_exprs)] in crate attributes
+
+This creates conflicting impls with one valid and one invalid const parameter, triggering the coherence solver to process incompatible parameter types. The undefined identifier and array type in const parameter will cause type checking failures during coherence checking, exposing the ICE when the compiler attempts to resolve overlapping impls with mixed valid/invalid const parameters.

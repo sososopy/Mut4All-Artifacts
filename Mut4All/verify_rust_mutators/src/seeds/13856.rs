@@ -1,0 +1,1 @@
+# ! [feature (simd)] # ! [allow (experimental)] use std :: unstable :: simd :: i32x4 ; fn main () { let x = i32x4 (1 , 2 , 3 , 4) ; let y = i32x4 (1 , 2 , 3 , 4) ; let _ = x == y ; }

@@ -1,0 +1,26 @@
+Mutation Operator: Nested Requires in Lambda Exception Spec  
+Target: Functions with deduced parameters (e.g., auto/templated) containing lambdas with template parameters  
+Applies to: A function with parameter type deduction (e.g., auto x) that invokes a lambda with a template parameter and a noexcept clause  
+
+Mutated content:  
+Replace a lambda's simple noexcept specifier with a nested requires clause that evaluates a dependent type from the lambda's template parameter. Example:  
+Original:  
+[]<typename T>(T t) noexcept { ... }  
+
+Mutated:  
+[]<typename T>(T t) noexcept(  
+    requires { requires requires { typename T::dependent_member; }; })  
+
+Changes required:  
+1. Ensure the lambda has a template parameter (typename T)  
+2. Replace the lambda's noexcept specifier with a nested requires clause  
+3. The inner requires must reference a dependent type member from the template parameter (T)  
+4. The lambda must be called within a context where the parameter type is not fully known (e.g., auto x in the outer function)  
+
+Example in a program structure:  
+void f(auto x) {  
+  []<typename U>(U u) noexcept(  
+      requires { requires requires { typename U::nested_type; }; }) {}(x);  
+}  
+
+This mutation forces the compiler to evaluate a dependent expression in a constant context, potentially triggering assertion failures in template instantiation chains related to requires clauses and exception specifications.

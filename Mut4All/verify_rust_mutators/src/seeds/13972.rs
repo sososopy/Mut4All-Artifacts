@@ -1,0 +1,1 @@
+static BLOCK_ENUM_CONSTRUCTOR : fn (uint) -> Option < uint > = Some ; fn main () { }

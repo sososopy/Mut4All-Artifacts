@@ -1,0 +1,25 @@
+Mutation Operator:
+1. **Target Code Construct**: Enum with constant expressions involving its own variants.
+2. **Applicable To**: Enum definitions where at least one variant is defined using a constant expression that references the enum's own variants.
+3. **Mutation Rule**:
+   a. Identify any constant expressions in the enum that use arithmetic operations on the enum's own variants.
+   b. Change the assigned value of one variant to another arithmetic expression that still refers to the enum's variants but introduces a cycle, such as referencing the current variant indirectly through another variant.
+   c. Ensure the expression logically results in an out-of-bounds or undefined behavior (e.g., by using operations like addition that may cause overflow).
+
+Example of Mutated Content:
+- Original:
+  ```rust
+  #[repr(u8)]
+  enum T<const N: u8 = { T::<0>::A as u8 + T::<0>::B as u8 }> {
+      A = 1, B
+  }
+  ```
+
+- Mutated:
+  ```rust
+  #[repr(u8)]
+  enum T<const N: u8 = { T::<0>::B as u8 - T::<0>::A as u8 }> {
+      A = 1, B = T::<0>::A as u8 - 1
+  }
+  ```
+In this mutated version, the expression for B attempts to reference A in a way that creates a non-trivial evaluation, potentially causing cyclical reference errors or arithmetic issues when evaluated at compile time.

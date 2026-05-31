@@ -1,0 +1,1 @@
+struct S (int) ; impl Drop for S { fn finalize (& self) { } } fn main () { * S (42) ; }

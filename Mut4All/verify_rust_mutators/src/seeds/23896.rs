@@ -1,0 +1,1 @@
+fn main () { let func = | | -> ! { panic ! ("test") ; } ; func () ; }

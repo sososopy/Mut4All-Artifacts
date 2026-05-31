@@ -1,0 +1,1 @@
+# ! [feature (return_position_impl_trait_in_trait)] # ! [allow (incomplete_features)] struct U ; trait Foo { fn bar (& self) -> impl Sized ; } impl Foo for U { fn bar < T > (& self) { } } fn main () { U . bar () ; }

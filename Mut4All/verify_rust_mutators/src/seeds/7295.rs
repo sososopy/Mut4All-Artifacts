@@ -1,0 +1,1 @@
+pub trait Foo < T > { pub fn func1 < U > (& self , t : U) ; pub fn func2 < U > (& mut self , t : U) { self . func1 (t) ; } }

@@ -1,0 +1,1 @@
+fn main () { let value = 1.0 ; let width = 20 ; let digits_after_decimal = 10 ; format_args ! ("{value:0>width$.digits_after_decimal$}" , value = value , width = width , digits_after_decimal = digits_after_decimal ,) ; }

@@ -1,0 +1,1 @@
+trait Chromosome < C : Chromosome > { fn random () -> C ; }

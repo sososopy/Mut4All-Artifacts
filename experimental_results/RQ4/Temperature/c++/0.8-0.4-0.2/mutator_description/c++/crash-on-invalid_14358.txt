@@ -1,0 +1,53 @@
+Based on the provided bug report, the issue seems to arise from the compiler's handling of namespaces and class or function templates, particularly during parsing operations that involve ODR (One Definition Rule) use checking. These structures—namespaces, classes, and templates—appear to be involved in triggering the bug. Therefore, mutation operators that modify these structures are likely to trigger similar bugs.
+
+Mutation Operator:
+Target Code Construct: Function Template within a Namespace
+
+Mutation Rule:
+1. Identify a function template within a namespace. If none exist, locate a function and transform it into a template by introducing template parameters.
+2. Within the function template, introduce a local variable that is a reference to a member of a class or struct contained within a different namespace.
+3. Ensure the referenced member involves a class or struct with a non-trivial constructor or destructor.
+4. Add a usage of the local reference variable that results in ODR-use checking, such as passing it to a function or using it in a context that requires its definition to be complete.
+
+Example in Pseudo-code:
+Original Code:
+```
+namespace A {
+    struct S {
+        int member;
+    };
+}
+
+namespace B {
+    void func() {
+        // Original function implementation
+    }
+}
+```
+
+Mutated Code:
+```
+namespace A {
+    struct S {
+        int member;
+        ~S(); // Non-trivial destructor
+    };
+}
+
+namespace B {
+    template<typename T>
+    void funcTemplate() {
+        A::S localS;  // Local instance
+        int &refMember = localS.member; // Reference to member
+        T x; // Template parameter variable
+        x.someMethod(refMember); // Usage that requires ODR-use
+    }
+}
+
+// Usage of the function template to trigger instantiation
+void useFuncTemplate() {
+    B::funcTemplate<int>(); // Instantiate with a concrete type
+}
+```
+
+This mutation operator specifically targets function templates within a namespace and modifies them to involve ODR-use checking, leading to potential compiler crashes if the bug is present.

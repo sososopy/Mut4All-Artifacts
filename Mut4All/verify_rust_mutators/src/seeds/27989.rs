@@ -1,0 +1,1 @@
+trait Y < 'a > : Sized { fn f (& 'a self) { } fn g (& self) where Self : for < 'r > Y < 'r > { self . f () ; } }

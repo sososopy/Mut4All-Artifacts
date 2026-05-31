@@ -1,0 +1,39 @@
+Mutation Operator: Replace a const generic argument with a const expression that references a generic const parameter from the same context.
+
+This mutation operator targets the use of generic const expressions (feature(generic_const_exprs)) in function calls or type paths. Specifically, it applies when a function or type is called with explicit const generic arguments, some of which are simple literals (like `true`, `false`, or integer literals). The operator mutates one of these literal const generic arguments by replacing it with a const expression that uses another const generic parameter from the same generic parameter list. This creates a scenario where a const argument's value depends on another generic parameter, which can stress the compiler's evaluation of unevaluated const expressions during trait solving.
+
+The mutation is performed as follows:
+1. Identify a call site or type path where a generic item (function or type) is being instantiated with explicit const generic arguments.
+2. Ensure the generic item has at least two const generic parameters in its definition.
+3. Select one const generic argument at the call site that is a literal (e.g., `true`, `false`, `42`).
+4. Replace this literal argument with a const expression that references a different const generic parameter from the same generic parameter list. For example, if the generic parameters include `const N: usize` and `const M: usize`, replace a literal `0` with `N` or `M`. If the parameters are boolean, replace `true` with `PARAM` or `!PARAM`, where `PARAM` is another boolean const generic parameter.
+
+Preference is given to using existing const generic parameter names from the seed program. If the seed program does not have suitable const generic parameters, introduce a new const generic parameter by modifying the generic item's definition. Specifically, add a new const generic parameter (e.g., `const NEW_PARAM: bool = default_value;`) to the generic parameter list and provide a default value that is a literal (like `false`). Then, in the call site, replace a literal argument with an expression using this new parameter (e.g., `NEW_PARAM` or `!NEW_PARAM`). This ensures the mutation is self-contained and does not rely on external undefined elements.
+
+Example based on the bug report structure:
+Original code snippet (simplified):
+fn foo<const A: bool, const B: bool>() {}
+fn test() {
+    foo::<true, false>();
+}
+Mutated code:
+fn foo<const A: bool, const B: bool>() {}
+fn test() {
+    foo::<A, false>();
+}
+Here, the first argument `true` is replaced with `A`, referencing the const generic parameter `A`. This mirrors the bug scenario where a const argument is not a literal but a generic parameter, leading to an unevaluated const during compilation.
+
+Another example with a new parameter introduced:
+Original:
+fn bar<const X: usize>() {}
+fn test() {
+    bar::<5>();
+}
+Mutated definition and call:
+fn bar<const X: usize, const Y: usize = 0>() {}
+fn test() {
+    bar::<Y, 5>();
+}
+Here, a new const generic parameter `Y` with default `0` is added. The call swaps arguments: the first argument becomes `Y` (a generic parameter) and the second remains `5`. This can trigger edge cases in const evaluation.
+
+The mutation aims to expose bugs where the compiler expects a fully evaluated const value (ConstKind::Value) but encounters an unevaluated const (UnevaluatedConst) during trait resolution or type checking, particularly with the generic_const_exprs feature.

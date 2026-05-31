@@ -1,0 +1,1 @@
+use parking_lot :: Mutex ; struct A (Mutex < A >) ; fn main () { }

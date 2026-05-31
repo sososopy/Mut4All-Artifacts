@@ -1,0 +1,16 @@
+mutation operator: Replace a const generic parameter type with an incompatible integer type in a where-clause const expression.
+
+This mutation operator targets const generic parameters used within const expressions in trait bounds (where-clauses), particularly in the context of the generic_const_exprs feature. It applies when a where-clause contains a const expression that uses const generic parameters of integer types (e.g., usize, i32, i64). The operator changes the type of one const generic parameter in the struct/enum definition to a different integer type, while keeping the const expression in the where-clause unchanged, potentially creating a type mismatch during constant evaluation.
+
+Specifically, for a given struct or enum definition with const generic parameters, and an impl block that uses those parameters in a where-clause const expression, the operator alters the type annotation of a const generic parameter in the struct/enum definition to a different integer type. The impl block's const generic parameters remain unchanged, leading to a potential mismatch between the expected type in the struct and the provided type in the impl.
+
+To apply this mutation, first identify a struct or enum definition with at least one const generic parameter of an integer type. Then, identify an impl block for that struct/enum where the where-clause contains a const expression using those parameters. Change the type annotation of one const generic parameter in the struct/enum definition to a different integer type (e.g., change usize to i64, or i32 to u8). Ensure the new type is different but still a valid integer type. Do not modify the impl block's const generic parameter types or the const expression in the where-clause.
+
+For example, given a seed program snippet:
+struct S<const N: usize>;
+impl<const N: usize> S<N> where [(); N * 2]: { fn f() {} }
+The operator could mutate the struct definition to:
+struct S<const N: i64>;
+This leaves the impl as impl<const N: usize> S<N> where [(); N * 2]:, creating a type mismatch because N in the struct is i64, but in the impl it is usize. The const expression N * 2 in the where-clause will then involve a usize N, while the struct expects i64, potentially triggering ICEs during constant evaluation similar to the reported bug.
+
+The operator should prioritize integer type changes that are likely to cause layout mismatches (e.g., between signed and unsigned, or between different sizes). Use existing integer types from the standard library (e.g., i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, usize, isize). Do not introduce new types; only change to types already present in the program or standard prelude. This mutation is designed to exploit the compiler's handling of const evaluations across type mismatches in generic_const_exprs.

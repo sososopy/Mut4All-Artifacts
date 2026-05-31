@@ -1,0 +1,1 @@
+trait T { const SIZE : usize ; fn convert (self) -> [u8 ; T :: SIZE] ; } impl T for u64 { const SIZE : usize = 8 ; fn convert (self) -> [u8 ; u64 :: SIZE] { unimplemented ! () } } fn main () { }

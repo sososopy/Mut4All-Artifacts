@@ -1,0 +1,1 @@
+const DEFAULT : usize = 0 ; trait Trait < const N : usize > { } struct Struct < const N : usize = DEFAULT > ; impl < const N : usize > Struct < N > { fn foo < T : Trait < N > > (& self , _ : T) { } } fn bar < const N : usize , T : Trait < N > > (wrong_const : Struct , trait_usage : T) { wrong_const . foo (trait_usage) }

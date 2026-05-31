@@ -1,0 +1,1 @@
+use :: safer_ffi :: prelude :: ffi_export ; # [ffi_export] pub fn foo () { }

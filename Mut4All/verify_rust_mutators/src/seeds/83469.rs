@@ -1,0 +1,1 @@
+fn outer () { # [global_allocator] fn inner () { } }

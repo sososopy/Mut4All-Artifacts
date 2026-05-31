@@ -1,0 +1,1 @@
+pub struct S < T : Tr > { u : < T as Tr > :: I , } pub trait Tr { type I : Tr ; } impl < T : Tr > Tr for T { type I = S < T > ; } fn main () { }

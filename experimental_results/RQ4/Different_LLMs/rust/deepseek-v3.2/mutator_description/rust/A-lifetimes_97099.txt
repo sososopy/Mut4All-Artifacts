@@ -1,0 +1,11 @@
+mutation operator: Replace nested impl Trait in associated type position with a concrete type derived from existing trait implementations.
+
+This mutation operator targets code structures where a trait's associated type is specified as an impl Trait (particularly nested impl Trait) within a function return type using higher-ranked trait bounds (for<'a>). It applies when a function returns `impl for<'lifetime> Trait<'lifetime, Assoc = impl SomeTrait>`.
+
+The operator modifies the function signature by replacing the nested `impl SomeTrait` in the associated type specification with a concrete type that is known to implement `SomeTrait` based on existing trait implementations in the seed program. Specifically, it looks for an existing impl block where some type implements `Trait<'lifetime>` with an `Assoc` type that also implements `SomeTrait`. It then uses that `Assoc` concrete type.
+
+If the seed program contains an implementation like `impl<'a> Trait<'a> for SomeStruct { type Assoc = ConcreteType; }` where `ConcreteType` implements `Sized` (or the relevant trait in the nested impl), the mutation changes `Assoc = impl Sized` to `Assoc = ConcreteType`. If multiple suitable implementations exist, one is chosen arbitrarily. If no suitable implementation exists, the operator does not apply.
+
+Example: In the seed code `fn blah() -> impl for<'a> Trait<'a, Assoc = impl Sized>`, after finding `impl<'a> Trait<'a> for Struct { type Assoc = &'a u32; }` where `&'a u32` is `Sized`, the mutated signature becomes `fn blah() -> impl for<'a> Trait<'a, Assoc = &'a u32>`.
+
+The operator achieves coverage by targeting nested impl Trait in HRTB contexts, which is a complex area for lifetime and type projection handling. It introduces no new names; it uses existing types from trait implementations. The change is only in the function return type specification; the function body remains unchanged.

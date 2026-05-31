@@ -1,0 +1,1 @@
+static mut threadInfo : & 'static mut [ThreadInfo] = & mut [] ;

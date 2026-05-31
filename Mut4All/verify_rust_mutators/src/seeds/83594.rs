@@ -1,0 +1,1 @@
+fn main () { let number : f64 = 2.0 ; let mut i : i64 ; let mut x2 : f64 ; let mut y : f64 ; x2 = number * 0.5 ; y = number ; i = unsafe { std :: mem :: transmute (y) } ; i = 0x5f3759df - (i >> 1) ; y = unsafe { std :: mem :: transmute (i) } ; y = y * (1.5 - (x2 * y * y)) ; dbg ! (y) ; }

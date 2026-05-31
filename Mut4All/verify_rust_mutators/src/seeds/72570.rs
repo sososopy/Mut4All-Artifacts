@@ -1,0 +1,1 @@
+# ! [feature (asm)] pub fn foo () { let buf = "Hello from asm!\n" ; let ret : i32 ; unsafe { asm ! ("syscall" , in ("rax") 1 , in ("rdi") 1 , in ("rsi") buf . as_ptr () , in ("rdx") buf . len () , out ("rcx") _ , out ("r11") _ , lateout ("rax") ret ,) ; } println ! ("write returned: {}" , ret) ; }

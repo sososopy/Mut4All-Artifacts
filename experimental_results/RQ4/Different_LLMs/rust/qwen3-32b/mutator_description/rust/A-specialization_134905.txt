@@ -1,0 +1,25 @@
+Mutation Operator: Add an impl block for the same trait that overrides the associated type with a type not satisfying its bound, creating a conflicting specialization scenario.
+
+Applies to: Traits with an associated type that has a trait bound (e.g., `type Ty: Valid;`), existing impl blocks with default associated types, and types already defined in the seed program.
+
+Example Mutation:
+Original:
+trait Iterate<'a> {
+    type Ty: Valid;
+}
+impl<'a, T> Iterate<'a> for T where T: Check {
+    default type Ty = ();
+}
+
+Mutated:
+trait Iterate<'a> {
+    type Ty: Valid;
+}
+impl<'a, T> Iterate<'a> for T where T: Check {
+    default type Ty = ();
+}
+impl<'a> Iterate<'a> for i32 {
+    type Ty = i32;  // i32 does not satisfy Valid
+}
+
+Rationale: Forces the compiler to evaluate conflicting trait impls during coherence checks, potentially triggering ICEs in the trait solver when handling nested goals with unsatisfied bounds. Uses existing types (like `i32`) present in Rust's standard environment to maintain generality. Creates a situation where multiple impls with unsatisfied bounds require evaluation, stressing the solver's ability to track tainted contexts.

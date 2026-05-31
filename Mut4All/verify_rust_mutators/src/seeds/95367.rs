@@ -1,0 +1,1 @@
+mod vs { pub struct Bar { pub value : f32 , pub other_value : f32 , } } struct Bar { value : f32 , other_value : f32 , } struct Foo { data : Bar , } impl Foo { fn set_value (& mut self , value : f32) { self . data = vs :: Bar { value , .. self . data } } } fn main () { let f = Foo { data : Bar { value : 0. , other_value : 0. , } , } ; f . set_value (2) ; }

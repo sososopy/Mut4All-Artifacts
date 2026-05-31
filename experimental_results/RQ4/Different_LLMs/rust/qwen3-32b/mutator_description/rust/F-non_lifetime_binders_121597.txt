@@ -1,0 +1,32 @@
+Mutation Operator: Introduce dynamic trait object with non-lifetime HRTB bounds and pass to incompatible function  
+Target Construct: Trait definitions with `for<T>` bounds and dynamic dispatch usage  
+
+Apply to any seed program containing:  
+1. A trait `T` with a `for<P>` bound (P is a type parameter)  
+2. A function `f` that takes an incompatible type argument  
+
+Transformation Steps:  
+1. Create a new trait `MyTrait` with `for<T> OtherTrait<T>` bound  
+   Example:  
+   ```rust  
+   trait MyTrait: for<T> std::ops::Deref<Target=T> {}  
+   ```  
+
+2. Declare a dynamic trait object using `&dyn MyTrait`  
+   Example:  
+   ```rust  
+   let obj: &dyn MyTrait = &();  
+   ```  
+
+3. Pass this object to a function expecting a different type  
+   Example:  
+   ```rust  
+   some_function(obj); // where some_function expects *mut usize or similar  
+   ```  
+
+Note: If seed program lacks required traits, declare minimal compatible versions. For example, if `std::ops::Deref` is unavailable, add:  
+```rust  
+trait Deref<T> { fn deref(&self) -> &T; }  
+```  
+
+This exploits the compiler's handling of non-lifetime binders in HRTB during method resolution on trait objects, likely exposing ICE conditions in type-checking paths.

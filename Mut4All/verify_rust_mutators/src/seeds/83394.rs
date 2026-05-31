@@ -1,0 +1,1 @@
+# ! [feature (rustc_attrs)] # [repr (C)] # [derive (Debug)] # [rustc_layout_scalar_valid_range_end (0x7F)] struct Integer (u8) ;

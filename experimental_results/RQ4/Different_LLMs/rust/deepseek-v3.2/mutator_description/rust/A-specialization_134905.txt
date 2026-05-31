@@ -1,0 +1,16 @@
+mutation operator
+This operator targets trait definitions with associated types that have bounds. It mutates by adding a default (specialized) associated type that intentionally violates the bound. This creates a scenario where the bound is unsatisfied, potentially triggering inconsistent nested goal evaluation in the trait solver during coherence or well-formedness checks. The operator applies when a trait has an associated type with a bound, and there exists at least one other trait that can be used to form a where-clause dependent on that associated type.
+
+To apply, first identify a trait definition in the seed program that declares an associated type with a bound, for example: `trait Trait1 { type Assoc: Bound; }`. Then, identify another trait (Trait2) that can be implemented for a generic type. Add a blanket implementation for Trait2 with a where-clause that references `<T as Trait1>::Assoc: Bound`. Finally, add a default implementation for Trait1's associated type that sets it to a type that does not implement Bound. If the seed program does not have a suitable type that does not implement Bound, introduce a new empty struct (e.g., `struct Dummy;`) and ensure it does not implement Bound. The default implementation should be placed in an impl block for Trait1, conditioned on a new empty trait (e.g., `trait Marker {}`) to avoid immediate conflicts, and the Marker trait should not be implemented for any type.
+
+Example in pseudo-code:
+Original seed code may contain:
+trait Trait1 { type Assoc: Bound; }
+trait Trait2 {}
+trait Bound {}
+To mutate, add:
+struct Dummy;
+trait Marker {}
+impl<T> Trait1 for T where T: Marker { default type Assoc = Dummy; }
+impl<T> Trait2 for T where <T as Trait1>::Assoc: Bound {}
+This constructs a scenario where the default associated type `Dummy` does not satisfy `Bound`, and the blanket impl for Trait2 depends on that bound being satisfied, mirroring the conditions that led to the ICE.

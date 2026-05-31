@@ -1,0 +1,1 @@
+trait Stream < T , N : Stream < T > > { } pub fn main () { println ! ("zomg") ; }

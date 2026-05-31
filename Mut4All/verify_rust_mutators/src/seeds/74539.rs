@@ -1,0 +1,1 @@
+pub enum Operands { Zero , One (u8) , Two (u8 , u8) , } pub fn main () { use Operands :: * ; let operands = Zero ; match operands { Zero => println ! ("Nothing") , One (operand) => println ! ("{:x}" , operand) , Two (operands @ ..) => println ! ("({:x}, {:x})" , operands . 0 , operands . 1) , } ; }

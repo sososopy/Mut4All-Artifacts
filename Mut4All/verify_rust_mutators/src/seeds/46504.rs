@@ -1,0 +1,1 @@
+# ! [feature (generators , generator_trait)] # ! [feature (conservative_impl_trait)] use std :: ops :: Generator ; fn gen < 'a , T > (data : Vec < & 'a T >) -> impl Generator < Yield = & & T , Return = () > + 'a { move | | { for d in & data { yield d ; } } } fn main () { }

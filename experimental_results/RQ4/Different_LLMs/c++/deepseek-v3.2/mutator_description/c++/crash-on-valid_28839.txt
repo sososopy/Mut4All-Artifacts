@@ -1,0 +1,37 @@
+Mutation Operator: Modify Dependent Template Specialization Instantiation Order
+
+Target: This mutation operator applies to C++ code containing class templates with explicit specializations where the specialization depends on another template that may not be fully instantiated at the point of use. It specifically targets scenarios where the compiler's internal representation of a template specialization's type (ESI.Type) could be left in an uninstantiated or unevaluated state due to ordering or dependency issues.
+
+Description: The mutation changes the order of explicit template specializations relative to their use or definition, or introduces a forward declaration of a specialization that creates a circular or incomplete dependency. The goal is to stress the compiler's logic for tracking the instantiation state of dependent types during template argument deduction or substitution.
+
+Changes:
+1. Identify a class template with at least one explicit specialization in the seed program.
+2. If the explicit specialization is defined before its first use (e.g., before a variable declaration or another template that references it), move the specialization definition to a point after that use, but before any subsequent use that would cause a compilation error. If moving it after causes an error due to missing definition, instead forward-declare the specialization (e.g., `template <> class TemplateName<SpecificArgs>;`) before the first use, without providing the full definition until later.
+3. If the explicit specialization is already defined after its first use, or if no such specialization exists, introduce a new explicit specialization for a set of template arguments that are derived from another template parameter. For example, if a template `Template<T>` exists, create a specialization `Template<Template<T>*>` or `Template<DependentType<T>>` where `DependentType` is another template from the seed. Place this new specialization immediately before a line of code that uses the template with arguments matching this new specialization, ensuring the specialization depends on a template parameter that may not be fully instantiated.
+
+Example in pseudo-code (using existing elements from seed):
+Original code snippet may have:
+template<typename T> class Container { /* ... */ };
+template<> class Container<int> { /* ... */ }; // explicit specialization
+Container<int> obj; // use after specialization
+
+Mutated code (case 2, moving specialization after use):
+template<typename T> class Container { /* ... */ };
+Container<int> obj; // use before specialization
+template<> class Container<int> { /* ... */ }; // moved here
+
+Or, if moving causes error, use forward declaration:
+template<typename T> class Container { /* ... */ };
+template <> class Container<int>; // forward declaration
+Container<int> obj; // use with incomplete specialization
+template<> class Container<int> { /* ... */ }; // definition later
+
+Or, introducing a new dependent specialization (case 3):
+template<typename T> class Wrapper { /* ... */ };
+template<typename T> class Container { /* ... */ };
+// new specialization added
+template<typename T> class Container<Wrapper<T>*> { /* ... */ };
+// use that may trigger instantiation with dependent type
+Container<Wrapper<float>*> dependentObj;
+
+Preference is given to using existing templates, types, and variables from the seed. New specializations should be based on combinations of existing template parameters to avoid introducing undeclared elements. This mutation aims to expose crashes where the compiler fails to properly handle the instantiation state during the parsing or semantic analysis of such reordered or dependent specializations.

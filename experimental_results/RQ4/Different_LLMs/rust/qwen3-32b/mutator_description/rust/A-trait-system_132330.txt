@@ -1,0 +1,23 @@
+Mutation Operator: ChangeTraitProjectionBound  
+Applies to functions returning a type with a trait bound that includes an associated type projection (e.g., `impl Trait<Assoc = T>` or `Box<dyn Trait<Assoc = T>>`). Replace the projection value with a nested projection from another trait already referenced in the seed program. For example:  
+- Original: `fn f() -> Box<dyn Trait<Assoc = T>> { ... }`  
+- Mutated: `fn f() -> Box<dyn Trait<Assoc = OtherTrait::Assoc>> { ... }`  
+This stresses the trait solver by introducing complex projection chains that may cause unification mismatches.  
+
+Mutation Operator: AddNestedTraitDefault  
+Applies to traits with associated types and supertrait bounds that use default type parameters. Introduce a nested supertrait bound using an associated type from the same trait. For example:  
+- Original: `trait Foo { type A; } trait Bar: Foo {}`  
+- Mutated: `trait Foo { type A; } trait Bar: Foo<A = Self::A> {}`  
+This creates circular dependencies between trait bounds and projections that may trigger solver errors.  
+
+Mutation Operator: ReplaceTypeAliasProjection  
+Applies to type aliases using `dyn Trait` with associated type projections. Replace the projection value with a projection from a different trait referenced in the alias. For example:  
+- Original: `type T = Box<dyn Trait<Assoc = U>>;`  
+- Mutated: `type T = Box<dyn Trait<Assoc = OtherTrait::Assoc>>;`  
+This forces the compiler to resolve conflicting projection relationships during type inference.  
+
+Mutation Operator: ModifyFunctionReturnProjection  
+Applies to functions that return a generic type with a trait bound containing an associated type. Replace the projection value with an associated type from another trait in the same function's parameter bounds. For example:  
+- Original: `fn f<T: Trait>() -> impl Trait<Assoc = T> { ... }`  
+- Mutated: `fn f<T: OtherTrait>() -> impl Trait<Assoc = T::Assoc> { ... }`  
+This creates projection conflicts between parameters and return types that may expose solver bugs.

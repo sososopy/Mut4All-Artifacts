@@ -1,0 +1,1 @@
+use once_cell :: sync :: OnceCell ; struct Foo { a : u64 , b : u64 , c : u64 , } struct Bar { b : u64 , c : u64 , } static BAR : OnceCell < Bar > = OnceCell :: new () ; impl Foo { fn with_a (a : u64) -> Foo { Foo { a , .. BAR . get () . unwrap () } } }

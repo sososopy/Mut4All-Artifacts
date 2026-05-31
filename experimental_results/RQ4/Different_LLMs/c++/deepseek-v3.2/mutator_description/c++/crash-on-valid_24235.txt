@@ -1,0 +1,18 @@
+mutation operator
+Target structure: constexpr variable declarations with initializers that involve potentially non-constant subexpressions, particularly those relying on previously declared constexpr variables or functions. This applies when a constexpr variable is defined within a function scope, namespace scope, or class scope, and its initializer contains an expression that may be valid for constant evaluation but could stress the compiler's constexpr evaluator.
+
+Description: Identify a constexpr variable declaration where the initializer is not a simple literal or trivial constant. Mutate by replacing the initializer with an expression that attempts to use the address of or form a reference to another constexpr variable (or a subobject thereof) within the same scope, possibly through pointer arithmetic or array subscripting, while still maintaining syntactically valid constexpr rules. The new initializer should be crafted using existing constexpr variables, their members, or constexpr functions already present in the seed program. If needed, introduce a new constexpr variable of a suitable type (e.g., a pointer type) to hold an address, but only using types and declarations that exist or can be constructed from existing ones (e.g., using decltype on an existing variable). The mutation must avoid introducing undefined behavior in constant evaluation, but should create a more complex constant expression that may trigger edge cases in the compiler's evaluation logic.
+
+Example: Suppose the seed program contains:
+constexpr int x = 10;
+constexpr int arr[3] = {1, 2, 3};
+Mutation: Change a constexpr variable declaration, for instance, if there is:
+constexpr int y = x + 5;
+Mutate it to:
+constexpr int y = *(arr + x - 10);
+Or, if no suitable array exists, but there is a constexpr object:
+struct S { int a; };
+constexpr S s{5};
+Then mutate a constexpr int declaration to:
+constexpr int y = (&s)->a;
+Ensure all variables and types used are already declared or can be derived (e.g., using &s requires s to be constexpr). The mutation should not introduce new undefined behavior (e.g., pointer arithmetic within bounds).

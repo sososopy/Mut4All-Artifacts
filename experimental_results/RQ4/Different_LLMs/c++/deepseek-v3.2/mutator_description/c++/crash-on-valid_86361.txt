@@ -1,0 +1,27 @@
+mutation operator: Expand Nested Lambda Parameter Pack Capture by Adding Redundant Template Parameter Pack Expansion
+
+This mutation operator targets lambda expressions that capture parameter packs from enclosing templates, specifically when those lambdas are nested and involve multiple parameter packs. It applies when a lambda inside a template function or method captures a template parameter pack (e.g., via `[&]` or `[=]`) and this lambda contains another inner lambda that also uses parameter packs, such as in fold expressions or nested captures. The operator modifies the inner lambda's capture clause to include an explicit expansion of the outer lambda's captured parameter pack, even if this expansion is redundant or syntactically unusual, potentially stressing the compiler's handling of nested pack expansions in lambda contexts.
+
+The mutation changes an inner lambda capture from a simple capture (like `[&]`) to an explicit pack expansion capture of the outer lambda's captured pack. This is done by using a pack expansion inside the capture list, referencing the outer pack. Since the outer pack is already captured implicitly by reference in the outer lambda, this adds a layer of explicit expansion that may expose compiler bugs in pack deduction or lambda instantiation.
+
+Where it applies: In a template function with a parameter pack `Ts... ts`, if there exists an inner lambda that captures `ts` (implicitly via `[&]` or `[=]`) and contains another lambda inside it (which could be in a fold expression or other nested context), mutate the innermost lambda's capture clause to include an explicit expansion of `ts`. Specifically, replace the capture clause of the innermost lambda with a pack expansion that captures each element of `ts`, even if `ts` is already captured by the outer lambda. This should be applied only when `ts` is a parameter pack in scope and the innermost lambda is syntactically allowed to capture it (though it may lead to redundant or complex expansions).
+
+Changes to make: Identify an outer template function with a parameter pack `ts` (the actual name may vary). Inside it, locate a lambda that captures `ts` (e.g., via `[&]`). Within that lambda, find an inner lambda (possibly in a fold expression or other nested construct) that currently has a capture clause like `[&]` or `[=]`. Change this inner lambda's capture to `[&ts...]` or `[ts...]` (depending on the capture mode), which explicitly expands the pack `ts` in the capture list. Ensure that `ts` is declared in the enclosing scope (it is, as the outer function's parameter pack). If the inner lambda already has an explicit capture, integrate the pack expansion appropriately, but prefer simple replacements to avoid ambiguity.
+
+Example in pseudo-code: Suppose the seed code has:
+template <typename... Ts>
+void func(Ts... ts) {
+  [&](auto... args) {
+    ([&] { /* use ts and args */ }(), ...);
+  };
+}
+After mutation, it becomes:
+template <typename... Ts>
+void func(Ts... ts) {
+  [&](auto... args) {
+    ([&ts...] { /* use ts and args */ }(), ...);
+  };
+}
+Here, the inner lambda inside the fold expression originally captured via `[&]` (which includes `ts` implicitly), but is mutated to explicitly capture `ts...` via expansion. This introduces a nested pack expansion in the lambda capture, which may trigger compiler assertion failures or crashes similar to the bug report.
+
+Note: This mutation uses existing elements (`ts` from the outer function) and does not introduce new variables or types. It should be applied cautiously to avoid syntax errors; for instance, ensure the inner lambda is not in a context where capturing `ts` directly is invalid (e.g., if `ts` is not in scope due to intervening scopes, but in the given pattern, it is accessible). The goal is to create a complex capture scenario that stresses the compiler's frontend, particularly for lambda and template pack handling.

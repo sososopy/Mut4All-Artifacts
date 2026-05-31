@@ -1,0 +1,9 @@
+mutation operator: Replace const generic parameter in trait bound with a decrement expression that may underflow.
+
+This operator targets where clauses that constrain const generic parameters in trait implementations or function signatures. It applies when a const generic parameter N of an integer type appears in a trait bound or type constraint. The operator mutates the usage of N by replacing it with N - 1. If N is already used in an expression like N - k, it replaces that expression with N - (k + 1). This change may introduce underflow when N is zero, potentially exposing overflow handling bugs in the compiler's const evaluation during trait selection.
+
+Specifically, for a const generic parameter N of an integer type (e.g., u8, i32), wherever N appears in a trait bound or type constraint that involves constant expressions, replace N with N - 1. If the existing expression is already of the form N - c where c is an integer literal, replace c with c + 1. This mutation should only be applied once per constraint to avoid generating overly complex expressions.
+
+Example: In a trait implementation like `impl<T, const N: u8> Trait for Type<T, N> where [(); N]:`, mutate the bound to `[(); N - 1]:`. If the original bound is `[(); N - 2]:`, mutate it to `[(); N - 3]:`.
+
+Ensure the mutated expression uses the same integer type as N. The operator does not introduce new names or types; it only modifies existing const expressions. This mutation can trigger underflow during const evaluation in trait resolution, similar to the bug report where N - 1 overflowed when N was zero.

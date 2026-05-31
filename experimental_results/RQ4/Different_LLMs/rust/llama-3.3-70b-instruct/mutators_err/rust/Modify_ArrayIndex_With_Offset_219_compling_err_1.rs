@@ -1,0 +1,70 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{
+    collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *,
+};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_ArrayIndex_With_Offset_219;
+
+impl Mutator for Modify_ArrayIndex_With_Offset_219 {
+    fn name(&self) -> &str {
+        "Modify_ArrayIndex_With_Offset_219"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                for stmt in &mut func.block.stmts {
+                    if let Stmt::Expr(expr) = stmt {
+                        if let Expr::Index(expr_index) = &**expr {
+                            let index = &expr_index.index;
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Int(int_lit),
+                                ..
+                            }) = index
+                            {
+                                let offset = if thread_rng().gen_bool() {
+                                    1
+                                } else {
+                                    -1
+                                };
+                                let new_index = parse_quote! { #int_lit + #offset };
+                                expr_index.index = Box::new(new_index);
+                            } else if let Expr::Path(path) = index {
+                                let offset = if thread_rng().gen_bool() {
+                                    1
+                                } else {
+                                    -1
+                                };
+                                let new_index = parse_quote! { #path + #offset };
+                                expr_index.index = Box::new(new_index);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator modifies array or slice indexing operations by offsetting the index value. It randomly chooses to either increment or decrement the index, potentially exposing bugs related to bounds checking and indexing."
+    }
+}

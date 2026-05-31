@@ -1,0 +1,1 @@
+fn main () { let _ = std :: backtrace :: BacktraceStatus :: Captured ; }

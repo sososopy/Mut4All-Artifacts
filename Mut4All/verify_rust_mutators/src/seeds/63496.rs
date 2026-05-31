@@ -1,0 +1,1 @@
+trait ToBytes { const SIZE : usize ; fn a (self) -> [u8 ; ToBytes :: SIZE] ; fn b (self) -> [u8 ; ToBytes :: SIZE] ; }

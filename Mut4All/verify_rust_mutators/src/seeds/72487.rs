@@ -1,0 +1,1 @@
+# ! [feature (asm)] # ! [no_std] # [inline] pub fn sbi_putchar (byte : u8) { unsafe { asm ! ("ecall" , in ("a0") byte , in ("a7") 1 , out ("a0") _ , options (nomem , nostack)) } ; }

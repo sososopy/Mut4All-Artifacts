@@ -1,0 +1,1 @@
+pub trait Spanned { # [doc = " Returns a `Span` covering the complete contents of this syntax tree"] # [doc = " node, or [`Span::call_site()`] if this node is empty."] # [doc = ""] # [doc = " [`Span::call_site()`]: proc_macro2::Span::call_site"] fn span (& self) -> Span ; } impl < T : ? Sized + ToTokens > Spanned for T { fn span (& self) -> Span { self . __span () } }

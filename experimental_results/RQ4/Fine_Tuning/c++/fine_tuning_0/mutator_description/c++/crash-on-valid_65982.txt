@@ -1,0 +1,58 @@
+Mutation Operator: Variadic Template Base Class Mutation
+
+Description: This mutation targets variadic templates with base class inheritance. It applies to variadic templates where a template parameter pack is used to inherit from multiple base classes. The mutation aims to stress-test the compiler's handling of complex inheritance hierarchies with variadic templates.
+
+Mutation Rule:
+1. Identify a variadic template that inherits from a parameter pack of base classes, e.g., `template<typename...args> struct X : public args...`.
+2. Add a member using-declaration that utilizes the parameter pack to bring members from the base classes into the derived class scope. For example, add `using args::k ...;` where `k` is a member present in the base classes.
+3. Instantiate the variadic template with two or more classes that share a common base class with at least one member having the same name. For example, instantiate `X<A, B>` where both `A` and `B` are derived from a common base class `base` that has a member `k`.
+4. In a function, create an object of the instantiated template and access an ambiguous member using scope resolution to differentiate between the inherited members. For example, use `x.A::k=1;` where `x` is an object of type `X<A, B>`.
+
+Example:
+Given seed program:
+'''
+struct base {
+    int k{2};
+};
+
+struct A : virtual public base {
+};
+
+struct B : virtual public base {
+};
+
+template<typename...args>
+struct X : public args... {
+};
+
+void t(void) {
+    X<A, B> x;
+    return;
+}
+'''
+
+Apply mutation:
+'''
+struct base {
+    int k{2};
+};
+
+struct A : virtual public base {
+};
+
+struct B : virtual public base {
+};
+
+template<typename...args>
+struct X : public args... {
+    using args::k ...;
+};
+
+void t(void) {
+    X<A, B> x;
+    x.A::k=1;
+    return;
+}
+'''
+
+This mutation focuses on variadic template inheritance with member resolution to expose potential weaknesses in the compiler's handling of such constructs.

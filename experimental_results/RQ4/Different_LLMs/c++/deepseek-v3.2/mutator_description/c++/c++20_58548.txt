@@ -1,0 +1,23 @@
+Based on the bug report titled "CTAD on constrained templates crashes in an std::format usage", the crash occurs during the compilation of a program using C++20 features, specifically involving Class Template Argument Deduction (CTAD) with constrained templates (likely concepts) within a std::format call. The stack trace indicates failures during template argument deduction, constraint satisfaction checking, and instantiation of templates, especially within the std::format library components.
+
+From this, structures that are more likely to trigger C++ compiler bugs include:
+1. Complex template instantiations involving nested template deductions (e.g., std::format internal templates).
+2. Use of C++20 concepts (constrained templates) combined with CTAD.
+3. Interactions between library templates (like std::format) and user-defined types or concepts.
+4. Recursive template instantiation chains, as seen in the deep stack from format functions.
+
+Mutation Operator: Replace a constrained template argument deduction with explicit template arguments.
+
+This mutation operator targets cases where CTAD is used with constrained templates (concepts). It applies when a variable declaration uses CTAD for a template class that has constraints (concepts) on its template parameters. The operator changes the declaration to explicitly specify template arguments, which may bypass the CTAD deduction process and potentially expose bugs in the compiler's CTAD implementation for constrained templates.
+
+Steps:
+1. Identify a variable declaration that uses CTAD for a template class. For example, a declaration like "auto var = TemplateClass{args};" where TemplateClass is a template with constraints.
+2. Check if TemplateClass is a template with at least one template parameter that is constrained by a concept (this can be inferred from the context or by examining the template definition if available in the seed).
+3. Replace the CTAD declaration with an explicit template argument list. Use the types of the constructor arguments to deduce the explicit template arguments. If the constructor arguments' types directly match the constrained template parameters, use those types. If the seed program does not have an explicit type that matches, introduce a type alias using the existing types in the seed. For instance, if the constructor argument is of type ExistingType, and the template parameter is constrained by a concept ConceptName, then use ExistingType as the explicit argument.
+
+Example in pseudo-code:
+Original: template <typename T> requires Concept<T> class ConstrainedTemplate { public: ConstrainedTemplate(T arg) {} };
+In user code: auto obj = ConstrainedTemplate{value}; // CTAD used.
+Mutated: ConstrainedTemplate<ExistingType> obj{value}; // Explicit template argument.
+
+Note: ExistingType must be a type already present in the seed program that satisfies the concept constraint. If no such type exists, the mutation should not be applied. The mutation operator should only be applied when the seed contains both the constrained template definition and a CTAD usage with it.

@@ -1,0 +1,26 @@
+mutation operator
+Target construct: Generic const expressions in where-clauses, particularly those involving arithmetic operations with mismatched integer types. The mutation operator applies to where-clauses that contain const expressions of the form `[(); expr]:` where `expr` involves binary operations (like `+`, `*`, `-`, etc.) between generic const parameters of potentially mismatched types.
+
+Mutation: For a where-clause `[(); expr]:` where `expr` is a binary operation `lhs op rhs` (or a nested expression containing such operations), change the type of one operand to a different built-in integer type (e.g., `usize` to `i32`, `i64` to `u8`, etc.) by modifying the const generic parameter's type in the struct definition or the impl header. Specifically, if the struct defines a const generic parameter with type `T1` (e.g., `const A: i64`), and the impl defines a const generic parameter with a different type `T2` (e.g., `const A: usize`), keep the impl parameter type unchanged but change the struct parameter type to a third integer type `T3` (e.g., `const A: u32`), ensuring that `T1`, `T2`, and `T3` are all distinct built-in integer types. If the struct definition does not already have a const generic parameter of a different type, introduce a new const generic parameter with a conflicting integer type and use it in the expression.
+
+Steps:
+1. Identify a struct definition with const generic parameters, e.g., `struct S<const N: i64>();`.
+2. Identify an impl block for that struct with const generic parameters of different types, e.g., `impl<const N: usize> S<N> {}`.
+3. In the struct definition, change the type of an existing const generic parameter to a different built-in integer type (e.g., from `i64` to `u8`). If the struct has multiple const parameters, choose one that appears in a where-clause expression in the impl.
+4. Ensure the where-clause in the impl contains an arithmetic expression combining const parameters with mismatched types (e.g., `[(); A + B]:` where `A` is `usize` and `B` is `i64` after mutation). If the where-clause does not exist, add one that uses the mutated parameters in an arithmetic operation.
+5. In the impl header, keep the const parameter types unchanged (e.g., keep `const A: usize`), so that the impl instantiation conflicts with the struct's expected type.
+
+Example seed pseudo-code:
+struct Wrapper<const X: i32>();
+impl<const X: u8> Wrapper<X> where [(); X as usize + 1]: { fn f() {} }
+
+Mutation steps:
+1. Change `const X: i32` in the struct to `const X: i64`.
+2. The impl keeps `const X: u8`.
+3. The where-clause `[(); X as usize + 1]:` remains, but now `X` in the struct expects `i64`, while the impl provides `u8`, and the expression involves `usize` after the cast.
+
+Resulting mutated code:
+struct Wrapper<const X: i64>();
+impl<const X: u8> Wrapper<X> where [(); X as usize + 1]: { fn f() {} }
+
+This creates a type mismatch between `i64` and `u8` in the impl header and introduces an arithmetic expression in the where-clause that may involve mismatched types during const evaluation, potentially triggering ICEs similar to the bug report.

@@ -1,0 +1,1 @@
+extern crate tokio_reactor ; use std :: borrow :: Borrow ; struct S ; struct T ; impl Borrow < S > for T { fn borrow (& self) -> & S { & S } } fn g (a : T) { let _ : () = < T as Borrow < _ > > :: borrow (& a) ; }

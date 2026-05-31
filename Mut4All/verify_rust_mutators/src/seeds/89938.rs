@@ -1,0 +1,1 @@
+# ! [feature (const_precise_live_drops)] const fn eh < T > (_val : T) { if false { panic ! ("") ; } } fn main () { }

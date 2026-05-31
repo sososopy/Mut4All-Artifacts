@@ -1,0 +1,1 @@
+pub enum TOKEN_TYPE { NEW_LINE }

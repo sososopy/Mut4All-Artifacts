@@ -1,0 +1,1 @@
+fn foo < const N : usize > () -> [() ; N + 1] { unimplemented ! () }

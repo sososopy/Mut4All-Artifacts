@@ -1,0 +1,1 @@
+fn main () { "X" . split ('X') . count () ; }

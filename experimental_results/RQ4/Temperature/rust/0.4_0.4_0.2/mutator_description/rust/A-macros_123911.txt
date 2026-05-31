@@ -1,0 +1,49 @@
+Mutation Operator: Modify Macro Invocation Context
+
+This mutation operator targets macro invocations that involve path expressions and applies to Rust programs using custom macros. The goal is to expose bugs related to macro expansion and scope resolution by altering the context in which macros are invoked.
+
+Description:
+Identify a macro invocation that uses a path expression as an argument. Modify the context in which the macro is invoked by introducing a new scope or altering the existing scope. This can be achieved by wrapping the macro invocation in a new block or function, thereby changing the visibility and resolution context of the macro's components.
+
+Example:
+Original Code:
+```rust
+macro_rules! m {
+    ($attr_path: path) => {
+        #[$attr_path]
+        fn f() {}
+    }
+}
+
+m!(inline<{
+    let a = CharCharFloat { a: 1 };
+    let b = rustrt::rust_dbg_abi_4(a);
+    println!("a: {}", b.a);
+}>);
+
+fn main() {}
+```
+
+Mutated Code:
+```rust
+macro_rules! m {
+    ($attr_path: path) => {
+        #[$attr_path]
+        fn f() {}
+    }
+}
+
+fn wrapper() {
+    m!(inline<{
+        let a = CharCharFloat { a: 1 };
+        let b = rustrt::rust_dbg_abi_4(a);
+        println!("a: {}", b.a);
+    }>);
+}
+
+fn main() {
+    wrapper();
+}
+```
+
+In this mutation, the macro invocation `m!(inline<...>);` is moved into a new function `wrapper()`. This change alters the scope in which the macro is expanded, potentially triggering bugs related to non-eager expansion and scope resolution.

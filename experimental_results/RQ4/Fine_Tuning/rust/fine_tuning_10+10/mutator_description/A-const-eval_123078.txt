@@ -1,0 +1,36 @@
+Mutation Operator: Enum with Exotic Discriminant
+
+Target: Enum definitions with explicit discriminants
+
+Mutation Rule:
+1. Identify an enum declaration with explicit discriminants.
+2. Replace one of the discriminant values with a non-trivial expression or an invalid variant that does not align with typical indexing (e.g., a negative number, a floating point casted to integer, an arithmetic operation resulting in an overflow, etc.).
+3. If the original discriminant is a valid integer, mutate it to a value that intentionally causes out-of-bounds indexing or is not representable by the underlying type.
+4. Ensure the enum is utilized in a constant context, such as a `const` declaration, to trigger compile-time evaluation.
+
+Example Pseudo-code:
+Original:
+```rust
+#[repr(usize)]
+enum MyEnum {
+    A = 1,
+    B = 2,
+    C = 3,
+}
+
+const MY_ENUM_CONST: MyEnum = unsafe { std::mem::transmute(2usize) };
+```
+
+Mutated:
+```rust
+#[repr(usize)]
+enum MyEnum {
+    A = 1,
+    B = 2,
+    C = (-1isize) as usize, // Using a non-trivial discriminant
+}
+
+const MY_ENUM_CONST: MyEnum = unsafe { std::mem::transmute(4usize) }; // Index out of bound
+```
+
+This mutation targets the enum's discriminant values, aiming to break assumptions about their validity and representation, potentially triggering layout issues or invalid value conversions in the constant evaluation phase.

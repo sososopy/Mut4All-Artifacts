@@ -1,0 +1,26 @@
+mutation operator: Replace a lambda expression used as a non-type template argument inside a concept definition with a named variable of the same lambda type, then use that variable as the template argument.
+
+This mutation targets code constructs where a lambda expression appears directly as a non-type template argument within a concept definition or a concept-related expression (such as a requires-clause or a concept's constraint expression). The operator applies when the seed program contains a concept that takes a non-type template parameter (auto or specific type) and is instantiated with a lambda expression. The mutation aims to expose bugs in the compiler's handling of lambda template arguments during concept satisfaction checking, particularly when nested evaluation occurs.
+
+The operator modifies the code by extracting the lambda into a constexpr variable declared before the concept. The variable is given a unique name within the current scope, ensuring it does not conflict with existing identifiers. The concept definition or its instantiation is then updated to use this variable instead of the inline lambda expression. This changes the way the lambda is represented in the AST, potentially triggering different compiler code paths.
+
+Example of mutation:
+
+Original seed code snippet (pseudo-code):
+template<auto L> concept SomeConcept = requires { L.template operator()<int>(); };
+template<class T> concept AnotherConcept = true;
+static_assert(SomeConcept<[]<AnotherConcept>{}>);
+
+Mutated code:
+inline constexpr auto mutated_lambda_var = []<AnotherConcept>{};
+template<auto L> concept SomeConcept = requires { L.template operator()<int>(); };
+template<class T> concept AnotherConcept = true;
+static_assert(SomeConcept<mutated_lambda_var>);
+
+Steps for mutation:
+1. Identify a lambda expression used as a template argument to a concept (either in a concept definition or a static_assert checking a concept).
+2. Generate a new variable name not present in the current scope (e.g., by appending a suffix like "_mutated_var" to a base name derived from the concept or lambda).
+3. Insert a declaration of a constexpr variable with that name at an appropriate point before its use (typically at namespace scope or in the same scope as the concept, ensuring it is accessible). The variable's type is auto, and its initializer is the lambda expression.
+4. Replace the original lambda expression in the template argument with the name of the newly declared variable.
+
+This operator is widely adaptable because it uses existing types and expressions from the seed program, only introducing a new variable declaration with a deterministic naming scheme. It avoids undeclared identifiers by inserting the declaration before use. The mutation may expose bugs related to the compiler's internal handling of lambda identity, template argument deduction, and constraint satisfaction evaluation, as seen in the bug report where nested concept evaluation with lambdas caused an ICE.

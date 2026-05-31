@@ -1,0 +1,1 @@
+fn main () { println ! ("{:?}" , < md5 :: Md5 as md5 :: digest :: OutputSizeUser >:: OutputSize :: USIZE) ; }

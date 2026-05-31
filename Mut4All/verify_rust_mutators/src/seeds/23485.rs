@@ -1,0 +1,1 @@
+trait Iterator { type Item ; fn next (& mut self) -> Option < Self :: Item > ; fn cloned (self) -> Cloned < Self > where Self : Sized , Self :: Item : Deref , < Self :: Item as Deref > :: Target : Clone , { Cloned { it : self } } }

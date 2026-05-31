@@ -1,0 +1,15 @@
+mutation operator: ~const trait bound replacement
+
+This mutation operator targets trait bounds that involve the ~const modifier. It applies to any trait bound (in where clauses, generic parameter bounds, or impl headers) where the ~const modifier is present. The operator replaces the ~const modifier with either its removal (making the bound a plain const trait bound) or adding const if not present, but primarily focuses on the ~const modifier's presence. Specifically, it toggles or alters the constness modifier in bounds to create mismatches or unexpected combinations.
+
+The operator works by scanning for trait bounds that include ~const. When such a bound is found, the mutation changes it to a different form. For example, replace ~const Trait with const Trait, or vice versa, or remove the modifier entirely, depending on context. This targets compiler code paths that handle const trait implementations and effects, as seen in the bug where a ~const trait method call in a non-const function causes an internal compiler error.
+
+The mutation must use existing trait names and types from the seed program. No new names are introduced. Changes are made directly to the bound syntax.
+
+Example: In the seed code, there is impl<T: ~const Stone> Wall<T>. The mutation could change this to impl<T: const Stone> Wall<T>, or impl<T: Stone> Wall<T> (removing const entirely). Another variant is to add ~const to a bound that lacks it, but only if the trait is declared as const (using #[const_trait]).
+
+The operator ensures high coverage by applying to all occurrences of ~const in bounds across functions, impls, and where clauses. It triggers edge cases in const trait lowering and host param id handling, as the bug report indicates issues with no host param id when calling ~const trait methods in non-const contexts.
+
+Changes are made by editing the source code's abstract syntax tree (AST) representation: locate TraitBound nodes with Modifier::MaybeConst (~const) and mutate to Modifier::Const (const) or remove the modifier. The inverse mutation (adding ~const to a const bound) is also applied if the trait supports it (i.e., the trait is declared with #[const_trait]).
+
+This operator is designed to expose bugs in const trait implementation checking, particularly in the interaction between const contexts, trait bounds, and effect system compilation phases.

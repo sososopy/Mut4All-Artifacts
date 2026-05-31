@@ -9,10 +9,11 @@ import argparse
 import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-PROXY = "http://127.0.0.1:7890"
 
 # GPT API KEY
-OPENAI_API_KEY = ""
+API_KEY = ""
+URL = ""
+MODEL = ""
 MAX_ITERATIONS = 10  
 INPUT_FILE_PATH = ""
 COMPILE_TEMPLATE = ""
@@ -32,7 +33,7 @@ TOKEN_JSON = ""
 MAX_RETRIES = 20
 
 def load_config(config_path, language):
-    global OPENAI_API_KEY,SEEDS_DIR,SEEDS_MUTATE_DIR,INPUT_FILE_PATH,COMPILE_TEMPLATE, COMPILE_FILE_PATH, COMPILE_PATH, OUTPUT_JSON_PATH,MUTATOR_ERR_PATH,MUTATOR_OUT_PUT_PATH,SUFFIX,COMPLIE_COMMAND,ENV_VARS,TOKEN_JSON,COMPILE_HOST
+    global API_KEY,SEEDS_DIR,SEEDS_MUTATE_DIR,INPUT_FILE_PATH,COMPILE_TEMPLATE, COMPILE_FILE_PATH, COMPILE_PATH, OUTPUT_JSON_PATH,MUTATOR_ERR_PATH,MUTATOR_OUT_PUT_PATH,SUFFIX,COMPLIE_COMMAND,ENV_VARS,TOKEN_JSON,COMPILE_HOST,URL,MODEL
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
@@ -40,7 +41,9 @@ def load_config(config_path, language):
             raise ValueError(f"Unsupported language: {language}.")
         
         # API_KET is initialized
-        OPENAI_API_KEY = config[language]["api_key"]        
+        API_KEY = config[language]["api_key"]
+        URL = config[language]["url"]
+        MODEL = config[language]["model"]
         INPUT_FILE_PATH = config[language]["code_output_file"]
         COMPILE_TEMPLATE = config[language]["restorer_test_template_file"]
         COMPILE_FILE_PATH = config[language]["restorer_test_file"]
@@ -58,7 +61,7 @@ def load_config(config_path, language):
         ENV_VARS = config[language]["env_vars"]
 
         # Check the correctness of the assignment
-        if not all([OPENAI_API_KEY,SEEDS_DIR,SEEDS_MUTATE_DIR,INPUT_FILE_PATH, COMPILE_TEMPLATE,COMPILE_FILE_PATH, COMPILE_PATH, OUTPUT_JSON_PATH,MUTATOR_ERR_PATH,MUTATOR_OUT_PUT_PATH,LANGUAGE,SUFFIX,COMPLIE_COMMAND,ENV_VARS,TOKEN_JSON]):
+        if not all([API_KEY,URL,MODEL,SEEDS_DIR,SEEDS_MUTATE_DIR,INPUT_FILE_PATH, COMPILE_TEMPLATE,COMPILE_FILE_PATH, COMPILE_PATH, OUTPUT_JSON_PATH,MUTATOR_ERR_PATH,MUTATOR_OUT_PUT_PATH,LANGUAGE,SUFFIX,COMPLIE_COMMAND,ENV_VARS,TOKEN_JSON]):
             raise ValueError("One or more configuration variables are empty. Please check the configuration file.")
         return config
     except FileNotFoundError:
@@ -69,6 +72,11 @@ def load_config(config_path, language):
 # read the Mutator directory without checking the compilation status
 def read_mutator_files(directory):
     mutator_files = []
+
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+        return mutator_files
+
     for filename in os.listdir(directory):
         filepath = os.path.join(directory, filename)
         if os.path.isfile(filepath) and filename.endswith(SUFFIX):
@@ -78,6 +86,7 @@ def read_mutator_files(directory):
                     "filename": filename,
                     "content": content
                 })
+
     return mutator_files
 
 # automated code mutation testing framework
@@ -100,7 +109,8 @@ class TestFramework:
         return True, ''
     # save error iteration code
     def save_err_mutator(self, mutator_name, iteration, code):
-        iteration_filename = f"{mutator_name}_compling_err_{iteration}.{SUFFIX}"
+        os.makedirs(MUTATOR_ERR_PATH, exist_ok=True)
+        iteration_filename = f"{mutator_name}_compiling_err_{iteration}.{SUFFIX}"
         iteration_path = os.path.join(MUTATOR_ERR_PATH, iteration_filename)
         with open(iteration_path, 'w', encoding='utf-8') as f:
             f.write(code)
@@ -128,6 +138,9 @@ class TestFrameWorkRust(TestFramework):
         embedded_content = embedded_content.replace("{MUTATOR}", mutator_name)
         return embedded_content
     def write_test_file(self, content):
+        compile_file_dir = os.path.dirname(COMPILE_FILE_PATH)
+        if compile_file_dir:
+            os.makedirs(compile_file_dir, exist_ok=True)
         with open(COMPILE_FILE_PATH, 'w', encoding='utf-8') as f:
             f.write(content)
     def run_compile(self):
@@ -277,11 +290,13 @@ class TestFrameworkCPP(TestFramework):
         # ...
 
 # refinement
-def fix_code(previous_code, compiler_errors, iteration,framework):
-    url = "https://api.openai.com/v1/chat/completions"
+def fix_code(previous_code, compiler_errors, framework):
+    # select url
+    url = URL
+
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENAI_API_KEY}"
+        "Authorization": f"Bearer {API_KEY}"
     }
     prompt_provide, prompt_task = framework.get_unique_prompt()
     prompt_system = f"""
@@ -300,8 +315,8 @@ def fix_code(previous_code, compiler_errors, iteration,framework):
     """
 
     data = {
-        # The fine-tuned model
-        "model": "",
+        # select model
+        "model": MODEL,
         "messages": [
             {"role": "system", "content": prompt_system},
             {"role": "user", "content": prompt_user}
@@ -309,35 +324,54 @@ def fix_code(previous_code, compiler_errors, iteration,framework):
         "temperature": 0.2
     }
 
-    proxies = {
-        "http": PROXY,
-        "https": PROXY
-    }
+    last_error = None
+
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.post(url, headers=headers, json=data, proxies=proxies)
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data,
+                timeout=(10, 300),
+            )
             response.raise_for_status()
-            break
-        except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(7)
-            else:
-                print("Max retries exceeded. Unable to complete request")
-    
-    response_data = response.json()
 
-    if "choices" in response_data:
-        code = response_data['choices'][0]['message']['content']
-        code = re.sub(r'^```[a-zA-Z0-9+]+\n(.*)\n```$', r'\1', code, flags=re.DOTALL)
-        code = code.strip()
-        token_usage = {
-            "input_token": response_data.get("usage", {}).get("prompt_tokens", 0),
-            "output_token": response_data.get("usage", {}).get("completion_tokens", 0),
-        }
-        return code,token_usage
-    else:
-        return f"Error: {response_data}"
+            response_data = response.json()
+
+            if "choices" not in response_data:
+                raise ValueError(f"Invalid response format: {response_data}")
+
+            message = response_data["choices"][0].get("message", {})
+            code = message.get("content")
+
+            if code is None:
+                raise ValueError(f"Model returned empty content: {response_data}")
+
+            if not isinstance(code, str):
+                raise ValueError(f"Model returned non-string content: {type(code)}; data={response_data}")
+
+            code = re.sub(r'^```[a-zA-Z0-9+]*\n(.*)\n```$', r'\1', code, flags=re.DOTALL)
+            code = code.strip()
+
+            token_usage = {
+                "input_token": response_data.get("usage", {}).get("prompt_tokens", 0),
+                "output_token": response_data.get("usage", {}).get("completion_tokens", 0),
+            }
+
+            return code, token_usage
+
+        except (requests.exceptions.RequestException,
+                requests.exceptions.JSONDecodeError,
+                ValueError,
+                TypeError) as e:
+            last_error = e
+            print(f"[fix_code] Attempt {attempt + 1}/{MAX_RETRIES} failed: {type(e).__name__}: {e}")
+
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(15)
+            else:
+                print("Max retries exceeded. Unable to complete request.")
+                raise last_error
 
 # save records
 def save_record_json(json_path, record):
@@ -362,7 +396,9 @@ def save_record_json(json_path, record):
     
     records.append(record)
     
-    os.makedirs(os.path.dirname(json_path), exist_ok=True)
+    record_dir = os.path.dirname(json_path)
+    if record_dir:
+        os.makedirs(record_dir, exist_ok=True)
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(records, f, indent=4, ensure_ascii=False)
 
@@ -385,10 +421,19 @@ def clear_mutate_dir():
 def judge_mutator_restorer(mutator_name):
     with open(TOKEN_JSON, 'r', encoding='utf-8') as f:
         data = json.load(f)
+
     for record in data:
         for mutator in record.get("mutators", []):
             if mutator.get("name") == mutator_name:
-                return mutator.get("mutator_restorer")
+                if mutator.get("mutator_restorer", False):
+                    return True
+
+                restorer = mutator.get("restorer", [])
+                if isinstance(restorer, list) and len(restorer) > 0:
+                    return True
+
+                return False
+
     return True
 
 # mark mutator as fixed
@@ -403,7 +448,9 @@ def modify_mutator_restorer_in_json(mutator_name):
         else:
             continue
         break
-    
+    token_dir = os.path.dirname(TOKEN_JSON)
+    if token_dir:
+        os.makedirs(token_dir, exist_ok=True)
     with open(TOKEN_JSON, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
@@ -439,6 +486,7 @@ def main(args):
     for mutator in mutator_files:
         mutator_name = os.path.splitext(mutator["filename"])[0]
         mutator_code = mutator["content"]
+        print(mutator_name)
         if judge_mutator_restorer(mutator_name) == True:
             continue
         index = 0
@@ -465,7 +513,7 @@ def main(args):
                     "iteration": index,
                     "code": mutator_code,
                     "errors": compiler_errors,
-                    "file": f"{MUTATOR_ERR_PATH}\\{mutator_err_filename}"
+                    "file": f"{MUTATOR_ERR_PATH}/{mutator_err_filename}"
                 })
 
             if success:
@@ -473,7 +521,7 @@ def main(args):
                 framework.save_compilable_code(final_filename.lower(),mutator_code)
                 break
             else:
-                mutator_code,token_usage = fix_code(mutator_code, compiler_errors, index,framework)
+                mutator_code,token_usage = fix_code(mutator_code, compiler_errors,framework)
                 mutator_code = re.sub(r'^```[a-zA-Z0-9+]+\n(.*)\n```$', r'\1', mutator_code, flags=re.DOTALL)
                 mutator_code = mutator_code.strip()
                 input_token = token_usage['input_token']
@@ -498,7 +546,7 @@ def main(args):
                     } for attempt in error_attempts
                 ],
                 "label": "Positive" if mutation_effect else "Negative",
-                "file": f"{MUTATOR_OUT_PUT_PATH}\\{final_filename.lower()}"
+                "file": f"{MUTATOR_OUT_PUT_PATH}/{final_filename.lower()}"
             }
             modify_mutator_restorer_in_json(mutator_name)
             save_record_json(OUTPUT_JSON_PATH, record)

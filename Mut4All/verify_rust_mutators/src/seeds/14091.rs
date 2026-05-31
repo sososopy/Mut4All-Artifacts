@@ -1,0 +1,1 @@
+pub struct BytePos (pub u32) ; fn main () { let x = BytePos (1) ; assert ! (x , x) ; }

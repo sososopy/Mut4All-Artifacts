@@ -1,0 +1,1 @@
+fn main () -> () { let _ = f () ; } fn f () -> usize { if true { return 1 ; } let x = 0 ; x }

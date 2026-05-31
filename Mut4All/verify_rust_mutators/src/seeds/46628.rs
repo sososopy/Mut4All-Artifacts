@@ -1,0 +1,1 @@
+use std :: io :: BufRead ; fn main () { let stdin = std :: io :: stdin () ; let line = stdin . lock () . lines () . next () . unwrap () . unwrap () ; println ! ("{}" , line) ; }

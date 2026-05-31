@@ -1,0 +1,1 @@
+impl < const N : usize , const M : usize > Add < & StackBitSet < M > > for StackBitSet < N > where [() ; usize_count (N)] : Sized , [() ; usize_count (M)] : Sized , [() ; usize_count (const_min (N , M))] : Sized , { type Output = StackBitSet < { const_min (N , M) } > ; fn add (self , other : & StackBitSet < M >) -> StackBitSet < { const_min (N , M) } > { self . union (other) } }

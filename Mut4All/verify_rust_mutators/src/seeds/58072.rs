@@ -1,0 +1,1 @@
+fn main () { # [global_allocator] static A : usize = 0 ; }

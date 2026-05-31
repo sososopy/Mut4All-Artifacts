@@ -1,0 +1,1 @@
+# ! [feature (asm)] # [target_feature (enable = "avx")] pub unsafe fn foo () { asm ! ("/* {} */" , out (ymm_reg) _ ,) ; }

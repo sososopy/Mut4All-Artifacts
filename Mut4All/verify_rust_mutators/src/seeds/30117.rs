@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] const fn four () -> u32 { 4 } const FOUR : u32 = four () ; fn main () { match 4 { FOUR => { } , _ => unreachable ! () } }

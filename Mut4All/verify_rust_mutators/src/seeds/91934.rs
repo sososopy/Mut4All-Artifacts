@@ -1,0 +1,1 @@
+use rustc_panic :: { Point , Segment } ; fn main () { draw_segment (& Segment (Point (0))) ; } fn draw_segment (s : & Segment) { for p in s . points () { draw_point (p) ; } } fn draw_point (_ : & Point) { }

@@ -1,0 +1,32 @@
+Based on the bug report, the crash occurs during constant evaluation of a lambda inside a default member initializer within a struct. The bug is triggered by a specific combination: a default member initializer that uses a lambda which captures a struct field (using [=]), inside a struct. This suggests that bugs are more likely to be found in code constructs involving default member initializers with lambdas, especially when the lambdas capture members of the struct or involve complex nested expressions. The mutation operator should target these constructs to expose similar issues.
+
+Mutation Operator: Insert a default member initializer with a lambda capturing a struct member.
+
+This mutation operator applies to structs or classes that have at least one non-static data member but lack default member initializers. The operator adds a default member initializer to a randomly selected non-static data member. The initializer is a lambda expression that captures the struct's members by value ([=]) and returns a value derived from a captured member.
+
+Step-by-step changes:
+1. Identify a struct or class definition in the seed program that contains at least one non-static data member.
+2. Select one of these members that does not already have a default member initializer.
+3. Construct a default member initializer for the selected member. The initializer should be of the form:
+   member_name = []() { return [=]() { return captured_member; }(); }();
+   Here, captured_member should be a reference to another non-static data member of the same struct/class. Choose a member that is accessible and of a type compatible with the selected member's type. If no such member exists, introduce a new integer member (e.g., int dummy = 0;) before the selected member to serve as the captured member.
+4. Ensure the lambda's return type matches the selected member's type. If necessary, adjust the lambda body to return an appropriate value, e.g., by casting or using a simple expression.
+
+Example in pseudo-code:
+Original struct:
+struct S {
+   int a;
+   int b;
+};
+After mutation (assuming 'a' is selected and 'b' is used as captured_member):
+struct S {
+   int a = []() { return [=]() { return b; }(); }();
+   int b;
+};
+If no suitable captured member exists, introduce one:
+struct S {
+   int dummy = 0;
+   int a = []() { return [=]() { return dummy; }(); }();
+};
+
+This mutation introduces a default member initializer with a nested lambda capturing by value, mimicking the structure that caused the crash. It targets the same compiler code paths for constant evaluation of default member initializers with lambdas, increasing the chance of exposing similar bugs.

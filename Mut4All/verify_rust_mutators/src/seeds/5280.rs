@@ -1,0 +1,1 @@
+type FontTableTag = u32 ; trait FontTableTagConversions { fn tag_to_str (self) ; } impl FontTableTagConversions for FontTableTag { fn tag_to_str (self) { & self ; } } fn main () { 5 . tag_to_str () ; }

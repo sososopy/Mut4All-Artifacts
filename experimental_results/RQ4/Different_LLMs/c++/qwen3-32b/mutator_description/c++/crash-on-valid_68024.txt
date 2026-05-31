@@ -1,0 +1,40 @@
+Mutation Operator 1: Replace non-type template parameter with function call on dependent type member.  
+Applies to: Template aliases or struct templates using 'auto' non-type parameters.  
+Action: For an existing function object (e.g. `struct { void operator()(T); } f`), replace a non-type template argument `auto` with `f(DependentType::member)`, where `DependentType` is a template parameter and `member` is a static member of that type.  
+Example mutation:  
+Replace  
+`template<auto> struct S;`  
+`template<typename T> using A = S<value>;`  
+with  
+`template<auto> struct S;`  
+`template<typename T> using A = S<f(T::x)>;`  
+Requires:  
+1. `f` must be a function object with `operator()` accepting a parameter type compatible with `T::x`'s type.  
+2. `T` must be a template parameter used in the original code.  
+3. `T::x` must be a valid expression in the seed program (e.g., a static member or nested type).  
+
+Mutation Operator 2: Introduce dependent template argument within nested template alias.  
+Applies to: Template aliases with nested template references.  
+Action: For a nested template alias like `template<typename T> using A = B<T::value>;`, replace the inner argument `T::value` with a dependent function call expression `F<T>(T::value)`, where `F` is an existing function template accepting both `T` and `T::value`.  
+Example mutation:  
+Replace  
+`template<typename T> using A = B<T::x>;`  
+with  
+`template<typename T> using A = B<F<T>(T::x)>;`  
+Requires:  
+1. `F` must be a function template declared in the seed program (e.g. `template<typename U> auto F(U);`).  
+2. `T::x` must resolve to a valid expression in the seed program's context.  
+
+Mutation Operator 3: Convert non-type template parameter to dependent expression involving template deduction.  
+Applies to: Non-type template parameters that accept values of known types.  
+Action: Replace a literal template argument (e.g. `42`) with a call to `decltype(auto)` function template that requires deduction, such as `g(T::value)`, where `T` is a template parameter and `g` is a function template declared in the seed program.  
+Example mutation:  
+Replace  
+`template<int N> struct S;`  
+`using X = S<42>;`  
+with  
+`template<int N> struct S;`  
+`template<typename T> using A = S<g(T::value)>;`  
+Requires:  
+1. `g` must be a function template declared in the seed program (e.g. `template<typename U> auto g(U);`).  
+2. `T::value` must be a valid expression in the seed program's context.

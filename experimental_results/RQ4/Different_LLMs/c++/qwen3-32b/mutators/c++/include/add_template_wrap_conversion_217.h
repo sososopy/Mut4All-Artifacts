@@ -1,0 +1,32 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Add_Template_Wrap_Conversion_217
+ */ 
+class MutatorFrontendAction_217 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(217)
+
+private:
+    class MutatorASTConsumer_217 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_217(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        void run(const MatchFinder::MatchResult &Result) override;
+        bool wrapFound = false;
+        std::string mutatedClassName;
+    private:
+        Rewriter &Rewrite;
+    };
+};
+

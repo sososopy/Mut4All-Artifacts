@@ -1,0 +1,9 @@
+Mutation operator: Replace a non-dependent call to a conversion function template within a template definition context with a dependent expression that triggers depth-based template argument deduction.
+
+This mutation applies when a conversion function template is called directly (using the operator syntax) inside a member function definition of a class template, where the call is currently non-dependent. The operator changes the call to become dependent on the template parameters of the enclosing class, thereby altering the deduction context.
+
+Specifically, locate any explicit call to a conversion operator (e.g., `operator int();`) within the body of a member function of a class template. Modify the call by wrapping it in a construct that introduces a dependency on the class template parameter, such as using a static member or a defaulted template argument that references the parameter. For instance, if the class template has parameter `U`, change `operator int();` to `operator U();` or introduce a dummy template parameter that defaults to `U` and call `operator T();` where `T` is now dependent.
+
+Example: In a seed program with a class template `template<typename U> struct A` containing `template<typename T> operator T();` and a member function `void f()`, if `f()` contains `0, operator int();`, mutate it to `0, operator U();` or create a local dependent context like `typename A<U>::template operator int();` if such syntax is valid, ensuring the call becomes dependent.
+
+The change must use existing template parameters from the seed program; do not introduce new types or variables beyond leveraging the existing parameter `U`. The mutation aims to shift the deduction depth scenario, potentially exposing assertion failures related to template parameter depth checks during deduction.

@@ -1,0 +1,1 @@
+fn main () { assert_eq ! (Float :: round (1.2) , 1.0f64) ; }

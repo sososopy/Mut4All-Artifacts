@@ -1,0 +1,1 @@
+use std :: ops :: Deref ; fn main () { println ! ("Do urchins dream of gophers?") ; if "Rust" = Box :: new ("Go") . deref () { println ! ("Definitely!") ; } println ! ("Maybe!") ; }

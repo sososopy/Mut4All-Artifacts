@@ -1,0 +1,93 @@
+Issue Title:
+ICE: assertion `left == right` failed: `non-Aggregate field with matching ABI but differing alignment` · Issue #123710 · rust-lang/rust · GitHub
+
+Rust Code:
+#[repr(packed)]
+#[repr(u32)]
+enum E {
+    A,
+    B,
+    C,
+}
+
+fn main() {
+    union InvalidTag {
+        int: u32,
+        e: E,
+    }
+    let _invalid_tag = InvalidTag { int: 4 };
+}
+
+Bug Trace:
+//@ run-pass
+use std::mem;
+
+#[repr(packed)]
+// skip-filecheck
+//@ unit-test: GVN
+//@ compile-flags: -Zmir-enable-passes=+RemoveZsts
+// Verify that we can pretty print invalid constants.
+
+#![feature(adt_const_params)]
+#![feature(inline_const)]
+#![allow(incomplete_features)]
+
+#[derive(Copy, Clone)]
+#[repr(u32)]
+enum E { A, B, C }
+
+#[derive(Copy, Clone)]
+enum Empty {}
+
+// EMIT_MIR invalid_constant.main.RemoveZsts.diff
+// EMIT_MIR invalid_constant.main.GVN.diff
+fn main() {
+    // An invalid char.
+    union InvalidChar {
+        int: u32,
+        chr: char,
+    }
+    let _invalid_char = unsafe { InvalidChar { int: 0x110001 }.chr };
+
+    // An enum with an invalid tag. Regression test for #93688.
+    union InvalidTag {
+        int: u32,
+        e: E,
+    }
+    let _invalid_tag = [unsafe { InvalidTag { int: 4 }.e }];
+
+    // An enum without variants. Regression test for #94073.
+    union NoVariants {
+        int: u32,
+        empty: Empty,
+    }
+    let _enum_without_variants = [unsafe { NoVariants { int: 0 }.empty }];
+
+    // A non-UTF-8 string slice. Regression test for #75763 and #78520.
+    struct Str<const S: &'static str>;
+    let _non_utf8_str: Str::<{
+        unsafe { std::mem::transmute::<&[u8], &str>(&[0xC0, 0xC1, 0xF5]) }
+    }>;
+}
+
+struct S4(u8,[u8; 3]);
+
+#[repr(packed)]
+#[allow(dead_code)]
+struct S5(u8,u32);
+
+pub fn main() {
+    unsafe {
+        let s4 = S4(1, [2,3,4]);
+        let transd : [u8; 4] = mem::transmute(s4);
+        assert_eq!(transd, [1, 2, 3, 4]);
+
+        let s5 = S5(1, 0xff_00_00_ff);
+        let transd : [u8; 5] = mem::transmute(s5);
+        // Don't worry about endianness, the u32 is palindromic.
+        assert_eq!(transd, [1, 0xff, 0, 0, 0xff]);
+    }
+}
+
+Bug Labels:
+A-ABI, A-layout, C-bug, I-ICE, P-medium, S-bug-has-test, T-compiler, regression-from-stable-to-beta

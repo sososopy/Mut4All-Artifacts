@@ -1,0 +1,1 @@
+type Example = futures :: future :: BoxFuture < Output = () > ;

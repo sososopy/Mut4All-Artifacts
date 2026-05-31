@@ -1,0 +1,1 @@
+# ! [feature (core)] use std :: simd :: u32x4 ; fn main () { let a = u32x4 (1 , 1 , 1 , 1) ; println ! ("{:?}" , a << a) ; }

@@ -1,0 +1,1 @@
+# ! [feature (adt_const_params)] # ! [allow (unused_must_use , incomplete_features)] pub const BAR : () = ice :: < "" > () ; pub const fn ice < const N : & 'static str > () { & 10 ; } fn main () { }

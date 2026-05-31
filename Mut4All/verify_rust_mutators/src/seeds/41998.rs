@@ -1,0 +1,1 @@
+fn main () { let x = 'x' as char ; let y = 'y' as char ; if x < y { print ! ("x") ; } else { print ! ("y") ; } }

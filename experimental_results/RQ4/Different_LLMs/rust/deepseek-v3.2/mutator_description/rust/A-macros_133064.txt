@@ -1,0 +1,11 @@
+Mutation Operator: Insert Macro Invocation into Const Generic Argument of an Impl Block.
+
+This operator targets impl blocks that have const generic parameters. It mutates by inserting a macro invocation into an existing const generic argument, or if no const generic arguments exist, it adds a new const generic parameter with a macro invocation. The macro should be one that expands to items or complex expressions, such as thread_local, lazy_static, or any user-defined macro that generates static or const items.
+
+Applicability: This mutation applies to any impl block, whether for a struct, enum, or trait implementation. It is especially relevant for impl blocks with generic parameters, where const generic arguments can be added or modified.
+
+Procedure: For a given impl block, identify its generic parameters. If there are existing const generic arguments, select one and replace its expression with a macro invocation that expands to a constant expression. If there are no const generic arguments, add a new const generic parameter with a macro invocation as its argument. The macro used should be chosen from macros already in scope (e.g., imported from std or declared in the seed program). If no suitable macro exists, introduce a simple macro definition that expands to a literal (e.g., macro_rules! dummy { () => { 0 } }) and use it, but prefer existing macros to avoid introducing new definitions.
+
+Example: Suppose the seed program contains an impl block like `impl<T> Struct<T> {}`. The mutation could change it to `impl<T, const _: u8 = { thread_local! { static X: u8 = 0; } 0 }> Struct<T> {}`. Here, a new const generic parameter `_` is added with a default value that includes a `thread_local` macro invocation inside a block. The block ensures the macro expansion is within a constant context, and the outer `0` satisfies the const generic type.
+
+Note: The mutation must ensure that the macro invocation is placed within a const context (e.g., inside a const block or as part of a const argument). The goal is to replicate the nested macro expansion scenario that triggered the original bug, potentially exposing similar ICEs in the compiler's HIR or type-checking phases.

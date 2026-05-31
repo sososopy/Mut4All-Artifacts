@@ -1,0 +1,1 @@
+# ! [feature (existential_type)] use std :: fmt :: Debug ; macro_rules ! this_is_an_item { ($ i : item) => { $ i } ; } fn main () { this_is_an_item ! { existential type Existential : Debug ; } fn _unused () -> Existential { String :: new () } let null = | | -> Existential { 0 } ; println ! ("{:?}" , null ()) ; }

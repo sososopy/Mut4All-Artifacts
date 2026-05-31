@@ -1,0 +1,1 @@
+trait CrunchICE { fn crunch < const N : usize , T > (ice : T) ; } impl CrunchICE for () { fn crunch < T , const N : usize > (ice : T) { } }

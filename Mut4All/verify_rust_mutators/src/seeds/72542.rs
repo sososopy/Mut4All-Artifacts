@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] # ! [feature (const_compare_raw_pointers)] struct A < T , const f : fn (& T , & T) > { _t : T , } impl < T , const f : fn (& T , & T) > A < T , f > { fn new (_t : T) -> Self { Self { _t } } }

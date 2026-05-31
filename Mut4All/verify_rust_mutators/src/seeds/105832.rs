@@ -1,0 +1,1 @@
+use nom :: { character :: complete :: one_of , combinator :: map , IResult } ; pub enum Sexpr < 'a > { Ident (& 'a str) , } fn parse_unary_op (s : & str) -> IResult < & str , Sexpr > { map (one_of ("+-") , Sexpr :: Ident) (s) } fn main () { }

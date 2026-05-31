@@ -1,0 +1,1 @@
+static foo_1 : [uint ; 3] = [1 , 2 , 3] ; static slice_1 : & 'static [uint] = & foo_1 ; static slice_2 : & 'static [uint] = & foo_1 ; fn main () { }

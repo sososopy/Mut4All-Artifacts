@@ -1,0 +1,1 @@
+struct S ; # [static_assert] static FOO : S = S ; fn main () { }

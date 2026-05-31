@@ -1,0 +1,27 @@
+mutation operator: Remove a lifetime parameter from an async trait method signature in an impl block while the trait definition retains the lifetime parameter, causing a mismatch that may trigger internal compiler errors in type substitution.
+
+This operator targets async functions within trait implementations where the trait method includes explicit lifetime parameters. It applies when there is a trait definition with an async method that has at least one lifetime parameter, and an impl block providing an implementation for that trait. The operator modifies the impl method signature by removing one of the lifetime parameters that exists in the trait method signature. If the trait method has multiple lifetime parameters, one is chosen arbitrarily; if only one exists, it is removed.
+
+The mutation must preserve all other aspects of the signature, such as the method name, parameter types, and return type. The body of the method remains unchanged. This creates a scenario where the impl signature has fewer lifetime parameters than the trait signature, which is a mismatch that should be caught by the compiler's trait matching logic. However, due to bugs in the async function in trait feature, this mismatch might lead to internal compiler errors during region substitution.
+
+For example, given a seed program containing:
+
+trait Trait {
+    async fn method<'a, 'b>(&'a self, param: &'b str);
+}
+
+impl Trait for Type {
+    async fn method<'a, 'b>(&'a self, param: &'b str) {
+        // some code
+    }
+}
+
+The operator would mutate the impl to:
+
+impl Trait for Type {
+    async fn method<'a>(&'a self, param: &'b str) {
+        // same body, unchanged
+    }
+}
+
+Here, the lifetime 'b is removed from the impl method signature while the trait retains both 'a and 'b. Note that the parameter param: &'b str still references 'b, which is now undeclared; this is intentional to create an inconsistency. The operator should not introduce new lifetime names; it only removes existing ones. The seed program must already contain the necessary trait and impl definitions; no new items are introduced. This mutation is designed to trigger bugs in the compiler's handling of lifetime parameter substitution for async trait methods, particularly when there is a mismatch in the number of lifetime parameters between trait and impl.

@@ -1,0 +1,31 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Replace_Decltype_Auto_With_Auto_For_Function_Template_242
+ */ 
+class MutatorFrontendAction_242 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(242)
+
+private:
+    class MutatorASTConsumer_242 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_242(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        //Necessary node information record used in the mutation process
+    };
+};
+

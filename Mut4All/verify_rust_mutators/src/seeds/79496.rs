@@ -1,0 +1,1 @@
+# [proc_macro_derive ()] mod proc_macro_derive1 { mod inner { # ! [proc_macro_derive ()] } } mod proc_macro_derive2 { mod inner { # ! [proc_macro_derive ()] } # [proc_macro_derive ()] fn f () { } # [proc_macro_derive ()] struct S ; # [proc_macro_derive ()] type T = S ; # [proc_macro_derive ()] impl S { } } fn main () { }

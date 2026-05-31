@@ -1,0 +1,9 @@
+Mutation Operator: Replace a constant expression within a generic argument position with a closure that captures a lifetime parameter from an outer generic function.
+
+This mutation operator targets generic const expressions, specifically within the nightly-only generic_const_exprs feature. It applies when a function has a generic lifetime parameter and returns a type involving a generic argument that is a const expression. The operator modifies the const expression by inserting a closure that captures the lifetime parameter, thereby creating a complex const expression involving a closure with captured lifetime-dependent types.
+
+The mutation changes the const expression from a simple integer or arithmetic expression to a block expression containing a closure that uses the lifetime parameter. The closure is defined but not invoked; its existence within the const expression is sufficient to trigger normalization issues in the compiler. The constant value after mutation remains the same numeric value to maintain type compatibility where possible.
+
+Example transformation: In a function with signature `fn f<'a, T>() -> S<[(); C]>`, where C is a const expression like `4`, replace C with `{ |x: &'a U| { x }; C }` where U is an existing type in scope (e.g., `u32` or a generic T). Ensure the closure's parameter type references the lifetime `'a`. The body of the closure is a simple identity expression. The outer block evaluates to the original constant C.
+
+Steps: Identify a const expression C used as a generic argument (e.g., in an array length `[(); C]`). Change it to `{ |x: &'a ExistingType| { x }; C }`. If no suitable ExistingType is present, use a primitive type like `u32`. The mutation does not introduce new names beyond the closure parameter x, which is scoped to the block. The constant's value remains C, preserving the array length or other const context.

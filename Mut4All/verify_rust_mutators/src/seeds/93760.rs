@@ -1,0 +1,1 @@
+extern "C" { static FOO : [usize ; usize :: MAX] ; }

@@ -1,0 +1,1 @@
+fn main () { let v = & mut [1] ; if let Some (_) = v . iter () . position (| _ | true) { v . copy_within (.. , 0) ; } }

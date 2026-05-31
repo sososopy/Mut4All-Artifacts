@@ -1,0 +1,1 @@
+# ! [feature (proc_macro)] # ! [fake] fn main () { println ! ("Hello world!") ; }

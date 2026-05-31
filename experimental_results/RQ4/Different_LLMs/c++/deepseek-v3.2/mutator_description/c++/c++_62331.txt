@@ -1,0 +1,17 @@
+Mutation Operator: Specialization Parameter Mismatch in Member Function Template Specialization
+
+Target: This mutation operator targets explicit specializations of member function templates within class template specializations. Specifically, it applies when a member function template of a class template is explicitly specialized outside the class definition. The mutation alters the template parameter list of the specialization to intentionally mismatch the primary template's expected template template parameter, or it changes the function parameter type in the specialization to be incompatible with the default argument from the primary template.
+
+Application: For a given seed program, identify any explicit specialization of a member function template that is defined outside its enclosing class template specialization. The mutation modifies the specialization's signature to create a deliberate type mismatch.
+
+Changes: Let the original code pattern be:
+- Primary: `template <template <typename> class TP> class Outer { public: template <typename U> void func(TP<U> arg = TP<U>()); };`
+- Specialization: `template <> template <typename U> void Outer<SomeImpl>::func(SomeImpl<U> arg) {}`
+The mutation alters the specialization in one of two ways (choose one per mutation instance):
+1. Change the template template argument used in the enclosing class specialization within the member function specialization definition. For example, replace `Outer<SomeImpl>` with `Outer<OtherImpl>`, where `OtherImpl` is a different template with a single type parameter that exists in the seed program (e.g., from another part of the code or by introducing a simple new template like `template <typename> struct OtherImpl {};` if no suitable existing template is found). If a new template is introduced, it must be declared before use: `template <typename> struct OtherImpl {};`.
+2. Change the function parameter type in the specialization to a type that does not match the default argument type from the primary template. For example, replace `SomeImpl<U>` with `SomeImpl<int>` (a concrete type) or with `TP<U>` (using the template template parameter name from the primary, which may not be in scope) or with a completely different type `DifferentType<U>` that exists in the seed program. If using `TP<U>`, ensure that `TP` is the name used in the primary template's template template parameter. If a new type is needed, introduce a simple template: `template <typename> struct DifferentType {};`.
+
+Example (Pseudo-code):
+Seed has: template <typename> struct Impl1 {}; template <template <typename> class T> class Container { public: template <typename U> void method(T<U> = T<U>()); }; template <> template <typename U> void Container<Impl1>::method(Impl1<U>) {}
+Mutated to (option 1): template <> template <typename U> void Container<Impl2>::method(Impl2<U>) {} // Assuming Impl2 is declared as template <typename> struct Impl2 {};
+Or mutated to (option 2): template <> template <typename U> void Container<Impl1>::method(Impl1<int>) {} // Parameter type changed to a concrete instantiation.

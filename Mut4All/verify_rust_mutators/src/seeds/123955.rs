@@ -1,0 +1,1 @@
+pub fn main () { _ = Box :: new (()) as Box < dyn Send > ; }

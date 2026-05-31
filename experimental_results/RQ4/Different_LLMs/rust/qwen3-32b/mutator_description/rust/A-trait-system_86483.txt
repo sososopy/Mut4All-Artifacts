@@ -1,0 +1,23 @@
+Mutation operator: Introduce a higher-ranked trait bound (`for<...>`) on a GAT's associated type that requires a new lifetime parameter unrelated to the GAT's own lifetime parameter, creating conflicting lifetime constraints. Apply to a GAT in a trait that already has a lifetime parameter and a trait bound on its associated type.
+
+Example:  
+Original code:  
+```rust  
+pub trait Example<T> {  
+    type Assoc<'a>: Iterator<Item = &'a T>;  
+}  
+```  
+
+Mutated code:  
+```rust  
+pub trait Example<T> {  
+    type Assoc<'a>: for<'b> Iterator<Item = &'b T>;  
+}  
+```  
+
+Explanation:  
+- The GAT `Assoc<'a>` now requires its associated type to implement `Iterator` for all lifetimes `'b`, with `Item` as `&'b T`.  
+- This introduces a nested `for<'b>` that is not bound to the GAT's own lifetime `'a`, creating a scenario where the compiler may fail to resolve the higher-ranked bound.  
+- The existing `T` and lifetime parameters `'a`/`'b` are reused, ensuring compatibility with standard Rust syntax while stressing the trait system.  
+
+This mutation operator targets the interaction between GATs and higher-ranked trait bounds, increasing the likelihood of exposing ICEs related to lifetime inference or defaulted associated type handling.

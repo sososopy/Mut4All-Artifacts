@@ -1,0 +1,1 @@
+pub fn zip < K , V , W , A , B > (a : A , b : B) where K : Ord , A : Iterator < Item = (K , V) > , A : Iterator < Item = (K , W) > , { }

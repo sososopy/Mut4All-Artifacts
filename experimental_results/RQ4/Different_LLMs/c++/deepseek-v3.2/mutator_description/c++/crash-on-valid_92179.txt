@@ -1,0 +1,16 @@
+Based on the crash-on-valid bug report, which involves a Clang parser crash within a function body in a nested namespace while processing C++20 code, compiler bugs are more likely to be triggered by complex interactions in template metaprogramming, constexpr evaluation, nested namespaces, and the parsing of modern C++ features (like lambdas, concepts, and structured bindings) within intricate type contexts. The crash during the parsing of a function body suggests issues may arise from specific combinations of declarators, initializers, or noexcept specifiers in member functions.
+
+Mutation Operator: Noexcept Specifier Insertion on Member Function Declarator
+
+This operator targets member function declarations (including special member functions) within class or struct definitions. It applies when a member function is declared without an explicit noexcept specifier. The mutation inserts a conditional noexcept specification that depends on the noexcept-ness of a potentially-throwing expression constructed from existing program elements, creating complex, context-dependent type interactions that may stress the parser and constant expression evaluator.
+
+First, identify a member function declaration within a class or struct definition that does not already have an explicit noexcept or throw specifier. For example, a function declared as `return_type name(parameters) ;` or `return_type name(parameters) const ;`.
+
+The mutation changes this to `return_type name(parameters) noexcept(noexcept( expression )) ;` (with any existing cv-qualifiers preserved). The `expression` must be a valid, non-void expression that uses only existing variables, types, and functions from the surrounding scope to avoid introducing undefined identifiers. The expression should be designed to be potentially throwing, such as invoking a function (e.g., a constructor or operator) on a dependent type, or performing an operation like dereferencing a pointer.
+
+The strategy for constructing the expression is:
+1.  If the class is a template or the member function itself is a template, use a dependent expression like `std::declval<member_type>()`, where `member_type` is an existing type member (e.g., a typedef or using alias) of the class, or a template parameter type.
+2.  If non-template, use an expression that involves an existing data member of the class, such as `data_member_`, or a static member function call, like `static_member_function()`.
+3.  If no suitable class-scope element exists, use a simple built-in operation that is allowed in a constant expression, such as `(1, 2)`, though this is less likely to be complex.
+
+For example, given a seed program with a class `X` containing a member `int* ptr;` and a member function `void f() const;`, the mutation could produce `void f() const noexcept(noexcept(*ptr)) ;`. If the class is a template `template<typename T> class Y { using alias_t = T; void g(); };`, the mutation could produce `void g() noexcept(noexcept(std::declval<alias_t>())) ;`. The goal is to create a noexcept specification that requires the compiler to evaluate the noexcept operator within the context of the class, potentially during parsing or instantiation, which may expose crashes in edge cases.

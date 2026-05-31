@@ -1,0 +1,1 @@
+trait What { type Item ; } trait Foo { type A ; type B = < Self :: A as What > :: Item ; } fn main () { }

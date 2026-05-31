@@ -1,0 +1,1 @@
+trait HasId { fn id () -> i32 ; } trait Foo { } impl HasId for Foo { fn id () -> i32 { 1 } } trait Bar { } impl HasId for Bar { fn id () -> i32 { 2 } } fn print_id < T : HasId + ? Sized > () { println ! ("{}" , < T as HasId >:: id ()) ; } fn main () { print_id :: < Foo > () ; print_id :: < Bar > () ; }

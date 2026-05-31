@@ -1,0 +1,1 @@
+# ! [feature (generators)] extern crate futures ; use futures :: { future , Future , FutureExt } ; fn main () { | | { let _future = Struct :: method () ; yield () ; } ; } struct Struct ; impl < 'a > Struct { fn method () -> impl Future < Item = () , Error = () > + 'a { future :: loop_fn (future :: ok (()) , | builder | { builder . map (| _ | unimplemented ! ()) }) } }

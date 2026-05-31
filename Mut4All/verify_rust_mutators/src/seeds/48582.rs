@@ -1,0 +1,1 @@
+# [parser] impl Parser { pub fn parse_XX (& mut self) -> PResult < XX > { cur ! () ; bump ! () ; eat ! ('a') ; } }

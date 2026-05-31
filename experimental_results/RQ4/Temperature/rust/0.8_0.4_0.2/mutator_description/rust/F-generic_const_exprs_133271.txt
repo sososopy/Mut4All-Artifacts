@@ -1,0 +1,39 @@
+Mutation Operator: Const Expression Array Length Variations
+
+Target: This mutation operator applies to constant generic expressions used as array lengths within trait implementations, particularly in the context of implementing standard library traits like `std::ops::Add`.
+
+Description: Given the susceptibility of constant expressions to triggering compiler bugs in Rust, especially when used as array lengths, this mutation operator will focus on altering the constant expressions used within array types in trait bounds. The goal is to explore variations of these expressions to expose edge cases that the compiler might not handle correctly.
+
+Mutation Details:
+1. Identify the constant expression used as an array length in a trait bound. For instance, `[(); 1 + 0]: Sized` in the implementation.
+2. Modify this expression by introducing variations such as:
+   - Altering arithmetic operations (e.g., `[(); NUM - 1]: Sized`).
+   - Substituting constants with other literals or previously declared constants (e.g., `[(); 2]: Sized` if `NUM` is declared elsewhere as `const NUM: usize = 2;`).
+   - Adding nested operations to increase complexity (e.g., `[(); (1 + NUM) * 2]: Sized`).
+
+Example:
+Original Code:
+```rust
+impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+where
+    [(); 1 + 0]: Sized,
+{
+    fn unimplemented(self, _: &Foo) -> Self::Output {
+        loop {}
+    }
+}
+```
+
+Mutated Code:
+```rust
+impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+where
+    [(); NUM - 1]: Sized, // Assuming NUM is declared elsewhere
+{
+    fn unimplemented(self, _: &Foo) -> Self::Output {
+        loop {}
+    }
+}
+```
+
+By systematically varying constant expressions in these contexts, this mutation operator aims to identify potential compiler failures related to generic constant expressions, particularly when these expressions influence type bounds.

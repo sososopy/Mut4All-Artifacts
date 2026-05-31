@@ -1,0 +1,1 @@
+struct Test ; impl Add < i32 , i32 > for Test { fn add (& self , othr : & i32) -> i32 { othr + 1 } } impl Add < f64 , f64 > for Test { fn add (& self , othr : & f64) -> f64 { othr + 2.0 } } fn main () { let f = Test ; println ! ("f + 3:   {}" , f + 3) ; println ! ("f + 3.0: {}" , f + 3.0) ; }

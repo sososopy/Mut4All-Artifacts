@@ -1,0 +1,1 @@
+# ! [feature (generic_const_exprs)] pub trait Foo : Sized { const WIDTH : usize ; fn arrayify (self) -> [Self ; Self :: WIDTH] ; } impl < T : Sized > Foo for T { const WIDTH : usize = 1 ; fn arrayify (self) -> [Self ; Self :: WIDTH] { [self] } }

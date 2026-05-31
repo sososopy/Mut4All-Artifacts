@@ -1,0 +1,1 @@
+enum En1 { Var1 (()) , } async fn func (en : En1) { match en { En1 :: Var1 (val) => match val { } , } }

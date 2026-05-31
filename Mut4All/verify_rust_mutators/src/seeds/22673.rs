@@ -1,0 +1,1 @@
+trait Expr : PartialEq < Self :: Item > { type Item = Expr ; } fn main () { }

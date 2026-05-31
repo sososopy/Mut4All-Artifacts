@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] mod mmio { use std :: intrinsics ; pub struct RO < T > (T) where T : Copy ; impl < T > RO < T > where T : Copy { pub fn get (& self) -> T { unsafe { intrinsics :: volatile_load (& self . 0) } } } } struct Gpio { idr : mmio :: RO < Idr > , } # [derive (Copy)] struct Idr (u32) ; fn ice (gpio : & Gpio) -> Idr { gpio . idr . get () }

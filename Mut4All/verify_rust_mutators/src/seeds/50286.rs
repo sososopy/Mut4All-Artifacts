@@ -1,0 +1,1 @@
+use std :: hash :: { Hash , Hasher } ; struct Foo ; impl Hash for Foo { fn hash (& self , s : & mut impl Hasher) { } }

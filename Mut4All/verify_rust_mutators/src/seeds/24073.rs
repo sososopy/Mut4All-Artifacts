@@ -1,0 +1,1 @@
+trait MyTrait { fn foo (& self) { } } trait OtherTrait { fn bar (& self) { } } impl OtherTrait for String { } impl OtherTrait for Vec < String > { } impl < T : OtherTrait > MyTrait for T { } impl < T : OtherTrait > MyTrait for Vec < T > { } fn main () { let test_var : Vec < String > = Vec :: < String > :: new () ; test_var . foo () ; }

@@ -1,0 +1,145 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Change_GenericConstExprs_TraitBound_367;
+
+impl Mutator for Change_GenericConstExprs_TraitBound_367 {
+    fn name(&self) -> &str {
+        "Change_GenericConstExprs_TraitBound_367"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                if func.sig.ident == "main" {
+                    continue;
+                }
+                if let Some(where_clause) = &mut func.sig.generics.where_clause {
+                    for predicate in &mut where_clause.predicates {
+                        if let WherePredicate::Type(predicate_type) = predicate {
+                            if let Type::Path(type_path) = &*predicate_type.bounded_ty {
+                                if let Some(const_expr) = type_path.path.segments.last() {
+                                    if let PathArguments::AngleBracketed(angle_bracketed) = &const_expr.arguments {
+                                        for arg in &mut angle_bracketed.args {
+                                            if let GenericArgument::Type(type_arg) = arg {
+                                                if let Type::TraitObject(trait_object) = &**type_arg {
+                                                    let mut new_bounds = Punctuated::new();
+                                                    for bound in trait_object.bounds {
+                                                        let new_bound = TypeParamBound::Trait(TraitBound {
+                                                            paren_token: bound.paren_token,
+                                                            modifier: bound.modifier,
+                                                            lifetimes: bound.lifetimes,
+                                                            path: SynPath {
+                                                                leading_colon: bound.path.leading_colon,
+                                                                segments: {
+                                                                    let mut segments = Punctuated::new();
+                                                                    for segment in bound.path.segments {
+                                                                        if segment.ident == "OtherTrait" {
+                                                                            segments.push(PathSegment {
+                                                                                ident: Ident::new("NewTrait", Span::call_site()),
+                                                                                arguments: segment.arguments,
+                                                                            });
+                                                                        } else {
+                                                                            segments.push(segment);
+                                                                        }
+                                                                    }
+                                                                    segments
+                                                                },
+                                                            },
+                                                        });
+                                                        new_bounds.push(new_bound);
+                                                    }
+                                                    *trait_object = TypeTraitObject {
+                                                        dyn_token: trait_object.dyn_token,
+                                                        bounds: new_bounds,
+                                                    };
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if let syn::Item::Impl(impl_item) = item {
+                for impl_item in &mut impl_item.items {
+                    if let syn::ImplItem::Fn(func) = impl_item {
+                        if let Some(where_clause) = &mut func.sig.generics.where_clause {
+                            for predicate in &mut where_clause.predicates {
+                                if let WherePredicate::Type(predicate_type) = predicate {
+                                    if let Type::Path(type_path) = &*predicate_type.bounded_ty {
+                                        if let Some(const_expr) = type_path.path.segments.last() {
+                                            if let PathArguments::AngleBracketed(angle_bracketed) = &const_expr.arguments {
+                                                for arg in &mut angle_bracketed.args {
+                                                    if let GenericArgument::Type(type_arg) = arg {
+                                                        if let Type::TraitObject(trait_object) = &**type_arg {
+                                                            let mut new_bounds = Punctuated::new();
+                                                            for bound in trait_object.bounds {
+                                                                let new_bound = TypeParamBound::Trait(TraitBound {
+                                                                    paren_token: bound.paren_token,
+                                                                    modifier: bound.modifier,
+                                                                    lifetimes: bound.lifetimes,
+                                                                    path: SynPath {
+                                                                        leading_colon: bound.path.leading_colon,
+                                                                        segments: {
+                                                                            let mut segments = Punctuated::new();
+                                                                            for segment in bound.path.segments {
+                                                                                if segment.ident == "OtherTrait" {
+                                                                                    segments.push(PathSegment {
+                                                                                        ident: Ident::new("NewTrait", Span::call_site()),
+                                                                                        arguments: segment.arguments,
+                                                                                    });
+                                                                                } else {
+                                                                                    segments.push(segment);
+                                                                                }
+                                                                            }
+                                                                            segments
+                                                                        },
+                                                                    },
+                                                                });
+                                                                new_bounds.push(new_bound);
+                                                            }
+                                                            *trait_object = TypeTraitObject {
+                                                                dyn_token: trait_object.dyn_token,
+                                                                bounds: new_bounds,
+                                                            };
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator changes the trait bounds in generic const expressions to trigger potential bugs in the Rust compiler. It replaces the existing trait bounds with new ones, potentially leading to type mismatches or inference failures."
+    }
+}

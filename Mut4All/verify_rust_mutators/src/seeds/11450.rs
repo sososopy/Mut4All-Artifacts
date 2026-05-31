@@ -1,0 +1,1 @@
+mod test { # [test] fn it_should_scale_a_vector () { :: Vec2 { x : 1.0 , y : 2.0 } * 2.0 } } pub struct Vec2 { x : f64 , y : f64 } impl Mul < Vec2 , f64 > for Vec2 { fn mul (& self , s : f64) -> Vec2 { Vec2 { x : self . x * s , y : self . y * s } } }

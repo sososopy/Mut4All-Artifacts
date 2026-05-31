@@ -1,0 +1,1 @@
+mod sub_mod { use serde_derive :: serde ; use serde :: Serialize ; # [serde (bound (deserialize = ""))] # [derive (Serialize)] struct Struct { } } fn main () { }

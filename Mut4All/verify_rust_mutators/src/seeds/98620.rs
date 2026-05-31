@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; use std :: hash :: BuildHasherDefault ; pub type BuildMap < T > = BuildHasherDefault < T > ; pub type Map < K , V > = HashMap < K , V , BuildMap < K > > ; fn main () { let length = 3 ; let mut new_operations = Map :: with_capacity_and_hasher (length , BuildMap :: default ()) ; if ! new_operations . is_empty () { return ; } }

@@ -1,0 +1,21 @@
+Mutation Operator: GenericConstArrayParam  
+Target: Struct or enum fields with fixed-size arrays ([T; K]) and methods returning opaque types (e.g., impl Iterator)  
+Action:  
+1. Add a generic const parameter (e.g., `const N: usize`) to the struct/enum  
+2. Replace the array's fixed size (K) with the new const parameter N in the field  
+3. In a method returning opaque type, include logic that evaluates N during type checking (e.g., iterate over the array, use N in a const expression)  
+
+Example Mutation:  
+Original:  
+```rust  
+struct Buffer(Box<[[u8; 16]; 4]>);  
+fn get(&self) -> impl Iterator<Item = &[u8]> { ... }  
+```  
+Mutated:  
+```rust  
+struct Buffer<const N: usize>(Box<[[u8; 16]; N]>);  
+fn get(&self) -> impl Iterator<Item = &[u8]> {  
+    self.0.iter().take(N)  // Forces evaluation of N in iterator context  
+}  
+```  
+This creates evaluation pressure on generic const expressions during borrowck and type checking.

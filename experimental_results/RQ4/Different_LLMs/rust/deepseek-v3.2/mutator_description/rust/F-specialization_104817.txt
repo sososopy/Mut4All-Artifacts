@@ -1,0 +1,34 @@
+mutation operator: Introduce a type alias for an impl Trait that resolves to a closure or generator, then specialize a trait for that type alias.
+
+This mutation applies to programs that use the specialization feature and have at least one trait defined. It introduces a new type alias that uses impl Trait to hide the concrete type of a closure or generator. Then, it creates a specialized implementation of an existing trait for this type alias, while also providing a more general implementation that the specialization overrides.
+
+Steps:
+1. Identify a trait in the seed program, call it TraitX. If no trait exists, mutation does not apply.
+2. Create a new trait, OpaqueTraitY, with no associated items. Implement OpaqueTraitY for all types using a blanket impl: impl<T> OpaqueTraitY for T {}.
+3. Define a type alias OpaqueAlias = impl OpaqueTraitY;.
+4. Create a function that returns OpaqueAlias. Inside the function, return a closure that captures no environment, like || ().
+5. Add a new trait implementation for TraitX that is specialized for OpaqueAlias. This requires using the specialization feature. First, provide a default implementation of TraitX for all types that satisfy some bound, such as Send. Then, provide a specialized implementation for OpaqueAlias without that bound. Ensure the specialization is marked with default.
+6. Ensure the program uses the feature gates for both specialization and type_alias_impl_trait at the crate root.
+
+Example transformation of a seed program:
+Seed program may contain:
+trait TraitX {}
+impl TraitX for i32 {}
+fn main() {}
+
+After mutation:
+#![feature(type_alias_impl_trait)]
+#![feature(specialization)]
+trait TraitX {}
+impl TraitX for i32 {}
+trait OpaqueTraitY {}
+impl<T> OpaqueTraitY for T {}
+type OpaqueAlias = impl OpaqueTraitY;
+fn mk_opaque() -> OpaqueAlias {
+    || ()
+}
+impl<T: Send> TraitX for T {}
+impl TraitX for OpaqueAlias {}
+fn main() {}
+
+Note: The closure in mk_opaque should be simple, with no captures, to avoid introducing new variables. If the seed program already has a closure, it can be reused, but a new closure is introduced here for consistency. The trait OpaqueTraitY is new but trivial. The specialized impl uses the existing trait TraitX. The Send bound in the general impl is an example; another suitable bound from the seed program can be used if available.

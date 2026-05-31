@@ -1,0 +1,1 @@
+pub struct Foo (String) ; impl Iterator for Foo { type Item = String ; # [doc = " yo yo"] fn next (& mut self) -> Option < String > { Some (self . 0) } }

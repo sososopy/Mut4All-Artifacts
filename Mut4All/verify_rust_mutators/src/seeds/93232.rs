@@ -1,0 +1,1 @@
+# [macro_use] extern crate rocket ; extern crate rocket_contrib ; # [get ("/")] fn index () -> & 'static str { "Rust Rocket is running!\n" } async fn main () -> Result < () , Error > { match rocket :: build () . mount ("/" , routes ! [index] ,) . launch () . await { Err (e) => println ! ("{:?}" , e) , _ => () , } Ok (()) }

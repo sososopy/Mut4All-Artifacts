@@ -1,0 +1,1 @@
+impl Table { fn select < P > (& self , vars : Vec < & 'static str > , predicate : P ,) -> core :: iter :: Filter < TableIterator , P > where P : Fn (& TableIterator :: Item) -> bool , { self . iter () . filter (predicate) } }

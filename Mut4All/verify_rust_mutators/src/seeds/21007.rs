@@ -1,0 +1,1 @@
+fn main () { :: std :: fmt :: argument (:: std :: fmt :: String :: fmt , & 1u8) ; }

@@ -1,0 +1,15 @@
+Mutation operator targeting specialization with associated type normalization in trait implementations. This operator applies when a trait has a default impl with an associated type, and there exists a more specific impl for a concrete type that overrides that associated type. The mutation introduces a new trait that is implemented for the associated type from the specialized impl, potentially triggering normalization cycles or intercrate assertion failures.
+
+Find a trait with a default impl that defines an associated type, and a more specific impl for a concrete type that provides a concrete associated type. Then, introduce a new trait (or reuse an existing one if present in the seed) and implement it for the associated type from the specialized impl. The new trait should be defined with a generic parameter if not already present, to increase complexity. If no existing trait is available, declare a new empty trait.
+
+Example seed pseudo-code:
+trait Trait1 { type Out; }
+default impl<T> Trait1 for T { type Out = bool; }
+impl Trait1 for u8 { type Out = u32; }
+
+Mutation steps:
+1. If there exists a trait Trait2 in scope, proceed to step 3. Otherwise, declare a new trait: trait Trait2 {}
+2. Add an impl of Trait2 for the associated type from the specialized impl: impl Trait2 for <u8 as Trait1>::Out {}
+3. If Trait2 is generic, instantiate it with the associated type appropriately.
+
+The mutation should be applied only if the seed already contains at least one default impl with an associated type and a more specific impl overriding it. This creates a scenario where the compiler must normalize the associated type from the specialized impl while building the specialization graph, which can trigger the intercrate assertion bug.

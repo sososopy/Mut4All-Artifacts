@@ -1,0 +1,1 @@
+fn r (v : Vec < f32 >) { v + < [f32] > :: into_vec (Box :: new ([])) ; }

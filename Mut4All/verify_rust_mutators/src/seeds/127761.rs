@@ -1,0 +1,1 @@
+use utoipa :: ToSchema ; # [derive (ToSchema)] struct A { # [schema (schema_with = B :: schema)] b : B , } # [derive (ToSchema)] struct B ;

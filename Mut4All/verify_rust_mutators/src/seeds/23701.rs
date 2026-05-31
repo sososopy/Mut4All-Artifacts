@@ -1,0 +1,1 @@
+macro_rules ! getarg { (x => $ e : expr) => (println ! ("x = {}" , $ e)) ; $ b : block => $ b ; } fn main () { getarg ! (x => 1 + 2) ; getarg ! { } }

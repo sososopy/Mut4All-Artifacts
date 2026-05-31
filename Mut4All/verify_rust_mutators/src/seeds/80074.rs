@@ -1,0 +1,1 @@
+macro_rules ! foo_ { () => { } ; } use foo_ as foo ;

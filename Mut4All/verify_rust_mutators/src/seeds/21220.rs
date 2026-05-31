@@ -1,0 +1,1 @@
+struct JSVal (u8) ; fn main () { let mut jsval = JSVal (0) ; let p : * mut JSVal = & mut jsval ; unsafe { let _v = * p ; } }

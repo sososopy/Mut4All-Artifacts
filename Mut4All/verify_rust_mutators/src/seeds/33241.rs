@@ -1,0 +1,1 @@
+use std :: fmt ; fn any < T > () -> T { unreachable ! () } fn main () { let t : & (u8 , fmt :: Debug) = any () ; println ! ("{:?}" , & t . 1) ; }

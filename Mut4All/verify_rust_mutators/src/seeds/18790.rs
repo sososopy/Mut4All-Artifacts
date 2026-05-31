@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] trait A < 'a > { type Q : Iterator < & 'a int > ; } fn main () { }

@@ -1,0 +1,1 @@
+pub mod p { pub use a :: bar :: * ; } pub mod bar { pub use bool ; }

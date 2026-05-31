@@ -1,0 +1,1 @@
+trait T { const T : usize = return ; }

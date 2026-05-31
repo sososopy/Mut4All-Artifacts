@@ -1,0 +1,1 @@
+use core :: num :: Float ; fn V () -> bool { Float :: is_NaN (0.) ; }

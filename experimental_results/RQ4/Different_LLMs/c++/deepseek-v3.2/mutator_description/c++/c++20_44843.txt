@@ -1,0 +1,19 @@
+Based on the bug report, which involves an internal compiler error (ICE) related to template specialization handling in C++20, particularly with complex nested template instantiations and lambda expressions, the following mutation operator is designed to target such issues.
+
+Mutation Operator: Template Specialization Order Mutation
+
+This mutation operator applies to any template specialization declaration within a seed program. It alters the order of explicit template specializations relative to their primary template or other specializations. Specifically, when a primary template and one or more explicit specializations exist, the operator may reorder the specializations or introduce a forward declaration of a specialization before the primary template is defined. This targets compiler bugs in template instantiation and specialization lookup, especially in C++20 where class template argument deduction (CTAD) and constrained templates add complexity.
+
+The mutation is applied as follows: For any explicit template specialization (full or partial) found in the code, if there is a preceding primary template or another specialization, the mutation may move the specialization to an earlier position in the translation unit, such as before the primary template definition, while ensuring the syntax remains valid. If moving before the primary template, a forward declaration of the primary template must be inserted to avoid undeclared identifier errors. The forward declaration should match the primary template’s signature using placeholder template parameters if necessary.
+
+Example in pseudo-code:
+Original code:
+template<typename T> class MyClass { /* primary definition */ };
+template<> class MyClass<int> { /* specialization for int */ };
+
+Mutated code:
+template<typename T> class MyClass; // Forward declaration inserted
+template<> class MyClass<int> { /* specialization for int moved up */ };
+template<typename T> class MyClass { /* primary definition */ };
+
+If the seed program already contains a forward declaration, the mutation may simply reorder the specialization above the primary definition without adding new declarations. The operator avoids introducing new types, variables, or functions; it only rearranges existing template declarations. This mutation can trigger assertion failures in compiler code that manages template specialization lists, as seen in the bug report where an incorrect InsertPos is suspected during specialization insertion.

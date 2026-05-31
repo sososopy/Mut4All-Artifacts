@@ -1,0 +1,1 @@
+extern "路濫狼á́́" fn foo () { } fn main () { }

@@ -1,0 +1,16 @@
+mutation operator: Replace a default const generic parameter expression with a self-referential expression that depends on another instantiation of the same generic item.
+
+This mutation applies when a struct, enum, or function has a const generic parameter with a default value (e.g., `const N: u8 = some_expr`). The mutation changes the default expression to refer to the same generic item but with a different const argument, typically using a value that is within the expected range (like zero or one) to avoid immediate out-of-bounds errors, but which may cause issues during substitution or evaluation. The mutation should use only existing identifiers and types from the seed program.
+
+Specifically, for a generic item `Item<const N: T = default_expr>`, replace `default_expr` with `Item::<substitute_arg>::some_field as T + Item::<substitute_arg>::another_field as T` or similar, where `some_field` and `another_field` are accessible associated constants or variant discriminants of `Item`. The substitute_arg should be a concrete constant value that is valid for the const parameter type (e.g., 0 for integer types). If the item is an enum, use its variant discriminants; if it is a struct with associated constants, use those.
+
+Example transformation for an enum:
+Original: enum MyEnum<const N: u8 = 1> { A = 1, B }
+Mutated: enum MyEnum<const N: u8 = { MyEnum::<0>::A as u8 + MyEnum::<0>::B as u8 }> { A = 1, B }
+
+Example transformation for a struct with an associated constant:
+Original: struct MyStruct<const N: usize = 5> { field: [i32; N] }
+Assume the seed program defines: impl<const N: usize> MyStruct<N> { const SIZE: usize = N * 2; }
+Mutated: struct MyStruct<const N: usize = { MyStruct::<1>::SIZE + MyStruct::<2>::SIZE }> { field: [i32; N] }
+
+The mutation introduces a self-referential default that may cause compiler confusion during const evaluation or substitution, particularly when the generic item is used without explicit arguments, triggering the default.

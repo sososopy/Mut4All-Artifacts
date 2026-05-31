@@ -1,0 +1,1 @@
+struct MyArray < const COUNT : usize > ([u8 ; COUNT + 1]) ;

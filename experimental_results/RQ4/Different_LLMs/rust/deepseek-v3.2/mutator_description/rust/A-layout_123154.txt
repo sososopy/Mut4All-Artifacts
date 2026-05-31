@@ -1,0 +1,21 @@
+mutation operator: Replace unsized struct field type with a sized placeholder while preserving field visibility.
+
+This mutation operator targets struct definitions where a field has an unsized type like a slice without a statically known size. The operator replaces the unsized type with a sized placeholder derived from the existing program context. Specifically, it applies when a struct field is declared with a slice type [T] where T is any type. The operator changes this to an array type [T; 1] if the element type T is sized, ensuring the struct becomes sized. If T itself is unsized, the operator does not apply. The mutation must preserve the field's visibility specifier (e.g., pub) exactly as in the original. The operator uses the constant 1 for the array size because it is a simple valid size and avoids introducing new constants or dependencies.
+
+For example, given a struct definition:
+struct S {
+    data: [u32]
+}
+The mutation changes it to:
+struct S {
+    data: [u32; 1]
+}
+Another example with a public field:
+pub struct T {
+    pub items: [String]
+}
+Becomes:
+pub struct T {
+    pub items: [String; 1]
+}
+The operator only modifies the field type in the struct definition; it does not alter any associated impl blocks or usage sites, which may lead to type mismatches that stress layout computation. The array size 1 is chosen because it is always valid and does not require additional logic for size inference. If the seed program already contains an array type with a different size, the operator still uses size 1 to maximize simplicity and avoid conflicts with existing constants. This mutation can trigger layout-related assertion failures because it changes the sizedness of the struct, potentially exposing bugs in const evaluation or static initialization where layout assumptions are violated.

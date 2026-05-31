@@ -1,0 +1,14 @@
+Based on the bug report involving the F-non_lifetime_binders feature, Rust compiler bugs are more likely to trigger in code constructs that combine complex generic constraints, particularly involving higher-ranked trait bounds (HRTBs) with non-lifetime parameters, const generics, and incomplete features like generic_const_exprs. These bugs often occur when the compiler's internal data structures (like predicate maps) fail to handle unexpected combinations or missing entries due to incomplete feature implementations or malformed syntax.
+
+Mutation Operator: Introduce Higher-Ranked Trait Bound with Non-Lifetime Parameter in Generic Context
+
+Target: This mutation applies to function or type definitions that already have generic parameters (type, const, or lifetime). It specifically targets where clauses or trait bounds.
+
+Procedure:
+1. Identify a generic definition (e.g., a function, struct, or trait) with existing generic parameters.
+2. In its where clause or trait bounds, introduce a higher-ranked trait bound (HRTB) using the `for<>` syntax, but include a non-lifetime parameter (e.g., a const generic) within the HRTB. This should mimic the pattern `for<const N: usize> T: SomeTrait<[(); N]>` or similar.
+3. Ensure the introduced bound references existing types or constants from the seed program to maintain validity. For example, if the seed has a type `T` and a constant expression `LEN`, mutate to `for<const N: usize = LEN> T: Iterator<Item = [(); N]>`.
+4. If the seed does not have suitable existing elements, introduce a simple trait (like `std::marker::Sized`) and a constant (like `1`) that are universally applicable. Declare them as `where for<const N: usize = 1> T: Sized`.
+5. Avoid introducing undeclared variables or types. Use only existing identifiers or add minimal new ones that are defined in the mutation (e.g., `const ONE: usize = 1;` before the generic definition).
+
+Example: If the seed contains `fn process<T>(value: T) where T: Eq {}`, mutate to `fn process<T>(value: T) where for<const N: usize = 1> T: Eq {}`. This adds an HRTB with a const parameter, which may stress the compiler's predicate handling.

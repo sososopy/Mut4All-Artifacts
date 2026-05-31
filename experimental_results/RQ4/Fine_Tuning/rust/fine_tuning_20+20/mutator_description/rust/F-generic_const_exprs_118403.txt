@@ -1,0 +1,40 @@
+Mutation Operator:
+Target: Impl Trait in Function Return Type
+
+Mutation Rule:
+1. Identify a function that returns an `impl Trait` type, specifically involving nested `impl Trait` constructs.
+2. Modify the return type by introducing an additional layer of nested `impl Trait` with a different trait bound.
+3. In the body of the function, ensure that the nested iterators or closures adhere to the newly added trait bound.
+4. If necessary, introduce a simple auxiliary trait in the scope of the function to use in the mutation. Declare the trait before the function and ensure that any iterators or returned items implement this trait.
+
+Example:
+Original:
+```rust
+pub fn example<'a>(&'a self) -> impl Iterator<Item = impl Iterator<Item = i32> + '_> {
+    (0..2).map(move |_| (0..2).map(move |_| 42))
+}
+```
+
+Mutated:
+1. Declare a new trait within the scope of the function:
+```rust
+trait AdditionalTrait {
+    fn additional_method(&self) -> i32;
+}
+```
+
+2. Modify the function to use nested `impl Trait` with the new trait:
+```rust
+pub fn example<'a>(&'a self) -> impl Iterator<Item = impl Iterator<Item = impl AdditionalTrait + '_> + '_> {
+    (0..2).map(move |_| (0..2).map(move |_| 42).map(|x| Box::new(x) as Box<dyn AdditionalTrait>))
+}
+```
+
+3. Implement the auxiliary trait for the integer type within the function scope:
+```rust
+impl AdditionalTrait for i32 {
+    fn additional_method(&self) -> i32 {
+        *self
+    }
+}
+```

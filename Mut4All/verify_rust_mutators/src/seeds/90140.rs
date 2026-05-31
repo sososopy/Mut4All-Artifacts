@@ -1,0 +1,1 @@
+use std :: iter :: Empty ; struct Foo < I : Iterator > { data : Vec < I :: Item > , } pub fn foo () { let v = Foo :: < Empty < () > > { data : vec ! [] } ; (| | v . data [0]) () ; }

@@ -1,0 +1,1 @@
+fn main () { not (true) ; } fn not (b : bool) -> bool { if b { ! b } else { fail ! ("Break the compiler") ; if ! b { } } }

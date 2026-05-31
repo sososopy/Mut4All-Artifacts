@@ -1,0 +1,1 @@
+mod lib ; use lib :: foo ; fn main () { let _ = foo () ; }

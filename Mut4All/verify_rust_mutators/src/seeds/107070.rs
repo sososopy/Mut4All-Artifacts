@@ -1,0 +1,1 @@
+# [async_trait] pub trait AsCleanJson { pub async fn clean_json < T : DeserializeOwned > (self) -> Result < T >; }

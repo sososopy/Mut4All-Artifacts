@@ -1,0 +1,31 @@
+Mutation Operator: Boxed Trait References in Async Closures
+
+Target Code Construct: This mutation operator targets async closures that take references to boxed trait objects. The mutation specifically applies to the context where these references are used within the async block, especially when dealing with operations like cloning, sending, or transforming the data.
+
+Mutation Description: Replace the direct use of a boxed trait object reference with a dereferenced and re-boxed version within an async closure. This tests the compiler's handling of trait object references, especially in an async context.
+
+Changes to be Made: Identify any instance within an async closure where a boxed trait object reference is used. Introduce an intermediary step where the reference is dereferenced and then re-boxed before further use. Ensure that the new boxed object is properly handled in subsequent operations.
+
+Pseudo-code Example:
+
+Original Seed Program:
+```
+rt.spawn(async move {
+    // original usage of boxed trait object reference
+    let result: Box<dyn Any + Send> = loader.start_loading().await;
+    tx.send((uuid, result)).unwrap();
+});
+```
+
+Mutated Content:
+```
+rt.spawn(async move {
+    // introduce dereference and re-boxing of the boxed trait object reference
+    let dereferenced_loader: &dyn ResourceLoader = &*loader;
+    let reboxed_loader: Box<dyn ResourceLoader> = Box::new(*dereferenced_loader);
+    let result: Box<dyn Any + Send> = reboxed_loader.start_loading().await;
+    tx.send((uuid, result)).unwrap();
+});
+```
+
+This mutation increases coverage by probing the compiler's ability to handle complex trait object manipulations within async closures, potentially exposing issues related to object lifetimes, trait object conversions, and memory management in async contexts.

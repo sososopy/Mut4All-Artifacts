@@ -1,0 +1,109 @@
+use syn::parse_quote;
+use crate::mutator::Mutator;
+use syn::Item;
+use syn::GenericParam;
+use proc_macro2::Ident;
+use proc_macro2::Span;
+use syn::punctuated::Punctuated;
+use syn::TypeParamBound;
+use syn::TraitBound;
+use syn::TraitBoundModifier;
+use syn::WhereClause;
+use syn::WherePredicate;
+use syn::PredicateType;
+
+pub struct Add_Const_Generic_Trait_Constrained_Clone_Impl_92;
+
+impl Mutator for Add_Const_Generic_Trait_Constrained_Clone_Impl_92 {
+    fn name(&self) -> &str {
+        "Add_Const_Generic_Trait_Constrained_Clone_Impl_92"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut new_impls = Vec::new();
+        for (index, item) in file.items.iter_mut().enumerate() {
+            if let Item::Struct(struct_item) = item {
+                let has_type_param = struct_item.generics.params.iter().any(|param| matches!(param, GenericParam::Type(_)));
+                if !has_type_param {
+                    continue;
+                }
+
+                let first_type_param = struct_item.generics.params.iter()
+                    .find(|param| matches!(param, GenericParam::Type(_)))
+                    .and_then(|param| {
+                        if let GenericParam::Type(ty_param) = param {
+                            Some(ty_param.ident.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| Ident::new("T", Span::call_site()));
+
+                if let syn::Fields::Named(named) = &mut struct_item.fields {
+                    named.named.push(parse_quote! {
+                        _phantom: std::marker::PhantomData<#first_type_param>
+                    });
+                } else if let syn::Fields::Unnamed(unnamed) = &mut struct_item.fields {
+                    unnamed.unnamed.push(parse_quote! {
+                        std::marker::PhantomData<#first_type_param>
+                    });
+                } else if let syn::Fields::Unit = &mut struct_item.fields {
+                    struct_item.fields = syn::Fields::Named(syn::FieldsNamed {
+                        brace_token: Default::default(),
+                        named: {
+                            let mut fields = Punctuated::new();
+                            fields.push(parse_quote! {
+                                _phantom: std::marker::PhantomData<#first_type_param>
+                            });
+                            fields
+                        },
+                    });
+                }
+
+                let trait_path = parse_quote!(HasN);
+                let bounded_ty = parse_quote!(#first_type_param);
+                let mut bounds = Punctuated::new();
+                bounds.push(TypeParamBound::Trait(TraitBound {
+                    path: trait_path,
+                    modifier: TraitBoundModifier::None,
+                    lifetimes: None,
+                    paren_token: Default::default(),
+                }));
+
+                let where_pred = syn::WherePredicate::Type(syn::PredicateType {
+                    lifetimes: None,
+                    bounded_ty,
+                    colon_token: Default::default(),
+                    bounds,
+                });
+
+                if struct_item.generics.where_clause.is_none() {
+                    struct_item.generics.where_clause = Some(syn::WhereClause {
+                        where_token: Default::default(),
+                        predicates: Punctuated::new(),
+                    });
+                }
+
+                struct_item.generics.where_clause.as_mut().unwrap().predicates.push(where_pred);
+
+                let struct_name = &struct_item.ident;
+                let impl_item = parse_quote! {
+                    impl<U> Clone for #struct_name<U> where [(); U::N]: Sized {
+                        fn clone(&self) -> Self {
+                            Self { _phantom: self._phantom }
+                        }
+                    }
+                };
+
+                new_impls.push((index + 1, syn::Item::Impl(impl_item)));
+            }
+        }
+
+        new_impls.sort_by(|a, b| b.0.cmp(&a.0));
+        for (idx, item) in new_impls {
+            file.items.insert(idx, item);
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

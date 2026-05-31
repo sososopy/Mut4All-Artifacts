@@ -1,0 +1,1 @@
+fn main () { [] . does_not_exist () () ; }

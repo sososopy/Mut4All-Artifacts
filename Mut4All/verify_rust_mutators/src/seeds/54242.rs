@@ -1,0 +1,1 @@
+use std :: mem :: size_of ; trait Tr { type Arr ; const C : usize = size_of :: < u64 > () ; } impl Tr for str { type Arr = [u8 ; Self :: C] ; }

@@ -1,0 +1,1 @@
+async fn nothing () -> usize { 2 } async fn f () { [1 ; nothing () . await] ; } fn main () { }

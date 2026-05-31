@@ -1,0 +1,1 @@
+impl < 'a > PartialEq for StatusBar < 'a > { fn eq (& self , other : & StatusBar < 'a >) -> bool { let p1 : * const Self = self ; let p2 : * const i32 = & other ; true } }

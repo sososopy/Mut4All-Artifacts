@@ -1,0 +1,27 @@
+Mutation Operator: Modify Closure Argument Handling
+
+Target: This mutation operator applies to functions that make use of closures, particularly those which expect arguments to be passed in as tuples to closures.
+
+Description: Transform the way in which closures accept their arguments. Specifically, if a closure is defined to accept a single tuple as its argument, mutate it to accept multiple arguments instead. This mutation can potentially expose issues related to how closures process argument tuples.
+
+Mutation Steps:
+1. Identify a function that accepts a closure with a tuple argument, such as `Box<dyn FnMut<I, Output = ()>>`.
+2. Modify the signature of the closure so that it takes individual arguments instead of a tuple. Each element of the tuple becomes a separate parameter.
+3. Adjust the calls to this closure inside the function to match the new signature. If the original call was `mock.call_mut(input)`, where `input` is a tuple, it should be changed to `mock.call_mut(arg1, arg2, ...)`, where `arg1, arg2, ...` are the elements of `input`.
+
+Example:
+Original code:
+```rust
+fn process<I: Tuple>(handler: Box<dyn FnMut<I, Output = ()>>, input: I) {
+    handler.call_mut(input)
+}
+```
+
+Mutated code:
+```rust
+fn process<A, B>(handler: Box<dyn FnMut(A, B, Output = ())>, input: (A, B)) {
+    handler.call_mut(input.0, input.1)
+}
+```
+
+Note: Ensure that the mutated closure's input types are distinct and match the types found within the original tuple. If the tuple contains more than two elements, adjust the closure and its calls accordingly. This mutation operator is designed to exploit the compiler's handling of unboxed closures and possibly reveal bugs related to argument passing.

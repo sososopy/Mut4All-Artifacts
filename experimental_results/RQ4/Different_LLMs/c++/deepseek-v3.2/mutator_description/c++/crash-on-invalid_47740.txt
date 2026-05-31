@@ -1,0 +1,28 @@
+mutation operator: Export Nested Type Definition Without Prior Forward Declaration
+
+Target: This mutation applies to C++20 modules code where an exported class or struct is defined. It specifically targets cases where a nested type (class, struct, union, or enum) is being exported.
+
+Procedure: When the seed program contains an exported class/struct definition that includes the definition of a nested type, modify the code to export the nested type's definition without a prior forward declaration within the enclosing class. This mimics an invalid but plausible structure that may expose compiler crashes during module interface parsing and semantic analysis.
+
+Step-by-step:
+1. Identify an exported class or struct definition (e.g., `export struct Outer { ... };`).
+2. Within its definition, locate a nested type definition (e.g., `struct Inner {};`).
+3. Remove the nested type definition from inside the outer class.
+4. Add a forward declaration for the nested type inside the outer class (if not already present).
+5. Place the full definition of the nested type after the outer class, but still within the module interface, and prefix it with `export` and the qualified name (e.g., `export struct Outer::Inner {};`).
+
+Example based on a seed program structure:
+Original seed code in a module interface:
+export module M;
+export struct Container {
+    struct Widget { int value; };
+};
+
+Mutated code:
+export module M;
+export struct Container {
+    struct Widget; // Forward declaration introduced
+};
+export struct Container::Widget { int value; }; // Definition moved and exported
+
+Note: This mutation should only be applied if the nested type is defined inside the exported class in the seed. It introduces a forward declaration if one does not exist. The new elements (the forward declaration and the separate definition) use only names derived from the seed. No new types or variables are introduced beyond restructuring the existing definitions. This tests the compiler's handling of exporting nested types that are defined out-of-line in a module interface, a scenario prone to invalid state crashes.

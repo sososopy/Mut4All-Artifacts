@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] # ! [feature (const_evaluatable_checked)] pub trait Target { const LENGTH : usize ; } pub struct Container < T : Target > where [() ; T :: LENGTH] : Sized , { target : T , } impl < T : Target > Container < T > where [() ; T :: LENGTH] : Sized , { pub fn start (target : T ,) -> Container < T > { Container { target } } }

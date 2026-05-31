@@ -1,0 +1,121 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Replace_Const_Value_Mutator_404;
+
+impl Mutator for Replace_Const_Value_Mutator_404 {
+    fn name(&self) -> &str {
+        "Replace_Const_Value_Mutator_404"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                if func.sig.ident == "main" {
+                    continue;
+                }
+                for arg in &mut func.sig.inputs {
+                    if let FnArg::Typed(pat_type) = arg {
+                        if let Type::Path(TypePath {
+                            qself: None,
+                            path: SynPath {
+                                leading_colon: None,
+                                segments,
+                            },
+                        }) = &*pat_type.ty
+                        {
+                            if let Some(segment) = segments.iter().next() {
+                                if let Some(const_value) = get_const_value(segment) {
+                                    let new_value = get_new_value(const_value);
+                                    pat_type.ty = Box::new(parse_quote! { #new_value });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if let syn::Item::Impl(impl_item) = item {
+                for impl_item in &mut impl_item.items {
+                    if let ImplItem::Fn(func) = impl_item {
+                        for arg in &mut func.sig.inputs {
+                            if let FnArg::Typed(pat_type) = arg {
+                                if let Type::Path(TypePath {
+                                    qself: None,
+                                    path: SynPath {
+                                        leading_colon: None,
+                                        segments,
+                                    },
+                                }) = &*pat_type.ty
+                                {
+                                    if let Some(segment) = segments.iter().next() {
+                                        if let Some(const_value) = get_const_value(segment) {
+                                            let new_value = get_new_value(const_value);
+                                            pat_type.ty = Box::new(parse_quote! { #new_value });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator replaces constant values in generic const expressions with values of different types. This transformation aims to test the compiler's handling of type mismatches and const evaluation under altered conditions."
+    }
+}
+
+fn get_const_value(segment: &syn::PathSegment) -> Option<syn::Expr> {
+    if let Some(const_value) = segment.arguments {
+        if let syn::PathArguments::AngleBracketed(args) = const_value {
+            if let Some(arg) = args.args.iter().next() {
+                if let GenericArgument::Type(ty) = arg {
+                    if let Type::Path(TypePath {
+                        qself: None,
+                        path: SynPath {
+                            leading_colon: None,
+                            segments,
+                        },
+                    }) = &**ty
+                    {
+                        if let Some(segment) = segments.iter().next() {
+                            if let Some(ident) = &segment.ident {
+                                if ident == "u8" || ident == "i32" || ident == "bool" {
+                                    return Some(parse_quote! { 0 });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn get_new_value(const_value: syn::Expr) -> syn::Expr {
+    let mut rng = thread_rng();
+    let choices = vec![parse_quote! { true }, parse_quote! { false }, parse_quote! { 0u8 }, parse_quote! { 0i32 }];
+    choices.choose(&mut rng).unwrap().clone()
+}

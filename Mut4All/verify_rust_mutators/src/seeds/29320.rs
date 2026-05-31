@@ -1,0 +1,1 @@
+fn main () { let mut v = vec ! [] ; let r : & & mut Vec < i32 > = & mut v ; }

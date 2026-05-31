@@ -1,0 +1,22 @@
+mutation operator
+This mutation operator targets inherent associated type (IAT) projections nested within higher-ranked trait bounds (HRTBs) and function pointer types. Specifically, it modifies the lifetimes used in the associated type projection within a for<'a> fn(...) signature. The operator applies when the seed program contains an inherent associated type defined within an impl block that is parameterized by a lifetime, and that associated type is later referenced in a higher-ranked function pointer type. The mutation changes the lifetime used in the projection of the associated type to a different lifetime that is either already in scope or introduces a new lifetime parameter, altering the subtype relationships that the compiler must validate.
+
+For a seed program containing an inherent associated type definition like:
+impl<'a> SomeStruct<fn(&'a ())> {
+    type Assoc = &'a ();
+}
+and a usage within a higher-ranked function pointer like:
+fn some_function(_: for<'b> fn(SomeStruct<fn(SomeStruct<fn(&'static ())>::Assoc)>::Assoc)) {}
+the operator mutates the lifetime in the inner projection. It changes the lifetime in the projection of the associated type to a lifetime that is either 'static, an existing named lifetime from an outer scope, or introduces a new lifetime parameter if necessary. The mutation must ensure that the new lifetime is syntactically valid and does not create undeclared identifiers. If introducing a new lifetime, it must be declared in the appropriate scope, such as adding a new lifetime parameter to the enclosing function or impl.
+
+For example, given the seed code:
+struct Foo<T>(T);
+impl<'a> Foo<fn(&'a ())> {
+    type Assoc = &'a ();
+}
+fn bar(_: for<'a> fn(Foo<fn(Foo<fn(&'static ())>::Assoc)>::Assoc)) {}
+The operator could mutate the inner projection Foo<fn(&'static ())>::Assoc to use a different lifetime. Since &'static () is a specific static lifetime, the operator might change it to a named lifetime that is already in scope, such as 'a from the outer for<'a> binder, resulting in:
+fn bar(_: for<'a> fn(Foo<fn(Foo<fn(&'a ())>::Assoc)>::Assoc)) {}
+This changes the subtype relationship because the associated type projection now depends on the higher-ranked lifetime 'a instead of 'static. The compiler must recompute the inherent associated type substitutions, potentially triggering inconsistencies like those seen in the bug report where a type was a subtype during selection but later is not.
+
+The operator should only apply if the seed program already uses inherent associated types with lifetimes in similar nested contexts. It avoids introducing undefined names by reusing existing lifetime parameters or adding new ones with proper declarations, such as extending the lifetime list of the containing item. The goal is to create complex lifetime dependencies that stress the compiler's trait selection and subtype checking logic, particularly around inherent associated types and higher-ranked bounds.

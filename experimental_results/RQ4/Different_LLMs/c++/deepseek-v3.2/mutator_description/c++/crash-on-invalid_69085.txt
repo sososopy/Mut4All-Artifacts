@@ -1,0 +1,17 @@
+Based on the bug report, C++ compiler bugs are more likely to be triggered when there is an interplay between erroneous declarations (like arrays with negative sizes) and subsequent constructs that reference those malformed entities, especially within pragma directives like OpenMP. The compiler attempts to process the invalid declarations and later, when parsing clauses that refer to these entities, internal assertions fail due to unexpected null or invalid types.
+
+Mutation operator: Replace array size expression with a negative integer literal in global or local array declarations, and then insert an OpenMP pragma that references the mutated array with an invalid subscript or range expression.
+
+This mutation operator applies to any seed program that contains at least one array declaration (global or local) and is compilable with OpenMP support (i.e., includes OpenMP directives or can have them added). The operator modifies an existing array declaration by changing its size to a negative integer literal (e.g., -1, -5). It then adds or modifies an OpenMP pragma (like task, parallel, for) to include a depend clause or array subscript that references the mutated array, using a non-integral subscript or malformed range (e.g., using a floating-point index or an incorrect colon syntax). The added pragma should be placed in a function body if possible, using existing function definitions from the seed. If no function exists, a simple function definition can be introduced.
+
+Changes to be made:
+1. Select an existing array declaration in the seed program. Change its size expression to a negative integer literal (e.g., change `int arr[10];` to `int arr[-5];`).
+2. Ensure there is at least one function in the seed program. If not, declare a simple function (e.g., `void test() {}`).
+3. Inside a function body (preferring an existing one), insert an OpenMP pragma that references the mutated array. For example, add `#pragma omp task depend(inout: arr[0.5:])` or similar, where the subscript or range is intentionally malformed (using a floating-point number or incomplete range). Use the exact name of the mutated array.
+4. The pragma should be an OpenMP directive that accepts array references, such as task, parallel for, or simd.
+
+Example illustration:
+Seed code snippet: `int myArray[100]; void func() { /* some code */ }`
+Mutated code: `int myArray[-10]; void func() { #pragma omp task depend(inout: myArray[1.2:]) }`
+
+This mutation creates a scenario where the compiler first sees an invalid array declaration (negative size) and later, during OpenMP clause parsing, attempts to retrieve the type of the array element for the depend clause, leading to potential assertion failures due to the earlier error.

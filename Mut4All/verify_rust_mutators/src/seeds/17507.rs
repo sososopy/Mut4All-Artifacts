@@ -1,0 +1,1 @@
+# [doc = " Crate x"] # [plugin_registrar] pub fn plugin_registrar (reg : & mut Registry) { panic ! () } # [doc = " Another crate"] # [phase (plugin)] extern crate x ;

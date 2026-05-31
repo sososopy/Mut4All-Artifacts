@@ -1,0 +1,42 @@
+Mutation Operator: Recursive Template Instantiation
+
+Target Code Construct:
+This mutation operator targets template classes or functions, specifically those that have the potential for recursive instantiation. It applies to portions of the code where templates are defined and potentially instantiated with nested or recursive template arguments.
+
+Mutation Rule:
+1. Identify a template definition in the code. This can be a template class or a template function.
+2. Ensure the template can accept another template as its type parameter. If the existing template does not allow this, modify it to accept a template type parameter.
+3. Create a scenario where the template is instantiated with itself or with another template that subsequently instantiates the first template, creating a recursive instantiation chain. This may involve adding or modifying the template parameters to simulate recursion.
+4. Ensure that the recursive chain has enough depth to potentially trigger a compiler bug, but do not exceed a reasonable depth that would result in obvious stack overflow without revealing a deeper bug.
+
+Example:
+Consider a template class `Container`:
+
+Original:
+```cpp
+template<typename T>
+class Container {
+    T value;
+public:
+    void set(const T& val) { value = val; }
+    T get() const { return value; }
+};
+```
+
+Mutated:
+```cpp
+template<int N, typename T>
+class Container {
+    T value;
+public:
+    void set(const T& val) { value = val; }
+    T get() const { return value; }
+    using NestedContainer = Container<N-1, Container<N-1, T>>;
+};
+
+// Instantiation somewhere in the code:
+Container<5, int> c;
+auto nested = Container<5, Container<4, int>>();
+```
+
+In this example, the mutation involves changing the `Container` class to accept an integer template parameter `N` and then using it to define a nested type that attempts recursive instantiation. This is designed to stress-test the compiler's ability to handle recursive templates and potentially expose bugs in the template instantiation process.

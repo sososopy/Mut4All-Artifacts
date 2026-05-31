@@ -1,0 +1,1 @@
+# ! [feature (let_chains)] use std :: error :: Error ; fn main () { let obj = Some (1) ; if let Some (i) = obj && i > 5 { } }

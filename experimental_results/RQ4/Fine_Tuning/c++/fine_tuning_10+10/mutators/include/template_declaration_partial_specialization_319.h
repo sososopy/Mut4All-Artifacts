@@ -1,0 +1,29 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Template_Declaration_Partial_Specialization_319
+ */ 
+class MutatorFrontendAction_319 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(319)
+
+private:
+    class MutatorASTConsumer_319 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_319(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+    };
+};
+

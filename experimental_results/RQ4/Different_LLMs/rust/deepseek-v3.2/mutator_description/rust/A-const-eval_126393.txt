@@ -1,0 +1,14 @@
+mutation operator: Insert a static item with an unsafe block containing a transmute of a temporary reference to an integer literal, targeting an extern type wrapper.
+
+This operator targets static item declarations, specifically those that could involve extern types or FFI. It applies to crates that already have at least one extern type declared via `extern "C" { type SomeExternType; }`. The mutation inserts a new static item after any existing static items, or if none exist, after the extern type declaration. The static's type is a reference to a wrapper struct that contains the extern type (the wrapper must be defined; if not, the operator first adds a simple wrapper struct). The initializer is an unsafe block using `std::mem::transmute` to convert a reference to a temporary integer literal.
+
+Steps: 1. Locate an extern type declaration within an `extern "C"` block. If none exist, this operator does not apply. 2. Check if a wrapper struct (e.g., `struct Wrapper(ExternType);`) exists for that extern type. If not, insert `pub struct Wrapper(ExternType);` before the static insertion point. 3. Insert a new static item: `pub static MUTATED_STATIC: &'static Wrapper = unsafe { std::mem::transmute(&{ let x = 0; x }) };`. Use a fresh name for the static (e.g., `MUTATED_STATIC`). The integer literal can be any integer, e.g., `0`. The block `{ let x = 0; x }` creates a temporary.
+
+Example seed code with extern type:
+extern "C" { type Ext; }
+After mutation:
+extern "C" { type Ext; }
+pub struct Wrapper(Ext);
+pub static MUTATED_STATIC: &'static Wrapper = unsafe { std::mem::transmute(&{ let x = 0; x }) };
+
+The mutation introduces a static that attempts to create a reference to a wrapper for an extern type via transmutation of a temporary integer reference, mimicking the bug-triggering pattern. This can expose issues in const-eval when validating static initializers involving extern types and transmute.

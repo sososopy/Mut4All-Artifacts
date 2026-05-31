@@ -1,0 +1,35 @@
+Mutation Operator:
+
+Target: Macros and Thread-Local Statics
+
+Description: This mutation operator targets code that uses thread-local storage within macros. The aim is to transform how thread-local variables are initialized and accessed, as changes in this pattern are likely to expose edge cases in the compiler's handling of type checks and macro expansion.
+
+Mutation Rule:
+1. Locate a macro in the seed program that uses thread-local storage similar to `thread_local! { ... }`.
+2. Identify the initialization of a thread-local static variable within this macro.
+3. Introduce an additional complex initialization block within the macro that uses the existing or newly declared variable, ensuring it involves a conditional logic statement. This tests the compiler's handling of conditional expressions in thread-local contexts.
+
+Example Mutation:
+Original:
+```rust
+thread_local! {
+    static FOO: Type = Type::new();
+}
+```
+
+Mutated:
+```rust
+thread_local! {
+    static FOO: Type = {
+        let x = Type::new();
+        if condition() { // Use an existing function or replace with `true` for simplicity
+            x.modify();
+        }
+        x
+    };
+}
+```
+
+Explanation:
+- The operator modifies the initialization of a thread-local variable `FOO` by wrapping the initializer in a conditional block. This block makes use of an existing function `condition()` to decide the initialization path.
+- The mutation primarily tests the compiler's ability to generate correct code for thread-local variables with complex initialization scenarios, especially within macros.

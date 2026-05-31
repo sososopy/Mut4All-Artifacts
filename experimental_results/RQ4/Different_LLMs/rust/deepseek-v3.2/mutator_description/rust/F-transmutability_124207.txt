@@ -1,0 +1,26 @@
+mutation operator: Introduce Impl Trait Type Alias with Coherence Check Involving Layout Computation
+
+Target: This mutation operator applies to Rust programs that use type alias impl trait (TAIT) and involve trait coherence checking. Specifically, it targets the scenario where a TAIT is used as a type argument in a context that may require layout computation during coherence checking, particularly with traits related to transmutability.
+
+Description: The mutation modifies a seed program by introducing a type alias for an impl Trait and then using this alias in a trait implementation that may trigger layout analysis. The goal is to create a scenario where the compiler, while checking trait coherence, attempts to compute the layout of an unresolved opaque type, potentially leading to an internal compiler error.
+
+Changes:
+1.  Identify an existing trait definition in the seed program. If none exists, introduce a new trait with a simple definition, for example: `trait MarkerTrait {}`.
+2.  Introduce a type alias for an impl Trait. This alias must be defined in a module scope. For example: `type OpaqueAlias = impl ExistingTrait;` where `ExistingTrait` is a trait that already exists in the program. If no suitable trait exists, introduce a minimal trait solely for this purpose (e.g., `trait OpaqueBase {}`).
+3.  Introduce a second trait. This trait should have a blanket implementation that involves a type parameter constrained by `std::mem::BikeshedIntrinsicFrom`. For example: `trait SecondaryTrait {}` followed by `impl<T: std::mem::BikeshedIntrinsicFrom<(), ()>> SecondaryTrait for T {}`.
+4.  Add an explicit implementation of this second trait for the introduced opaque type alias. For example: `impl SecondaryTrait for OpaqueAlias {}`.
+5.  Ensure the necessary feature gates (`#![feature(transmutability)]` and `#![feature(type_alias_impl_trait)]`) are present at the crate root.
+
+Example (Pseudo-code illustrating the mutation steps on a hypothetical seed):
+Original seed may have a trait `Tr`.
+After mutation:
+#![feature(transmutability)]
+#![feature(type_alias_impl_trait)]
+trait Tr {} // May be pre-existing or introduced.
+type Alias = impl Tr; // Introduced TAIT.
+trait CoherenceTrait {} // Introduced new trait.
+impl<T: std::mem::BikeshedIntrinsicFrom<(), ()>> CoherenceTrait for T {} // Introduced blanket impl.
+impl CoherenceTrait for Alias {} // Introduced conflicting/overlapping impl scenario.
+// The rest of the original seed program remains.
+
+Rationale: The bug report shows an ICE during layout computation of an unexpected type (`'_'`) within coherence checking for a trait involving `BikeshedIntrinsicFrom`. This mutation replicates the core pattern: a TAIT (`OpaqueType`) is used in an `impl` for a trait (`AnotherTrait`) that has a blanket implementation conditional on `BikeshedIntrinsicFrom`. During coherence resolution, the compiler attempts to evaluate if `OpaqueType` satisfies `BikeshedIntrinsicFrom`, which likely requires computing its layout, but the opaque type's concrete type is not yet known, leading to the ICE. The mutation operator systematically constructs this pattern using elements from or added to the seed program.

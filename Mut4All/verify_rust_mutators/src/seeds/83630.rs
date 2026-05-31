@@ -1,0 +1,1 @@
+static DATA : Iterator < Item = _ > = "my string" ;

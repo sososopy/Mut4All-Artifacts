@@ -1,0 +1,1 @@
+fn main () { let v = vec ! [(0 , 1) , (0 , 2)] ; let m = v . iter () . fold ("" , | acc , (id , msg) | acc + format ! ("({:02X}, {:02X}), " , id , msg)) ; }

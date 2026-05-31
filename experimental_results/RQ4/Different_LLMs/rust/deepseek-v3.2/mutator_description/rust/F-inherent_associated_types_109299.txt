@@ -1,0 +1,18 @@
+mutation operator: Inherent Associated Type Lifetime Mismatch
+
+This operator targets inherent associated type definitions within trait method signatures. It applies when a trait method's return type uses an associated type from a struct, and the struct defines that associated type with explicit lifetime parameters. The mutation modifies the lifetime parameter used in the method signature to create a mismatch with the associated type definition.
+
+Specifically, if a trait method signature references an inherent associated type from a struct, and that associated type is defined with a lifetime parameter (e.g., type Cursor<'a>), the operator changes the lifetime specifier in the method's return type to a different lifetime identifier that is not declared in the method's context. For example, if the method uses Lexer::Cursor<'_>, it may be mutated to Lexer::Cursor<'invalid> where 'invalid is not a declared lifetime.
+
+Steps:
+1. Identify a trait method signature where the return type is an inherent associated type from a struct (e.g., Struct::AssocType<'lifetime>).
+2. Check if the associated type definition in the struct has a lifetime parameter (e.g., type AssocType<'a>).
+3. In the trait method signature, replace the lifetime specifier in the associated type reference with a new lifetime identifier that is not present in the method's scope. This new identifier should be a fresh lifetime name not used elsewhere in the function or trait.
+4. Ensure the mutation does not introduce undeclared variables or types by only changing the lifetime identifier within the angle brackets; the associated type path remains unchanged.
+
+Example based on the bug report:
+Original: fn cursor(&self) -> Lexer::Cursor<'_>;
+Mutated: fn cursor(&self) -> Lexer::Cursor<'x>;
+Where 'x is not declared in the trait or method.
+
+This mutation is likely to trigger region constraint errors because the compiler must relate the lifetime 'x (which is unbound in the method context) to the bound lifetime parameter in the inherent associated type definition, potentially leading to internal compiler errors similar to the reported bug.

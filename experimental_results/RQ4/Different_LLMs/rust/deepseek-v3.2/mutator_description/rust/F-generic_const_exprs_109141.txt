@@ -1,0 +1,33 @@
+Mutation Operator: Introduce an unresolved constant in a const generic expression within a struct definition that is later used in a method returning an opaque impl Trait.
+
+Based on the bug report, Rust compiler bugs involving the `generic_const_exprs` feature are more likely to be triggered in code structures that combine constant generic expressions with other complex language features, particularly those involving type inference, trait implementations, and borrow checking. Specifically, the bug arises when there are unresolved names (like `HashesEntryLEN` in the report) used within constant generic expressions inside struct definitions, combined with methods that return opaque `impl Trait` types involving borrows of those struct fields. The panic occurs during borrow checking when the compiler expects errors to have been reported but they haven't been, indicating a mismatch between error detection and later compilation phases.
+
+
+This mutation operator applies to Rust code that uses the `#![feature(generic_const_exprs)]` attribute and contains struct definitions with const generic parameters. It targets structs that have fields whose types depend on constant generic expressions. The operator modifies such a struct by replacing a constant expression in its field type with an unresolved identifier (a name that is not declared in scope). This unresolved constant should be used in an array size within the struct's field type. The struct must also have an associated method that returns an `impl Trait` type involving a borrow of the mutated field.
+
+Steps for mutation:
+1. Identify a struct definition within the seed program that uses a constant expression in its field types, for example, an array size like `[T; N]` where `N` is a constant.
+2. Replace that constant `N` with an identifier that is not declared anywhere in the program. Choose a new identifier name that does not conflict with existing names; for instance, if the original is `[u8; 5]`, change it to `[u8; UNRESOLVED_CONST]` where `UNRESOLVED_CONST` is not defined.
+3. Ensure that the struct has an `impl` block with a method that returns an `impl Trait` (like `impl Iterator`) and that method uses the mutated field via a borrow (e.g., `&self` or `&mut self`).
+4. If no such method exists, add one: within the struct's `impl` block, create a method `fn method_name(&self) -> impl Trait { self.field.iter() }` where `field` is the mutated field and `Trait` is an appropriate trait (like `Iterator`). Use existing traits from the seed program if possible; if not, use `Iterator` and ensure the field is an iterable type like an array or slice.
+5. The mutation must keep all other code unchanged, including the `#![feature(generic_const_exprs)]` attribute if present, or add it if not already present.
+
+Example mutation pseudo-code:
+Original seed code snippet:
+struct MyStruct([u8; 5]);
+impl MyStruct {
+    fn get_iter(&self) -> impl Iterator<Item = &u8> {
+        self.0.iter()
+    }
+}
+
+Mutated code:
+#![feature(generic_const_exprs)]
+struct MyStruct([u8; UNDECLARED_SIZE]);
+impl MyStruct {
+    fn get_iter(&self) -> impl Iterator<Item = &u8> {
+        self.0.iter()
+    }
+}
+
+In this example, the constant `5` is replaced with `UNDECLARED_SIZE`, which is not defined. The method `get_iter` returns an `impl Iterator` borrowing the field. This mimics the conditions that triggered the bug: an unresolved constant in a const generic context combined with an opaque return type and borrow checking.

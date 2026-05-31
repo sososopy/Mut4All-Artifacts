@@ -1,0 +1,83 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_Generator_Type_Alias_11;
+
+impl Mutator for Modify_Generator_Type_Alias_11 {
+    fn name(&self) -> &str {
+        "Modify_Generator_Type_Alias_11"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Trait(item_trait) = item {
+                for item in &mut item_trait.items {
+                    if let syn::TraitItem::Type(type_item) = item {
+                        if let Some(bounds) = &mut type_item.bounds.first_mut() {
+                            if let syn::TypeParamBound::Trait(trait_bound) = bounds {
+                                if trait_bound.path.is_ident("Generator") {
+                                    trait_bound.path.segments = {
+                                        let mut segments = Punctuated::new();
+                                        segments.push(syn::PathSegment {
+                                            ident: Ident::new("Generator", Span::call_site()),
+                                            arguments: syn::PathArguments::AngleBracketed(
+                                                syn::AngleBracketedGenericArguments {
+                                                    colon2_token: None,
+                                                    lt_token: token::Lt::default(),
+                                                    args: {
+                                                        let mut args = Punctuated::new();
+                                                        args.push(GenericArgument::Type(
+                                                            parse_quote!(i32),
+                                                        ));
+                                                        args.push(GenericArgument::Binding(
+                                                            syn::Binding {
+                                                                ident: Ident::new("Return", Span::call_site()),
+                                                                eq_token: token::Eq::default(),
+                                                                ty: parse_quote!(bool),
+                                                            },
+                                                        ));
+                                                        args.push(GenericArgument::Binding(
+                                                            syn::Binding {
+                                                                ident: Ident::new("Yield", Span::call_site()),
+                                                                eq_token: token::Eq::default(),
+                                                                ty: parse_quote!(String),
+                                                            },
+                                                        ));
+                                                        args
+                                                    },
+                                                    gt_token: token::Gt::default(),
+                                                },
+                                            ),
+                                        });
+                                        segments
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator targets type aliases associated with the `Generator` trait within traits. It modifies the associated types `Return`, `Yield`, and input parameter types to stress-test the compiler's handling of generator configurations and trait aliasing, potentially uncovering bugs in type resolution and trait handling."
+    }
+}

@@ -1,0 +1,1 @@
+trait U { } enum T { Data (U) } fn f (t : & T) { } fn main () { }

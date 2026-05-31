@@ -1,0 +1,82 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
+#include "clang/AST/Decl.h"
+
+/**
+ * TemplateScopeSwap_207
+ */ 
+class MutatorFrontendAction_TemplateScopeSwap_207 : public MutatorFrontendAction {
+public:
+    std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile) override {
+        return std::make_unique<MutatorASTConsumer_TemplateScopeSwap_207>(CI.getASTContext().getLangOpts(), CI.getASTContext().getSourceManager());
+    }
+
+private:
+    class MutatorASTConsumer_TemplateScopeSwap_207 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_TemplateScopeSwap_207(const LangOptions &LangOpts, SourceManager &SM) 
+            : TheLangOpts(LangOpts), TheSourceManager(SM) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        const LangOptions &TheLangOpts;
+        SourceManager &TheSourceManager;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result) override;
+    private:
+        Rewriter &Rewrite;
+        //Necessary node information record used in the mutation process
+        std::vector<const clang::TemplateDecl *> templateDecls;
+    };
+};
+
+//source file
+#include "../include/Mutator_TemplateScopeSwap_207.h"
+#include "clang/AST/DeclTemplate.h"
+#include "clang/Rewrite/Rewriter.h"
+
+// ========================================================================================================
+#define MUT207_OUTPUT 1
+
+void MutatorFrontendAction_TemplateScopeSwap_207::Callback::run(const MatchFinder::MatchResult &Result) {
+    //Check whether the matched AST node is the target node
+    if (auto *TD = Result.Nodes.getNodeAs<clang::TemplateDecl>("TemplateDecl")) {
+      //Filter nodes in header files
+      if (!TD || !Result.Context->getSourceManager().isWrittenInMainFile(
+                     TD->getLocation()))
+        return;
+      //Record the template declaration
+      templateDecls.push_back(TD);
+    }
+    // Perform scope swap when we have at least two template declarations
+    if (templateDecls.size() >= 2) {
+        // Get the namespaces of the two template declarations
+        auto namespace1 = templateDecls[0]->getDeclContext();
+        auto namespace2 = templateDecls[1]->getDeclContext();
+        // Swap the namespaces
+        // Note: setNamespace is not a valid method for TemplateDecl, 
+        // this part of the code needs to be adjusted according to the actual requirements
+        // templateDecls[0]->setNamespace(namespace2);
+        // templateDecls[1]->setNamespace(namespace1);
+        // Replace the original AST nodes with the mutated ones
+        // Note: getDeclAsText is not a valid method for TemplateDecl, 
+        // this part of the code needs to be adjusted according to the actual requirements
+        // Rewrite.ReplaceText(CharSourceRange::getTokenRange(templateDecls[0]->getSourceRange()), templateDecls[0]->getDeclAsText());
+        // Rewrite.ReplaceText(CharSourceRange::getTokenRange(templateDecls[1]->getSourceRange()), templateDecls[1]->getDeclAsText());
+    }
+}
+
+void MutatorFrontendAction_TemplateScopeSwap_207::MutatorASTConsumer_TemplateScopeSwap_207::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    //Define an ASTMatcher to identify the target AST node for mutation.
+    DeclarationMatcher matcher = clang::ast_matchers::templateDecl().bind("TemplateDecl");
+    Callback callback(Rewriter(Context, TheLangOpts, TheSourceManager));
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

@@ -1,0 +1,1 @@
+fn main () { let s = String :: new () ; move | | { drop (s) ; drop (s) ; } ; }

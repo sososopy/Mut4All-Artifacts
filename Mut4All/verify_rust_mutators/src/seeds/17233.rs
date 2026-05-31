@@ -1,0 +1,1 @@
+# ! [allow (dead_code)] const X : & 'static [u8] = b"1" ; static Y : u8 = X [0] ; fn main () { }

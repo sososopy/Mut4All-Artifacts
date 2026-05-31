@@ -1,0 +1,21 @@
+mutation operator: Replace a default member initializer that invokes a function with a recursive self-initialization by moving the initialization into the constructor body, preserving the same expression.
+
+This mutation applies to a non-static data member declaration within a class or struct that uses a default member initializer where the initializer expression contains a function call (or constructor call) that takes an instance of the same class type as an argument, potentially leading to recursive initialization.
+
+The operator works as follows: For a class type C, if a member `m` is declared with a default member initializer like `Type m = f(C());` (where `f` is any function, including constructors), the mutation removes the default member initializer from the declaration and inserts an equivalent assignment statement `m = f(C());` at the beginning of the body of every constructor of C that does not already initialize `m` via a member initializer list. If a constructor already initializes `m` in its member initializer list, that constructor is left unchanged.
+
+Example seed code:
+struct S {
+    int value = g(S());
+    S() {}
+    S(int x) : value(x) {}
+};
+
+After mutation:
+struct S {
+    int value;
+    S() { value = g(S()); }
+    S(int x) : value(x) {}
+};
+
+Note: The function `g` and type `S` must exist in the seed program. The mutation only alters the initialization mechanism, not the expression itself, to trigger potential compiler recursion evaluation differences.

@@ -1,0 +1,1 @@
+# ! [feature (generic_arg_infer)] pub fn foo () { let s : [u8 ; 10] ; s = [0 ; _] ; dbg ! (s) ; }

@@ -1,0 +1,1 @@
+pub trait Service < R > { type Out ; fn call (& self , req : R) -> Self :: Out ; } pub struct MyService < S > (S) ; impl < S > Service < () > for MyService < S > where S : 'static + for < 'b > Service < & 'b () > , for < 'b > < S as Service < & 'b () > > :: Out : 'b , { type Out = () ; fn call (& self , _req : ()) -> Self :: Out { todo ! () } }

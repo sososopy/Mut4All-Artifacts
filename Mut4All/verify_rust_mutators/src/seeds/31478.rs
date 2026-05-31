@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] trait Foo { const BAR : f64 ; } struct MyStruct ; fn get_bar_good () -> f64 { < MyStruct as Foo > :: BAR } fn main () { get_bar_good () ; }

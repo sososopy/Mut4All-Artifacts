@@ -1,0 +1,1 @@
+# ! [feature (allocator_api)] fn main () { use bumpalo :: Bump ; let b = Bump :: new () ; let x = Box :: new_in (1usize , & b) ; }

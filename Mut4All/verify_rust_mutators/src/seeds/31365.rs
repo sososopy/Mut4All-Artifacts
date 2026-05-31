@@ -1,0 +1,1 @@
+# ! [warn (variant_size_differences)] enum Stuff { Foo (u32) , Bar ([u32 ; 100]) , } fn main () { }

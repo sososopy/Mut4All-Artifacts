@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] pub enum A { B , C , } const fn foo (a : A) { match a { A :: B => () , A :: C => () , } } fn main () { }

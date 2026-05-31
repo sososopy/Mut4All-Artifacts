@@ -1,0 +1,1 @@
+# ! [feature (const_generics , const_evaluatable_checked)] # ! [allow (incomplete_features)] fn c < T , const N : core :: num :: NonZeroUsize > () where [T ; N . get ()] : Sized { use core :: convert :: TryFrom ; < [T ; N . get ()] > :: try_from (()) }

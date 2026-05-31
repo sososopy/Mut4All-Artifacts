@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] use std :: ops :: Deref ; trait SomeTrait { type Assoc < T > : Deref < Target = T > ; } fn main () { }

@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] # [derive (Debug)] struct X < const N : usize > { a : [u32 ; N] , }

@@ -1,0 +1,1 @@
+mod stdlib { pub (crate) use std :: i8 ; } fn main () { }

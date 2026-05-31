@@ -1,0 +1,1 @@
+pub trait Trait { type AssocType ; } impl < T > Trait for T { type AssocType = Self ; } pub struct S ;

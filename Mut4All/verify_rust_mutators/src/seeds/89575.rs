@@ -1,0 +1,1 @@
+fn assert_is_send (_ : impl Send) { } struct NonSendThing (* const ()) ; async fn do_task () { } fn main () { let x = async { let x = NonSendThing (std :: ptr :: null ()) ; drop (x) ; do_task () . await ; } ; assert_is_send (x) ; }

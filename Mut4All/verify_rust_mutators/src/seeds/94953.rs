@@ -1,0 +1,1 @@
+# ! [feature (lint_reasons)] # ! [warn (unused)] # [expect (while_true)] fn check_multiple_lints_3 () { while true { } } fn main () { check_multiple_lints_3 () ; }

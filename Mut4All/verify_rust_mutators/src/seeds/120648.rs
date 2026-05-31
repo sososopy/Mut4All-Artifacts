@@ -1,0 +1,1 @@
+# ! [no_std] # [allow (async_fn_in_trait)] pub trait BleRadio < 'a > { fn set_buffer (& mut self , buffer : & 'a [u8]) ; async fn transmit (& mut self) ; }

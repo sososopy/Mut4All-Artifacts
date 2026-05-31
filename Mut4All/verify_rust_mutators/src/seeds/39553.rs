@@ -1,0 +1,1 @@
+pub fn iter < 'b > (& 'b self) -> impl Iterator < Item = (& 'b FragmentKey , & 'b Box < Fragment >) > { self . map . iter () }

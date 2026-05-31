@@ -1,0 +1,18 @@
+mutation operator
+
+Target a specific code construct: This mutation operator targets the interaction between const generic array lengths and unsized types within trivial bounds. The bug occurs when an unsized type appears in a const expression within an array length, combined with a trivial bound that incorrectly assumes the unsized type is Sized. The mutation introduces unsized types into array length const blocks where trivial bounds are present.
+
+Where it applies: This applies to any function with a where clause containing a trivial bound (using the `#![feature(trivial_bounds)]` attribute) that incorrectly asserts an unsized type is Sized. The mutation modifies array length expressions that are const blocks to include a local variable of the unsized type, potentially triggering layout computation errors.
+
+Changes to make: Locate any array type with a length expression that is a block (i.e., `[T; { ... }]`). Inside that block, insert a statement that declares a local variable of the unsized type involved in the trivial bound, using an expression that requires the type to be Sized (like `None::<UnSizedType>`). If the unsized type is not already present in the scope, it must be brought into scope via the trivial bound in the where clause. The mutation should add a trivial bound for a known unsized type (like `str` or `dyn Trait`) if none exists, but only if the feature gate is already enabled.
+
+Example in pseudo-code: Given a seed program with a trivial bound `where UnsizedType: Sized`, and an array like `[(); { 0 }]`, mutate it to `[(); { let _x: Option<UnsizedType> = None; 0 }]`. If the seed lacks a trivial bound but has the feature gate, add both a trivial bound and the inner declaration.
+
+Detailed steps:
+1. Identify if the `trivial_bounds` feature is enabled (look for `#![feature(trivial_bounds)]`).
+2. Find all array types with a constant length expression that is a block.
+3. For each such array, examine the function's where clauses for a trivial bound of the form `UnsizedType: Sized`. If none exists, choose a common unsized type like `str` or `dyn Trait` (if in scope) and add the bound `UnsizedType: Sized` to the where clause.
+4. Inside the constant block of the array length, insert a statement at the beginning: `let _dummy: Option<UnsizedType> = None;`.
+5. Ensure the unsized type is valid in the context (e.g., `str` is always in scope, `dyn Trait` requires a trait in scope).
+
+Note: The mutation should avoid creating invalid code outside the bug scenario; it assumes the feature gate is active. The inserted variable is deliberately unused to minimize side effects.

@@ -1,0 +1,1 @@
+extern crate winit ; fn main () { let events_loop = winit :: EventsLoop :: new () ; events_loop . poll_events (| event | { if let winit :: Event :: WindowEvent { event , .. } = event { match event { winit :: WindowEvent :: KeyboardInput { state : winit :: ElementState :: Pressed , .. } => () , } } }) ; }

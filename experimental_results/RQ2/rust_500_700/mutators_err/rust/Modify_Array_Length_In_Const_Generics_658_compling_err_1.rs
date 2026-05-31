@@ -1,0 +1,53 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_Array_Length_In_Const_Generics_658;
+
+impl Mutator for Modify_Array_Length_In_Const_Generics_658 {
+    fn name(&self) -> &str {
+        "Modify_Array_Length_In_Const_Generics_658"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let Item::Impl(item_impl) = item {
+                for impl_item in &mut item_impl.items {
+                    if let syn::ImplItem::Fn(method) = impl_item {
+                        for stmt in &mut method.block.stmts {
+                            if let Stmt::Expr(Expr::Array(expr_array)) = stmt {
+                                if let Some(expr) = expr_array.elems.first() {
+                                    if let Expr::Path(expr_path) = expr {
+                                        if expr_path.path.segments.last().unwrap().ident == "size_of" {
+                                            expr_array.elems = parse_quote!([0u8; 1]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

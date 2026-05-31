@@ -1,0 +1,1 @@
+pub enum Enum { A (Struct) , } pub struct Struct { data : Box < Enum > , } fn main () { }

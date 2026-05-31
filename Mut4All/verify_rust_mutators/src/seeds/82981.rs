@@ -1,0 +1,1 @@
+# ! [feature (rustc_attrs)] use std :: num :: NonZeroU8 ; # [rustc_layout_scalar_valid_range_start (C)] union MaybeUninit < T : Copy > { uninit : () , init : T , } const UNINIT : NonZeroU8 = MaybeUninit { uninit : () } . init ;

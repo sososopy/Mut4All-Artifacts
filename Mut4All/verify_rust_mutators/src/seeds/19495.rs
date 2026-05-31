@@ -1,0 +1,1 @@
+# [no_mangle] fn main () { println ! ("hello world") ; }

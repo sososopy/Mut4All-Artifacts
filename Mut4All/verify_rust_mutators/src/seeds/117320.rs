@@ -1,0 +1,1 @@
+trait Problem : std :: fmt :: Debug { } struct Generic < T > (T) ; impl < T : Problem > Generic < T > { async fn f (pool : & sqlx :: PgPool) { sqlx :: query ! ("SELECT 1 as n") . fetch_all (pool) . await ; } }

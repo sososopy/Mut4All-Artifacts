@@ -1,0 +1,1 @@
+enum Block { Section (DoesNotExist) , } trait IsBlock { fn nested_blocks (& self) -> impl Iterator < Item = & Block > { const NO_BLOCKS : & [Block] = & [] ; NO_BLOCKS . iter () } }

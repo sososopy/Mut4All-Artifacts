@@ -1,0 +1,1 @@
+struct Struct ([u8]) ; fn as_slice (s : & Struct) -> & [u8] { let & Struct (ref this) = s ; this } fn main () { }

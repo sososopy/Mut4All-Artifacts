@@ -1,0 +1,62 @@
+Mutation Operator: Alter Async Closure Usage
+
+Target: Async closures within function parameters, especially in scenarios where the closure calls or awaits other async functions.
+
+Description: Modify the code structure to use async closures in different contexts or configurations. This can be done by changing how the async closure is defined, how it interacts with other async functions, or its placement within the program. This operator targets the unique combinations of async closures, their parameters, and where they are invoked or awaited within a program.
+
+Example Mutation:
+
+Original Code:
+```rust
+pub async fn bug<F: async FnOnce()>(f: F) {
+    f().await;
+}
+
+fn main() {
+    block_on(bug(async || empty().await));
+}
+```
+
+Mutated Code:
+1. Change the async closure to a different parameterized closure, possibly with different argument types or additional logic inside.
+```rust
+pub async fn bug<F: async FnOnce(u32) -> ()>(f: F) {
+    f(42).await; // Pass an integer argument
+}
+
+fn main() {
+    block_on(bug(async |x| {
+        if x > 0 {
+            empty().await; // Conditional awaiting
+        }
+    }));
+}
+```
+
+2. Move the async closure definition out of the `block_on` call and define it separately, then pass it to the function.
+```rust
+async fn some_async_task() {
+    empty().await;
+}
+
+fn main() {
+    let task = async || some_async_task().await; // Define the async task separately
+    block_on(bug(task));
+}
+```
+
+3. Use an async closure in a different function context or within a loop to explore interaction changes with the async runtime.
+```rust
+fn main() {
+    block_on(async {
+        for _ in 0..5 {
+            bug(async || {
+                empty().await; // Repeated invocation with a loop
+            })
+            .await;
+        }
+    });
+}
+```
+
+This mutation operator encourages exploration of how async closures behave in various contexts, ensuring that their interactions with async functions and the Rust async runtime are thoroughly tested, potentially exposing more complex bugs or compiler edge cases.

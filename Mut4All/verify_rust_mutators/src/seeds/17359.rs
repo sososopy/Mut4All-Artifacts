@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] trait Trait { type Type ; } impl Trait for int { } fn main () { }

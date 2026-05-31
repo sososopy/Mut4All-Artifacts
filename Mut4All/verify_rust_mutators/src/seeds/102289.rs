@@ -1,0 +1,1 @@
+fn chainl1_error_consume () { fn first < T , U > (t : T , _ : U) -> T { t } let mut p = chainl1 (string ("abc") , char (',') . map (| _ | first)) ; assert ! (p . parse ("abc,ab") . is_err ()) ; }

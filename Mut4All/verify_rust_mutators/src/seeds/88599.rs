@@ -1,0 +1,1 @@
+pub trait First { const CONST : bool ; } pub trait Second { } impl < 'a > First for dyn Second where & 'a Self : First { const CONST : bool = < & Self > :: CONST ; }

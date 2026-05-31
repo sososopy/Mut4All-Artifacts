@@ -1,0 +1,29 @@
+Mutation operator: Add inline assembly with missing const in async function with lifetimes  
+1. Target an async function declaration with at least one lifetime parameter  
+2. Modify the function body to include an asm! block using const directive  
+3. Reference an undeclared constant in the assembly operands list  
+4. Keep all existing function parameters and lifetime annotations  
+
+Example mutation:  
+Original:  
+async fn process<'a>(data: &'a str) { ... }  
+
+Mutated:  
+async fn process<'a>(data: &'a str) {  
+    unsafe {  
+        asm!("mov {0}, 0x123", const MISSING);  
+    }  
+}  
+
+The mutation creates a specific interaction between inline assembly, async context, and lifetimes. The missing constant causes typechecking errors while the async context triggers MIR construction that interacts poorly with the incomplete const operand. The ICE occurs during MIR phase when handling the combination of missing const values in assembly with async coroutine generation.  
+
+This mutation pattern is likely to expose compiler bugs in:  
+- MIR construction for async functions  
+- Inline assembly const operand validation  
+- Lifetime parameter handling in unsafe contexts  
+- Error recovery paths for missing constants in inline assembly  
+
+The mutation requires an existing async function with lifetime parameters. If none exist, create one by:  
+1. Adding a 'a lifetime parameter to an existing async function  
+2. Adding a reference parameter with the 'a lifetime  
+3. Applying the assembly mutation to the function body

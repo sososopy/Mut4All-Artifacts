@@ -1,0 +1,31 @@
+Mutation Operator: Split Template Deduction Guide Across Modules with Shared Header
+Applies to: template declarations with deduction guides in header files included by multiple modules
+Action: For any template T in a header H that contains a deduction guide, modify the code as follows:
+1. Create module A that imports H and defines a template instance using T's deduction guide
+2. Create module B that imports H and defines a different template instance using T's deduction guide
+3. Compile module A as a prebuilt module
+4. Compile module B while referencing module A's prebuilt module
+5. Ensure both modules are merged during the same compilation context
+
+Example:
+Original code in H:
+namespace N {
+template<class T> struct X { ... };
+template<class T> X(T) -> X<T>;
+}
+
+Modified code in module A:
+module A;
+import H;
+N::X x1 = N::X(42); // Uses deduction guide
+
+Modified code in module B:
+module B;
+import H;
+N::X x2 = N::X(3.14); // Uses deduction guide with different type
+
+Compilation sequence:
+- Compile module A as prebuilt module
+- Compile module B while referencing module A's prebuilt module
+
+This mutation targets the interaction between module merging, template deduction guides, and linkage computation. The crash in the original bug report occurs due to conflicting linkage information for the same deduction guide in different modules, which this operator systematically creates by splitting template usage across modules while reusing the existing deduction guide.

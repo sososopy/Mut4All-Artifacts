@@ -1,0 +1,1 @@
+const LENGTH : usize = 4 ; struct Thing { f : [[f64 ; 2] ; LENGTH] , } fn main () { let t = Thing { f : [[0.0 , 0.0] , [0.0 , 0.0] , [0.0 , 0.0] , [0.0 , 0.0]] } ; }

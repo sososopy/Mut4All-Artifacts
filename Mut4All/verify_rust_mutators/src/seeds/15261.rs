@@ -1,0 +1,1 @@
+static mut n_mut : uint = 0 ; static n : & 'static uint = unsafe { & n_mut } ; fn main () { }

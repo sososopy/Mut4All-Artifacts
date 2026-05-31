@@ -1,0 +1,19 @@
+Based on the bug report, the crash occurs during constant expression evaluation when an array of constexpr objects is initialized with a default constructor that has an invalid default argument (missing expression). The assertion failure indicates the compiler incorrectly handles a value-dependent expression within a constexpr context. This suggests bugs are more likely to trigger in scenarios involving constexpr evaluation, particularly with arrays, aggregate initialization, and default arguments in constructors.
+
+Mutation Operator:
+This mutation operator targets constexpr variable declarations with array or aggregate initialization. It applies when a constexpr variable is declared and initialized, especially with arrays or list initialization. The mutation modifies the initializer expression to introduce a default argument with a missing or incomplete expression in a constructor call, which can create a value-dependent scenario during constant evaluation.
+
+Mutation Operator: Replace constexpr aggregate initializer with an empty initializer list that triggers default constructor with invalid default argument.
+
+Where it applies: This mutation applies to any constexpr variable declaration that is initialized with an aggregate initializer (like {} or {value}) or an array initializer. It specifically targets cases where the variable's type is a class or struct with a constructor.
+
+Changes: For a constexpr variable declaration of type T (where T is a class/struct type) with an initializer, replace the initializer with an empty initializer list {} if T has at least one constructor. Then, modify the constructor of T (if present in the seed) by adding a default argument to one of its parameters but leaving the default argument expression incomplete (e.g., just an empty parentheses). If T's constructor is not defined in the seed, introduce a simple constructor with an incomplete default argument. For example, if the seed has:
+constexpr SomeType var = {someValue};
+After mutation, it becomes:
+struct SomeType {
+  constexpr SomeType(const int& a = ) {} // Incomplete default argument
+};
+constexpr SomeType var[2] = {};
+Or if SomeType already exists, modify its constructor to have an incomplete default argument and change the variable initialization to {}.
+
+The mutation should use existing type names from the seed. If the type does not have a constructor, add one with an incomplete default argument. The incomplete default argument is represented by a parameter with a default value that is just an empty expression (like "= )"). This creates a syntactically invalid default argument that may lead to value-dependent expression issues during constexpr evaluation.

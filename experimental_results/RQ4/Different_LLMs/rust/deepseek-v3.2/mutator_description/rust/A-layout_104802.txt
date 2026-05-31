@@ -1,0 +1,20 @@
+mutation operator: Change the representation of a union or struct with a packed attribute to have a different packing alignment, or introduce a packed representation where none exists, while also using the type in a const context. This operator targets unions and structs that are used in constant expressions, particularly those that have fields with alignments larger than the packed alignment.
+
+Where it applies: This operator applies to any union or struct definition that is used in a constant expression, such as a const or static initializer. The mutation alters the representation attribute of the type.
+
+Changes: For a given union or struct type that is used in a constant expression (e.g., as the type of a const or static item), modify its representation attribute. If the type already has a #[repr(packed(N))] attribute, change the alignment N to a different value, preferably one that is less than the natural alignment of any field (e.g., change packed(2) to packed(1)). If the type has no packed representation, add #[repr(packed)] or #[repr(packed(N))] where N is a small integer like 1 or 2. Ensure that the mutated type is still used in a constant context, such as in the initializer of a const item.
+
+Example: Suppose the seed program contains a union definition like:
+union MyUnion {
+    field: u64,
+}
+and a const item:
+const C: MyUnion = MyUnion { field: 0 };
+The mutation would change the union to:
+#[repr(packed(1))]
+union MyUnion {
+    field: u64,
+}
+The const item and its usage remain unchanged. If the union already has #[repr(packed(2))], mutate it to #[repr(packed(1))].
+
+Rationale: The bug report shows an ICE when a packed union with a field of larger alignment (u32) is used in a const context. This mutation operator creates similar conditions by forcing mismatches between the ABI alignment and layout alignment in constant evaluation, which can expose layout computation bugs in the compiler.

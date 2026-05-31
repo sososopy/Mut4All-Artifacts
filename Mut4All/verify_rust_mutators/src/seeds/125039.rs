@@ -1,0 +1,1 @@
+pub fn get_exact_storage (storage : Self) -> Result < Storage < 2 , Float , Exact > , Storage < 2 , Float , UnExact > > { if storage . seeds . len () == 4 { return Ok (Self { seeds : storage . seeds , state : PhantomData }) ; } Err (storage) }

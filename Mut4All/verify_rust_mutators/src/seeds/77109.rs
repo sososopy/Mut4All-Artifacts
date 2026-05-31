@@ -1,0 +1,1 @@
+# [lang = "drop_in_place"] # [inline] unsafe fn drop_in_place (_to_drop : * mut i32) { }

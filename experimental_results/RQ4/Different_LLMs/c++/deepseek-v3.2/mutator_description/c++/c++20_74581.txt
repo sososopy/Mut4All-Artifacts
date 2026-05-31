@@ -1,0 +1,11 @@
+Mutation Operator: Introduce a self-referential type trait constraint in a constructor template requirement clause.
+
+Target: This mutation operator applies to templated constructors of classes or structs that use C++20 requires clauses with type traits from the standard library, particularly those involving decay or construction checks.
+
+Change: Replace a type trait constraint in a constructor template's requires clause with a self-referential variant using std::decay_t on the same template parameter. Specifically, mutate a requires clause that originally checks a property like std::is_constructible_v<SomeType, F> to instead check std::is_constructible_v<std::decay_t<F>, F>. This creates a circular dependency where the constraint's satisfaction depends on itself.
+
+Example: In a seed program containing a class with a templated constructor and a requires clause, locate the requires clause. If the clause uses a type trait like std::is_constructible_v<T, F>, where T is some type and F is the constructor's template parameter, mutate it to std::is_constructible_v<std::decay_t<F>, F>. Ensure that std::decay_t<F> is used as the first argument of is_constructible_v, and F remains the second argument. This mutation should be applied only when F is a template parameter of the constructor and the original constraint is a type trait check.
+
+Illustration: Original code snippet: struct S { template<typename F> requires std::is_constructible_v<int, F> S(F&& f); }; Mutated code snippet: struct S { template<typename F> requires std::is_constructible_v<std::decay_t<F>, F> S(F&& f); }. Here, int is replaced with std::decay_t<F>. The mutation uses existing elements: the template parameter F and the type trait std::is_constructible_v. No new declarations are introduced; only the argument within the trait is changed.
+
+Guidelines: Apply this mutation when the seed program already has a templated constructor with a requires clause involving std::is_constructible_v or similar traits. Ensure the trait's first argument is a type that can be replaced with std::decay_t<F>. Avoid using custom type names; use the existing template parameter F. This mutation aims to trigger compiler crashes or errors related to recursive constraint evaluation, as seen in the bug report.

@@ -1,0 +1,1 @@
+enum TestEnum { NonValue , Value { val1 : uint } } fn main () { let mut tmp = TestEnum :: NonValue ; tmp = TestEnum :: Value }

@@ -1,0 +1,1 @@
+# [repr (C)] struct X { val : i32 , } extern fn f () -> X { X { val : 0 } } fn main () { f () ; }

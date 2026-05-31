@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; trait Empty { } struct S ; impl Empty for S { } type U = HashMap < String , Empty > ; trait F { fn f (self , u : U) ; } impl F for S { fn f (self , u : U) { } }

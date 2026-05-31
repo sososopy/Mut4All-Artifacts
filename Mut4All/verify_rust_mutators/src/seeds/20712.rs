@@ -1,0 +1,1 @@
+# ! [feature (globs)] use std :: ops :: Add ; struct MyInt { a : int } impl Add for MyInt { fn add (self , rhs : Self) -> Self { MyInt { a : self . a + rhs . a } } } fn main () { }

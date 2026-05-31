@@ -1,0 +1,1 @@
+fn main () { let mut arr1 = vec ! [1 , 2 , 3] ; let mut arr2 = vec ! [1 , 2 , 3] ; let mut k = 0 ; while Some (k) = arr2 . pop () { println ! ("{}" , k) } }

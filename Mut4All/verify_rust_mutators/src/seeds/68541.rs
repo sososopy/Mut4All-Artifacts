@@ -1,0 +1,1 @@
+lazy_static :: lazy_static ! { static ref X : & dyn std :: any :: Any = () ; }

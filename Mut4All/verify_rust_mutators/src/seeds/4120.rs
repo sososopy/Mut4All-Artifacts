@@ -1,0 +1,1 @@
+fn main () { libc :: exit (0) ; error ! ("ack") ; }

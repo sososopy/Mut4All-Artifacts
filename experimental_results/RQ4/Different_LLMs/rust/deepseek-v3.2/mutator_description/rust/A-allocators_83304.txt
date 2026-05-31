@@ -1,0 +1,13 @@
+mutation operator
+
+This mutation operator targets code that uses the allocator API via a reference to an allocator. Specifically, it modifies calls to allocation functions that take an allocator by reference, such as `Box::new_in`, `Vec::with_capacity_in`, or `RawVec::with_capacity_in`, by dereferencing the allocator reference argument before passing it to the function. This changes the type of the allocator argument from `&A` where `A: Allocator` to `A`, which may trigger layout computation or type handling bugs in the compiler related to allocator types.
+
+The operator applies when a function call expression is found where the function name matches a known allocator-aware function (e.g., `new_in`, `with_capacity_in`) and the last argument is a reference to an allocator (i.e., its type is `&A` for some allocator type `A`). The mutation replaces that reference argument with its dereferenced form using the `*` operator.
+
+To avoid introducing undeclared variables or types, the mutation only uses existing expressions. It requires that the allocator argument is a reference expression (like `&allocator` or a variable of reference type). If the argument is already a dereferenced expression or a non-reference, the mutation does not apply.
+
+Example: In the seed code `Box::new_in(0, &std::alloc::Global)`, the allocator argument is `&std::alloc::Global`. The mutation changes this to `*&std::alloc::Global`, effectively `std::alloc::Global`. The mutated code becomes `Box::new_in(0, *&std::alloc::Global)`. Note that `*&` is a redundant operation that should be equivalent to the original reference, but it alters the type seen by the compiler from `&Global` to `Global`, potentially exposing bugs in layout or code generation for allocator types.
+
+Another example: If the seed has `let alloc = &MyAlloc; Vec::with_capacity_in(10, alloc)`, the mutation transforms it to `Vec::with_capacity_in(10, *alloc)`. This assumes `alloc` is a reference to an allocator.
+
+The mutation should be applied only to functions that are known to accept an allocator by reference according to the allocator API. Common functions include those from `Box`, `Vec`, `RawVec`, and `LinkedList` with `_in` suffixes. The operator checks the function name and context to ensure it targets allocator API usage specifically.

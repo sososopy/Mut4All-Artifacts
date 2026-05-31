@@ -1,0 +1,64 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Introduce_Undeclared_Lifetime_266;
+
+impl Mutator for Introduce_Undeclared_Lifetime_266 {
+    fn name(&self) -> &str {
+        "Introduce_Undeclared_Lifetime_266"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Impl(item_impl) = item {
+                if let Some((_, path, _)) = &mut item_impl.trait_ {
+                    if let Some(last_segment) = path.segments.last_mut() {
+                        if let PathArguments::AngleBracketed(angle_bracketed) = &mut last_segment.arguments {
+                            for arg in &angle_bracketed.args {
+                                if let GenericArgument::Lifetime(lifetime) = arg {
+                                    let new_lifetime = Lifetime::new("'c", Span::call_site());
+                                    let mut new_args = angle_bracketed.args.clone();
+                                    new_args = new_args.into_iter().map(|arg| {
+                                        if let GenericArgument::Lifetime(ref lt) = arg {
+                                            if lt == lifetime {
+                                                return GenericArgument::Lifetime(new_lifetime.clone());
+                                            }
+                                        }
+                                        arg
+                                    }).collect();
+                                    last_segment.arguments = PathArguments::AngleBracketed(
+                                        AngleBracketedGenericArguments {
+                                            args: new_args,
+                                            ..angle_bracketed.clone()
+                                        }
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

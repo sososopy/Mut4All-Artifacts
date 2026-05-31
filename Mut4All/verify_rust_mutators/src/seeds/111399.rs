@@ -1,0 +1,1 @@
+# ! [feature (inherent_associated_types)] # ! [allow (incomplete_features)] pub struct Struct ; impl Struct { pub type AssocTy = usize ; pub const AssocConst : Self :: AssocTy = 42 ; }

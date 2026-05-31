@@ -1,0 +1,34 @@
+mutation operator: Introduce a nested closure that captures a mutable reference to a variable that is later used in the same scope, and then attempt to use the original variable after the closure definition but before the closure is invoked, within a complex control flow structure like a match or if-let expression. This mutation specifically targets situations where the borrow checker must reason about lifetimes and mutable aliasing across nested scopes and conditional branches.
+
+This operator applies to code regions where there is an existing mutable variable binding and a closure definition. The mutation modifies the closure to capture the mutable variable by mutable reference, and then inserts a use of that variable (e.g., a method call or assignment) after the closure definition but before any invocation of the closure, all placed inside a match or if-let block. The goal is to create a scenario where the borrow checker may incorrectly conclude the mutable borrow is still active or has ended, potentially leading to an internal compiler error (ICE) in region inference.
+
+Steps for mutation:
+1. Identify a mutable variable, for example, `let mut var = ...;` in the seed program.
+2. Locate a closure definition in the same scope, such as `let closure = |...| { ... };`.
+3. Change the closure to capture `var` by mutable reference. If the closure already has parameters, ensure the capture is added appropriately. For instance, if the closure is `|x| { x + 1 }`, mutate it to `|x| { var += x; ... }` where `var` is captured mutably.
+4. Insert a statement that uses `var` (e.g., `var.some_method();` or `var = new_value;`) immediately after the closure definition but before any code that calls the closure.
+5. Embed both the closure definition and the inserted use of `var` within a match expression or if-let pattern that already exists in the seed program, or wrap them in a new match/if-let if necessary. The key is to place these inside a branch of such a control flow construct to increase complexity.
+
+Example in pseudo-code:
+Original seed code snippet:
+let mut data = some_value;
+match some_expression {
+    Some(x) => {
+        let closure = |y| { y + 1 };
+        // other code
+    },
+    None => (),
+}
+
+Mutated code:
+let mut data = some_value;
+match some_expression {
+    Some(x) => {
+        let closure = |y| { data += y; y + 1 }; // closure now captures data mutably
+        data.some_method(); // inserted use of data after closure definition
+        // other code
+    },
+    None => (),
+}
+
+Note: The mutation uses existing variables and types from the seed program (e.g., `data` and `some_method`). No new elements are introduced beyond the capture and the additional use statement. The closure's body is modified only to include the mutable capture, preserving its original functionality where possible. This mutation is designed to be widely adaptable to various seed programs with mutable variables and closures, targeting the borrow checker's handling of mutable aliasing in nested scopes with control flow.

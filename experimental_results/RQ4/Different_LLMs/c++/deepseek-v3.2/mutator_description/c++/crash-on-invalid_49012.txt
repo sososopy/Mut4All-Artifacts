@@ -1,0 +1,14 @@
+mutation operator: replace static_cast<Derived>(*this) with static_cast<Derived*>(this) in consteval contexts.
+
+This mutation operator applies specifically within consteval functions or consteval contexts, targeting expressions that use static_cast to convert *this to a derived class type. The operator changes the cast from an object cast to a pointer cast, altering the resulting type from Derived to Derived* and subsequently adjusting member access accordingly.
+
+The operator modifies the expression static_cast<Derived>(*this).member to static_cast<Derived*>(this)->member, where member represents any subsequent member access, function call, or template invocation. This change must preserve the same member access pattern but adapt to pointer semantics.
+
+For example, given a consteval function in a CRTP base class containing:
+return static_cast<Derived>(*this).toFunImpl<F>();
+the mutation produces:
+return static_cast<Derived*>(this)->toFunImpl<F>();
+
+The operator only applies when the static_cast destination type is a class type, and the expression *this is being cast. It requires that the derived type Derived is already present in the seed program as a template parameter or known type. No new types or variables are introduced; the mutation solely rewrites the cast expression and adjusts the member access operator from dot to arrow.
+
+This mutation aims to expose compiler crashes related to improper handling of consteval evaluation combined with CRTP static casts, particularly when switching between object and pointer representations of *this within constant evaluation contexts.

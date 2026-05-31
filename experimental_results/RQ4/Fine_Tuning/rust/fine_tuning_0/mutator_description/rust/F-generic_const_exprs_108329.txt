@@ -1,0 +1,33 @@
+Mutation Operator: Modify Indexing of Slices in Functions
+
+Target: Function bodies where slices are accessed.
+
+Mutation Rule:
+1. Identify a function that involves accessing or modifying a slice, such as through indexing or using methods like `copy_from_slice`.
+2. Within the function body, locate any slice indexing operation. For example, find lines where a slice like `self.buffer[..]` is used.
+3. Modify the slice access to use a constant expression that exceeds the slice length, which can result in an out-of-bounds error.
+4. Ensure that the index used in the mutation is one more than the maximum index of the slice to avoid immediate compilation errors and instead lead to runtime panic if the mutation is executed.
+
+Example:
+Original Code:
+```
+pub fn take(&mut self) -> Vec<T> {
+    let mut buf = Vec::with_capacity(self.buffer.len());
+    buf.copy_from_slice(&self.buffer[..self.index]);
+    self.index = S - 1;
+    buf
+}
+```
+
+Mutated Code:
+```
+pub fn take(&mut self) -> Vec<T> {
+    let mut buf = Vec::with_capacity(self.buffer.len());
+    buf.copy_from_slice(&self.buffer[..self.buffer.len() + 1]); // intentionally out of bounds
+    self.index = S - 1;
+    buf
+}
+```
+
+Expected Outcome:
+The mutated code will result in a runtime panic due to an out-of-bounds access when `copy_from_slice` is called. This mutation aims to exploit the compiler's handling of indexing and slice access, potentially triggering internal errors or unexpected behaviors in the presence of incomplete features like `generic_const_exprs`.

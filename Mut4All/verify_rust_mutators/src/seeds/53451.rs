@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] pub const fn foo () -> fn () { fn bar () { } bar }

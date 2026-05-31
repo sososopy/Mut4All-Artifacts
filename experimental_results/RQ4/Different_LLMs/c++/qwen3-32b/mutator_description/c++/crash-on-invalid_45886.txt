@@ -1,0 +1,16 @@
+Mutation Operator: Modify Exception Specification Type Loc Mismatch
+Applies to function declarations with exception specifications (noexcept, dynamic-exception-spec)
+Targets the handling of exception specification type updates in ASTContext
+
+Change:
+Original function declaration with exception spec 'noexcept(expr)' 
+→ replace with 'noexcept(static_cast<...>(expr))' where ... introduces a type conversion
+
+Example:
+void f() noexcept(a < b)
+→ 
+void f() noexcept(static_cast<int>(a < b))
+
+Modify the exception specification to include a type conversion that changes the size/alignment of the evaluated expression, creating a mismatch between original and updated TypeLoc data. This forces the compiler to re-evaluate the type while maintaining surface validity. The type conversion must use existing types from the seed program's scope.
+
+Implementation note: The mutation should only use types already declared in the seed program's enclosing scope (e.g., types from the same translation unit or imported headers). When introducing conversions, ensure the type conversion is valid for the expression's original type in the seed program.

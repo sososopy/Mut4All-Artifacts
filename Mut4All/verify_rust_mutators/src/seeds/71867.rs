@@ -1,0 +1,1 @@
+# [repr (C)] pub struct dispatch_object_s { _private : [u8 ; 0] } extern { static _dispatch_queue_attr_concurrent : dispatch_object_s ; } pub static DISPATCH_QUEUE_CONCURRENT : & 'static dispatch_object_s = unsafe { & _dispatch_queue_attr_concurrent } ;

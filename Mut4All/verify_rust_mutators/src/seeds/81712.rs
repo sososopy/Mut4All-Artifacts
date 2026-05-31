@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] trait A { type BType : B < AType = Self > ; } trait B { type AType : A < BType = Self > ; } trait C { type DType < T > : D < T , CType = Self > ; } trait D < T > { type CType : C < DType = Self > ; }

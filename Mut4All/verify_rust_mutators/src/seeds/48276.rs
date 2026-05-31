@@ -1,0 +1,1 @@
+struct A ; impl From < A > for & 'static str { fn from (& self) -> & 'static str { "" } } fn main () { }

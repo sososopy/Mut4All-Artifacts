@@ -1,0 +1,1 @@
+use std :: ptr :: null ; struct Q < T > { value : * const T , } impl < T > Q < T > { const INIT_DATA : * const T = null () ; const INIT : Self = Q { value : Self :: INIT_DATA , } ; } fn main () { let _q = Q :: < i32 > :: INIT ; }

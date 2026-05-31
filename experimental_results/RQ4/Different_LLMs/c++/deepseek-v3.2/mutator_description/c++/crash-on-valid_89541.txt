@@ -1,0 +1,32 @@
+Mutation operator: Lambda inheritance with explicit object parameter and reference capture in a derived class constructor initializer.
+
+This operator targets the combination of lambda expressions with explicit object parameters (C++23), reference captures, and inheritance where a derived class's constructor initializes its base class with a lambda that captures references. The mutation applies when a seed program contains a lambda expression defined inside a function, and there exists at least one class that could be used as a base class.
+
+Steps:
+1. Identify a function in the seed program that returns a lambda. If none exists, select a function that can be modified to return a lambda. The lambda must capture at least one variable by reference. The lambda should have an explicit object parameter (using 'this auto self' syntax) and a body that uses the captured reference, even if just as an expression statement.
+2. Determine a suitable class in the seed program to act as a base class. If no such class exists, introduce a simple struct with a default constructor. The base class type should be defined using decltype on the lambda-returning function call.
+3. Create a derived class that inherits from this base class. In the derived class's constructor initializer list, initialize the base class with a call to the lambda-returning function, ensuring the captured reference is bound to a valid object.
+4. In the main function or an appropriate scope, instantiate the derived class and invoke the call operator (if accessible).
+
+Example based on typical seed structures:
+Original seed may have a function like:
+auto func() {
+    int local = 42;
+    return [&]() { return local; };
+}
+Mutated version:
+auto func(int& arg) {
+    return [&](this auto self) {
+        arg;
+    };
+}
+int global = 1;
+using BaseLambda = decltype(func(global));
+struct DerivedLambda : BaseLambda {
+    DerivedLambda() : BaseLambda(func(global)) {}
+};
+int main() {
+    DerivedLambda obj;
+    obj();
+}
+Note: The mutation uses existing or introduced global/local variables for capture to avoid dangling references. The lambda body uses the captured variable as an expression to ensure it is referenced. The explicit object parameter is added to the lambda to trigger the specific code path. The derived class constructor initializes the base with a new lambda instance, which may have different capture contexts than the original lambda type expects.

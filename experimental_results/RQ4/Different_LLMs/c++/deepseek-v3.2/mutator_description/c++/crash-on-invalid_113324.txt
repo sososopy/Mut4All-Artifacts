@@ -1,0 +1,21 @@
+Based on the bug report, the crash occurs when clang::FunctionDecl::getNumParams() is called during the processing of a friend function declaration inside a templated struct with default template arguments and default function arguments. The crash likely stems from an inconsistency or missing parameter list when substituting default arguments during template instantiation and friend function lookup. The bug is triggered by a combination of default template arguments, friend function declarations with default parameters, and calling that friend function with fewer arguments than declared.
+
+Mutation operator: Friend Function Default Argument Removal in Templated Context
+
+This mutation operator targets friend function declarations inside templated classes or structs that have default arguments. It applies when a seed program contains a templated class or struct with a friend function declaration that includes default arguments. The operator modifies the friend function declaration by removing one or more of its default argument specifications, while keeping the function's signature otherwise unchanged. If the friend function has multiple default arguments, it removes the last default argument first. If after removal the function still has default arguments, further mutations can remove additional ones. The goal is to create a scenario where the friend function is called with fewer arguments than originally declared, but now without the default argument to fill the gap, potentially exposing mismatches in the compiler's handling of friend function parameter counts during template instantiation.
+
+Specifically, the operator scans for templated class/struct definitions (using template<...>). Within those definitions, it looks for friend function declarations. For each friend function declaration that has at least one default argument (e.g., friend void f(SomeType, int = 0);), it removes the default argument expression, turning it into a regular parameter (e.g., friend void f(SomeType, int);). The operator should prioritize using existing types and parameter names from the seed program. No new types or variables are introduced; only the default argument assignment is removed.
+
+Example transformation: In the seed code, if there is a structure like:
+template<typename T = int>
+struct Container {
+    friend void helper(Container, T = T{});
+};
+The mutation would change it to:
+template<typename T = int>
+struct Container {
+    friend void helper(Container, T);
+};
+Then, if there is a call like helper(Container<int>{}); in the code, it remains unchanged, but now the call has insufficient arguments (since the second parameter is required and no default is provided). This mismatch may trigger crashes similar to the original bug during overload resolution or default argument substitution.
+
+The operator must ensure that the mutated code remains syntactically valid C++ (e.g., no undeclared identifiers). If the friend function is defined outside the class, the mutation only affects the declaration inside the class. This mutation is designed to expose bugs in the compiler's handling of friend function parameter lists combined with template default arguments and instantiation.

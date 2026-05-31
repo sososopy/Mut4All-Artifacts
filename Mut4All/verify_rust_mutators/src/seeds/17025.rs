@@ -1,0 +1,1 @@
+enum A { B (char) , C ([Box < A >]) , } fn c (c : char) -> A { return B (c) } pub fn main () { }

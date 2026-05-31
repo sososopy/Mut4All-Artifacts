@@ -1,0 +1,57 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Remove_Attribute_173
+ */ 
+class MutatorFrontendAction_173 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(173)
+
+private:
+    class MutatorASTConsumer_173 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_173(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        
+    };
+};
+
+//source file
+#include "../include/Remove_Attribute_173.h"
+
+// ========================================================================================================
+#define MUT173_OUTPUT 1
+
+void MutatorFrontendAction_173::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *AT = Result.Nodes.getNodeAs<clang::Attr>("Attributes")) {
+      if (!AT || !Result.Context->getSourceManager().isWrittenInMainFile(
+                     AT->getLocation()))
+        return;
+      auto attr = stringutils::rangetoStr(*(Result.SourceManager),
+                                          AT->getSourceRange());
+      llvm::outs() << attr << '\n';
+      Rewrite.ReplaceText(CharSourceRange::getTokenRange(AT->getSourceRange()),
+                          "/*mut173*/");
+    }
+}
+  
+void MutatorFrontendAction_173::MutatorASTConsumer_173::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    auto matcher = attr().bind("Attributes");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

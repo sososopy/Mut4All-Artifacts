@@ -1,0 +1,1 @@
+use wasm_bindgen :: prelude :: * ; mod render ; use render :: canvas :: Canvas ; pub static mut CANVAS : Option < Canvas > = None ; # [wasm_bindgen (start)] pub fn main_js () -> Result < () , JsValue > { let window = web_sys :: window () . unwrap () ; let document = window . document () . unwrap () ; unsafe { CANVAS = Some (Canvas :: new (& document)) ; } Ok (()) }

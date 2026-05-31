@@ -1,0 +1,1 @@
+use std :: collections :: VecDeque ; fn main () { let mut queue = VecDeque :: new () ; let mut leftover = VecDeque :: new () ; let item = () ; while Some (item) = leftover . pop_back () { queue . push_front (item) } }

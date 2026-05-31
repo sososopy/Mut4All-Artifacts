@@ -1,0 +1,44 @@
+Mutation Operator: Template Lambda Expansion with Index Sequence
+
+Target Code Construct:
+This mutation operator targets the use of lambda expressions within template functions that use `std::index_sequence` in conjunction with template argument deduction.
+
+Mutation Rule:
+1. Locate a template function that contains a lambda expression with parameter pack expansion, especially inside another templated lambda or function object.
+2. Identify the statement where the lambda is invoked using `std::index_sequence` with a fold expression.
+3. Introduce a new template parameter in the lambda expression within the fold expression that is not part of the original template parameters. This can be a non-type template parameter or a custom type.
+4. Modify the fold expression to use the new template parameter in a way that is logically consistent but syntactically different, such as adding a new operation or changing the sequence of operations.
+5. Ensure that the mutated code still compiles by adjusting any necessary supporting code or definitions.
+
+Example:
+Original Code:
+```cpp
+template <typename>
+static void f()
+{
+    const auto l = [&]<typename>() {};
+
+    [&]<std::size_t... Is>(std::index_sequence<Is...>)
+    {
+        ((l.template operator()<typename S::template N<Is>>()), ...);
+    }
+    (std::make_index_sequence<S::size> {});
+}
+```
+
+Mutated Code:
+1. Add a new template parameter to the lambda within the fold expression:
+```cpp
+template <typename>
+static void f()
+{
+    const auto l = [&]<typename>() {};
+
+    [&]<std::size_t... Is, typename T>(std::index_sequence<Is...>)
+    {
+        ((l.template operator()<typename S::template N<Is + sizeof(T)>>()), ...); // Note the change in the fold expression
+    }
+    (std::make_index_sequence<S::size> {});
+}
+```
+2. Ensure `T` is sensibly defined or deduced, possibly adding a basic type like `int` or using a type already available in the surrounding context.

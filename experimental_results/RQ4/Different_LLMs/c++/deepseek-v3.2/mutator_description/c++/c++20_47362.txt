@@ -1,0 +1,31 @@
+Mutation operator: Introduce an uninstantiated exception specification in a templated function or constructor when the template is instantiated with a lambda expression that is used in a context requiring exception specification substitution.
+
+This mutation operator targets the instantiation of class templates or function templates where a member function or constructor has an exception specification that depends on template parameters, and the template is instantiated with a lambda expression as a template argument or constructor argument. The bug is triggered when the compiler attempts to substitute the exception specification during instantiation and encounters an uninstantiated state.
+
+Apply this mutation when a seed program contains a templated class or function that is instantiated with a lambda expression. The mutation modifies the exception specification of a templated member function or constructor within that template to depend on a template parameter in a way that may remain uninstantiated. Specifically, change a noexcept specification to a conditional noexcept that uses a type trait or expression involving the template parameter, and ensure that the lambda's exception specification is not immediately resolved.
+
+For example, if the seed program has a template class with a constructor taking a lambda:
+
+template <typename F>
+class Wrapper {
+public:
+    Wrapper(F f) : func(f) {}
+private:
+    F func;
+};
+
+Change the constructor to have a conditional noexcept specification that uses the type of F:
+
+template <typename F>
+class Wrapper {
+public:
+    Wrapper(F f) noexcept(noexcept(F(std::move(f)))) : func(std::move(f)) {}
+private:
+    F func;
+};
+
+In this mutated version, the noexcept clause depends on the move constructor of F, which for a lambda type may lead to an uninstantiated exception specification during template argument deduction or substitution when F is a lambda. To increase the likelihood of triggering the bug, ensure that the lambda is used in a context where the exception specification needs to be substituted, such as in a nested template instantiation or within another template that is being instantiated recursively.
+
+To implement this mutation in a seed program, identify an existing template that is instantiated with a lambda. Modify the exception specification of a relevant member (like a constructor or assignment operator) to include a noexcept clause that depends on the lambda type or its operations. Use existing types and variables from the seed program; do not introduce new names. For instance, if the seed program uses a std::function or similar wrapper, change its constructor to have a conditional noexcept that references the lambda's copy or move constructor.
+
+The change should be made directly in the template definition within the seed program, focusing on templates that are likely to be instantiated with lambdas, such as function wrappers, callable stores, or generic functors. This mutation aims to replicate the conditions that caused the assertion failure in SubstExceptionSpec by creating a scenario where the exception specification remains uninstantiated during template substitution.

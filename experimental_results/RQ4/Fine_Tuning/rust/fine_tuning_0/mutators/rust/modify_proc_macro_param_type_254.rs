@@ -1,0 +1,60 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_Proc_Macro_Param_Type_254;
+
+impl Mutator for Modify_Proc_Macro_Param_Type_254 {
+    fn name(&self) -> &str {
+        "Modify_Proc_Macro_Param_Type_254"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut custom_type_declared = false;
+        let mut items_to_insert = Vec::new();
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                if func.attrs.iter().any(|attr| attr.path().is_ident("proc_macro_attribute")) {
+                    if !custom_type_declared {
+                        let custom_type: ItemStruct = parse_quote! {
+                            struct MyCustomType;
+                        };
+                        items_to_insert.push(syn::Item::Struct(custom_type));
+                        custom_type_declared = true;
+                    }
+                    for input in &mut func.sig.inputs {
+                        if let FnArg::Typed(pat_type) = input {
+                            if let Type::Path(type_path) = &*pat_type.ty {
+                                if type_path.path.is_ident("TokenStream") {
+                                    pat_type.ty = Box::new(parse_quote!(MyCustomType));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        file.items.splice(0..0, items_to_insert);
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

@@ -1,0 +1,1 @@
+pub fn foo () { } # [doc = " [`foo`](Self::foo)"] pub use foo as bar ;

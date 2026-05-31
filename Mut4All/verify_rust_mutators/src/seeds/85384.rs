@@ -1,0 +1,1 @@
+use std :: str :: Chars ; pub trait ConsumeIf < T : PartialEq > { fn consume_if (& mut self , check : & T) -> Option < () > ; } impl ConsumeIf < char > for Chars < '_ > { fn consume_if (& mut self , check : & char) -> Option < () > { if let Some (item) = self . clone () . next () { return if item == * check { self . next () ; Some (()) } else { None } } None } }

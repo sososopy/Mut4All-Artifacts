@@ -1,0 +1,30 @@
+mutation operator
+target pattern: destructuring assignment where the left-hand side is a struct expression containing an array pattern, and the right-hand side is a call to Default::default() or any function returning the struct type. applies to statements of the form `let mut binding; StructName([pat, ...]) = expression();` or `let binding; StructName([pat, ...]) = expression();` where the pattern inside the array may include both initialized and uninitialized bindings.
+
+change: replace the destructured struct expression on the left-hand side with a tuple struct pattern that wraps a single array pattern of the same length, and ensure the right-hand side expression's return type matches. specifically, transform `StructName([pat1, pat2, ...]) = expr;` into `StructName([pat1, pat2, ...]) = expr;` (no change to the statement itself) but then insert a preceding statement that declares a mutable variable of the struct type and mutates it using the same destructuring pattern in a separate assignment. this creates a sequence where a mutable binding is first assigned a default value, then destructured. the original statement is kept but its right-hand side is changed to a method call on a new temporary.
+
+steps:
+1. identify a destructuring assignment statement `S` matching the pattern.
+2. let `struct_name` be the struct type name.
+3. let `inner_patterns` be the array patterns inside the struct pattern.
+4. generate a new mutable variable declaration before `S`: `let mut temp_var = Default::default();` where `temp_var` is a fresh name not conflicting with existing names in scope.
+5. change the right-hand side expression of `S` to `temp_var.some_method()` where `some_method` is replaced with an existing method of the struct type that returns the same struct type, preferably a method that takes `&mut self` and returns `Self`. if no such method exists, use `{ let _ = &mut temp_var; temp_var }` to force a mutable borrow and then use the variable.
+6. ensure the types align; if the struct does not implement `Default`, use a constructor call that matches the original right-hand side type.
+
+example transformation:
+original:
+struct S([i32; 2]);
+fn f() {
+    let a;
+    let b;
+    S([a, b]) = Default::default();
+}
+after mutation:
+struct S([i32; 2]);
+fn f() {
+    let mut temp_var = Default::default();
+    let a;
+    let b;
+    S([a, b]) = { let _ = &mut temp_var; temp_var };
+}
+this increases complexity of the MIR by introducing an intermediate mutable binding and a potential borrow, which may stress the MIR optimizations related to destructuring and inlining.

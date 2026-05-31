@@ -1,0 +1,60 @@
+use syn::{
+    Attribute, BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Meta, MetaList, MetaNameValue, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    NestedMeta,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_Union_Alignment_16;
+
+impl Mutator for Modify_Union_Alignment_16 {
+    fn name(&self) -> &str {
+        "Modify_Union_Alignment_16"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Union(union_item) = item {
+                let mut has_packed = false;
+                for attr in &mut union_item.attrs {
+                    if attr.path().is_ident("repr") {
+                        attr.parse_nested_meta(|meta| {
+                            if let NestedMeta::Meta(Meta::NameValue(nv)) = meta {
+                                if nv.path.is_ident("packed") {
+                                    if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(lit_int), .. }) = nv.value {
+                                        if let Ok(n) = lit_int.base10_parse::<u8>() {
+                                            let new_n = match n {
+                                                1 => 2,
+                                                2 => 4,
+                                                _ => 1,
+                                            };
+                                            *attr = parse_quote!(#[repr(packed(#new_n))]);
+                                            has_packed = true;
+                                            return Ok(());
+                                        }
+                                    }
+                                }
+                            }
+                            Ok(())
+                        }).unwrap_or(());
+                    }
+                }
+                if !has_packed {
+                    union_item.attrs.push(parse_quote!(#[repr(packed(2))]));
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        ""
+    }
+}

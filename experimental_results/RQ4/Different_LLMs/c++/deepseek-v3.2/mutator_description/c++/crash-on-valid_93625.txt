@@ -1,0 +1,27 @@
+Mutation operator: Insert a block expression (block literal) that captures a variable from an enclosing lambda context, within a generic lambda body.
+
+Target construct: This mutation applies to generic lambdas (lambda with auto parameter) that capture variables by copy or reference. It modifies the lambda body by inserting a block expression (using the ^ { } syntax) that captures and uses one of the lambda's captured variables (or a parameter). The block should be placed inside the lambda body, creating a nested capture scenario.
+
+Procedure: For each generic lambda (i.e., lambda with an auto parameter) in the seed program that captures at least one variable (via capture list [=], [&], or explicit captures like [x]), insert a block expression within the lambda body. The block should capture and use one of the lambda's captured variables. Prefer to use an existing captured variable from the lambda's capture list. If the lambda does not capture any variables but has parameters, the block can capture a lambda parameter instead, but note that block capture of lambda parameters may have different semantics. The block should contain a statement that uses the captured variable, such as a cast to void to avoid side-effects, or an expression that references it.
+
+If blocks are not supported in the compilation context (i.e., -fblocks flag may be required), ensure the mutation is applied only when testing with compilers that support blocks, or note that the mutation may produce non-compiling code in environments without block support. However, for bug-finding purposes, we assume the compiler under test supports blocks if the bug report involves them.
+
+Example transformation:
+Original code snippet (seed program):
+auto lambda = [captured_var](auto param) {
+    // existing body statements
+    return some_expression;
+};
+
+Mutated code:
+auto lambda = [captured_var](auto param) {
+    ^{
+        (void)captured_var;
+    };
+    // existing body statements
+    return some_expression;
+};
+
+If the lambda body is empty, the block can be the sole statement.
+
+Guidelines for adaptation

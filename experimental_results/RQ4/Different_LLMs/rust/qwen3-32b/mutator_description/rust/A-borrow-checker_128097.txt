@@ -1,0 +1,33 @@
+Mutation Operator: Split Match Arm with Recursive Call into Nested If Let and Match with Separate Borrows  
+Applies to: Match expressions with a guard that includes a recursive call to `self` which mutably borrows `self`.  
+
+Action: Convert the match into an `if let` that borrows a field of `self` mutably, and a nested `match` in the else block that also includes a recursive call. This introduces two distinct mutable borrows of `self` in different control flow paths.  
+
+Example (before):  
+```rust  
+match serde_json::to_string(&self) {  
+    Ok(json) if json.len() > MAX_VARCHAR_SIZE => self.cut(),  
+    _ => Bson::String(json),  
+}  
+```  
+
+Example (after):  
+```rust  
+if let Ok(json) = serde_json::to_string(&self) {  
+    let _borrow = &mut self.field;  // Introduces a mutable borrow of `self`  
+    if json.len() > MAX_VARCHAR_SIZE {  
+        // Use _borrow here to ensure it's active during the recursive call  
+    }  
+    match serde_json::to_string(&self) {  
+        Ok(json) => Bson::String(json),  
+        Err(e) => {  
+            tracing::error!(?e);  
+            Bson::Null  
+        }  
+    }  
+} else {  
+    self.cut()  // Recursive call introduces a second mutable borrow  
+}  
+```  
+
+This increases the likelihood of the borrow checker encountering overlapping 2-phase borrows in different basic blocks, exposing handling of temporary lifetimes.

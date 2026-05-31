@@ -1,0 +1,109 @@
+use proc_macro2::{Span,*};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command,*};
+use syn::{
+    BoundLifetimes, Expr, ExprClosure, ExprBlock, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Nested_Closure_Lifetime_Capture_40;
+
+impl Mutator for Nested_Closure_Lifetime_Capture_40 {
+    fn name(&self) -> &str {
+        "Nested_Closure_Lifetime_Capture_40"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        let mut visitor = ClosureMutatorVisitor::new();
+        visitor.visit_file_mut(file);
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator targets nested closures where the inner closure captures a lifetime from the outer closure. It introduces a new lifetime parameter in the outer closure if absent and replaces the inner closure's body with a new closure that uses this lifetime. This tests the compiler's handling of nested binder propagation and lifetime elision in closure expressions."
+    }
+}
+
+struct ClosureMutatorVisitor;
+
+impl ClosureMutatorVisitor {
+    fn new() -> Self {
+        Self
+    }
+
+    fn process_closure(&self, closure: &mut ExprClosure) {
+        // Check if the body contains an inner closure
+        let mut inner_visitor = InnerClosureFinder::new();
+        inner_visitor.visit_expr_mut(&mut closure.body);
+        if let Some(inner) = inner_visitor.found {
+            // Perform mutation
+            self.mutate_outer_and_inner(closure, inner);
+        }
+    }
+
+    fn mutate_outer_and_inner(&self, outer: &mut ExprClosure, inner: &mut ExprClosure) {
+        // Check if outer has a for<...> clause
+        if outer.capture.is_none() {
+            // Add 'x to outer's capture
+            let new_bound_lifetimes = BoundLifetimes {
+                for_token: Some(token::For::default()),
+                lifetimes: Punctuated::new(),
+            };
+            new_bound_lifetimes.lifetimes.push(LifetimeParam {
+                lifetime: Lifetime::new("'x", proc_macro2::Span::call_site()),
+                colon_token: None,
+            });
+            outer.capture = Some(ClosureCapture::ForLifetimes(new_bound_lifetimes));
+        }
+        // Replace inner's body with new closure
+        let new_inner = parse_quote! {
+            for<'x> |_: &'x ()| -> () {
+                // empty body
+            }
+        };
+        *inner = new_inner;
+    }
+}
+
+struct InnerClosureFinder {
+    found: Option<&'a mut ExprClosure>,
+}
+
+impl InnerClosureFinder {
+    fn new() -> Self {
+        Self { found: None }
+    }
+}
+
+impl VisitMut for InnerClosureFinder {
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        if let Expr::Closure(closure) = expr {
+            self.found = Some(closure);
+            // Stop traversal once found
+            return;
+        }
+        syn::visit_mut::visit_expr_mut(self, expr);
+    }
+}
+
+impl VisitMut for ClosureMutatorVisitor {
+    fn visit_expr_closure_mut(&self, closure: &mut ExprClosure) {
+        self.process_closure(closure);
+        syn::visit_mut::visit_expr_closure_mut(self, closure);
+    }
+
+    fn visit_expr_mut(&self, expr: &mut Expr) {
+        syn::visit_mut::visit_expr_mut(self, expr);
+    }
+}

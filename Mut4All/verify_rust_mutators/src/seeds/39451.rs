@@ -1,0 +1,1 @@
+extern crate imap ; extern crate openssl ; use openssl :: ssl :: { SslContext , SslMethod } ; use imap :: client :: Client ; fn main () { let mut imap_socket = Client :: secure_connect (("imap.gmail.com" , 993) , SslContext :: new (SslMethod :: Sslv23) . unwrap ()) . unwrap () ; }

@@ -1,0 +1,1 @@
+struct Foo ; impl Iterator for Foo { type Item < 'b > = & 'b Foo ; fn next (& mut self) -> Option < Self :: Item > { None } } fn main () { }

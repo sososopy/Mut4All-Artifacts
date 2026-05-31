@@ -1,0 +1,1 @@
+enum Foo { Bar1 , Bar2 , } fn test () { let test = | foo | if let & Foo :: Bar3 = foo { 1 } else { 2 } ; }

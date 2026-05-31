@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] # ! [crate_type = "lib"] pub trait Test { type Node ; type Iter : Iterator < Item = Self :: Node > ; }

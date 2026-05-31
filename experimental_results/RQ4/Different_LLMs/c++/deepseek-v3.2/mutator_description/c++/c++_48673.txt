@@ -1,0 +1,27 @@
+Mutation Operator: Template Dependent Nested Template Name Without Template Arguments
+
+This mutation operator targets a specific construct: a dependent nested template name that is used without providing template arguments, within a template context. It applies when a nested class template or alias template is accessed via a dependent name (i.e., a name that depends on a template parameter) and the 'template' keyword is used, but the template argument list is omitted or incomplete.
+
+Specifically, the operator modifies seed code where a dependent nested template name is followed by the 'template' keyword and a template argument list. The mutation removes the template argument list entirely, leaving just the dependent nested template name with the 'template' keyword but no following '< ... >'. This creates an invalid construct that may trigger compiler crashes during template instantiation or semantic analysis, particularly in code paths handling template specialization resolution.
+
+The mutation should be applied to expressions or declarations inside template definitions (class templates, function templates, or member functions of class templates) where a dependent name is used with the 'template' keyword. The dependent name must refer to a class template or alias template nested within another template. The original code must include a template argument list after the 'template' keyword. The mutation removes that argument list.
+
+For example, consider a seed program with structures like:
+template <typename T>
+class Outer {
+public:
+    template <int N>
+    class Inner {
+    };
+};
+
+template <typename U>
+void func() {
+    // Original code: Outer<U>::template Inner<42> instance;
+    // Mutated code: Outer<U>::template Inner instance;
+    // This removes the template argument list '<42>', leaving an incomplete nested template name.
+}
+
+The operator only applies if the nested name (e.g., Inner) is a template and the context is dependent (due to Outer<U>). The mutation deletes the template argument list, including the angle brackets and all arguments inside. No new variables, types, or functions are introduced; it simply removes existing syntax. The goal is to create malformed template references that may expose bugs in template instantiation or specialization resolution logic, similar to the crash in ResolveSingleFunctionTemplateSpecialization.
+
+Note: The mutation should be applied conservatively to avoid generating trivially invalid code that is rejected early without deeper compiler processing. It targets constructs likely to reach later stages of template handling.

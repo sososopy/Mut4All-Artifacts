@@ -1,0 +1,1 @@
+pub fn get_room_users (& self , uuid : Uuid) -> Result < HashMap < Uuid , UserDisplay > , FetchRoomError > { }

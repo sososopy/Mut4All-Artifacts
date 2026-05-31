@@ -1,0 +1,1 @@
+trait Foo { fn get (& self) -> u32 ; } struct Bar { something : u32 } impl Foo for Bar { fn get (& self) -> u32 { self . something } } fn main () { let x = Bar { something : 4 } ; let y = & x ; let z : * const Foo = y as * const _ as * const _ ; let value = unsafe { (* z) . get () } ; println ! ("Hello, world! {}" , value) ; }

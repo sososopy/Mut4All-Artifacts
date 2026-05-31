@@ -1,0 +1,1 @@
+struct A { } struct B { } impl From < A > for B { fn from (a : A) -> B { B { } } } fn main () { let c1 = A { } ; let c2 : B = c1 :: < Into < B > > . into () ; let _ = c2 ; }

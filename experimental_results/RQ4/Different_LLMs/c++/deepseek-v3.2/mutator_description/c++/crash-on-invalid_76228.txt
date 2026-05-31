@@ -1,0 +1,24 @@
+Based on the bug report, the crash occurs when Clang attempts to look up a special member function (like a default constructor) for a class/struct that is not fully complete during parsing, triggered by invalid code involving nested declarations and initializations. The bug is likely exposed when there are incomplete type definitions, malformed member declarations, and improper constructor usage within a class body.
+
+Mutation Operator:
+Target a class/struct definition that contains a member variable declaration and a member function definition. The mutation applies to the member function body, specifically within a compound statement (inside braces {}). In the seed program, locate a member function that returns void or has no explicit return type. Within its body, find a statement that is an expression or a simple declaration. Replace that statement with a braced-init-list attempting to construct an object of the member variable's type, using the member variable's name as if it were a type, but omit the type name and provide an empty or malformed initializer list. This creates a context where the parser may try to perform special member lookup on an incomplete type due to the ambiguous syntax.
+
+Prefer to use existing member variable names and types from the seed program. If the seed program has a struct S with a member variable m of type T, and a member function f, inside f's body, replace a line like "int x = 5;" or "m = 10;" with "m({});" or "m({ });". Ensure that m is the name of a member variable, not a type. This mimics the invalid code in the bug report where "b({" appears, likely trying to construct something using a variable name incorrectly.
+
+Example: Original seed code snippet:
+struct S {
+    int member;
+    void func() {
+        member = 10;
+    }
+};
+
+After mutation:
+struct S {
+    int member;
+    void func() {
+        member({});
+    }
+};
+
+Here, "member({});" is inserted, where 'member' is a variable name, not a type. This creates an ambiguous construct that may trigger special member lookup for an incomplete type, similar to the bug report. The mutation should be applied only when the member variable is of a class/struct type or a type that could lead to constructor lookup, but the syntax is invalid because a variable name is used as a constructor call. This can expose crashes in the compiler's parsing and lookup logic when handling such malformed code.

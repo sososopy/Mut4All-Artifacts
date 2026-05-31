@@ -1,0 +1,1 @@
+# ! [feature (min_specialization)] trait Trait { } impl Trait for NonExistent { } fn main () { }

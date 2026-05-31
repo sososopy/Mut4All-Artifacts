@@ -1,0 +1,11 @@
+mutation operator: Replace valid associated type binding syntax with invalid generic parameter syntax in method return types.
+
+This operator targets method definitions within impl blocks that use the syntax `Iterator<Item = T>` or similar associated type bindings in their return type. Specifically, it applies when a method returns a type like `std::slice::Iter<Item = SomeType>`. The mutation changes this to `std::slice::Iter<T = SomeType>`, which is invalid because `Iter` does not have a generic parameter named `T`; it uses an associated type `Item`. The change should be applied to the return type of any method where such a pattern is found.
+
+The operator works by scanning for paths in return type positions that end with a segment having angle brackets containing an associated type binding of the form `Item = SomeType`. It replaces the identifier `Item` with a generic parameter name that is not part of the type's definition. To ensure the mutation is applicable to many seed programs, the replacement name should be `T`, a common but incorrect generic parameter name for many iterator types. If the seed program already uses a type parameter named `T` in scope, the mutation still proceeds, as the goal is to create an invalid binding. No new items are introduced; only the identifier inside the angle brackets is changed.
+
+For example, if a seed program contains:
+`fn iter(&self) -> std::slice::Iter<Item = (i32, i32)> { ... }`
+The mutated version becomes:
+`fn iter(&self) -> std::slice::Iter<T = (i32, i32)> { ... }`
+This mimics the bug report where using an incorrect generic parameter (`Item` treated as a generic) triggers an internal compiler error in the associated items query. The mutation should be applied to all matching return types in the program to maximize coverage.

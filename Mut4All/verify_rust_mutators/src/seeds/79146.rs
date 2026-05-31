@@ -1,0 +1,1 @@
+# ! [feature (unboxed_closures)] async fn with_usize < F > (f : F) where F : for < 'any > FnOnce < (& 'any usize ,) > , for < 'any > < F as FnOnce < (& 'any usize ,) > > :: Output : 'any + :: core :: future :: Future < Output = () > , { f (& 42) . await }

@@ -1,0 +1,29 @@
+mutation operator: Introduce Structured Binding In OpenMP Parallel Region Context
+
+This mutation operator targets code that contains structured bindings, specifically aiming to expose bugs related to the interaction between C++ structured bindings and OpenMP directives. It applies when a seed program contains a structured binding declaration (e.g., `auto [x, y] = someTupleLikeObject;`) and at least one function or block scope where OpenMP pragmas could be introduced.
+
+The operator modifies the seed program by taking an existing function that uses a variable declared via a structured binding. It wraps a simple statement that uses this variable inside an OpenMP parallel region. If the function does not already contain an OpenMP directive, one is added. The goal is to force the compiler to handle the structured binding's decomposed variables within OpenMP's data-sharing and privatization logic, which is a complex scenario prone to crashes.
+
+Steps:
+1. Identify all structured binding declarations in the seed program (e.g., `auto [a, b] = expr;`). Let `SB_var` denote one of the decomposed variable names from such a binding (e.g., `a` or `b`).
+2. Find a function `F` that uses `SB_var` in a statement `S`. Prefer `F` to be the function where `SB_var` is originally in scope, but if not, choose any function where `SB_var` is accessible (e.g., a global/namespace scope variable).
+3. If `F` does not already contain an OpenMP pragma, insert `#pragma omp parallel` before a block that contains statement `S`. If `S` is not already in a block, enclose it in `{}` after the pragma.
+4. Ensure the OpenMP pragma is correctly formatted for the compiler (e.g., `#pragma omp parallel`). No other OpenMP clauses are added by default to keep the mutation minimal, but if the seed already uses OpenMP, the pragma can be integrated into an existing parallel region if possible.
+
+Example for a seed pseudo-code:
+Original:
+auto [elem1, elem2] = getPair();
+void compute() {
+    int val = elem1 + 10;
+}
+
+Mutated:
+auto [elem1, elem2] = getPair();
+void compute() {
+    #pragma omp parallel
+    {
+        int val = elem1 + 10;
+    }
+}
+
+Note: The mutation uses only variables and types present in the seed. No new data names or types are introduced. The pragma insertion is syntactically valid C++ with OpenMP. This mutation is designed to trigger compiler crashes by combining structured bindings with OpenMP parallel constructs, as seen in the bug report where `-fopenmp` and structured binding assignment led to a crash.

@@ -1,0 +1,16 @@
+mutation operator: Insert nested alias template that references a template class with a constructor, and use it in a CTAD context.
+
+Applies to: When a seed program contains at least one template class with a constructor (which can be used for CTAD) and at least one alias template declaration.
+
+Method: Identify a template class in the seed program that has at least one constructor. For example, if the seed has `template<typename T> struct S { S(T) {} };`. Then, create a new alias template that indirectly references this class via another alias template. Specifically, add a simple alias template `template<typename U> using Proxy = U;` (if not already present) and then a second alias template `template<typename U> using Alias = Proxy< S<U> >;`. Finally, in a function body (e.g., main if present, or a new test function), add a variable declaration using CTAD with the nested alias: `Alias var{ existing_value_of_appropriate_type };`. Use an existing variable or literal of a type that matches the template parameter of S. For instance, if S is templated on `int`, use an integer literal. Ensure the alias templates are added at global or namespace scope before the function.
+
+Example: Seed contains `template<typename T> struct Widget { Widget(T) {} };` and `int main() {}`. Mutation adds:
+```
+template<typename U> using Proxy = U;
+template<typename U> using Nested = Proxy< Widget<U> >;
+int main() {
+    Nested obj{ 5 };
+}
+```
+
+This mutation operator targets CTAD with nested alias templates, which triggered the crash in the bug report. It uses existing template classes and values from the seed to avoid introducing undeclared elements.

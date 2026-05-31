@@ -1,0 +1,25 @@
+Based on the bug report, structures that C++ compiler bugs are more likely to trigger involve template instantiation combined with newer language features such as fold expressions and structured bindings, particularly when these features interact incorrectly or when they are applied to types that do not support them. Specifically, crashes often occur when the compiler attempts to instantiate templates that contain constructs which are syntactically valid but semantically invalid for the deduced template arguments, leading to internal assertion failures during the instantiation process.
+
+Mutation operator: Replace a structured binding declaration with a fold expression that uses a pack derived from the structured binding, within a template context, targeting types that are not decomposable.
+
+This mutation operator applies when a seed program contains a structured binding declaration inside a template (including generic lambdas or functions with auto parameters). The operator modifies the structured binding to introduce a fold expression that attempts to use the pack from the binding, even when the bound type might not support decomposition.
+
+Specifically, locate a structured binding declaration within a template definition. The structured binding should be of the form `auto [identifier] = expression;` or `auto& [identifier] = expression;` etc. Change this to `const auto& [...pack] = expression;` followed by a fold expression such as `(pack, ...);` placed immediately after the binding within the same scope. The expression should remain unchanged. If the original structured binding used a specific identifier, replace it with a pack named `pack`. The fold expression should be a simple binary fold over the pack using a comma operator or another valid fold operator.
+
+The mutation should be applied only when the structured binding is inside a templated entity (class template, function template, template member, or generic lambda). This ensures the instantiation context is present. The goal is to create a scenario where the template is instantiated with a type that cannot be decomposed (like a fundamental type), triggering compiler logic similar to the bug.
+
+Example: If the seed contains a template function with a structured binding:
+template<typename T>
+void func(T t) {
+    auto [x] = t;
+    // ... use x
+}
+Mutate to:
+template<typename T>
+void func(T t) {
+    const auto& [...pack] = t;
+    (pack, ...);
+}
+Note that the original variable `x` is replaced by a pack `pack`, and a fold expression is added. The fold uses the pack directly. This mutation introduces a potential invalid structured binding when `T` is a non-decomposable type, aiming to expose crashes during instantiation.
+
+If the seed does not have a suitable structured binding inside a template, this operator does not apply. No new types or variables are introduced beyond the pack name `pack`, which is a new identifier but follows C++ pack syntax. The fold expression uses existing operators (comma) and does not require new declarations. The mutation strictly changes the binding syntax and adds the fold expression.

@@ -1,0 +1,1 @@
+pub fn handle (_data : & [u8]) { } pub fn handle_opt (iter : & mut Iterator < Item = & [u8] >) { for data in * iter { handle (data) ; } }

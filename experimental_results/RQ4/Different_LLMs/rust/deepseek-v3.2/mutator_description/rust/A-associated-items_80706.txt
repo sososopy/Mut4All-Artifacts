@@ -1,0 +1,33 @@
+mutation operator
+
+Target code construct: This mutation operator targets trait implementations with generic lifetime parameters, specifically focusing on associated type mismatches in where-clauses that involve higher-ranked trait bounds (HRTBs) and associated types. It applies when a trait implementation (impl block) has a where-clause that constrains an associated type of a generic parameter, and the associated type is referenced in a bound involving a HRTB.
+
+Description: The mutation modifies the associated type reference in the where-clause to instead use the concrete type from the corresponding trait implementation, if such an implementation exists in the seed program. The change creates a mismatch between the expected associated type and the concrete type in the bound, potentially exposing compiler bugs in monomorphization or associated item resolution.
+
+Steps:
+1. Identify all impl blocks in the seed program that have a where-clause.
+2. For each where-clause predicate of the form `for<'lifetimes> Type<...>: Trait<AssocType = ...>` or similar, locate any reference to an associated type like `<GenericParam as Trait>::AssocType`.
+3. Check if there exists a concrete impl block for the `GenericParam` with the `Trait` that defines `AssocType` to a concrete type.
+4. If such a concrete impl exists, replace the associated type reference in the where-clause with the concrete type from that impl.
+5. Ensure the replacement uses a type that is already in scope; do not introduce new types.
+
+Example seed pseudo-code:
+trait Storage { type Error; }
+impl Storage for InMemoryStorage { type Error = String; }
+trait StorageRequest<S: Storage> {}
+struct SaveUser<'a> { name: &'a str; }
+impl<'a, S> StorageRequest<S> for SaveUser<'a> 
+where 
+    S: Storage,
+    for<'b> SaveUser<'b>: StorageRequest<S, Error = <S as Storage>::Error> // Predicate with associated type
+{}
+
+Mutated pseudo-code:
+After mutation, the where-clause is changed to use the concrete type `String` (from the impl of Storage for InMemoryStorage) instead of the associated type `<S as Storage>::Error`. The mutated code becomes:
+impl<'a, S> StorageRequest<S> for SaveUser<'a> 
+where 
+    S: Storage,
+    for<'b> SaveUser<'b>: StorageRequest<S, Error = String> // Associated type replaced with concrete type
+{}
+
+Note: This mutation assumes that a concrete impl like `impl Storage for InMemoryStorage { type Error = String; }` exists in the seed program. If multiple such impls exist, choose one arbitrarily but consistently within the mutation. If no concrete impl exists, the mutation does not apply. The change may create type mismatches because the concrete type `String` may not match the actual associated type for all `S`, potentially triggering compiler errors or ICEs during monomorphization.

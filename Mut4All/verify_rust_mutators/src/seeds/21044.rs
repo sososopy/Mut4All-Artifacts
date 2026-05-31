@@ -1,0 +1,1 @@
+# [derive (Copy)] pub struct Foo { pub objs : [u8 ; 512us * 128us] , } impl :: std :: default :: Default for Foo { fn default () -> Foo { unsafe { :: std :: mem :: zeroed () } } }

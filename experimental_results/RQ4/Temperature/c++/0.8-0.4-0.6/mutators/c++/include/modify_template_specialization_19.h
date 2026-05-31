@@ -1,0 +1,35 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+#include <clang/ASTMatchers/ASTMatchers.h>
+#include <clang/Rewrite/Core/Rewriter.h>
+#include <string>
+
+using namespace clang;
+using namespace clang::ast_matchers;
+
+/**
+ * modify_template_specialization_19
+ */ 
+class MutatorFrontendAction_19 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(19)
+
+private:
+    class MutatorASTConsumer_19 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_19(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+    };
+};
+

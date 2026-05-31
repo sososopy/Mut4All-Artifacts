@@ -1,0 +1,1 @@
+pub type TypeAlias = usize ; # [doc = " [broken cross-reference](TypeAlias::hoge)"] pub fn some_public_item () { }

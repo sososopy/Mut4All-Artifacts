@@ -1,0 +1,1 @@
+pub type PrivacyPolicy < E > = Vec < Box < dyn PrivacyRule < ViewerContext = Self :: ViewerContext , Id = Self :: Id , Err = E > > > ; pub trait PrivacyRule { type ViewerContext ; type Id ; fn can_see (& self , viewer : & Self :: ViewerContext , id : & Self :: Id) -> () ; }

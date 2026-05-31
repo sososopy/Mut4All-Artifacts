@@ -1,0 +1,19 @@
+mutation operator: Mismatched Function Return Type Versus Generic Parameter
+
+Target: Function definitions where the declared return type includes a generic parameter that is also used as a type parameter name within the same function's generic parameter list.
+
+Description: This operator mutates function signatures by replacing the return type with a constructed type that uses one of the function's generic type parameters as a concrete type argument, but where the generic parameter may also be shadowed by a local type name (like a struct or enum) or is a built-in type name, creating potential confusion in the compiler's type-checking logic. Specifically, it targets cases where a generic type parameter name (like 'Vec' or 'HashMap') could be misinterpreted as a concrete type due to naming collisions.
+
+Change: For a function with generic parameters <K, V, ...>, if its return type is a simple path (like `HashMap<_>`), replace that return type with a constructed type path that uses one of the generic parameters as the type constructor, but written in a way that could be ambiguous. For example, change `fn f<K, Vec>() -> HashMap<_> { ... }` to `fn f<K, Vec>() -> Vec::HashMap_( ... ) { ... }` or similar, where `Vec` is both a generic parameter and appears as part of the return type path.
+
+Example: In the seed code `fn linear_map<K, Vec>(&mut self) -> HashMap<_> { ... }`, the generic parameter `Vec` shadows the standard library type `Vec`. The mutation would change the return type to something like `Vec::HashMap_( ... )` or introduce a similar path that uses `Vec` as a module or type name in a constructed path. If `HashMap` is a generic parameter (not in the original code but could be introduced), it could be mutated to `HashMap::new()` or `HashMap::HashMap_( ... )` to create a path where the identifier is used both as a type constructor and potentially as a value.
+
+Implementation Steps:
+1. Identify function definitions with generic type parameters.
+2. For each generic parameter that shares a name with a common standard library type (like Vec, HashMap, String) or any type that appears in scope, consider mutating the return type.
+3. Replace the return type with a path expression that starts with that generic parameter name, followed by `::` and a valid method or associated item that could be construed as a constructor (e.g., `::new()`, `::default()`, or a similar associated function). If no such method exists in the seed, introduce a dummy method call using the generic parameter as a module (e.g., `Vec::HashMap_()`).
+4. Ensure that the mutation does not introduce undeclared items; if necessary, add a dummy trait bound or a phantom use to keep the code syntactically valid but semantically confusing. For instance, add a where clause `where Vec: Trait` if needed, but prefer to use existing traits in the seed.
+
+Rationale: This mutation mimics the bug where the compiler's internal assertion `params_with_generics.len() == matched_inputs.len()` fails due to mismatched counts of generic parameters and inputs, likely arising from confusion between generic parameters and concrete types in the return type inference. The bug report shows an ICE when checking argument types for a call, and the function `linear_map` uses `Vec` as a generic parameter name while returning a `HashMap<_>`. The mutation creates similar confusion by making the return type depend on a generic parameter in a path expression, which may cause the type checker to incorrectly match generic arguments.
+
+Note: The mutation should be applied only when the function already has a generic parameter that could be ambiguous (e.g., sharing a name with a common type). The example mutation would change the return expression to use a path that includes the generic parameter, potentially leading to mismatched counts during type checking.

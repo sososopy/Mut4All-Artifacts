@@ -1,0 +1,37 @@
+Mutation Operator: Replace compound assignment operand type in templated wide integer expressions  
+Applies to: Compound assignment operators (e.g., |=, &=) involving templated wide integer types with explicit bit-width parameters  
+
+Target pattern:  
+`template<class T, unsigned Bits> class WideInteger {  
+    void operator|=(T value);  
+};  
+...  
+WideInteger<T, Bits> x;  
+x |= value_of_type_S;`  
+
+Mutation: Replace `value_of_type_S` with an existing variable of a different scalar type T' ≠ S that is also compatible with the template's base type parameter  
+
+Example mutation:  
+Original code:  
+`WideInteger<uint32_t, 64> hash;  
+hash |= static_cast<uint32_t>(input_value);`  
+
+Mutated code:  
+`WideInteger<uint32_t, 64> hash;  
+hash |= reinterpret_cast<uint64_t*>(input_value);`  
+
+Requires:  
+1. `input_value` must be a valid variable of scalar type  
+2. `uint64_t` must be a declared type in the translation unit  
+3. Template parameters are explicitly specified rather than deduced  
+
+Panels:  
+1. Prioritize mutation within template class member functions  
+2. Focus on bit-width parameters ≥ 128 bits  
+3. Apply only when the right-hand side type differs from the template's base type parameter  
+
+Coverage:  
+Targets template argument substitution logic during:  
+- Cross-type compound assignment resolution  
+- Implicit type promotion in templated math operations  
+- Bit manipulation with variable-width integer types

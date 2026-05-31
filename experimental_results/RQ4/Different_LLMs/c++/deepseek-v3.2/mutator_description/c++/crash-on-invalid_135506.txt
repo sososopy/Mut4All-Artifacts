@@ -1,0 +1,29 @@
+Based on the bug report, the crash occurs in `clang::CXXRecordDecl::defaultedDestructorIsConstexpr`. This indicates a compiler crash triggered during the evaluation of whether a defaulted destructor is constexpr, likely related to complex class structures involving templates, inheritance, or member types that affect constexpr computation.
+
+C++ compiler bugs are more likely to trigger in structures involving:
+- Template classes with defaulted destructors.
+- Classes with complex inheritance hierarchies (multiple, virtual inheritance).
+- Classes containing members with non-trivial destructors (like smart pointers, containers).
+- Classes within nested namespaces or with dependent types.
+- Use of C++20 concepts and requires-clauses in surrounding code.
+
+Mutation Operator: Replace a user-defined destructor declaration with a defaulted destructor in a template class context. This mutation targets the specific scenario that likely caused the crash: the compiler analyzing a defaulted destructor in a template class, potentially with complex member types.
+
+The mutation applies to any class template (or nested class within a template) that has an explicitly defined destructor (even if empty). Replace that destructor definition with `= default`. Ensure the class template contains at least one member variable whose type is a template parameter or a dependent type (like a smart pointer, container, or another template instantiation) already present in the seed program. Do not introduce new types or variables; use existing members.
+
+Example: If the seed program contains:
+template<typename T>
+class Container {
+    T* data;
+public:
+    ~Container() { /* possibly empty body */ }
+};
+Mutated version:
+template<typename T>
+class Container {
+    T* data;
+public:
+    ~Container() = default;
+};
+
+If the class has no explicit destructor, this mutation does not apply. The change is only for classes with a user-defined destructor. This mutation increases the likelihood of triggering the compiler's constexpr destructor analysis under conditions similar to the bug report.

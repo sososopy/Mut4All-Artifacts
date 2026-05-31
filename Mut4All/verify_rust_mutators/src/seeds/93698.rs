@@ -1,0 +1,1 @@
+use once_cell :: sync :: Lazy ; pub static X_ACCEPT_DYNAMIC_RATE : Lazy < rtsp_types :: HeaderName > = Lazy :: new (| | unimplemented ! ()) ;

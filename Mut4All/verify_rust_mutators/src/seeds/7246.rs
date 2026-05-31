@@ -1,0 +1,1 @@
+pub unsafe fn main () { return ; if * ptr :: null () { } }

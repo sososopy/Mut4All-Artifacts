@@ -1,0 +1,66 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Misuse_Template_Argument_225
+ */ 
+class MutatorFrontendAction_225 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(225)
+
+private:
+    class MutatorASTConsumer_225 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_225(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+    };
+};
+
+//source file
+#include "../include/misuse_template_argument_225.h"
+
+// ========================================================================================================
+#define MUT225_OUTPUT 1
+
+void MutatorFrontendAction_225::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *UA = Result.Nodes.getNodeAs<clang::TypeAliasDecl>("Alias")) {
+      if (!UA || !Result.Context->getSourceManager().isWrittenInMainFile(
+                     UA->getLocation()))
+        return;
+
+      if (const auto *TT = UA->getUnderlyingType()->getAs<clang::TemplateSpecializationType>()) {
+        if (TT->getTemplateName().getAsTemplateDecl()->getNameAsString() == "variant") {
+          std::string originalText = UA->getNameAsString();
+          auto args = TT->template_arguments();
+          if (args.size() > 1) {
+            std::string mutatedText;
+            for (size_t i = 0; i < args.size() - 1; ++i) {
+              if (i > 0) mutatedText += ", ";
+              mutatedText += args[i].getAsType().getAsString();
+            }
+            std::string newAlias = "using " + UA->getNameAsString() + " = std::variant<" + mutatedText + ">;";
+            Rewrite.ReplaceText(UA->getSourceRange(), newAlias);
+          }
+        }
+      }
+    }
+}
+  
+void MutatorFrontendAction_225::MutatorASTConsumer_225::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    DeclarationMatcher matcher = typeAliasDecl(hasType(templateSpecializationType(hasTemplateArgumentCount(greaterThan(1)), hasTemplateName(templateName(hasName("variant")))))).bind("Alias");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

@@ -1,0 +1,1 @@
+trait Foo < U , V > : Sized { fn foo (self , u : Option < U > , v : Option < V >) { } } struct A ; struct B ; impl Foo < A , B > for () { } fn toxic () { let u = None ; let v = None ; Foo :: foo (() , u , v) ; } fn bomb () { let mut u = None ; let mut v = None ; let mut x = None ; Foo :: foo (x . unwrap () , u , v) ; u = v ; x = Some (()) ; } fn main () { }

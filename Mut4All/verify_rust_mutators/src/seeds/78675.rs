@@ -1,0 +1,1 @@
+macro_rules ! foo { (# [fake_attr] $ item : item) => ($ item) } macro_rules ! outer { ($ item : item) => (:: paste :: paste ! { foo ! { # [fake_attr] $ item } }) } outer ! { mod bar { # ! [doc = " Foo"] } }

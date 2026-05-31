@@ -1,0 +1,40 @@
+mutation operator: Replace generic const expression in array length with a lifetime-dependent const function call that uses a higher-ranked trait bound.
+
+This mutation operator targets code that uses generic const expressions (GCE) within array type annotations or array repeat expressions. It applies when a seed program contains an array type like [T; N] or an array repeat expression like [value; N], where N is a constant expression, and the program already uses the generic_const_exprs feature. The mutation replaces N with a call to a const function that has a generic lifetime parameter and a higher-ranked trait bound (HRTB) involving that lifetime. The const function must be defined within the same scope, so if it does not exist, we introduce a new const function with a specific signature.
+
+First, identify all array type annotations and array repeat expressions in the seed program. For each occurrence, let the current length expression be L. We will replace L with a call to a new const function that we will define. The new const function should have the following characteristics: it takes a generic lifetime parameter, returns a usize, and includes a where clause that bounds a reference to that lifetime with Sized. This pattern mimics the bug-triggering structure.
+
+If the seed program does not already contain a suitable const function, we add a new function at an appropriate place, typically at the module level or within the same function if it's a nested context. The new function is defined as: const fn inner<'a>() -> usize where &'a (): Sized { L } where L is the original length expression. Then, we replace L in the array with inner::<'some_lifetime>(). The lifetime 'some_lifetime must be a lifetime that is in scope at the mutation point. We prefer to use an existing lifetime parameter from the enclosing function if available; if not, we use 'static if it is appropriate, or we introduce a new lifetime parameter to the enclosing function. Introducing a new lifetime parameter may require modifying the function signature, which we avoid if possible to keep changes minimal. Instead, we can use a lifetime that is already defined, such as one from an outer function or 'static.
+
+For example, suppose the seed program contains: fn foo() { let _: [u8; 10]; }. We mutate by first adding a const function: const fn inner<'a>() -> usize where &'a (): Sized { 10 } inside foo. Then change the array to: let _: [u8; inner::<'static>()];. If foo already has a lifetime parameter, say fn foo<'b>(), we use that: let _: [u8; inner::<'b>()];.
+
+If the seed program already has a const function that matches the pattern, we may reuse it, but to ensure bug exposure, we ensure the call uses a lifetime parameter that is generic and not 'static. The key is to create a scenario where the const evaluation must handle a ReFree region (a free region) that cannot be converted to a region vid.
+
+The mutation must preserve the semantics of the original length where possible, but the primary goal is to trigger compiler internal errors. The new const function returns the same value as the original length expression, so the array size remains the same logically.
+
+Implementation steps:
+1. Locate all array type annotations and array repeat expressions in the seed program.
+2. For each, extract the length expression L.
+3. Check if there exists a const function in scope that matches the pattern: const fn inner<'a>() -> usize where &'a (): Sized { ... }. If not, define a new const function. Place it in the same module or function block as the mutation point. Use a unique name to avoid conflicts, e.g., inner_X where X is a counter.
+4. Determine a lifetime to use in the call. Look for an in-scope lifetime parameter from the enclosing function. If none, use 'static.
+5. Replace L with inner_X::<'lifetime>() where 'lifetime is the chosen lifetime.
+6. Ensure the generic_const_exprs feature is enabled if not already (add #![feature(generic_const_exprs)] at crate root if needed).
+7. Also add #![allow(incomplete_features)] to suppress warnings.
+
+Example transformation:
+Seed code snippet: fn test() { let _: [u8; 5]; }
+Mutated code snippet: 
+fn test() {
+    const fn inner<'a>() -> usize where &'a (): Sized { 5 }
+    let _: [u8; inner::<'static>()];
+}
+
+Another example with existing lifetime:
+Seed: fn bar<'x>() { let _ = [0u32; 7]; }
+Mutated:
+fn bar<'x>() {
+    const fn inner<'a>() -> usize where &'a (): Sized { 7 }
+    let _ = [0u32; inner::<'x>()];
+}
+
+This mutation directly replicates the structure that caused the ICE in the bug report, focusing on the interaction between generic const expressions, lifetime parameters, and higher-ranked trait bounds in array lengths.

@@ -1,0 +1,1 @@
+struct G ; fn main () { let g = G () ; }

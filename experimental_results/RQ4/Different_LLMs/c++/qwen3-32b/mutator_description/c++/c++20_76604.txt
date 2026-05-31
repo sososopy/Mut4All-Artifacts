@@ -1,0 +1,21 @@
+Mutation Operator: **Redundant Constraint on Template Template Parameter**  
+Target: **Template template parameters with constraints in function templates (C++20 concepts)**  
+Applies to: Function templates using `template <C, T> typename...` with constraints on the template template parameter.  
+
+Description: Introduce a redundant or conflicting constraint on the template template parameter of a variadic function template, forcing the compiler to perform additional constraint evaluation during template instantiation. This increases the likelihood of exposing bugs in constraint substitution or argument deduction logic.  
+
+Example:  
+Original template parameter:  
+```cpp  
+template <std::size_t N, template <std::integral, std::size_t> typename... T>  
+```  
+Mutated template parameter:  
+```cpp  
+template <std::size_t N, template <std::integral Auto, std::size_t Size>  
+          typename... T> requires std::is_same_v<decltype(std::declval<T<int, N>>().x), int>  
+```  
+Change: Adds a `requires` constraint checking the type of the `x` member in each instantiated template argument. Forces the compiler to evaluate the type of `x` during constraint satisfaction, which may trigger bugs in template instantiation or expression evaluation.  
+
+Coverage: Targets C++20 concepts, template template parameters, and variadic templates. Widely applicable to programs using constrained function templates with user-defined types.  
+
+Rationale: The original bug involves a crash during constraint evaluation (`EvaluateAsConstantExpr`, `CheckConstraintSatisfaction`). This mutation amplifies edge cases by introducing a nested constraint that may require deeper analysis of template arguments, likely to trigger similar crashes if the compiler mishandles the substitution.

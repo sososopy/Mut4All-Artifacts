@@ -1,0 +1,1 @@
+mod some_module { mod foo { pub struct x ; } pub mod bar { # [allow (unused_imports)] pub (in super :: super) use super :: foo :: { x } ; } } fn main () { }

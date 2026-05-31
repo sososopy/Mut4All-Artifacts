@@ -1,0 +1,1 @@
+fn main () { let a = 7 ; let b : bool = 1 == 1 && a = 3 ; }

@@ -1,0 +1,37 @@
+Mutation Operator: Replace `Box<dyn Trait>` with Higher-Rank Trait Bounds
+
+Target Code Construct:
+This mutation operator targets code constructs where a `Box<dyn Trait>` is used, particularly within the context of function definitions, trait bounds, or data structures. It specifically applies to cases involving higher-rank trait bounds (HRTBs).
+
+Description:
+Replace occurrences of `Box<dyn Trait>` with a higher-rank trait bound in which the lifetime is explicitly quantified. This operator aims to mutate code that uses trait objects with unspecified lifetimes to use HRTBs, potentially revealing issues related to lifetime handling and escaping bound variables.
+
+Changes to be Made:
+1. Identify a location in the code where `Box<dyn Trait>` is used.
+2. Replace it with a HRTB using `for<'a>`, assuming the function or trait object can accept any lifetime.
+3. Ensure that the replacement respects the original type constraints and context.
+
+Example:
+Original Code:
+```rust
+struct Handler {
+    callback: Box<dyn Fn(i32) -> i32>,
+}
+
+fn process(handler: Handler) {
+    // Use the callback...
+}
+```
+
+Mutated Code:
+```rust
+struct Handler<'a> {
+    callback: Box<dyn for<'a> Fn(i32) -> i32 + 'a>,
+}
+
+fn process<'b>(handler: Handler<'b>) {
+    // Use the callback...
+}
+```
+
+In this example, the `Box<dyn Fn(i32) -> i32>` is replaced with a `Box<dyn for<'a> Fn(i32) -> i32 + 'a>`, introducing an explicit higher-rank trait bound. This change may trigger bugs related to lifetime resolution or escaping bound variables, particularly if the compiler has issues handling HRTBs.

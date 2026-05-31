@@ -1,0 +1,19 @@
+Mutation operator: Introduce a noexcept specifier that depends on a non-constexpr function call within a template instantiation context, particularly when evaluating exception specifications in static_assert declarations.
+
+This mutation operator applies to function declarations or definitions that are templated or involve template-dependent types. The operator modifies the noexcept specifier of a function to include a call to std::declval or a similar non-constexpr function that is dependent on template parameters, causing the exception specification to be evaluated during template instantiation or static_assert evaluation.
+
+Specifically, locate a function template or a function within a template class that currently has no noexcept specifier or a simple noexcept(true/false) specifier. Change it to noexcept(std::declval<T>().some_method()) where T is a template parameter type and some_method is a member function that exists in the seed program for type T. If no such member function exists, use a default like std::declval<T>().operator() or introduce a dummy member function in T that is non-constexpr, such as a regular member function without constexpr qualification. The mutation should be applied in a context where the noexcept specifier will be evaluated, such as inside a static_assert that checks noexcept on the mutated function.
+
+For example, if the seed program contains a template class or function like:
+
+template<typename T>
+void function(T t) { }
+
+Change it to:
+
+template<typename T>
+void function(T t) noexcept(std::declval<T>().some_member()) { }
+
+Then, add or modify a static_assert elsewhere in the code that evaluates noexcept(function(std::declval<SomeType>())) where SomeType is a type from the seed program that has the member some_member. Ensure the static_assert is placed in a visible scope to trigger evaluation.
+
+This mutation leverages the bug's characteristics: complex noexcept declarations involving template-dependent expressions that are not constexpr, leading to crashes during constant expression evaluation or template substitution in exception specifications.

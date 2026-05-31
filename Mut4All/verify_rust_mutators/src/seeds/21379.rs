@@ -1,0 +1,1 @@
+extern crate core ; use core :: fmt ; fn show_all < I : fmt :: String > (iter : & mut Iterator < Item = I >) { for i in * iter { println ! ("{}" , i) ; } } fn main () { let v = vec ! [1i32 , 2 , 3 , 4] ; show_all (& mut v . iter ()) ; }

@@ -1,0 +1,1 @@
+fn main () { let mut results = Vec :: new () ; let immut_view = & results ; std :: thread :: spawn (move | | { std :: thread :: spawn (| | { immut_view . len () ; }) ; for i in 0 .. 5 { immut_view . push (i) ; } }) ; }

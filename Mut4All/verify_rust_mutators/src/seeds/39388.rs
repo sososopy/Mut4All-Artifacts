@@ -1,0 +1,1 @@
+macro_rules ! assign { (($ ($ a : tt) *) = ($ ($ b : tt)) *) => { $ ($ a) * = $ ($ b) * } }

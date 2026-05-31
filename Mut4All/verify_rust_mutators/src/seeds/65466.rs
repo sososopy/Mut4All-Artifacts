@@ -1,0 +1,1 @@
+# ! [deny (indirect_structural_match)] # [derive (PartialEq , Eq)] enum O < T > { Some (* const T) , None , } struct B ; const C : & [O < B >] = & [O :: None] ; pub fn foo () { let x = O :: None ; match & [x] [..] { C => () , _ => () , } }

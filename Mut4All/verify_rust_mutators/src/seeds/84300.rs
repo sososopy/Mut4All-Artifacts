@@ -1,0 +1,1 @@
+trait NeededTrait { } # [derive (Clone)] struct NeededStruct ;

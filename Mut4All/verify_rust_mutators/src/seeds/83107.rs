@@ -1,0 +1,1 @@
+# [repr (packed , align (0x1000))] struct GDT { kernel_null : GDTEntry , kernel_code : GDTEntry , kernel_data : GDTEntry , user_null : GDTEntry , user_code : GDTEntry , user_data : GDTEntry , }

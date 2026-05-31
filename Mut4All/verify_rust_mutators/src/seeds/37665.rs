@@ -1,0 +1,1 @@
+use std :: path :: * ; fn main () { let mut foo : String = "hello" . to_string () ; foo . push (MAIN_SEPARATOR) ; println ! ("{}" , foo) ; }

@@ -1,0 +1,1 @@
+# ! [allow (dead_code)] # ! [feature (negative_impls)] struct MyStruct ; impl ! Send for MyStruct { } impl ! Send for MyStruct { } fn main () { }

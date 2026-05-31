@@ -1,0 +1,38 @@
+Mutation Operator: Introduce Mutable References in Closures
+
+Target: This mutation operator targets closures that capture variables from their environment, especially when using constants or immutable variables.
+
+Description: To expose potential bugs related to variable capture in closures, mutate the closure to introduce mutable references. This can trigger issues with how the Rust compiler handles mutability and borrowing in closures. Specifically, if a captured variable or a constant is used inside a closure, introduce a mutable version of that capture.
+
+Example:
+1. Identify a closure that captures a variable or uses a constant. In this case, the variable `event` is captured.
+
+Original:
+```
+let _ = || {
+    match event {
+        LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED => (),
+        LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT => (),
+        _ => (),
+    };
+};
+```
+
+2. Introduce a mutable reference to the captured variable or constant. If the variable is a constant, you can introduce an equivalent mutable variable nearby that is used instead.
+
+Mutated:
+```
+let mut event_mutable = event;
+let _ = || {
+    match &mut event_mutable {
+        &LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED => (),
+        &LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT => (),
+        _ => (),
+    };
+};
+```
+
+Explanation:
+- Introduced `event_mutable` as a mutable version of the original `event`.
+- The closure now captures `event_mutable` instead, using a mutable reference.
+- This transformation can expose bugs in the compiler related to capturing and handling mutable references in closures, especially in the presence of constants and edition-specific features like those in Rust 2021.

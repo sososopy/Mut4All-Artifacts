@@ -1,0 +1,1 @@
+trait Foo : Sized + 'static { fn new () -> Self ; fn foo () { let me = Self :: new () ; | | loop { me ; } ; } }

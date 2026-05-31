@@ -1,0 +1,1 @@
+fn main () { [() ; & (static | x | { }) as * const _ as usize] }

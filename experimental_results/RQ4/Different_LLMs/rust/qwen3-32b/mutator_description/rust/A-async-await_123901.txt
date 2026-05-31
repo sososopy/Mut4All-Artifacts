@@ -1,0 +1,42 @@
+Mutation Operator: Convert a synchronous closure into an async closure that captures variables from its outer scope.  
+Target Construct: Closures defined within function bodies that capture parameters or variables from the enclosing function.  
+Implementation Example:  
+Original:  
+    fn example(x: &u64) {  
+        let _ = || { x.abs_diff(42); };  
+    }  
+Mutated:  
+    fn example(x: &u64) {  
+        let _ = async || { x.abs_diff(42); };  
+    }  
+Rationale: Async closures are unstable, and the compiler’s capture analysis for async closures may fail when encountering captured variables, especially when combined with unstable syntax. This targets the compiler’s AST lowering and closure capture inference paths, which are likely to miscompute child closures or capture chains, exposing internal consistency checks (e.g., `assertion failed: leftover child captures?`).  
+
+Mutation Operator: Add an async block in place of a nested closure.  
+Target Construct: Function-local closures that use captured variables but do not require async.  
+Implementation Example:  
+Original:  
+    fn process(val: &u64) {  
+        let c = || { val.abs_diff(100); };  
+    }  
+Mutated:  
+    fn process(val: &u64) {  
+        let c = async { val.abs_diff(100) };  
+    }  
+Rationale: Async blocks (not closures) are stable, but replacing a closure with an async block introduces a different AST structure. This mutation tests whether the compiler’s capture machinery properly differentiates between closures and async blocks, especially when they capture outer variables. The ICE may arise if the compiler internally treats async blocks as closures during capture analysis.  
+
+Mutation Operator: Introduce an extra level of nested closure with async syntax.  
+Target Construct: Functions containing closures that themselves define inner closures.  
+Implementation Example:  
+Original:  
+    fn chain(x: &u64, y: &u64) {  
+        let f = || {  
+            let g = || { x.abs_diff(*y); };  
+        };  
+    }  
+Mutated:  
+    fn chain(x: &u64, y: &u64) {  
+        let f = || {  
+            let g = async || { x.abs_diff(*y); };  
+        };  
+    }  
+Rationale: Nested async closures (even unstable) may cause incorrect capture propagation between layers. The compiler may miscompute the capture hierarchy, leading to mismatches between captured variables and child closures, which directly relates to the `leftover child captures` assertion in the ICE. This mutation stresses multi-level closure traversal and capture validation.

@@ -1,0 +1,1 @@
+use std :: mem :: BikeshedIntrinsicFrom ; pub struct Context ; pub fn is_maybe_transmutable < Src , Dst > () where Dst : BikeshedIntrinsicFrom < Src , Context > , { } fn should_pad_explicitly_packed_field < T > () { is_maybe_transmutable :: < () , () > () ; }

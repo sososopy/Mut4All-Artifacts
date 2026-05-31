@@ -1,0 +1,1 @@
+# [derive (Debug)] enum SomeName { Abc (str) , } fn main () { }

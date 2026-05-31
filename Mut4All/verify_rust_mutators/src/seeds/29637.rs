@@ -1,0 +1,1 @@
+const FOO : i32 = 42 ; fn main () { FOO ; }

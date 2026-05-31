@@ -1,0 +1,18 @@
+Based on the bug report, Rust compiler bugs are more likely to be triggered by complex interactions between language features, especially when new or incomplete features are involved. The bug specifically involves the interaction between inherent associated types (IAT) and const generics, where the compiler fails to properly handle a const generic parameter when used through an inherent associated type that is a type alias to a struct with a const generic parameter. This suggests that bugs often arise in the compiler's internal type resolution and const evaluation paths when dealing with nested generic contexts and type aliases.
+
+Mutation Operator:
+This mutation operator targets the usage of inherent associated types that are type aliases to types with const generic parameters. It applies when an inherent associated type is defined within an impl block for a type (without any trait) and that associated type is a type alias to another type that has const generic parameters. The mutation changes the const generic argument provided when using the inherent associated type from a simple constant expression to a more complex expression that still evaluates to the same constant value, potentially exposing different code paths in const evaluation and type resolution.
+
+Specifically, for any usage of an inherent associated type that takes const generic arguments, replace the const argument with an equivalent expression that involves a previously defined const item. If no suitable const item exists, introduce a new const item at an appropriate scope (e.g., within the same module or function) with a simple value and use it. The goal is to change the form of the const argument without changing its value, testing the compiler's ability to handle different representations of the same constant in this context.
+
+Example mutation steps:
+1. Identify an expression of the form TypeName::AssocType::<CONST_ARG>::method() where AssocType is an inherent associated type (defined in an impl TypeName block) that is a type alias to a type with a const generic parameter.
+2. If there exists a const item in scope (e.g., const C: usize = VALUE;), replace CONST_ARG with that const item's name, ensuring the types match (e.g., replace 10usize with C).
+3. If no such const item exists, add a new const item at the beginning of the current function or module. For example, add const MUTATED_CONST: usize = CONST_ARG; right before the usage, then replace CONST_ARG with MUTATED_CONST.
+4. Ensure the new const item's value is exactly the same as the original CONST_ARG to keep the program semantically equivalent.
+
+Illustration with the bug report code:
+Original: let a = Foo::Bar::<10usize>::new();
+After mutation: const MUTATED_CONST: usize = 10; let a = Foo::Bar::<MUTATED_CONST>::new();
+
+This mutation keeps the program's behavior identical but changes the syntactic form of the const argument from a literal to a named constant. The bug report shows an ICE when using a literal constant (10usize). By using a named constant instead, we test whether the compiler's handling of const generic arguments differs based on whether they are literals or named constants, potentially exposing the bug in a different scenario or confirming its specificity to literal arguments. This approach adheres to the requirement of using existing program elements when possible and introduces new elements clearly when necessary.

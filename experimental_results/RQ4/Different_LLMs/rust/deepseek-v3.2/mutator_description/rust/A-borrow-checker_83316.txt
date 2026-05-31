@@ -1,0 +1,31 @@
+mutation operator: replace a closure that captures self mutably with a closure that captures self immutably but then attempts to mutate through a shared reference, specifically by moving a mutation of a field of self outside the closure while keeping a usage that expects mutable access inside.
+
+this operator applies to functions or methods containing a closure that captures self mutably (e.g., |...| { ... self.field ... }). the mutation changes the closure to capture self immutably (by removing the mut or changing &mut self to &self in the capture), and then moves one statement that mutates a field of self to just before the closure definition, using a mutable borrow taken before the closure. this creates a scenario where the closure expects self to be immutable but the moved mutation may conflict with the closure's captured references.
+
+steps:
+1. identify a closure within a method that captures self mutably (e.g., let closure = |params| { self.field = value; ... }).
+2. change the closure's capture from mutable to immutable (e.g., change the captured self from &mut self to &self implicitly or explicitly).
+3. select one statement inside the closure that mutates a field of self (e.g., self.field = expr;). remove that statement from the closure.
+4. insert that mutation statement immediately before the closure definition. if necessary, ensure self is mutably borrowed at that point, possibly by using a local mutable borrow (e.g., let mut_ref = &mut self; mut_ref.field = expr;).
+5. ensure the closure still uses the field that was mutated, or another field, creating a potential borrow checker conflict between the mutable borrow for the mutation and the immutable capture in the closure.
+
+example seed pseudo-code:
+fn method(&mut self) {
+    let closure = |x| {
+        self.data = x; // mutation
+        self.compute() // usage
+    };
+    closure(10);
+}
+
+mutated version:
+fn method(&mut self) {
+    let mut_ref = &mut self;
+    mut_ref.data = 10; // mutation moved outside
+    let closure = |x| {
+        self.compute() // closure captures self immutably, but mutation already happened via mut_ref
+    };
+    closure(10);
+}
+
+note: this operator introduces a new variable mut_ref as a mutable reference to self. this is acceptable because it uses existing elements from the seed (self). the operator aims to trigger borrow checker issues by creating overlapping mutable and immutable borrows.

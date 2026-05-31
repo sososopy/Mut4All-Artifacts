@@ -1,0 +1,38 @@
+Mutation Operator: Modify Struct and Union Constraints
+
+Target Code Construct: Struct and Union Definitions
+
+Mutation Rule:
+1. Identify struct and union definitions with const parameters and associated where clauses in the code.
+2. Modify the constraints within the where clause by introducing an additional constraint that may lead to overflow or boundary conditions.
+3. Specifically, for structs and unions that have constraints like [(); N + M]:, introduce a change to use a potentially overflowing operation, such as [(); N * M]: or [(); N - M]:, where the arithmetic operation may lead to a negative or zero-sized array condition.
+
+Example:
+Given the original struct and union:
+```
+struct ConcatJoin<const N: usize, const M: usize> {
+    left: [u8; N],
+    right: [u8; M],
+}
+
+union ConcatJoiner<const N: usize, const M: usize>
+where
+    [(); N + M]:,
+{
+    whole: ManuallyDrop<[u8; N + M]>,
+    split: ManuallyDrop<ConcatJoin<N, M>>,
+}
+```
+Mutation:
+```
+union ConcatJoiner<const N: usize, const M: usize>
+where
+    [(); N * M]:, // Introduce a multiplication constraint
+{
+    whole: ManuallyDrop<[u8; N * M]>, // Apply the new constraint
+    split: ManuallyDrop<ConcatJoin<N, M>>,
+}
+```
+
+Rationale:
+This mutation operator targets the arithmetic operations within constraints that might lead to boundary conditions or arithmetic overflows. By altering the constraints in structs and unions that involve const generics, it can surface issues related to handling or interpreting const arithmetic, potentially triggering bugs in the compiler's handling of generic const expressions.

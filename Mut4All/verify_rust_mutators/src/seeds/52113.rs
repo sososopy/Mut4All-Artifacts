@@ -1,0 +1,1 @@
+# ! [allow (warnings)] # ! [feature (nll)] trait Bazinga { } impl < F > Bazinga for F { } fn produce < 'a > (data : & 'a u32) -> impl Bazinga + 'a { let x = move | | { let _data : & 'a u32 = data ; } ; x } fn main () { }

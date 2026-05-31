@@ -1,0 +1,1 @@
+# ! [feature (core_intrinsics)] pub fn x (data : * const u64) { unsafe { core :: intrinsics :: prefetch_read_instruction (data , 3) ; } }

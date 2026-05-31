@@ -1,0 +1,1 @@
+const ERROR_CONST : bool = false ; macro_rules ! cause_llvm_assertion_error { ($ a : expr , $ b : expr , $ c : expr) => (if $ a || $ b || ! ($ c) { println ! ("assertion error?") ; }) } pub fn main () { cause_llvm_assertion_error ! (true , false , ERROR_CONST) ; }

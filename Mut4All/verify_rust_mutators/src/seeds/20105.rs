@@ -1,0 +1,1 @@
+fn main () { std :: task :: spawn (move | | panic ! ("A")) ; std :: thread :: Thread :: spawn (move | | panic ! ("B")) . detach () ; }

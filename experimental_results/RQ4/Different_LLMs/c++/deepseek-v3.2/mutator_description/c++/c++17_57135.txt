@@ -1,0 +1,19 @@
+mutation operator Nested Array Initialization Loop Expression Substitution with Lambda Capture
+This mutation operator targets nested array initialization contexts within C++17 or later code where an ArrayInitLoopExpr is used to initialize elements of a multi-dimensional array, particularly when such expressions appear within lambda capture contexts. It applies when the seed program contains a multi-dimensional array declaration followed by an attempt to access or compute values using nested array initialization loops, often seen in aggregate initialization or lambda captures involving array elements.
+
+The operator replaces the nested ArrayInitLoopExpr structure with a lambda expression that captures the outer array by reference and attempts to perform a similar element access, but using explicit subscript operations instead of the implicit loop initialization. Specifically, it modifies code where an array element access is performed via a nested initialization loop to instead use a lambda that captures the entire array and then accesses a specific element via manual indexing, aiming to expose compiler bugs in handling the interplay between lambda captures and nested array initialization semantics.
+
+For example, if the seed program contains:
+  Type array[Dim1][Dim2];
+  int res[Dim3];
+  res[0] = [array] { return array[0][0].member; }();
+The mutation changes the lambda capture and access to:
+  Type array[Dim1][Dim2];
+  int res[Dim3];
+  res[0] = [&array] {
+    auto& innerArray = array[0];
+    return innerArray[0].member;
+  }();
+Here, the original capture of 'array' is changed to capture by reference explicitly, and the nested array access is decomposed into two explicit subscript operations, first accessing the inner array and then its element. This mutation introduces a new variable 'innerArray' which is a reference to the first element of the outer array, declared within the lambda body. The variable 'innerArray' must be of type 'Type[Dim2]' or a suitable reference type, deduced from 'array[0]'. The mutation ensures that all types and variables used are derived from existing elements in the seed program; no new external types or variables are introduced beyond the lambda's internal reference.
+
+The operator aims to trigger bugs by altering the representation of nested array accesses in contexts where the compiler must handle both lambda capture semantics and array initialization loops, potentially exposing assertion failures or crashes similar to the reported issue. It focuses on code structures involving multi-dimensional arrays, lambda captures, and aggregate member accesses within C++17 or later standards.

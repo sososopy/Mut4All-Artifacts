@@ -1,0 +1,9 @@
+mutation operator: Introduce mutable reborrow in tail position of a match arm with a recursive call that uses an incomplete feature.
+
+This mutation targets match expressions inside methods that take &mut self. It applies when a match arm contains a recursive call that is the tail expression, and the match scrutinee involves a mutable reference. The mutation introduces a mutable reborrow of self in the tail position before the recursive call, creating a two-phase borrow scenario. The mutation should be applied to the recursive call expression within the match arm.
+
+Specifically, locate a match arm where the expression is a recursive method call on self (e.g., self.method()). Change this expression to { let temp = &mut *self; self.method() } where self is the mutable receiver. This introduces a mutable reborrow via &mut *self, stored in a temporary variable, but then still calls the method on the original self. This creates a situation where the compiler may need to handle two-phase borrows for the temporary reborrow and the method call.
+
+The mutation should only be applied if the method being called is defined on the same type and takes &mut self, and the call is in tail position (i.e., the result of the match arm). Prefer using existing variable names; if a temporary variable is introduced, use a name like _reb or reborrow that does not conflict with existing names in the scope. Ensure the mutated code compiles syntactically but may trigger borrow checker edge cases.
+
+Example: In a seed program with a method like fn foo(&mut self) -> i32 { match something { Some(x) => self.foo(), None => 0 } }, mutate the arm Some(x) => self.foo() to Some(x) => { let _reb = &mut *self; self.foo() }. This introduces a mutable reborrow that is not used, potentially confusing the borrow checker's handling of two-phase borrow temporaries.

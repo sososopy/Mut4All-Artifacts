@@ -1,0 +1,21 @@
+mutation operator: lambda capture replacement to this pointer
+
+This operator targets lambda expressions that capture variables by value or reference, and replaces those captures with a capture of the implicit 'this' pointer. It applies when a non-static member function or a lambda within a non-static member context contains a lambda that captures one or more variables from its enclosing scope.
+
+The operator changes the capture list of an inner lambda to capture 'this' instead of the original captured variables. The body of the lambda is then modified to access the originally captured variables through the 'this' pointer, assuming those variables are member variables of the enclosing class. If the originally captured variables are not member variables, this mutation may lead to compilation errors, but the goal is to test compiler robustness in handling the capture substitution.
+
+For a seed program, the operator first identifies a lambda expression inside a non-static member function or another lambda that is within a non-static member context. It then replaces the capture list with '[this]'. Subsequently, each use of a captured variable within the lambda body is replaced with 'this->var' if 'var' is a member variable. If 'var' is not a member variable, the mutation does not proceed for that specific lambda, or the use is left unchanged to potentially trigger compiler issues.
+
+Example transformation:
+Original code snippet (within a class member function):
+void method() {
+    int local = 10;
+    auto lambda = [local]() { return local + 5; };
+}
+Mutated code:
+void method() {
+    int local = 10;
+    auto lambda = [this]() { return this->local + 5; }; // 'local' is not a member variable, leading to potential compiler crash
+}
+
+Note: The mutation assumes that 'local' might be a member variable, but in this case, it is not, which can expose compiler bugs when dealing with incorrect 'this' captures. The operator prioritizes lambdas that capture variables which are also member variables to increase relevance, but can apply to any lambda capture to test edge cases.

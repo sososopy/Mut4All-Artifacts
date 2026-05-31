@@ -1,0 +1,1 @@
+struct A < 'a > { data : & 'a [u32] , } impl < 'a > A < 'a > { const fn new (data : & 'a [u32]) -> A < 'a > { A { data } } } pub fn setup () { static mut aa_storage : [A ; 32] = [A :: new (& []) ; 32] ; }

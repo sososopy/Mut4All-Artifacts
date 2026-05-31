@@ -1,0 +1,32 @@
+mutation operator: Insert a derive macro attribute on a local struct or enum defined inside a trait implementation method, specifically when that trait implementation is for a procedural macro-related trait (such as a serde trait or a custom derive trait). The insertion should occur on a local item that is already defined within the method body. The derive macro should be one that triggers procedural macro expansion (e.g., serde::Deserialize, serde::Serialize, or a custom derive). The local item must be a struct or enum. If the seed program already contains a local item inside a trait impl method, add a derive attribute to it. If no such local item exists, create a new local struct with a single field and apply the derive attribute. For the new struct, use a type that exists in scope (e.g., i32 or a type alias from the outer scope) for its field. The goal is to replicate the scenario where a derive macro is expanded inside a method that is already part of a trait impl, which may cause recursive expansion or stack overflow.
+
+Example for existing local item: In the seed, if there is:
+impl SomeTrait for SomeType {
+    fn method() {
+        struct LocalItem;
+    }
+}
+Change to:
+impl SomeTrait for SomeType {
+    fn method() {
+        #[derive(serde::Deserialize)]
+        struct LocalItem;
+    }
+}
+
+Example when no local item exists: In the seed, if there is:
+impl SomeTrait for SomeType {
+    fn method() {
+        let x = 1;
+    }
+}
+Change to:
+impl SomeTrait for SomeType {
+    fn method() {
+        #[derive(serde::Deserialize)]
+        struct LocalItem { field: i32 }
+        let x = 1;
+    }
+}
+
+Ensure the derive macro is for a trait that is likely to be processed by a procedural macro. Use serde::Deserialize or serde::Serialize if serde is in scope; otherwise, if the seed uses custom derives, use one of those. Do not introduce new dependencies; only use derives from crates already imported.

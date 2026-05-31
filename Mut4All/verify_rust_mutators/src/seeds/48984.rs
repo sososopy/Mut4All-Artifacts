@@ -1,0 +1,1 @@
+pub trait Foo { type Item ; } pub trait Bar : Foo < Item = [u8 ; 1] > { }

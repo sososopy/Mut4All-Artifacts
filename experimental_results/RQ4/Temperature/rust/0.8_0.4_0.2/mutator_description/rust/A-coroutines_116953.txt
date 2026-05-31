@@ -1,0 +1,42 @@
+Mutation Operator: Modify the async block's content and execution within a `#[no_mangle]` function
+
+Target: The mutation operator targets `#[no_mangle]` functions that contain an execution of an async block using a runtime or task executor.
+
+Description: The mutation operator is designed to modify the content within an async block or the method used to execute the async block within a function annotated with `#[no_mangle]`. This is aimed at triggering potential issues with coroutine handling or monomorphisation in the presence of `#[no_mangle]`, especially when combined with runtime task execution.
+
+Specific Changes:
+1. If the async block is empty, introduce a simple operation, such as printing a constant string or returning a pre-defined constant value.
+2. Modify the execution method of the async block by using a different task execution method available in the seed program.
+3. If applicable, introduce an additional layer of async function call inside the async block.
+
+Example:
+Original Code:
+```
+#[no_mangle]
+fn example_function() {
+    let runtime = Runtime::new().unwrap();
+    let local_set = LocalSet::new();
+
+    local_set.block_on(&runtime, async move {
+        // Original async block content
+    });
+}
+```
+
+Mutated Code:
+```
+#[no_mangle]
+fn example_function() {
+    let runtime = Runtime::new().unwrap();
+    let local_set = LocalSet::new();
+
+    let result = runtime.block_on(async move {
+        println!("Executing async block");
+        42  // Example value to return
+    });
+
+    println!("Result: {}", result);
+}
+```
+
+In this mutation, the async block execution is changed to use `runtime.block_on` instead of `local_set.block_on`, and a simple operation is added inside the async block. This can help reveal issues related to coroutine execution and monomorphisation with `#[no_mangle]`.

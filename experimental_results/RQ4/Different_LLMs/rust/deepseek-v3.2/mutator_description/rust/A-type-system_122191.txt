@@ -1,0 +1,31 @@
+Mutation Operator: Replace a concrete type with an opaque impl Trait type alias in a context where the alias is used to define a constant or static, and where the concrete type of the constant's initializer does not match the opaque type's hidden type due to a missing or mismatched defining use.
+
+Target construct: This mutation applies to Rust source code where a type alias is defined using impl Trait (e.g., type Foo = impl Trait;), and that alias is subsequently used as the type of a constant or static item whose initializer expression produces a concrete type that is not yet known to be the hidden type for that opaque alias at the point of the constant definition. The mutation is specifically aimed at triggering internal compiler errors (ICEs) related to opaque type handling in the MIR validation phase, as seen in the provided bug report.
+
+Mutation description: In a seed program that already contains a valid type alias using impl Trait (or where such an alias can be introduced without causing other errors), locate a constant or static item that uses this alias as its type. Change the initializer expression of that constant or static to a value that produces a concrete type different from the one that the compiler expects to be the hidden type for the opaque alias. Ensure that the new initializer still type-checks in isolation (i.e., the expression is valid), but the concrete type it produces does not match the opaque type's previously inferred or declared hidden type. If the seed program does not already define a function or method that returns the concrete type matching the opaque alias, introduce a new function that returns a value of the concrete type that should be the hidden type, but do not call that function in the constant's initializer. Instead, use a different expression that produces a distinct concrete type that implements the same trait bound.
+
+If a new function is introduced, it must be declared with a concrete return type and a body that returns a value of that type. For example, if the opaque alias is type MyOpaque = impl Debug;, and the intended hidden type is i32, introduce fn make_hidden() -> i32 { 42 } but do not use it. Then mutate the constant to const MY_CONST: MyOpaque = 3.14; (where f64 also implements Debug). The mutation must ensure that the constant's initializer is not a defining use for the opaque type, meaning the compiler cannot infer the hidden type from that constant alone. The constant must be used later in a context that forces MIR validation, such as in a function body that is not generic over the opaque type.
+
+The mutation should preserve all other existing code, including any main function or other entry points. If the seed program lacks a main function, one must be added that references the mutated constant to force compilation of the MIR. The added main function should simply read or use the constant, e.g., fn main() { let _ = MY_CONST; }.
+
+Example before mutation (seed program):
+
+type MyOpaque = impl std::fmt::Debug;
+fn define() -> MyOpaque { 42 }
+const VALUE: MyOpaque = define();
+
+fn main() {
+let _ = VALUE;
+}
+
+Example after mutation (applying operator):
+
+type MyOpaque = impl std::fmt::Debug;
+fn define() -> MyOpaque { 42 }
+const VALUE: MyOpaque = 3.14;
+
+fn main() {
+let _ = VALUE;
+}
+
+In this mutated version, the constant VALUE is initialized with an f64 literal, but the opaque type MyOpaque is already defined (or will be defined) by the function define returning i32. The compiler must now reconcile two different hidden types for the same opaque alias, leading to potential ICEs in MIR validation, as seen in the bug report where an opaque type in a type alias was used in a constant with a mismatched hidden type and caused an internal compiler error in rustc_const_eval/src/transform/validate.rs.

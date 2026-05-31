@@ -1,0 +1,26 @@
+The bug involves a crash during template deduction when a partial specialization incorrectly uses a template parameter from the primary template in its base class list, while the specialization itself does not actually depend on that parameter, leading to an assertion failure in the compiler's type checking logic. C++ compiler bugs are more likely to be triggered by intricate template constructs, particularly those involving partial specializations with complex inheritance patterns, template parameter mismatches, and scenarios where the compiler must deduce types across nested template instantiations. Such bugs often arise in code that mixes template metaprogramming with inheritance and operator overloads.
+
+Mutation operator: Replace the base class in a partial specialization with a type that mismatches the template parameter usage.
+
+This mutation operator applies to any partial specialization of a class template that has a base class. The operator modifies the base class type in the specialization to introduce a mismatch between the template parameters of the specialization and those used in the base class. Specifically, it changes the base class to a type that either incorrectly uses a template parameter from the primary template or uses a different parameter altogether, creating a scenario where template deduction may fail or lead to an internal compiler error.
+
+The mutation is performed as follows: For a given partial specialization of a class template, locate its base class list. If the base class is a template type that depends on the specialization's template parameters, alter it to instead use a template parameter from the primary template (which may not be present in the specialization) or replace it with a concrete type that exists in the seed program (such as a previously defined class or a fundamental type). The goal is to create a base class that does not logically align with the specialization's template arguments, potentially causing confusion during template argument deduction.
+
+Example: In the seed program, if there is a partial specialization like:
+template<typename T>
+struct Primary {};
+
+template<typename U>
+struct Primary<int> : SomeTemplate<U> {};
+
+The mutation could change the base class to use a template parameter from the primary template (which is not in the specialization) or to a concrete type:
+template<typename U>
+struct Primary<int> : SomeTemplate<T> {}; // T is from primary template, not available here
+
+Or, if a type like 'float' is present in the seed program:
+template<typename U>
+struct Primary<int> : float {}; // invalid inheritance
+
+The change should use existing types or template parameters from the seed program to avoid introducing undeclared elements. If no suitable type exists, the mutation may introduce a simple fundamental type (like int) but only if such a type is already used elsewhere in the program, ensuring it is declared in the context. The mutation operator does not add new declarations; it reuses existing names.
+
+This mutation targets the delicate interaction between partial specialization inheritance and template deduction, aiming to expose bugs where the compiler fails to properly validate or deduce types in such scenarios, potentially leading to crashes like the one observed.

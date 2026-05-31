@@ -1,0 +1,1 @@
+extern { fn r () { impl Copy for u8 { } } }

@@ -1,0 +1,1 @@
+const X : i32 = 5 ; fn main () { fn q () { X ; } }

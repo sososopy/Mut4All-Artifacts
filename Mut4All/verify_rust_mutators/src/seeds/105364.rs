@@ -1,0 +1,1 @@
+fn cause_compiler_bug () { let content_line = content_line :: fail () ; }

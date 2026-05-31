@@ -1,0 +1,19 @@
+mutation operator: Replace a concept-based requires-clause in a partial specialization with a semantically equivalent but syntactically different constraint expression that may alter the compiler's partial ordering or ambiguity resolution.
+
+This mutation operator targets partial specializations of class templates where the specialization condition is expressed using a concept or a requires-clause. It applies when a template partial specialization uses a concept (like IsTemplateInstanceOfT) or a compound requires-clause to constrain the specialization. The operator replaces the concept usage with an alternative formulation that is intended to be logically equivalent but may be interpreted differently by the compiler during partial specialization matching and ordering, potentially exposing bugs in constraint satisfaction or ambiguity detection.
+
+The operator works by identifying a partial specialization of a class template that uses a concept name (e.g., IsTemplateInstanceOfT<TType, A>) in its requires-clause. It replaces that concept with a requires-expression that manually encodes the concept's requirement. For the IsTemplateInstanceOfT concept, which checks if a type is an instance of a given template, the replacement is a requires-expression that attempts to match the type against the template. Specifically, the concept IsTemplateInstanceOfT<It, Template> is replaced with requires { { [] <typename T1> (Template<T1>&) {} (declare<It&>()) }; } (the body of the concept itself). This change introduces a direct requires-expression, which may affect how the compiler performs constraint subsumption or partial ordering.
+
+If the original requires-clause contains multiple constraints combined with logical operators (&& or ||), the operator only modifies the concept subexpression, leaving the rest of the clause intact. The new constraint should be semantically equivalent to the original concept, but the compiler's internal handling of requires-expressions versus named concepts might differ, potentially leading to incorrect ambiguity errors or missed ambiguities.
+
+Example: Given a seed program with a partial specialization:
+template <typename TType> requires true && IsTemplateInstanceOfT<TType, A>
+struct Adapter<TType> { ... };
+
+After mutation, it becomes:
+template <typename TType> requires true && requires { { [] <typename T1> (A<T1>&) {} (declare<TType&>()) }; }
+struct Adapter<TType> { ... };
+
+Here, IsTemplateInstanceOfT<TType, A> is replaced with the requires-expression from its definition. The variables and types used (like TType, A, declare) must already exist in the seed program. The lambda and declare function call are part of the original concept's requirement, so they are reused. No new declarations are introduced beyond what the concept itself would expand to.
+
+This mutation is designed to test compiler compliance with C++20 concepts and constraints, particularly in complex scenarios involving partial specializations where constraint subsumption and partial ordering rules are critical. It aims to expose bugs where compilers incorrectly resolve ambiguities or reject valid code due to mishandling of requires-expressions versus named concepts.

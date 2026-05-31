@@ -1,0 +1,1 @@
+fn main () { Some ("foo") . unwrap_or (fail ! ("bad input")) . to_str () ; }

@@ -1,0 +1,1 @@
+# ! [feature (const_transmute)] use std :: mem :: transmute ; fn dump () -> i32 { 42 } fn main () { let arr : [i8 ; unsafe { transmute (dump) }] ; }

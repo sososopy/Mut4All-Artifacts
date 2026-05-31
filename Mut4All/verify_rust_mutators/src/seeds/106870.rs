@@ -1,0 +1,1 @@
+# ! [warn (explicit_outlives_requirements)] macro_rules ! tuple_impls { ($ ($ name : ident) +) => { struct TupleInPlaceVisitor <'a , $ ($ name : 'a ,) +> (&'a ($ ($ name ,) +)) ; } } mod ok { tuple_impls ! (T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11) ; } mod ice { tuple_impls ! (T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12) ; }

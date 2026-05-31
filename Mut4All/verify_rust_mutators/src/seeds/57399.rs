@@ -1,0 +1,1 @@
+trait T { type T ; } impl T for i32 { type T = u32 ; } struct S < A > { a : A , } impl From < u32 > for S < < i32 as T > :: T > { fn from (a : u32) -> S < < i32 as T > :: T > { Self { a } } } fn main () { }

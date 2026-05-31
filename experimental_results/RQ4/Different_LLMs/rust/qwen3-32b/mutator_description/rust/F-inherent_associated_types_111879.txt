@@ -1,0 +1,24 @@
+Mutation Operator: AddInherentHigherRankAssocTypeWithNestedRef
+Targets structs with explicit lifetime parameters and adds an inherent associated type referencing nested higher-rank function types with self-referential associated types.
+
+Applies to struct declarations with lifetime parameters. Within the impl block for the struct, adds an associated type definition where:
+1. The type is a higher-rank function (for<...> fn(...)) 
+2. Contains nested references to another associated type defined in the same impl 
+3. The nested reference includes parameters that involve both the outer struct's and inner function's lifetimes
+
+Example transformation:
+Original:
+pub struct Carrier<'a>(&'a ());
+
+Modified:
+impl<'a> Carrier<'a> {
+    pub type Focus<T> = &'a mut User;
+    
+    pub type Handler = for<'b> fn(Carrier<'b>::Focus<Self::Handler>);
+}
+
+This creates a cyclic reference pattern where:
+- The Handler associated type contains a higher-rank function parameter 
+- The function parameter references the Focus type from the same struct
+- The Focus type reference includes a nested reference back to the Handler type being defined
+- Lifetime parameters from both the outer struct and the inner function are mixed in the reference

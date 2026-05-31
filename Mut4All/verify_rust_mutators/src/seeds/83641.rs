@@ -1,0 +1,1 @@
+fn main () { repro :: fail ! (recv) ; }

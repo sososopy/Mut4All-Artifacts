@@ -1,0 +1,35 @@
+Mutation Operator: Template Specialization Confusion
+
+Target Code Construct: Template function with enable_if_t and nested templates
+
+Mutation Rule:
+1. Identify a template function that uses `enable_if_t` for SFINAE (Substitution Failure Is Not An Error) and involves nested template structures.
+2. Within the template function, introduce a nested template calculation that is indirectly dependent on another template's type parameter, but ensure the types are not directly related.
+3. Modify the `enable_if_t` condition to depend on the new calculation, creating potential conflicts in instantiation.
+
+Step-by-Step Instructions:
+- Locate a template function `template <class A, class B, typename std::enable_if_t<Condition, int> = 0> void func(A a, B b);` where `Condition` involves a nested template.
+- Introduce a new nested template `template <typename T> struct NestedCalc { static const bool value = sizeof(T) > 0; };`.
+- Change the `enable_if_t` condition in `func` to `enable_if_t<(Condition && NestedCalc<B>::value), int>`.
+- Ensure `B` is a type that does not directly relate to `A` or the existing condition in a straightforward way, increasing the complexity of instantiation.
+
+Example Pseudo-code:
+Before Mutation:
+```cpp
+template <class T, class U, typename std::enable_if_t<is_trivial<T>::value, int> = 0>
+void process(T t, U u) {
+    // Function implementation
+}
+```
+
+After Mutation:
+```cpp
+template <typename X> struct NestedCalc { static const bool value = sizeof(X) > 0; };
+
+template <class T, class U, typename std::enable_if_t<(is_trivial<T>::value && NestedCalc<U>::value), int> = 0>
+void process(T t, U u) {
+    // Function implementation
+}
+```
+
+This mutation explores template instantiation conflicts and SFINAE confusion, potentially causing assertion failures or compilation errors in the presence of complex template logic.

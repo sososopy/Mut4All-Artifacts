@@ -1,0 +1,1 @@
+trait Test { } impl Test for () { } fn test < T : Test > (a : & < T as Test > :: A) { } fn main () { test :: < () > (& ()) }

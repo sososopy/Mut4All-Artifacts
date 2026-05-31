@@ -1,0 +1,1 @@
+const FOO : usize = 32 ; fn bar () { const FOO : usize = FOO ; }

@@ -1,0 +1,1 @@
+struct Foo ; impl Foo { pub fn create_a_mess (& self) { self . not_existing_vector [self . i + self . a] ; } } fn main () { }

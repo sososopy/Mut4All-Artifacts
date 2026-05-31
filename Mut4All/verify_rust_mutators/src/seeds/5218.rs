@@ -1,0 +1,1 @@
+mod m { macro_rules ! test { { } => { ~ "test" } } } fn main () { io :: println (self :: m :: test ! ()) ; }

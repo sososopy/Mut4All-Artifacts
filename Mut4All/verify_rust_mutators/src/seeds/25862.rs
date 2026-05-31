@@ -1,0 +1,1 @@
+# [test] fn yerler () { fn utule (arr : & [[u8]]) -> [u8 ; 81] { let mut newarr = [0_u8 ; 81] ; for i in 0 .. 10 { for j in 0 .. 10 { newarr [i * 9 + j] = arr [i] [j] ; } } newarr } }

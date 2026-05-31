@@ -1,0 +1,1 @@
+use std :: ops :: Deref ; struct DerefExample { value : char } impl Deref for DerefExample { type Target = char ; fn deref < 'a > (& 'a self) -> & 'a char { & self . value } } fn main () { let x : & char = & DerefExample { value : 'a' } ; }

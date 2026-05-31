@@ -1,0 +1,1 @@
+# ! [feature (core , core_simd)] extern crate core ; use core :: simd :: f32x4 ; fn main () { let x = f32x4 (1.0 , 2.0 , 3.0 , 4.0) ; let y = f32x4 (2.0 , 2.0 , 2.0 , 2.0) ; x << y ; }

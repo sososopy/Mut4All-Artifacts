@@ -1,0 +1,1 @@
+# [deriving (Show)] struct Pair < T , V > (T , V) ; impl Pair < & str , int > { fn say (self : & Pair < & str , int >) { println ! ("{}" , self) ; } } fn main () { let result = & Pair ("shane" , 1i) ; result . say () ; }

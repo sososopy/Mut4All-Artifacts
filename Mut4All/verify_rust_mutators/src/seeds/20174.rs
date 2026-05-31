@@ -1,0 +1,1 @@
+struct GradFn < F : Fn () -> uint > (F) ; fn main () { let GradFn (x_squared) : GradFn < _ > = GradFn (| | -> uint { 2u }) ; let _ = x_squared () ; }

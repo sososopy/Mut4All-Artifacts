@@ -1,0 +1,1 @@
+const fn one (arr : & [u8 ; 1]) -> u8 { arr [0] } const fn two (byte : u8) -> [u8 ; 1] { [byte] } const fn three (data : u8) -> u8 { one (& two (data)) } const FOO : u8 = three (0x0) ;

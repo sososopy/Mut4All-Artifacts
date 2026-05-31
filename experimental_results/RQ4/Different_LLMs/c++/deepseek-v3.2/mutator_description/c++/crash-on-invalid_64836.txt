@@ -1,0 +1,24 @@
+Based on the bug report analysis, which involves a crash triggered by a syntax error within a class definition in Objective-C++ mode, I have identified a potential mutation operator targeting the interplay between templates and member declarations, particularly when followed by invalid syntax. This operator aims to expose crashes in the parser when dealing with malformed class bodies.
+
+Mutation operator: Inject a malformed member declaration after a template-dependent member declaration within a class.
+
+This mutation applies when a class contains a member declaration that depends on a template or decltype (like the example's `C<int, decltype(foo)> c;`). The operator introduces a syntactically incomplete or erroneous line immediately after that member declaration, inside the same class body. The goal is to stress the parser's error recovery when transitioning from a correctly parsed template-dependent member to an invalid token sequence.
+
+Specifically, locate a class definition in the seed program that includes a member variable declaration whose type involves a template specialization or decltype expression. After this member declaration, insert a line consisting of a single identifier token (or a keyword like `p` as seen in the bug) without any following semicolon or valid syntax. This creates a scenario where the parser, while processing the class body, encounters an annotation token or unexpected token after a complex declaration, potentially leading to assertion failures or crashes similar to the reported issue.
+
+For example, if the seed program contains:
+class MyClass {
+private:
+    static void helper() {}
+    SomeTemplate<int, decltype(helper)> member;
+};
+
+Mutate to:
+class MyClass {
+private:
+    static void helper() {}
+    SomeTemplate<int, decltype(helper)> member;
+    p   // injected syntax error
+};
+
+The mutation operator uses identifiers already present in the class (like `p` if it exists) or introduces a new identifier. If introducing a new identifier, it should be a simple lowercase letter like 'x' declared nowhere else in the class to avoid conflicts. The change is solely the insertion of that identifier line; no other modifications are made. This operator targets the parser's handling of class member sequences and error states, especially in modes like Objective-C++ where additional grammar rules may apply.

@@ -1,0 +1,58 @@
+Mutation Operator 1:
+Target construct: Function templates returning a lambda with template parameter substitution in its capture or parameter list.
+Where it applies: Any function template returning a lambda type that uses a template parameter in its capture or parameter type.
+Mutation: Insert a reference qualifier or rvalue reference on a template parameter in the lambda's parameter type, e.g., change:
+template<class T> auto f() { return [](T x) {}; }
+to:
+template<class T> auto f() { return [](T&& x) {}; }
+Or add a defaulted template parameter that requires substitution in the lambda, e.g.:
+template<class T, class U=T> auto f() { return [](U x) {}; }
+
+Example:
+Original:
+template<typename T> auto make_lambda() {
+  return [t=T{}] { return t; };
+}
+
+Mutated:
+template<typename T> auto make_lambda() {
+  return [t=T{}] { return std::move(t); };
+}
+
+This creates a situation where substitution of non-copyable types may trigger ICE during template type parameter substitution in lambda capture handling.
+
+Mutation Operator 2:
+Target construct: Template alias involving nested type transformations.
+Where it applies: Any template alias that uses template template parameters with variable template arguments.
+Mutation: Replace a template alias with a nested transformation that involves a template parameter in a non-deduced context, e.g.:
+template<template<class> class F, class T> using apply = F<T>;
+becomes:
+template<template<class> class F, class T> using apply = F<T&>;
+
+Example:
+Original:
+template<template<class> class F, class T> using wrap = F<T>;
+
+Mutated:
+template<template<class> class F, class T> using wrap = F<T&&>;
+
+This creates potential substitution failures during template instantiation when the type transformation requires a reference-collapsing scenario that the compiler may mishandle.
+
+Mutation Operator 3:
+Target construct: Concept constraints with type transformations.
+Where it applies: Any concept definition that uses nested type traits with template parameters.
+Mutation: Introduce a reference collapsing scenario in the type transformation, e.g.:
+template<class T> concept C = requires { typename decay_t<T>; };
+becomes:
+template<class T> concept C = requires { typename add_rvalue_reference_t<T>; };
+
+Example:
+Original:
+template<class T>
+concept MyConcept = requires(T t) { t.member(); };
+
+Mutated:
+template<class T>
+concept MyConcept = requires(T&& t) { t.member(); };
+
+This creates potential ICE during constraint checking when the compiler attempts to substitute rvalue references into non-deduced contexts.

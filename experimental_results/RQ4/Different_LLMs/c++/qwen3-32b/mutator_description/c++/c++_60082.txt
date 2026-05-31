@@ -1,0 +1,24 @@
+Mutation Operator: Replace member initializer with a function call that takes a const reference to the enclosing class, creating a recursive initialization chain.
+
+Applies to: Class member variables initialized via an expression that can be replaced by a function taking a const reference to the class type.
+
+Implementation Steps:
+1. Forward-declare the class if not already present
+2. Add a function declaration returning int (or compatible type) that takes a const reference to the class type
+3. Modify a member variable's initializer to call this function with a temporary class instance (A())
+
+Example mutation:
+Original code: 
+struct B { int y = 5; };
+
+Mutated code:
+struct B;
+int g(const B&);
+struct B {
+   int y = g(B());
+   B() { }
+};
+
+void create_b() { B(); }
+
+This creates a recursive dependency where B's member initialization requires constructing a B object, which in turn requires initializing y through the function g, which takes a const B& parameter. The compiler must resolve the circular dependency during AST construction, which can expose frontend parsing/semantic analysis bugs similar to the original report.

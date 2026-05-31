@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] fn main () { let _ = [0 ; foo () as usize] ; } const fn foo () -> * const i32 { & 0 as * const i32 }

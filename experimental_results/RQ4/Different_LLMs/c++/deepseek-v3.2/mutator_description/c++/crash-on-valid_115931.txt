@@ -1,0 +1,35 @@
+Based on the bug report, which involves a crash in clang's lambda capture handling within generic lambdas, C++ compiler bugs are more likely to be triggered by complex interactions involving nested lambdas, variable captures, template instantiation, and generic lambda semantics (especially with auto parameters). The assertion failure suggests a mismatch between the compiler's internal tracking of lambda scopes and capture-ready states.
+
+Mutation Operator: Lambda Capture Scope Nesting with Generic Lambda Introduction
+
+This operator targets lambda expressions. It applies when a seed program contains at least one non-generic lambda (i.e., a lambda with an explicit parameter list or no parameters) that captures variables from its enclosing scope.
+
+The mutation modifies a selected non-generic lambda by wrapping it inside a new, immediately-invoked generic lambda. The outer generic lambda will have an auto parameter and will capture the same variables as the original inner lambda, forwarding them. This creates a nested lambda structure where a generic lambda encloses a non-generic lambda, altering the capture scope hierarchy.
+
+Steps:
+1.  Identify a lambda expression L in the seed program that captures one or more variables (by copy, reference, or this). Ensure L is not already a generic lambda (i.e., it does not use `auto` in its parameter list).
+2.  Let the captured variables of L be a set CV = {v1, v2, ...}.
+3.  Construct a new generic lambda GL with a single parameter declared as `auto`. The body of GL will be an immediately invoked lambda expression that calls L.
+4.  GL must capture all variables in CV. If any capture in L is by reference, GL should capture that variable by reference as well. If any capture is by copy, GL should capture by copy.
+5.  Replace the original lambda expression L in the code with the construction and immediate invocation of GL. The invocation should pass a default-constructed argument of a suitable type (e.g., `0` for `int`, `nullptr` for pointer types, or a default-constructed object of a type present in the seed program). The primary goal is to trigger the instantiation of the generic lambda's call operator.
+6.  If L was assigned to a variable of a specific function type or `std::function`, the type of the resulting expression (the invoked GL) must be compatible. This may require adjusting the outer lambda's return type or using `decltype` to ensure type correctness.
+
+Example (Pseudo-code):
+
+Original code snippet:
+```
+int x = 10;
+auto foo = [x](int y) { return x + y; };
+```
+
+After mutation:
+```
+int x = 10;
+auto foo = [x](auto) {
+    return [x](int y) { return x + y; };
+}(0); // '0' is a default argument for the auto parameter.
+```
+
+In this mutated code, the outer lambda is a generic lambda (parameter `auto`) that captures `x`. It is immediately invoked with the argument `0`. The inner lambda is the original lambda. This nesting changes the capture scope stack, potentially exposing bugs in the compiler's logic for tracking captures in generic vs. non-generic lambda hierarchies, similar to the reported issue.
+
+The operator should use existing variables and types from the seed program. The immediate invocation argument should be a simple, valid expression based on types already present (like `0`, `nullptr`, `{}`, or a default constructor call for a user-defined type in scope).

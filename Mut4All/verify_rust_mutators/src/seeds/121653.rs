@@ -1,0 +1,1 @@
+# ! [feature (unboxed_closures)] use std :: future :: Future ; trait Dispatch { fn dispatch (self) ; } impl < T : for < 'a > Fn < (& 'a () ,) > > Dispatch for T where for < 'a > < T as FnOnce < (& 'a () ,) > > :: Output : Future , { fn dispatch (self) { (self) (& ()) ; } } fn main () { async fn foo (_ : & ()) { } foo . dispatch () ; }

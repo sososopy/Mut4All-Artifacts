@@ -1,0 +1,15 @@
+mutation operator
+Target construct: default arguments in generic lambda captures within lambda expressions that are used as default arguments to another generic lambda.
+
+Applicability: This mutation applies when a seed program contains a generic lambda (with auto parameters) that is used as a default argument for another generic lambda's parameter, and the inner lambda itself has a default argument in its capture list. The mutation modifies the default argument in the capture list of the inner lambda to introduce a dependency on a variable that may not be in scope at the point of lambda definition, potentially triggering issues with scope resolution or initialization order.
+
+Mutation description: Identify a generic lambda L1 defined with a default argument that is another generic lambda L2. Within L2's capture list, if there is a default argument (e.g., [var = default_value]), replace the default_value with a reference to a variable declared outside L1 but within the same scope as L1's definition, ensuring this variable is of a type compatible with the capture. If no such variable exists, introduce a new variable of a simple type (e.g., int) initialized to a constant (e.g., 0) in the scope just before L1's definition.
+
+Example: Suppose the seed program has:
+    auto outer = [](auto func = [](auto x) { return x; }) { return func(1); };
+    This does not have the required structure. Instead, consider a seed program with:
+    int external = 5;
+    auto outer = [](auto inner = [val = external] (auto x) { return val + x; }) { return inner(2); };
+    Here, the inner lambda has a capture with default argument external. The mutation would change the capture to use a different variable. If another variable 'other' exists in scope (e.g., int other = 3;), replace 'external' with 'other'. If no such variable exists, add 'int other = 3;' before the definition of 'outer' and change the capture to [val = other].
+
+Changes: Locate a generic lambda L1 with a parameter that has a default argument which is a generic lambda L2. In L2's capture list, find a default initializer (e.g., = expr). Replace expr with a variable reference that is either already in the enclosing scope (but not previously used in this capture) or newly introduced. To introduce a new variable, insert a declaration of a simple type (like int, double, or char) with a constant initializer immediately before L1's definition, and use this variable in the capture's initializer. This alteration may affect scope visibility and initialization timing, potentially exposing compiler bugs related to lambda capture evaluation in default arguments.

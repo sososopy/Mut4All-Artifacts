@@ -1,0 +1,25 @@
+Mutation operator: ObjectiveCXXStructWithNoUniqueEmptyMember
+Applies to Objective-C++ classes (interface or implementation) that have a C++ struct member.
+Modify a C++ struct member in the Objective-C++ class to include a [[no_unique_address]] member of an empty struct type. If no such struct exists, declare a new empty struct within the same translation unit and update the C++ struct to contain this empty struct plus at least one non-empty member. Ensure the empty struct is declared before its usage.
+
+Example transformation:
+Original:
+@interface MyClass {
+  struct MyData {
+    int value;
+  } storage;
+}
+@end
+
+Mutated:
+struct Empty {};
+struct MyData {
+  [[no_unique_address]] Empty padding;
+  int value;
+};
+@interface MyClass {
+  MyData storage;
+}
+@end
+
+The operator exploits the interaction between Objective-C++ type encoding and C++17 [[no_unique_address]] attribute on empty members, which the bug report shows causes assertion failure during ASTContext processing. The presence of both an Objective-C++ class and a C++ struct with optimized empty member is required to trigger the crash.

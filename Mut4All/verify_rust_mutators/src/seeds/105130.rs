@@ -1,0 +1,1 @@
+use aya_bpf :: maps :: Array ; # [map (name = "CTRLPARAMS")] static mut CTRLPARAMS : Array < _ , CtrlParams > = Array :: < CtrlParams > :: with_max_entries (1 , 0) ;

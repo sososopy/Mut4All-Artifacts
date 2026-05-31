@@ -1,0 +1,12 @@
+Mutation operator:
+Target code construct: Default values of const generic parameters in type definitions (structs, enums, unions) where the default expression references the same type or its variants. This applies to const generic parameters with default expressions that involve path segments referencing the type being defined, especially using variant discriminants or associated constants.
+
+Operation: Identify a const generic parameter with a default value expression. Mutate the default expression by replacing a constant value (like a numeric literal) or an identifier within that expression with a path that references a variant of the containing type. If the type is an enum, use one of its variant names. If the type is a struct with associated constants, use a path to one of those constants. Ensure the path is constructed using the type's name and appropriate generic arguments if needed, potentially using the same const generic parameter symbolically. This mutation should create a self-referential dependency that may expose bugs in const evaluation during substitution.
+
+Example: Suppose the seed program contains an enum definition like:
+enum Example<const N: u8 = 1> {
+    VariantA,
+}
+We can mutate the default expression from '1' to 'Example::<N>::VariantA as u8' if the enum has a discriminant, or to 'Example::<0>::VariantA as u8' to avoid an immediate cycle but still reference the type. Prefer using existing variant names and types. If the enum has no explicit discriminants, use the variant name in a cast to an integer type (e.g., as u8). The mutation should be applied only if the type has variants or associated constants that can be referenced.
+
+Changes: Locate a const generic parameter default expression in a type definition. Replace the entire default expression with a new expression that is a path to a variant of the same type, possibly with different const generic arguments. For instance, change 'const N: u8 = 1' to 'const N: u8 = Example::<0>::VariantA as u8'. Ensure the variant exists in the type. If the type is not an enum, consider using an associated constant if available; otherwise, do not apply this mutation. This introduces a self-reference that may trigger issues in const generics evaluation.

@@ -1,0 +1,42 @@
+Mutation Operator: Replace Type Alias with Explicit Type
+
+Target: This mutation operator targets the type alias used in the implementation of a trait where `impl Trait` is utilized. It specifically applies to instances where a type alias is used to represent a generator with the `impl Generator` construct.
+
+Mutation Description: Instead of using a type alias with `impl Trait` for defining types in trait implementations, replace the type alias with an explicit type definition. This replacement aims to reveal potential issues with type inference and concrete type handling in the Rust compiler, especially involving advanced features like generators and type aliasing.
+
+Example of Mutated Content:
+
+Original Code:
+```
+impl GeneratorProviderAlt for () {
+    type Gen = impl Generator<(), Return=(), Yield=()>;
+    fn start(ctx: Context<Self>) -> Self::Gen {
+        move || {
+            match ctx { _ => () } // make sure to use the context
+            yield ();
+        }
+    }
+}
+```
+
+Mutated Code:
+```
+struct ConcreteGen; // Introduce a concrete type for the generator
+
+impl Generator<(), Return=(), Yield=()> for ConcreteGen {
+    type Return = ();
+    type Yield = ();
+    fn resume(&mut self) -> std::ops::GeneratorState<Self::Yield, Self::Return> {
+        std::ops::GeneratorState::Complete(())
+    }
+}
+
+impl GeneratorProviderAlt for () {
+    type Gen = ConcreteGen; // Replace the type alias with the concrete type
+    fn start(ctx: Context<Self>) -> Self::Gen {
+        ConcreteGen // Return an instance of the concrete type
+    }
+}
+```
+
+Explanation: In this mutation, we replace the `impl Generator` type alias with a concrete type `ConcreteGen`. The concrete type explicitly implements the `Generator` trait, providing a defined structure that the compiler must handle instead of relying on anonymous type inference. This mutation tests the compiler's ability to manage explicit types and can potentially expose errors in type resolution or compiler code generation pathways involving generators.

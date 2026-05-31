@@ -1,0 +1,1 @@
+struct Callback < 'a , T > { callback : & 'a mut dyn FnOnce () -> T , } impl < 'a , T > Callback < 'a , T > { pub fn new (callback : & 'a mut dyn FnOnce () -> T) -> Callback < 'a , T > { Callback { callback } } } # [cfg (test)] mod tests { use super :: * ; # [test] fn can_wrap_fnonce () { let x = 0 ; let fn_once = | | x ; let callback = Callback :: new (& mut fn_once) ; } }

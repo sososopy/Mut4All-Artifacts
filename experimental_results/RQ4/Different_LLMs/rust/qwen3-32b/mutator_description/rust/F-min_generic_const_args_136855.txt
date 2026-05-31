@@ -1,0 +1,35 @@
+Mutation Operator: Replace a const parameter with an existing function name and invoke a method on a function pointer obtained via trait method call.  
+Applies to:  
+1. Any function used as a const argument in an array or tuple type (e.g., `[T; N]` where `N` is a function name).  
+2. Method calls on values of function pointer type derived from trait methods.  
+
+Example transformation:  
+Original:  
+```rust  
+impl MyTrait for MyType {  
+    fn example<const N: usize>(...) { ... }  
+}  
+fn some_func() { ... }  
+```  
+
+Mutated:  
+```rust  
+impl MyTrait for MyType {  
+    fn example<const N: usize = some_func>() { ... }  
+}  
+fn some_func() { ... }  
+let f = <MyType as MyTrait>::example;  
+f.bar(); // Assuming `bar` is a method on the function pointer type  
+```  
+
+Key changes:  
+1. In const parameter declarations (`const N: usize`), replace literal values with existing function names.  
+2. Assign trait method calls to variables of function pointer type and invoke methods on those variables.  
+
+Requirements:  
+1. The seed program must contain:  
+   - At least one function `F` with no type parameters (to be used as const argument).  
+   - A trait method `M` with a function pointer type.  
+2. No new functions or types are introduced; only reuse existing declarations.  
+
+This operator targets invalid const argument usage (`fn` as `const N`) and improper method resolution on function pointers, both of which stress the compiler's handling of `min_generic_const_args` and type-dependent definitions.

@@ -1,0 +1,1 @@
+use console_subscriber :: init ; fn main () { init () ; }

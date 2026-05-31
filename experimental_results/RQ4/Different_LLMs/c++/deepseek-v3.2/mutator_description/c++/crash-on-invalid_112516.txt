@@ -1,0 +1,39 @@
+Mutation Operator: Replace Macro-Based Ternary Expression with Function Call in Constexpr Context
+
+This mutation applies when a constexpr variable is initialized using a ternary operator expression (or a macro that expands to one) where one or both operands involve dereferencing a pointer or accessing a member through a pointer. The mutation replaces the ternary expression with a call to a newly introduced constexpr function that attempts to perform the same operation, but the function body will use the pointer dereference in a way that may still be invalid for constant evaluation.
+
+Specifically, the mutation targets:
+- A constexpr variable declaration within a function body.
+- Its initializer is a conditional expression (?:) or a macro expansion that results in such an expression.
+- At least one branch of the conditional expression (the condition, the true-expression, or the false-expression) contains an operation that dereferences a pointer (e.g., `ptr->member`, `*ptr`) or uses a pointer value in a context requiring a constant address.
+
+The mutation changes:
+1. Introduce a new constexpr function before the variable declaration. This function must be declared within the same scope (global or the same function if possible). The function signature mimics the ternary operation: it takes parameters corresponding to the operands of the ternary expression (typically two parameters for a comparison-based ternary like `(a) < (b) ? (a) : (b)`). The parameters are of the same types as the original operands, using existing types from the seed program. If pointer types are involved, the function parameters are pointers.
+2. Replace the initializer of the constexpr variable with a call to this new function, passing the same arguments as the original ternary operands.
+3. The body of the new function contains a conditional expression that attempts to dereference the pointer or use pointer arithmetic within a constant evaluation context, mirroring the original expression but now inside a function.
+
+Example based on the bug report context (using pseudo-code with generic names):
+
+Original code snippet (after observing pattern):
+```
+constexpr int var_name = (value1 < ptr->member) ? value1 : ptr->member;
+```
+
+Mutated code:
+```
+// New introduced function, using existing types from seed.
+constexpr int func_name(const type_name* ptr_param, int value_param) {
+    // Attempt the dereference inside the constexpr function.
+    return (value_param < ptr_param->member) ? value_param : ptr_param->member;
+}
+
+constexpr int var_name = func_name(ptr, value1);
+```
+
+Changes outline:
+- Add a constexpr function declaration above the variable. The function name `func_name` is a new identifier not present in the seed; it should be a simple name like `eval_min` to avoid conflicts. Its parameters `ptr_param` and `value_param` are new names.
+- The types `type_name` and `int` must be types already existing in the seed program (e.g., `min_st` and `int` from the bug report). If the original uses a macro, the macro is expanded to determine the operand types.
+- Replace the initializer expression with a call to this function, passing the original arguments (e.g., `ptr` and `value1`).
+- Ensure the function body replicates the original ternary logic, including the pointer dereference.
+
+This mutation is designed to expose compiler crashes because it moves a potentially invalid constant evaluation (dereferencing a pointer to non-constant data) into a constexpr function context, which may trigger different parsing or evaluation paths in the front-end, similar to the original bug where a macro inside constexpr caused a segfault.

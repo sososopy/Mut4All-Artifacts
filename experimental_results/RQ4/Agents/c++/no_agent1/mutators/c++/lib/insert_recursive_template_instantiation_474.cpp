@@ -1,0 +1,41 @@
+//source file
+#include "../include/insert_recursive_template_instantiation_474.h"
+
+// ========================================================================================================
+#define MUT474_OUTPUT 1
+
+void MutatorFrontendAction_474::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *CL = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("TemplateClasses")) {
+        if (!CL || !Result.Context->getSourceManager().isWrittenInMainFile(CL->getLocation()))
+            return;
+        if (!CL->isCompleteDefinition() || !CL->isThisDeclarationADefinition())
+            return;
+        template_classes.push_back(CL);
+    } else if (auto *FD = Result.Nodes.getNodeAs<clang::FunctionDecl>("Functions")) {
+        if (!FD || !Result.Context->getSourceManager().isWrittenInMainFile(FD->getLocation()))
+            return;
+        if (template_classes.empty())
+            return;
+        
+        auto target = template_classes.back();
+        std::string template_name = target->getNameAsString();
+        std::string recursive_instantiation = "/*mut474*/" + template_name + "<" + template_name + "<int>> obj;";
+        
+        if (FD->hasBody()) {
+            auto body = FD->getBody();
+            SourceLocation insertLoc = body->getBeginLoc().getLocWithOffset(1);
+            Rewrite.InsertText(insertLoc, recursive_instantiation + "\n");
+        }
+    }
+}
+
+void MutatorFrontendAction_474::MutatorASTConsumer_474::HandleTranslationUnit(ASTContext &Context) {
+    using namespace clang::ast_matchers;
+    MatchFinder matchFinder;
+    DeclarationMatcher template_matcher = cxxRecordDecl(isDefinition()).bind("TemplateClasses");
+    DeclarationMatcher function_matcher = functionDecl(hasBody(stmt())).bind("Functions");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(template_matcher, &callback);
+    matchFinder.addMatcher(function_matcher, &callback);
+    matchFinder.matchAST(Context);
+}

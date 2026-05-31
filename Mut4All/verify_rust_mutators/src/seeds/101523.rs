@@ -1,0 +1,1 @@
+pub trait Stepper < I , F , E > { fn do_step (& mut self , y : & mut I ,) where for < 'm > & 'm I : IntoIterator < Item = & 'm F > ; } fn helper < I , F , E , S > (mut y : I , t : & F , mut stepper : S ,) where S : Stepper < I , F , E > , { stepper . do_step (& mut y , t) ; }

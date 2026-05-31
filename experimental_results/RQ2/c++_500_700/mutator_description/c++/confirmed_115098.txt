@@ -1,0 +1,30 @@
+Mutation Operator: Modify Template Parameter Pack Usage
+
+Target: Template Structs with Template Parameter Packs
+
+Mutation Rule:
+1. Identify a template struct declaration that uses a variadic template parameter pack, such as `template<typename... Ts> struct Example;`.
+2. Within the struct definition, locate any usage of the parameter pack, especially in contexts that use a `sizeof...(Ts)` expression.
+3. Modify the condition or usage of `sizeof...(Ts)` to create a scenario that the compiler might not handle well. For example, remove or alter any constraints that depend on `sizeof...(Ts)`.
+4. Specifically, modify the usage in a way that would allow instantiation with multiple types in places where only a single type was previously expected, such as in `sizeof...(Ts) == 1`.
+
+Example:
+Original:
+```
+template<typename... Ts>
+struct Example {
+    template<typename T> requires(void(sizeof...(Ts)), false)
+    friend bool operator==(Example, Other<T>);
+};
+```
+
+Mutated:
+```
+template<typename... Ts>
+struct Example {
+    template<typename T> 
+    friend bool operator==(Example, Other<T>);
+};
+```
+
+In this mutated version, by removing the `requires(void(sizeof...(Ts)), false)` constraint, the `operator==` can be instantiated for more types, potentially increasing the chances of encountering a template argument pack with unexpected size, which might trigger the compiler bug related to template argument packs.

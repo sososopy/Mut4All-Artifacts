@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] trait Foo { type T : 'static ; } fn main () { }

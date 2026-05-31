@@ -1,0 +1,1 @@
+# ! [feature (asm)] fn test () -> () { unsafe { let test : i32 ; asm ! ("mov %0, r0" : "=m" (test) ::) ; } }

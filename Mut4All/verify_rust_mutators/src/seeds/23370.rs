@@ -1,0 +1,1 @@
+enum SomeEnum { Something (i8) , SomethingElse ([u8]) } fn some_function (arg : & SomeEnum) -> () { () } fn main () { some_function (& SomeEnum :: Something (1)) ; }

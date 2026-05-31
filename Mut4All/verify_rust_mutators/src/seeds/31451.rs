@@ -1,0 +1,1 @@
+const X : undeclared_type = () ; static Y : undeclared_type = () ; fn foo (x : undeclared_type) { } fn bar () -> undeclared_type { } struct Foo ; impl Iterator for Foo { type Item = undeclared_type ; } trait Bar { fn bar (x : undeclared_type) ; fn baz () -> undeclared_type ; }

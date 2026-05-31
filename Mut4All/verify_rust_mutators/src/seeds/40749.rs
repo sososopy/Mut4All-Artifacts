@@ -1,0 +1,1 @@
+pub struct ChunkIterator { buf : [u8 ; 10] , } impl ChunkIterator { pub fn new () { ChunkIterator { buf : [0 ; .. 10] , } } }

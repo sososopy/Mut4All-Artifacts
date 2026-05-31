@@ -1,0 +1,23 @@
+mutation operator: replace default template argument in alias template with dependent type from enclosing template
+
+this mutation operator targets alias template declarations within a class or function template that use a default template argument. it applies when an alias template (using keyword) has a default argument that is not dependent on the template parameters of the alias itself but could be replaced by a dependent type from the enclosing template scope.
+
+specifically, for a seed program containing an alias template inside a template, locate any alias template declaration of the form:
+using identifier = template-name<template-arguments>;
+where at least one template-argument is a default argument that is a simple type name (not dependent). change this default argument to a template parameter from the enclosing template, if such a parameter exists and is a type parameter. ensure the new default argument is a dependent type (i.e., directly use the template parameter name). if the alias template already uses a dependent default argument, this mutation does not apply.
+
+changes: in the alias template declaration, modify the default template argument to be the name of a template type parameter from the outer template. for example, if the outer template is `template<typename t>` and the alias has `typename t2 = int`, mutate to `typename t2 = t`. only use existing template parameters from the immediate enclosing template scope; do not introduce new parameters. if multiple outer type parameters exist, select the first one (in order of declaration) that is a type parameter.
+
+example: given seed code:
+template<typename t>
+struct container {
+    template<typename u = int>
+    using alias = std::vector<u>;
+};
+mutated code:
+template<typename t>
+struct container {
+    template<typename u = t>
+    using alias = std::vector<u>;
+};
+this mutation exposes bugs where the compiler incorrectly handles substitution of dependent default arguments in partial specializations or dependent contexts, potentially triggering crashes or miscompilation.

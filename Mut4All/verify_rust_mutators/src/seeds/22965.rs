@@ -1,0 +1,1 @@
+# ! [feature (optin_builtin_traits , unsafe_destructor)] trait Print { fn print (& self) ; } struct X < T > { x : T , } # [unsafe_destructor] impl < T : Print > Drop for X < T > { fn drop (& mut self) { self . x . print () ; } } fn main () { X { x : 1 } ; }

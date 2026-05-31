@@ -1,0 +1,1 @@
+pub trait Parser { type Input ; fn parse (input : < Self as Parser > :: Input) { panic ! () } } impl < P > Parser for P { type Input = () ; } fn main () { }

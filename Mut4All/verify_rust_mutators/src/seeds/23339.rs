@@ -1,0 +1,1 @@
+use std :: simd :: u32x4 ; fn main () { let a = u32x4 (1 , 2 , 3 , 4) ; let b = u32x4 (1 , 2 , 3 , 4) ; let c = a / b ; }

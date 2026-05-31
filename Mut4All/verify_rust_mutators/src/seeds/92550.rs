@@ -1,0 +1,1 @@
+# ! [warn (clippy :: test_attr)] # ! [allow (clippy :: new_without_default)] struct A ; impl A { # [doc (hidden)] fn new () -> Self { A } } fn foo () { } fn main () { foo () ; }

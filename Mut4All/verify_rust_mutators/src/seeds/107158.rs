@@ -1,0 +1,1 @@
+fn main () { let mut result = vec ! [1] ; let mut vector = Vec :: new () ; vector . sort () ; result . push (vector) ; }

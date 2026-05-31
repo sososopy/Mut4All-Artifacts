@@ -1,0 +1,19 @@
+mutation operator: Introduce a lambda with a deduced 'this' parameter and a capture-default that captures a variable by copy, then use std::forward_like with the deduced 'this' type on a captured variable or a data member.
+
+This mutation operator applies to seed programs that contain at least one variable of a non-void type and have included or could include the <utility> header. It targets the interaction between C++2c features: explicit object parameters (deduced 'this') in lambdas and forward_like.
+
+The mutation works by adding a new lambda expression at a suitable scope (e.g., global, namespace, or function scope). The lambda must capture at least one existing variable by copy (using a capture-default or explicit capture). The lambda must have an explicit object parameter template (e.g., <typename Self>(this Self&& self)) and inside its body, it must call std::forward_like<Self> on the captured variable or a class member access if capturing 'this'. The lambda should be invoked, for example, by calling it with std::move.
+
+Changes to make:
+1. Identify an existing variable, say var, of some non-void type T in the seed program.
+2. If <utility> is not included, add #include <utility>.
+3. At a scope where var is accessible (e.g., same block), insert a lambda declaration and invocation. For example, if var is at function scope, insert:
+   auto lambda = [var]<typename Self>(this Self&& self) { return std::forward_like<Self>(var); };
+   std::move(lambda)();
+   Ensure the lambda is used (e.g., assigned to a variable and called) to potentially trigger code generation.
+4. If the seed program has a class with a non-static data member, an alternative is to capture 'this' by copy (in a mutable lambda) and use std::forward_like on the member. For instance, inside a member function, insert:
+   auto lambda = [*this]<typename Self>(this Self&& self) { return std::forward_like<Self>(this->member); };
+   std::move(lambda)();
+   where member is an existing data member.
+
+The mutation should use only names (variables, types, functions) already present in the seed program, except for the introduced lambda name (e.g., 'lambda') and the template parameter 'Self'. The goal is to create a valid C++2c construct that stresses the compiler's handling of deduced this in lambdas combined with forward_like.

@@ -1,0 +1,1 @@
+fn main () { let jobj = json :: parse (r#"{ "config": [ { "label": { "active": true } } ] }"#) . unwrap () ; for obj in jobj ["config"] . members () { for (k , v) in obj . entries () . take (1) { if let json :: JsonValue :: Boolean (state) = v ["active"] && true { if state { println ! ("{}" , k) } } } } }

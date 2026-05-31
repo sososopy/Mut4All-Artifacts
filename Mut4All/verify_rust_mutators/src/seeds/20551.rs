@@ -1,0 +1,1 @@
+trait Trait { type AssocType : Trait ; } fn main () { }

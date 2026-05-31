@@ -1,0 +1,22 @@
+Mutation Operator:  
+Replace string_view constructor calls with temporaries of mismatched character array types.  
+
+Target Code Construct:  
+This mutation applies to any use of std::string_view where it is constructed from a string literal or character array. Specifically, it targets the implicit or explicit construction of string_view from a pointer to a const char array (including string literals) and changes the source array type to a non-matching character type, while ensuring the array exists and is accessible.  
+
+Where It Applies:  
+In any function or scope where std::string_view is declared and initialized from a string literal or a named const char array. The seed program must include the <string_view> header and use std::string_view.  
+
+Changes to Make:  
+For each occurrence where a std::string_view object is constructed from a string literal (e.g., "example") or a const char array, modify the source to be a temporary array of a different character type that is still convertible to const char* but may involve different const-qualification or array decay scenarios. Introduce a new static const array of characters with the same content as the original literal but with explicit const volatile qualification or placed in an anonymous namespace if not already present. Then, construct the string_view from this array via a pointer cast or direct usage, ensuring no undefined behavior.  
+
+Example:  
+Original code in seed program:  
+std::string_view sv = "hello";  
+
+Mutated code:  
+namespace { static const volatile char arr[] = {'h','e','l','l','o','\0'}; }  
+std::string_view sv = static_cast<const char*>(arr);  
+
+Rationale:  
+This mutation exploits edge cases in string_view's interaction with different character array types and qualifiers, which can trigger frontend parsing or semantic analysis bugs, especially in complex const/volatile or namespace contexts, leading to crashes like the one reported. It uses existing types and avoids introducing undeclared elements by explicitly declaring the new array within an anonymous namespace or static scope.

@@ -1,0 +1,1 @@
+trait Blarg < const T : () > { }

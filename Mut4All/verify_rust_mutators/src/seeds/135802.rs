@@ -1,0 +1,1 @@
+type Field = u8 ; # [repr (transparent)] struct Foo { _zst : std :: convert :: Infallible , _field : Field , } fn foo () -> Foo { panic ! () } fn main () { let f : fn () -> Foo = foo ; let f : fn () -> Field = unsafe { std :: mem :: transmute (f) } ; f () ; }

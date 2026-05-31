@@ -1,0 +1,49 @@
+Mutation Operator: Change Generic Type Constraint
+This mutation operator targets Rust code that uses generic types with trait bounds, particularly in the context of const generics. It applies to generic structs, enums, traits, and functions that have type parameters with trait constraints.
+
+Given a generic type declaration with a trait bound, this operator modifies the trait bound to introduce a new, potentially unsatisfied constraint. The goal is to trigger bugs related to const generics and trait satisfaction, similar to the reported issue.
+
+The operator works as follows:
+- Identify a generic type parameter (e.g., T) in a struct, enum, trait, or function.
+- Locate a trait bound associated with this type parameter (e.g., T: Bar<N>).
+- Modify the trait bound by adding a new trait constraint that may not be satisfied by the type parameter, possibly involving const generics.
+
+For example, given the original code:
+struct Foo<T, const N: usize> {
+    array: [T; N],
+}
+
+trait Bar<const N: usize> {}
+
+impl<T, const N: usize> Foo<T, N> {
+    fn trigger(self) {
+        self.unsatisfied()
+    }
+
+    fn unsatisfied(self)
+    where
+        T: Bar<N>,
+    {
+    }
+}
+
+The mutation operator might modify the code to:
+struct Foo<T, const N: usize, const M: usize> {
+    array: [T; N],
+}
+
+trait Bar<const N: usize, const M: usize> {}
+
+impl<T, const N: usize, const M: usize> Foo<T, N, M> {
+    fn trigger(self) {
+        self.unsatisfied()
+    }
+
+    fn unsatisfied(self)
+    where
+        T: Bar<N, M>,
+    {
+    }
+}
+
+In this mutated version, a new const generic parameter M is introduced, and the trait Bar is modified to include this new parameter, potentially changing the satisfaction of the trait bound for T. This modification aims to expose bugs in the Rust compiler related to const generics and trait bounds, similar to the original bug report.

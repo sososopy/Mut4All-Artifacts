@@ -1,0 +1,1 @@
+struct P { x : i64 , } impl P { fn f (& self) -> & P { self } } fn main () { let p0 = P { x : 0 } ; let p1 = P { .. p0 . f () } ; }

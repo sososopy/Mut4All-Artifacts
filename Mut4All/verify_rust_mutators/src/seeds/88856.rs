@@ -1,0 +1,1 @@
+use sample :: { Trait , TraitImpl } ; fn sample < P , Convert > (p : P , f : Convert) -> i32 where P : Trait , Convert : Fn (P :: R) -> i32 { f (p . func ()) } fn main () { let t = TraitImpl :: < 10 > (4) ; sample (t , | x | x . 0) ; }

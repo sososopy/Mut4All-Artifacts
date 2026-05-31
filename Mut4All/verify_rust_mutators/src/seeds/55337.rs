@@ -1,0 +1,1 @@
+# [derive (Default)] struct A < T > { t : T , } impl < T > A < T > { const LEN : usize = 4 ; fn p () { println ! ("{}" , Self :: LEN * 5) ; } } fn main () { A :: < u64 > :: p () ; A :: < u32 > :: p () ; }

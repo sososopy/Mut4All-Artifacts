@@ -1,0 +1,23 @@
+Mutation Operator: Replace Template Argument with Incomplete Type Reference
+
+Target: Template arguments in class template partial specialization deduction, specifically when a template argument is a reference to a type (like a typedef, using-declaration, or a nested type) that is incomplete or becomes invalid due to circular dependencies or missing definitions at the point of deduction.
+
+Where it applies: In code that uses class templates with partial specializations, where template arguments are deduced from provided argument lists. Focus on the specialization's template parameter list.
+
+Mutation Description: In a class template partial specialization, replace a template argument that is a well-defined, complete type (e.g., a built-in type, a fully-defined class) with a reference to an incomplete type. The incomplete type should be a class or struct that is declared but not defined within the scope visible to the specialization. If such an incomplete type already exists in the seed program (e.g., a forward-declared class), use it directly. If not, introduce a forward declaration (e.g., `class Incomplete;`) before the specialization, ensuring it is not defined later in the mutated code segment. The mutation changes the argument in the template argument list of the partial specialization's match pattern.
+
+Example in pseudo-code:
+Original seed snippet:
+```cpp
+template <typename T, typename U> class Primary;
+template <typename T> class Primary<T, int> { /* specialization */ };
+```
+Mutation: Introduce an incomplete type `Incomplete` and use it.
+```cpp
+class Incomplete; // Forward declaration, no definition provided.
+template <typename T, typename U> class Primary;
+template <typename T> class Primary<T, Incomplete> { /* specialization */ };
+```
+Changes: The second template argument in the partial specialization is changed from `int` to `Incomplete`. The forward declaration `class Incomplete;` is added if not present.
+
+Note: The mutation avoids introducing ambiguous or complex types; it uses a simple forward-declared class. This targets the assertion failure by providing a template argument that is a reference to an incomplete type, which may become invalid during deduction, triggering the assertion `!RefExpr.isInvalid()`.

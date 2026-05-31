@@ -1,0 +1,1 @@
+# ! [feature (log_syntax)] # [macro_export] macro_rules ! ice { (ice ;) => { ice ! { { ice ; } } } ; ({ ice ; }) => { log_syntax ! ("Move ice outside the braces") ; ice ! { { } ice ; } } ; ({ } ice ;) => { log_syntax ! ("Done") ; pub trait ThisWillIce { log_syntax ! ("Oh no!") ; } } } ice ! { ice ; } fn main () { }

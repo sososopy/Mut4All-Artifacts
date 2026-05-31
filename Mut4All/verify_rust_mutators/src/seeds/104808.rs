@@ -1,0 +1,1 @@
+# ! [feature (auto_traits)] auto trait Trait1 < 'a > { } fn f () where for < 'a > dyn Trait1 < 'a > : Sized , { } fn main () { }

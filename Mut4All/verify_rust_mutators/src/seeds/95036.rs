@@ -1,0 +1,1 @@
+# ! [feature (allocator_api)] # ! [feature (bench_black_box)] use std :: alloc :: Global ; use std :: hint :: black_box ; pub fn f () { let mut node = Box :: new_in (Node { v : & () , b : false , } , & Global) ; node . b = true ; black_box (node) ; } struct Node { v : & 'static () , b : bool , }

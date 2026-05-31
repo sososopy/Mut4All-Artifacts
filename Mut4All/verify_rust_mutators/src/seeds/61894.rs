@@ -1,0 +1,1 @@
+struct Bar < M > (M) ; impl < M > Bar < M > { fn foo (& self) { fn f () { } fn type_name_of < T > (_ : T) -> & 'static str { unsafe { type_name :: < T > () } } type_name_of (f) ; } }

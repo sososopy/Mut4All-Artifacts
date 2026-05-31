@@ -1,0 +1,1 @@
+macro_rules ! len { () => { 0 } ; ($ item : literal) => { 1 } ; ($ item : literal , $ ($ extras : literal) ,*) => { 1 + len ! ($ ($ extras) ,*) ; } }

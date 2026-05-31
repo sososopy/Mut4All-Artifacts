@@ -1,0 +1,1 @@
+use std :: io :: File ; fn main () { let f = File :: open (& Path :: new ("out.ppm")) ; }

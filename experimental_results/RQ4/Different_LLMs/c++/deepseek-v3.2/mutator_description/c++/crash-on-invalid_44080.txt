@@ -1,0 +1,33 @@
+Based on the bug report, the crash occurs when the compiler processes a malformed struct declaration inside a function body. Specifically, the code contains a struct definition with a nested incomplete struct member declaration that lacks proper syntax (e.g., missing braces or semicolons). The compiler fails during type casting (isa/cast) when handling a null pointer related to a TagDecl (struct/union/enum). This suggests bugs are more likely triggered by nested or recursive type declarations with syntactic errors, particularly in contexts where the parser expects a complete type definition but receives an incomplete or malformed one.
+
+Mutation Operator: Mutate Struct Declarations by Introducing Nested Incomplete Member Declarations
+
+This operator targets struct declarations within any scope (global, function, or other struct). It applies when a struct definition is present in the seed code. The mutation modifies the struct body by inserting an incomplete member declaration that mirrors the struct's own type, creating a self-referential but syntactically malformed element.
+
+The mutation should be applied as follows:
+1. Identify a struct definition in the seed code. For example, if the seed contains:
+   struct S {
+       int x;
+   };
+2. Within the struct body, before the closing brace, insert a new line with:
+   struct S;
+   This declares a member that is a struct of the same type, but without a complete definition (no braces or body).
+3. Ensure no additional braces or semicolons are added after this inserted line; the existing struct body should remain otherwise unchanged. The inserted line should not include a variable name or initializer, just the type declaration.
+4. If the struct is anonymous (e.g., defined without a name), use the closest available struct type name from the surrounding context. If no named struct exists, introduce a new struct name that is consistent with C naming conventions (e.g., "MutatedStruct") and declare it appropriately, but prefer using existing type names to avoid undefined references.
+
+Example mutation in pseudo-code:
+Original:
+   void func() {
+       struct Outer {
+           int a;
+       };
+   }
+Mutated:
+   void func() {
+       struct Outer {
+           int a;
+           struct Outer;
+       };
+   }
+
+This creates a nested, incomplete declaration that may confuse the parser during type resolution, similar to the bug report's scenario. The mutation leverages existing type names to ensure syntactic validity at a surface level while introducing potential internal compiler errors.

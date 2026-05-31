@@ -1,0 +1,1 @@
+# ! [feature (lang_items)] # [lang = "unsafe_cell"] struct UnsafeCell ; fn main () { }

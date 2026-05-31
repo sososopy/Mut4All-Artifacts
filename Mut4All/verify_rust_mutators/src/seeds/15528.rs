@@ -1,0 +1,1 @@
+use std :: io :: File :: open ; fn main () { open () ; }

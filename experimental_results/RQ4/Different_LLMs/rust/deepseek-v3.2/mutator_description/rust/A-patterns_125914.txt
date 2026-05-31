@@ -1,0 +1,9 @@
+mutation operator: Change a pattern in a match arm to use a qualified path with a double colon prefix where the path resolves to an enum variant from a different enum than the one being matched, creating a type mismatch in pattern arity.
+
+This operator applies within match expressions. It targets a pattern that is a tuple struct or enum variant pattern (like `Variant(x)`). The mutation changes the pattern to use a fully qualified path starting with `::`, but selects a variant name from a different enum type that exists in the current scope, aiming to create a scenario where the pattern's expected arity (number of subpatterns) does not match the actual matched type's variant arity.
+
+For a seed program, identify all match expressions. For each match arm pattern that is a variant pattern (e.g., `Some(x)`), check if there exists another enum definition in scope that has a variant with the same name but a different arity (number of fields). If such a variant exists, mutate the pattern by prefixing it with `::` and using the path of that other enum's variant. If multiple candidate variants exist, prioritize one that leads to an arity mismatch with the original matched type.
+
+Example: Suppose the seed contains two enums: `enum First { A(i32), B }` and `enum Second { A, B(i32) }`. In a match on a value of type `First`, an arm pattern `A(x)` would be mutated to `::Second::A`, which has arity 0 instead of 1. The mutated code becomes `match value { ::Second::A => ... }`, which is a type error but may trigger internal compiler inconsistencies.
+
+The change is localized to the pattern syntax; no new declarations are introduced. The operator relies on existing enum definitions in the seed. If no suitable variant with mismatching arity exists, the mutation is not applied. This targets the compiler's pattern analysis logic, particularly in handling qualified paths and arity checking.

@@ -1,0 +1,46 @@
+Mutation operator: nested_associated_type_binder
+Target code construct: functions returning opaque types involving associated types with binders
+Applies to: functions with return type syntax using `impl Trait` where Trait has associated types and binders
+
+Mutated form:
+Original: 
+`fn foo() -> impl Trait { ... }`
+
+Modified:
+`fn foo() -> impl for<T> Trait<Assoc = impl Trait<T>> { ... }`
+
+This creates a nested binder scenario with overlapping quantification:
+- Outer for<T> binder in the return type
+- Inner binder in the associated type default
+- Potential shadowing/conflicts between binders
+
+Example application to existing code:
+Given existing trait:
+trait MyTrait<T> {
+    type Assoc;
+}
+
+Modify to:
+trait MyTrait<T> {
+    type Assoc<Y> = impl for<U> OtherTrait<...>;
+}
+
+Then modify any function returning `impl MyTrait` to return:
+`impl for<X> MyTrait<<X as OtherTrait>::Assoc = impl MyTrait<...>>`
+
+Ensances compiler's handling of:
+1. Nested binders (for<T> inside Assoc default)
+2. Lifetime/quantifier interactions
+3. Canonicalization of associated types with binders
+
+Requires existing code elements:
+- At least one trait with associated type
+- At least one function with opaque return type
+
+If necessary, introduce minimal declarations:
+trait Helper<T> {
+    type Assoc<Y>;
+}
+
+Then mutate return types to use:
+impl for<X> Helper<<X as OtherTrait>::Assoc = impl ...>

@@ -1,0 +1,1 @@
+fn foo < const SIZE : usize = 5 > () { } fn main () { }

@@ -1,0 +1,1 @@
+# ! [feature (unboxed_closures , associated_type_bounds)] fn foo < F > (f : F) where F : for < 'a > FnOnce < (& 'a i32 ,) , Output : 'a > { } fn main () { foo (| x : & i32 | -> & i32 { x }) ; }

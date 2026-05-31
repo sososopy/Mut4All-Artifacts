@@ -1,0 +1,1 @@
+fn derp (cfg : & ControlFlowGraph) -> impl Iterator < Item = & ControlFlowTarget > { cfg . vertices () . filter_map (| vx | cfg . vertex_label (vx)) }

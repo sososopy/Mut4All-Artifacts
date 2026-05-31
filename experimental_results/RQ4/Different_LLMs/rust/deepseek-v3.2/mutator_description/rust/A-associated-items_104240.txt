@@ -1,0 +1,39 @@
+Mutation Operator: Inherent Associated Type Generic Parameter Mismatch.
+
+This mutation operator targets inherent associated type definitions within generic impl blocks. It modifies the associated type definition to use a different generic parameter than the one intended, potentially creating a mismatch in the number or identity of type parameters during substitution.
+
+Where it applies: This operator applies to any impl block that defines an inherent associated type (using #![feature(inherent_associated_types)]) and is generic over one or more type parameters. The impl block must contain an associated type definition (e.g., type Name = ...;).
+
+Changes to make: For a selected inherent associated type definition within a generic impl, examine the generic parameters of the impl (e.g., impl<T, U>). If the associated type's definition is a simple equality to one of these generic parameters (like type P = T;), replace that parameter with a different generic parameter from the same impl's list, if available. If multiple generic parameters exist, swap them. If the definition uses a complex type, identify any direct usage of a generic parameter and replace it with another from the list. If the impl has only one generic parameter, introduce a new, unused generic parameter to the impl header and use it in the associated type definition. The new parameter should be declared with a phantom data pattern to avoid unused parameter errors. Specifically, add a second generic parameter (e.g., V) to the impl header, and change the associated type definition to use this new parameter. Then, adjust the struct definition to accommodate the extra parameter by adding a PhantomData<V> field if necessary, or ensure the parameter is used elsewhere.
+
+Example in pseudo-code:
+
+Original seed code snippet:
+struct Struct<T>(T);
+impl<T> Struct<T> {
+    type Alias = T;
+}
+
+Mutated code:
+struct Struct<T, V>(T, std::marker::PhantomData<V>);
+impl<T, V> Struct<T, V> {
+    type Alias = V; // Changed from T to V
+}
+
+In the mutated code, the inherent associated type Alias now refers to V instead of T. When later referenced as Struct<Concrete>::Alias, the compiler must substitute for V, but V may not be provided in the type arguments, potentially triggering substitution errors similar to the original bug.
+
+Another example with existing multiple parameters:
+
+Original:
+struct Container<A, B>(A, B);
+impl<A, B> Container<A, B> {
+    type First = A;
+}
+
+Mutated:
+struct Container<A, B>(A, B);
+impl<A, B> Container<A, B> {
+    type First = B; // Swapped A for B
+}
+
+This mutation aims to expose bugs where the compiler incorrectly maps generic parameters from the impl to the associated type during type resolution and substitution, particularly when the associated type is accessed without repeating all generic arguments.

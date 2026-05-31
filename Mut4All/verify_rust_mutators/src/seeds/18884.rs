@@ -1,0 +1,1 @@
+extern fn callback (vp : * mut c_void , argc : c_int , argv : * mut * mut c_char , azColName : * mut * mut c_char) { unsafe { let ar = argv as * mut [& str] ; } }

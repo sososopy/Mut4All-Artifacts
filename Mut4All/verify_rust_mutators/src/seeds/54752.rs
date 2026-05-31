@@ -1,0 +1,1 @@
+# ! [feature (await_macro , async_await , futures_api)] # [macro_use] extern crate tokio ; fn main () { tokio :: run_async ((async { })) ; }

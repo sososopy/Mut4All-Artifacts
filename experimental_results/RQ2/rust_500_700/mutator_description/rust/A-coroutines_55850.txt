@@ -1,0 +1,39 @@
+Mutation Operator: Add Lifetime Annotations to Generator Types
+
+Targeted Code Construct:
+This mutation operator applies to functions that return a generator type, such as `impl Iterator` where the item is a reference with a lifetime parameter.
+
+Description:
+In Rust, generators can capture variables from their environment, and these captured references often have lifetimes that need to be explicitly annotated to avoid lifetime errors. This mutation operator introduces explicit lifetime annotations for the generator's yield type to test the compiler's ability to handle different lifetimes across generator boundaries.
+
+Changes:
+1. Identify functions returning a generator type where the `Item` is a reference with an implicit lifetime (e.g., `impl Iterator<Item = &'a T>`).
+2. Introduce a new explicit lifetime parameter in the function signature for the generator's yield type.
+3. Apply the same lifetime parameter to the reference yielded within the generator.
+
+Example in Pseudo-code:
+Original Code:
+```rust
+fn example<'b>() -> impl Iterator<Item = &'b u32> {
+    GenIter(move || {
+        let number = 42;
+        yield &number
+    })
+}
+```
+
+Mutated Content:
+```rust
+fn example<'b, 'c>() -> impl Iterator<Item = &'c u32>
+where
+    'b: 'c,
+{
+    GenIter(move || {
+        let number = 42;
+        yield &number
+    })
+}
+```
+
+Explanation:
+In the mutated example, an additional lifetime `'c` is introduced to explicitly annotate the lifetime of the yielded reference. The constraint `'b: 'c` means that the lifetime of the generator's environment `'b` outlives the yielded lifetime `'c`. This mutation tests the robustness of the Rust compiler's borrow checker and region inference within generator contexts.

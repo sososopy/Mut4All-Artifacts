@@ -1,0 +1,24 @@
+Mutation Operator: Lambda Capture Initializer with decltype in declval Context
+
+This mutation targets lambda expressions with capture initializers where the captured variable is used within a decltype specifier inside a declval expression, particularly when nested within static assertions or other compile-time contexts.
+
+Applicable when: A lambda captures a variable via an initializer (e.g., [var = expr]) and the captured variable's type is referenced using decltype within a std::declval call, often inside a static_assert or template argument.
+
+Mutation steps:
+1. Identify a lambda capture that uses an initializer, capturing a variable (e.g., [x = some_expr]).
+2. Inside the lambda body, introduce a decltype usage of the captured variable within a std::declval expression. This should be placed in a context that requires type evaluation at compile-time, such as a static_assert or a template type argument.
+3. Ensure the declval expression attempts to invoke a method or operator on the captured variable's type, using decltype on lambda parameters or other captured variables to form argument types.
+4. The mutation must reuse existing variables and types from the seed program. Do not introduce new types or variables unless they are derived directly from existing ones (e.g., using decltype on an existing parameter). If a new type is needed, it must be defined as an alias using existing types (e.g., using Alias = decltype(existing_var);).
+5. The mutation should not use custom names; instead, use generic placeholders like 'captured_var' for the captured variable and 'param' for lambda parameters in descriptions, but in actual code, replace with the specific names from the seed.
+
+Example in pseudo-code:
+Original seed lambda: [captured = func()] (auto param) { return captured(param); }
+Mutated lambda: [captured = func()] (auto param) {
+    using CapType = decltype(captured);
+    static_assert(std::is_same_v<
+        decltype(std::declval<CapType>().operator()(std::declval<decltype(param)>()))
+        , decltype(captured(param))>, "check");
+    return captured(param);
+}
+
+Changes: Added a using alias for the captured variable's type, a static_assert that uses declval to invoke the captured variable's operator() with a decltype of the parameter, comparing the result type to the actual call's return type. All elements (captured, param) exist in the seed.

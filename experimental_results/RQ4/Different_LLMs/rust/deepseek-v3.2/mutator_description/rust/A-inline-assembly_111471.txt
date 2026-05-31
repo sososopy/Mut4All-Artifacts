@@ -1,0 +1,25 @@
+Mutation Operator: Inline Assembly Immediate Mutation.
+
+This operator targets inline assembly blocks (`asm!` macro invocations) within Rust code. It applies when the `asm!` macro is used with a string literal that contains numeric immediate operands (e.g., `0`, `1`, `123`). The operator mutates these numeric immediates to other values, specifically focusing on edge cases such as zero, small positive numbers, large numbers, and negative numbers (if syntactically allowed by the assembly syntax), to test the compiler's handling of different immediate values in assembly strings.
+
+Changes to make:
+1. Identify all `asm!` macro invocations in the seed program.
+2. For each assembly string literal within the `asm!` macro, parse the string to find numeric tokens that represent immediate operands (excluding those that are part of labels, directives, or other non-immediate contexts). A numeric token is defined as a sequence of digits optionally preceded by a minus sign, and not part of a larger alphanumeric identifier.
+3. For each identified numeric immediate operand, replace it with a mutated value according to the following strategy (applied probabilistically or in a fuzzing loop):
+   a. Change to 0.
+   b. Change to 1.
+   c. Change to a large positive number (e.g., 65535 or 4294967295).
+   d. If the assembly syntax permits negative immediates (e.g., in offsets), change to -1.
+   e. Increment or decrement the original value by 1.
+   The mutation should ensure the new value is a valid integer literal and does not create invalid syntax (e.g., breaking token boundaries).
+
+Example:
+In the seed code: `core::arch::asm!("global.get 0", "local.set {0}", out(local) ret);`
+The numeric immediate `0` in `"global.get 0"` is identified.
+Possible mutations:
+- Change to `"global.get 1"`.
+- Change to `"global.get 65535"`.
+- Change to `"global.get -1"` (if supported).
+- Change to `"global.get 0"` (no change if 0 is already the original).
+
+Note: The operator must preserve the overall structure of the assembly string, including whitespace and other tokens. It uses existing assembly strings and variables from the seed program; no new elements are introduced. This mutation is designed to expose bugs in the compiler's parsing and code generation for inline assembly across different architectures.

@@ -1,0 +1,1 @@
+fn separate_arms () { let mut x = None ; match x { None => { x = Some (0) ; } Some (right) => consume (right) , } } fn main () { }

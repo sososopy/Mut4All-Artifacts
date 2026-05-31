@@ -1,0 +1,20 @@
+Mutation operator: AsyncConstOrderMisuse
+Target construct: Trait implementations of functions
+Applies to: Any function within an impl block for a trait that is not already marked const or async
+Change: Modify a non-const function declaration by adding both async and const modifiers in the order async const fn instead of const async fn
+Example: Original: impl MyTrait for i32 { fn bar(&self) { ... } } becomes impl MyTrait for i32 { async const fn bar(&self) { ... } }
+Effect: Triggers ICE in mir_const_qualif during const qualification due to invalid modifier ordering in async/const function declaration
+
+Mutation operator: AsyncFnWithUndefinedAwait
+Target construct: Function bodies of async functions
+Applies to: Any async function that contains an await expression
+Change: Replace the await's expression with a reference to an undefined function name
+Example: Original: async fn foo() { do_something().await } becomes async fn foo() { missing_fn().await }
+Effect: Causes compiler to process incorrect await expressions in the mir_const_qualif phase, potentially exposing ICEs
+
+Mutation operator: ConstAsyncOpaqueCycle
+Target construct: Async functions with opaque return types
+Applies to: Any async function returning impl Trait that uses an await in its body
+Change: Mark the async function as const and move the await into a nested function that also returns an opaque type
+Example: Original: async fn foo() -> impl Future { bar().await } becomes const async fn foo() -> impl Future { bar_async().await } where bar_async is another function returning impl Future
+Effect: Creates potential cycles during const qualification processing of opaque types, possibly triggering ICEs

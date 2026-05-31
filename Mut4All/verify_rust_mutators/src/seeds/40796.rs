@@ -1,0 +1,1 @@
+fn clone_copy_type < T : Copy > (t : T) -> T { t . clone () } fn main () { clone_copy_type ([() ; 33]) ; }

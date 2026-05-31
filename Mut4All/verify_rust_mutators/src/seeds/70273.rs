@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] trait T < const A : usize > { type Item ; } struct S ; impl < const A : usize > T < A > for S { type Item = i32 ; } fn main () { let _err : < S as T < 0usize > > :: Item ; }

@@ -1,0 +1,20 @@
+Mutation Operator: Trait Const Generic Default Type Substitution
+
+This operator applies to trait definitions that contain const generic parameters with default values. It mutates the type of a const generic parameter's default expression by replacing it with a type that references the trait itself or another trait in the same scope, potentially creating cycles or invalid type contexts.
+
+Where it applies: In a trait definition, for any const generic parameter that has a default value specified after an equals sign. The operator targets the type annotation (if present) that comes before the equals sign, or the default expression's expected type context.
+
+Change to make: For the selected const generic parameter, replace its type annotation (or infer a type if missing) with a type that references the trait being defined or another trait from the current scope. If the parameter already has a type annotation, substitute it. If missing, insert a type annotation. The new type should be formed as a trait object (e.g., dyn TraitName) or a generic trait reference (e.g., TraitName<...>), using traits that exist in the current module or are in scope via use statements.
+
+Example: Suppose the seed program contains:
+trait Example<const X: u32 = 0> {}
+After mutation, it could become:
+trait Example<const X: dyn Example = 0> {}
+Or if another trait Other exists:
+trait Example<const X: Other = 0> {}
+
+If the const generic parameter already has a complex type, replace it entirely with the new trait reference type. Ensure the substitution maintains syntactic validity (e.g., proper use of dyn for object-safe traits if required by edition). The goal is to create a situation where the compiler must evaluate a const default in a type context that may be cyclical or malformed.
+
+Preference: Use trait names that already exist in the seed program. If no other trait exists, use the trait being defined itself, which guarantees a potential cycle. Do not introduce new trait declarations; only use existing identifiers.
+
+This mutation aims to trigger ICEs similar to the reported bug by creating unexpected AnonConst nodes in HIR well-formedness checking due to malformed type-default cycles in trait const generics.

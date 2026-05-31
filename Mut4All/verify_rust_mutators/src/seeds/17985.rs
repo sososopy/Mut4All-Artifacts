@@ -1,0 +1,1 @@
+fn lex < I , E > (it : & mut I) where I : std :: iter :: Iterator < Result < char , E > > { for val in * it { match val { Ok (c) => println ! ("{}" , c) , _ => () } } } fn main () { lex (& mut std :: io :: stdio :: stdin () . chars ()) ; }

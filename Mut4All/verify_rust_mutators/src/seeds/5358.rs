@@ -1,0 +1,1 @@
+struct S (Either < uint , uint >) ; fn main () { match * S (Left (5)) { S (_) => { } } }

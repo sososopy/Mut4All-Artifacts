@@ -1,0 +1,1 @@
+pub static MPS_KEY_ARGS_END : mps_key_t = & _mps_key_ARGS_END ; pub enum Struct_mps_key_s { } pub type mps_key_t = * const Struct_mps_key_s ; extern "C" { pub static _mps_key_ARGS_END : Struct_mps_key_s ; }

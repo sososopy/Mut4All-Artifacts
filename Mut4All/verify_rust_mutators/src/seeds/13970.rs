@@ -1,0 +1,1 @@
+fn foo < T > (a : T) -> T { a } static BLOCK_FN_INFERRED : fn (uint) -> uint = foo ; fn main () { }

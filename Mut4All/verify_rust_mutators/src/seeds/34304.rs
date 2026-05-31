@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; use std :: collections :: HashSet ; fn main () { let tree : HashMap < usize , HashSet < usize > > = HashMap :: new () ; let size_of_1 = tree . get (& 1) . unwrap_or (& Vec :: new ()) . len () ; }

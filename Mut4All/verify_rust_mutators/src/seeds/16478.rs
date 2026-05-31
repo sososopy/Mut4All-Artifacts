@@ -1,0 +1,1 @@
+# [export_name = "\0"] static TEST : int = 0 ;

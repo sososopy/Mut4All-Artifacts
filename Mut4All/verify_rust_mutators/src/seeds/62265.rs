@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] trait MyFnMut < Arg > { type Output < 'a > ; fn call_mut (& mut self , arg : Arg) -> Self :: Output ; } struct Closure1 < 'a > (& 'a mut i32) ; impl < 'a > MyFnMut < () > for Closure1 < 'a > { type Output < 'r > = & 'r mut i32 ; fn call_mut (& mut self , _ : ()) -> Self :: Output { self . 0 } }

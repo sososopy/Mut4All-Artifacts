@@ -1,0 +1,1 @@
+# ! [feature (f128)] fn function () -> f128 { 1.0 as f128 - 1.0 as f128 } fn main () { function () ; }

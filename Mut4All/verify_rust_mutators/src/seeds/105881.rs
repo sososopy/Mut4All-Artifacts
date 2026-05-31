@@ -1,0 +1,1 @@
+use futures :: { select , FutureExt , StreamExt } ; async fn next_message () -> () { todo ! () } async fn run_one_step () { let mut all_next_messages = vec ! [Box :: pin (next_message ())] ; select ! { _ = futures :: future :: select_all (all_next_messages . iter_mut ()) . fuse () => { let _ = all_next_messages ; } , } }

@@ -1,0 +1,1 @@
+fn main () { 'while_loop : while true { break ; break (None , | mask | { let bit = 1 << val ; }) ; } }

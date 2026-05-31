@@ -1,0 +1,38 @@
+Mutation Operator: Introduce an invalid binary operation between unrelated types within a defaulted comparison operator's implicitly instantiated function template body.
+
+This mutation applies to any defaulted comparison operator (==, !=, <, etc.) defined for a class that contains a member of a template-dependent type, where the class's comparison operator is defaulted (e.g., `bool operator==(const Class&, const Class&) = default;`). The mutation targets the body of a function template that may be instantiated during the synthesis of the defaulted comparison. Specifically, it modifies a binary operation within such a function template to involve operands of incompatible types, aiming to trigger type-checking errors during template instantiation that could lead to compiler crashes.
+
+The mutation changes a binary operator expression inside a function template that is referenced during defaulted comparison generation. For example, if a seed program contains a template struct S and a comparison operator template for S, the mutation replaces one operand in a binary operation with a constant of a fundamentally different type (e.g., an integer constant), while the other operand remains a template-dependent object. This creates a type mismatch.
+
+Steps:
+1. Identify a defaulted comparison operator in the seed program (e.g., `bool operator==(const E&, const E&) = default;`).
+2. Locate any function templates that might be invoked during the comparison synthesis, particularly those defining comparisons for member types. For instance, if the class has a member of a template type (like `S<int>`), and there exists a comparison operator template for that type (like `template <typename T, typename U> bool operator==(S<T>, S<U>)`), target that template.
+3. In the body of that function template, find a binary operation (e.g., `return something == x;`). Replace one operand (preferably the left-hand side if it's not already a mismatch) with a literal constant of a type that is incompatible with the other operand. For example, change `return something == x;` to `return 0 == x;`, where `x` is of a template-dependent type (like `S<U>`). Ensure the constant (e.g., `0`) is of a primitive type (like `int`) that does not match the template type.
+4. If no such function template exists, introduce one: declare a template struct (e.g., `template <typename> struct S {};`) and a corresponding comparison operator template with a body containing a mismatched binary operation. Then, ensure the class with the defaulted comparison includes a member of this template type (e.g., `S<int> s;`). The mutation adds these elements only if they are not present, using names derived from existing types or variables in the seed program to avoid conflicts.
+
+Example mutation in pseudo-code:
+Original seed may have:
+```
+template <typename> struct S {};
+template <typename T, typename U> bool operator==(S<T>, S<U> x) {
+    return x == x; // or some valid expression
+}
+struct E {
+    friend bool operator==(const E&, const E&);
+    S<int> s;
+};
+bool operator==(const E&, const E&) = default;
+```
+Mutated to:
+```
+template <typename> struct S {};
+template <typename T, typename U> bool operator==(S<T>, S<U> x) {
+    return 0 == x; // Changed to invalid operands: int vs S<U>
+}
+struct E {
+    friend bool operator==(const E&, const E&);
+    S<int> s;
+};
+bool operator==(const E&, const E&) = default;
+```
+The mutation introduces a type mismatch (`int` vs `S<U>`) in the template body, which is instantiated when synthesizing the defaulted comparison for `E`, potentially causing a compiler crash during error reporting.

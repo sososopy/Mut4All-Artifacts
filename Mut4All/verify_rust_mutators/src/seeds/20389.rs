@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] pub trait T { type C ; }

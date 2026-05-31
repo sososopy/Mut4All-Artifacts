@@ -1,0 +1,1 @@
+fn main () { static A : & 'static char = & 'A' ; }

@@ -1,0 +1,1 @@
+static X : uint = unsafe { * (0 as * const uint) } ;

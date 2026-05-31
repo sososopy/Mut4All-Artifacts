@@ -1,0 +1,1 @@
+fn foo < F > (_ : & mut F) where F : FnMut () , { } fn main () { let f = | | { } ; foo (& mut f) ; }

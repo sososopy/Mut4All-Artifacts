@@ -1,0 +1,1 @@
+# ! [feature (generators)] fn main () { let x = (| _ | { } ,) ; | | { let x = x ; x . 0 ({ yield ; }) ; } ; }

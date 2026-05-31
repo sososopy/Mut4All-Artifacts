@@ -1,0 +1,14 @@
+mutation operator: Replace a fixed-size array of a sized type in a const/static context with an array of reference types where the element type is unsized, creating a layout computation conflict in const evaluation. Apply this to structs with const function constructors and static mut declarations. 
+
+Example transformation:
+Original: 
+struct S { data: [i32; 8] }
+const fn new() -> S { S { data: [0; 8] } }
+static mut X: S = S::new();
+
+Mutated: 
+struct S { data: [&i32; 8] }
+const fn new() -> S { S { data: [0; 8] } }
+static mut X: S = S::new();
+
+The mutation forces array element type to be reference (&i32) which may not be Sized. The static mut declaration combined with const function return of unsized array layout triggers layout assertion failure in compiler. This preserves the struct/const/static structure while introducing the unsized array element pattern that caused the original ICE.

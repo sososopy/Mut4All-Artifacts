@@ -1,0 +1,1 @@
+# ! [feature (min_const_generics)] # [doc = " Doctest."] pub struct X < T , const SIZE : usize > { y : [T ; { SIZE }] }

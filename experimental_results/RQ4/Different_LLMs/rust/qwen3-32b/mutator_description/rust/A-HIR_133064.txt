@@ -1,0 +1,18 @@
+Mutation Operator: 
+Insert a nested thread_local macro invocation within a generic parameter list of an impl block. This targets the interaction between generics and thread-local storage macros during type-checking and HIR construction.
+
+Example:
+Change:
+```
+impl<T> Foo<T, { thread_local! { pub static FOO : Foo = Foo { }; } }>
+{ }
+```
+
+To:
+```
+impl<T> Foo<T, { thread_local! { pub static FOO : Bar = Bar { }; thread_local! { pub static BAR : FOO = FOO { }; } } }>
+{ }
+```
+
+Explanation:
+This mutation introduces a second thread_local macro within the first one, creating a deeper nesting of macro expansions that occur within a generic parameter context. The nested thread_local macros may not be correctly resolved or type-checked, especially if the inner macros refer to types or variables that are not yet in scope, potentially triggering an ICE related to mismatches in HirId and type resolution within the TypeckResults. The existing types and macros (Foo, Bar) are assumed to exist in the seed program; if not, they should be declared before use. This construct is likely to expose bugs in how the compiler handles macro hygiene and scoping during type inference andHIR validation.

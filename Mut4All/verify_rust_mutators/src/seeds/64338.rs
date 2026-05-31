@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] type A = impl Fn () ; fn ret_closure () -> A { | | { } } extern "C" { fn a (_ : A) ; } fn main () { }

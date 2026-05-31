@@ -1,0 +1,1 @@
+struct S < 'a > { v : Vec < & 'a str > } impl < 'a > S < 'a > { fn inner_iter (& self) -> impl Iterator < Item = & & 'a str > { self . v . iter () } } fn main () { let s = S { v : Vec :: new () } ; [s] . iter () . flat_map (S :: inner_iter) . for_each (| _ | { }) ; }

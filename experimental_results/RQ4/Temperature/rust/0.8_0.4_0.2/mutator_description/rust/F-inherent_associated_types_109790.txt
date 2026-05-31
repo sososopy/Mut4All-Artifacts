@@ -1,0 +1,38 @@
+Mutation Operator: Replace Lifetime Annotations
+
+Target Code Construct: Applies to function definitions, trait implementations, struct definitions, and associated types where lifetime annotations are used.
+
+Description: This mutation operator focuses on altering the lifetime annotations within the code. Such mutations can introduce lifetime conflicts or expose pre-existing issues related to lifetime resolution, especially in scenarios involving complex interactions between lifetimes and associated types under feature flags like `inherent_associated_types`.
+
+Example of Mutation:
+Given the following code snippet:
+
+```rust
+impl<'a> Foo<fn(&'a ())> {
+    type Assoc = &'a ();
+}
+
+fn bar(_: for<'a> fn(Foo<fn(&'a ())>::Assoc)) {}
+```
+
+Apply the mutation by changing the lifetime `'a` to a different or non-existent lifetime, such as `'b` or `'static`, in one or more places:
+
+```rust
+impl<'b> Foo<fn(&'b ())> {
+    type Assoc = &'b ();
+}
+
+fn bar(_: for<'b> fn(Foo<fn(&'b ())>::Assoc)) {}
+```
+
+Or, introduce inconsistency by altering only part of the code:
+
+```rust
+impl<'a> Foo<fn(&'a ())> {
+    type Assoc = &'static (); // Change here, unrelated lifetime
+}
+
+fn bar(_: for<'a> fn(Foo<fn(&'a ())>::Assoc)) {}
+```
+
+Expected Outcome: The mutation above might surface errors related to mismatched lifetimes, revealing bugs in the handling of lifetimes by the Rust compiler, especially when different parts of a program expect lifetimes to match or follow certain constraints. Such a mutation is likely to uncover issues pertaining to lifetime inference, resolution, or erroneous internal compiler assumptions about lifetimes.

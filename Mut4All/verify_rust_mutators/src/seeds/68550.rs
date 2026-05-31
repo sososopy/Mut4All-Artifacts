@@ -1,0 +1,1 @@
+pub struct Data < A > { pub a : A , } impl < A > Data < A > where A : 'static , & 'static A : , { pub fn run () { let mut entries : Vec < A > = Vec :: new () ; if ! entries . is_empty () { } } } pub type DataA = Data < i32 > ; fn main () { println ! ("Hello, world!") ; }

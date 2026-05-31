@@ -1,0 +1,22 @@
+Mutation operator: Replace a const generic argument in an impl block with a function item identifier that shares the same name as a const generic parameter.
+
+This operator applies when an impl block uses a const generic parameter in its type, and there exists a function in the same scope with an identifier that matches the const generic parameter's name. The mutation changes the const generic argument from the parameter to the function item identifier.
+
+Specifically, for an impl block of the form:
+impl<T, const N: type> Trait for [(); N] {}
+If there is a function defined as `fn N() {}` in the same scope, the mutation changes the impl to:
+impl<T> Trait for [(); N] {}
+Here, the `N` in the array length is no longer the const generic parameter but the function item identifier. This mimics the bug report where the compiler incorrectly accepts a function item as a const argument, leading to an internal compiler error about unconstrained type parameters.
+
+To apply this mutation, first locate all impl blocks that have const generic parameters. For each const generic parameter, check if a function with the same identifier exists in the current scope. If such a function exists, modify the impl block by removing the const generic parameter from the impl header (if it is not used elsewhere) and using the function identifier in place of the const argument. Ensure the function has no parameters and returns a type compatible with the const argument's expected type, such as an integer for array lengths. If the function does not exist, this mutation does not apply.
+
+Example in pseudo-code:
+Seed program contains:
+trait Trait {}
+impl<const N: usize> Trait for [(); N] {}
+fn N() -> usize { 5 }
+Mutated program becomes:
+trait Trait {}
+impl Trait for [(); N] {}
+fn N() -> usize { 5 }
+Here, the const generic parameter `N` is removed, and the array length uses the function `N`. This can trigger compiler bugs related to const argument evaluation and unconstrained parameters.

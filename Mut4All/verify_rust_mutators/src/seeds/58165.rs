@@ -1,0 +1,1 @@
+use lazy_static :: lazy_static ; # [telem_start :: start] fn main () { }

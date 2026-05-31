@@ -1,0 +1,1 @@
+struct NoDerive (i32) ; impl PartialEq for NoDerive { } # [derive (PartialEq)] struct WrapParam < 'a , T > (& 'a & 'a T) ; const WRAP_DOUBLY_INDIRECT_PARAM : & & WrapParam < NoDerive > = & & WrapParam (& & NoDerive (0)) ; fn main () { match WRAP_DOUBLY_INDIRECT_PARAM { WRAP_DOUBLY_INDIRECT_PARAM => { } _ => { } } }

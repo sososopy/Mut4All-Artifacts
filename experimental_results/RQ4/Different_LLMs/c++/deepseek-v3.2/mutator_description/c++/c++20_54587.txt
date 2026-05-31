@@ -1,0 +1,27 @@
+Based on the bug report, the compiler crash occurs when using Class Template Argument Deduction (CTAD) with consteval constructors across multiple class templates. The bug seems to be triggered by the combination of:
+1. Multiple class templates with consteval constructors.
+2. CTAD being used to deduce template arguments from lambda expressions or other callable objects.
+3. The consteval constructors are defined to take a single parameter of the template parameter type.
+
+This suggests bugs are more likely in scenarios involving complex interactions between template instantiation, consteval evaluation, and deduction guides (implicit or explicit). The mutation operator should target such interactions.
+
+Mutation Operator: Duplicate Consteval CTAD Class Template
+This mutation applies to seed programs that contain at least one class template with a consteval constructor that can be used with CTAD (e.g., initialized without explicit template arguments). The operator duplicates the entire class template (including its consteval constructor) and creates a second, similar constexpr variable using CTAD with the new class. This aims to replicate the condition of having multiple such classes, which triggered the segfault in the bug report.
+Changes: Find a class template T with a consteval constructor that accepts a single parameter of its template parameter type. Duplicate this class template by creating a new class template named T2 (or a similar name if T2 already exists, then choose T3, etc.). The new class template should have the same structure: a template parameter F, a consteval constructor taking F. Then, after the original constexpr variable declaration (if any), add a new constexpr variable declaration for T2 using CTAD with a lambda expression (or the same callable used for the original, if applicable). For example, if the seed contains:
+template<class F>
+struct MyStruct {
+    consteval MyStruct(F) {}
+};
+constexpr MyStruct var = [](){};
+The mutation produces:
+template<class F>
+struct MyStruct {
+    consteval MyStruct(F) {}
+};
+constexpr MyStruct var = [](){};
+template<class F>
+struct MyStruct2 {
+    consteval MyStruct2(F) {}
+};
+constexpr MyStruct2 var2 = [](){};
+The lambda should be a simple lambda with compatible signature (e.g., returning void, noexcept). If the original uses a different callable, adapt accordingly. Ensure the new class template and variable are placed in the same namespace scope as the original. This mutation increases the likelihood of triggering bugs related to handling multiple consteval CTAD class templates during constant evaluation.

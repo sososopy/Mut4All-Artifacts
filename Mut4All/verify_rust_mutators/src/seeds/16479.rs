@@ -1,0 +1,1 @@
+extern "C" { static TEST : libc :: c_int ; } static TEST2 : & 'static libc :: c_int = & TEST ;

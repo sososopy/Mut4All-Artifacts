@@ -1,0 +1,17 @@
+Mutation Operator: Replace enum variant field type with a raw pointer to a reference with an undeclared lifetime.
+
+This mutation operator targets enum definitions that have at least one variant with a field. It applies to the field type of an enum variant. Specifically, it replaces the field type with a raw pointer to a reference that includes an undeclared lifetime. This is designed to replicate the conditions that led to the ICE: a type that involves a reference with a lifetime that hasn't been declared on the enum, combined with a raw pointer, which is a complex constructor.
+
+Step-by-step changes:
+1. Identify an enum definition in the seed program that has at least one variant with a field. For example, an enum defined as `enum MyEnum { Variant(Type) }`.
+2. For the first variant that has a field (or a chosen variant if multiple exist), locate its field type. Let's denote the original field type as `T`.
+3. Replace the field type `T` with `*const &'a ()`. This is a specific type: a raw pointer to a reference with lifetime `'a` to the unit type `()`. The lifetime `'a` must not be declared on the enum. Do not add any lifetime parameters to the enum declaration.
+4. Ensure that the enum does not already have a lifetime parameter named `'a`. If it does, use a different lifetime identifier that is not declared, such as `'b`, but the key is that the lifetime used in the new field type must be undeclared on the enum.
+5. If the original field type involves generics or lifetimes, they are simply replaced entirely by `*const &'a ()`.
+
+Example transformation:
+Seed code snippet: `enum Container { Item(u32), Another(String) }`
+Mutated code: `enum Container { Item(*const &'a ()), Another(String) }`
+Note: The lifetime `'a` is not declared on the `enum Container` definition, mirroring the bug condition.
+
+This mutation introduces a type that is likely to cause type mismatches in pattern matching, especially if the program later tries to match against this variant with a pattern of a different type. It specifically aims to trigger the same code path in the pattern analysis that caused the ICE. The new type `*const &'a ()` is chosen because it is a concrete type that includes both a raw pointer and a reference with a lifetime, which are aspects present in the bug report. The unit type `()` is used as the referent because it is a simple, always-available type. No new variables or functions are introduced; only the type within the enum variant is changed. This mutation should be applied once per seed program, targeting one enum variant field.

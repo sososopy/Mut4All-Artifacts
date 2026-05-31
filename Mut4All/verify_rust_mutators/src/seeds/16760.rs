@@ -1,0 +1,1 @@
+trait T < A > { fn g (& self) -> A ; } fn f < 'a , I > (i : & I) where I : T < & 'a mut int > { let m = i . g () ; * m = 0 ; } fn main () { }

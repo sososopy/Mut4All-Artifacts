@@ -1,0 +1,1 @@
+use std :: fs :: File ; use std :: io :: Error ; fn main () -> Result < () , Error > { let mut f = File :: open ("d:\\play") ? ; println ! ("{:?}" , f . metadata () ?) ; Ok (()) }

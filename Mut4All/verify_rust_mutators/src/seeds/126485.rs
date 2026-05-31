@@ -1,0 +1,1 @@
+struct Tuple (i32) ; async fn tuple () -> Tuple { Tuple (1i32) } async fn xyz () { match tuple () { Tuple (_) => { } , } }

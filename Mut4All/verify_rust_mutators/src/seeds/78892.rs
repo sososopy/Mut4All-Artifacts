@@ -1,0 +1,1 @@
+# ! [deny (clippy :: pedantic)] # [doc (hidden)] # [macro_export] macro_rules ! __clippy_allow_workaround { ($ ($ lint_name : ident ,) + $ def : tt) => { { # [allow ($ (clippy ::$ lint_name) ,*)] let workaround = || { $ def } ; workaround () } } ; } pub fn foo () -> u32 { __clippy_allow_workaround ! (items_after_statements , { let x = 4 ; fn y () -> u32 { 42 } x + y () }) }

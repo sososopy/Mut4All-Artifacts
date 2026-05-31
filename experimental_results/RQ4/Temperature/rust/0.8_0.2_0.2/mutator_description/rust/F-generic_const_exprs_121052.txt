@@ -1,0 +1,60 @@
+Mutation Operator: Change Associated Types in Traits
+
+Target: This mutation applies to traits with associated types. 
+
+Description: This mutation targets traits that define associated types, particularly those used in trait bounds and implementations. The mutation involves either adding a new associated type to a trait or modifying an existing one to see if the Rust compiler handles these changes correctly in various contexts, particularly focusing on triggering bugs related to generic constraints and type bounds.
+
+Steps: 
+1. Identify a trait definition that includes one or more associated types. For instance, a trait like:
+   ```
+   pub trait Concat<J> {
+       type Output;
+   }
+   ```
+
+2. Modify the associated type in one of the following ways:
+   - Add a new associated type to the trait:
+     ```
+     pub trait Concat<J> {
+         type Output;
+         type NewOutput; // Newly added associated type
+     }
+     ```
+
+   - Change the name of the existing associated type:
+     ```
+     pub trait Concat<J> {
+         type Result; // Changed from Output to Result
+     }
+     ```
+
+3. Adjust the corresponding implementations or trait bounds in the program to reflect these changes. For example, in the implementation of `Mul`, update the references:
+   ```
+   impl<I: Indices<N>, J: Indices<N>, const N: usize> Mul for Tensor<I, N>
+   where
+       I: Concat<J>,
+       <I as Concat<J>>::Result: Indices<N>, // Updated to use Result instead of Output
+       [u8; I::NUM_ELEMS]: Sized,
+       [u8; J::NUM_ELEMS]: Sized,
+       [u8; <I as Concat<J>>::Result::NUM_ELEMS]: Sized, // Updated
+   {
+   }
+   ```
+
+Example: 
+Original Trait:
+```
+pub trait Concat<J> {
+    type Output;
+}
+```
+
+Mutated Trait:
+```
+pub trait Concat<J> {
+    type Output;
+    type NewOutput;
+}
+```
+
+The mutation operator ensures comprehensive testing of the Rust compiler's handling of associated types in generic contexts, especially with incomplete or experimental features like `generic_const_exprs`, which can often lead to ICE (Internal Compiler Errors).

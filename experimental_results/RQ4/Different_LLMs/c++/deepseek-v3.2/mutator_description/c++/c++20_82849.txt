@@ -1,0 +1,23 @@
+Mutation operator: Replace concept usage in a template function body with a dependent expression that triggers constant evaluation.
+
+Target: This mutation applies to any function template body where a concept is used as a standalone expression (e.g., as a statement). The mutation modifies the concept usage to a form that is likely to be value-dependent, aiming to expose bugs in constant expression evaluation during constraint checking.
+
+Change: Within a template function body, replace a statement consisting solely of a concept name (or concept-id) followed by a semicolon with a concept check that involves a template parameter in a way that creates a dependent expression. Specifically, if the original code has a line like "C;" or "C<T>;" where C is a concept and T is a template parameter (or a type), mutate it to "requires { typename T::type; } C;" or a similar requires-expression that references the template parameter. If the concept usage already involves a template argument, mutate it to add a nested requirement that depends on that argument.
+
+Example: Suppose the seed program contains:
+template<typename T>
+void func() {
+    SomeConcept;
+}
+Mutate to:
+template<typename T>
+void func() {
+    requires { typename T::inner; } SomeConcept;
+}
+Alternatively, if SomeConcept is used with an argument like SomeConcept<T>, mutate to:
+template<typename T>
+void func() {
+    requires { typename T::inner; } SomeConcept<T>;
+}
+
+Note: The new requires-expression introduces a nested requirement that depends on the template parameter T. This assumes that T is a template parameter already present in the function template. If the concept usage does not involve a template parameter (e.g., uses a concrete type), introduce a new template parameter or use an existing one from the enclosing template to create dependency. Avoid introducing undeclared types or variables; use only existing template parameters or add a new template parameter if necessary, specifying its declaration (e.g., add "typename U = int" to the template parameter list if needed).

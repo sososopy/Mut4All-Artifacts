@@ -1,0 +1,18 @@
+From the bug report, we can observe that the crash-on-invalid bug occurs during template instantiation and overload resolution when there is a mismatch between provided template arguments and function parameter types. Specifically, the crash happens when calling a function template with explicit template arguments that do not match the parameter types due to reference collapsing rules (forwarding references). The compiler crashes while trying to generate error notes for overload candidates. This indicates that bugs are more likely triggered in complex template scenarios involving variadic templates, explicit template argument lists, reference types, and mismatched argument counts or types during overload resolution.
+
+Mutation Operator:
+Replace explicit template arguments in a call to a function template with a different number of template arguments, aiming to create a mismatch between the number of provided template arguments and the function template's parameter list or its expected template parameter count.
+
+This mutation applies to any call expression where a function template is invoked with an explicit template argument list (e.g., `func<Type1, Type2>(args)`). The operator targets the template argument list part of the call.
+
+The mutation changes the number of template arguments in the explicit list. If the original call has N explicit template arguments, the mutation can either increase or decrease this number by one. The new template arguments should be types that exist in the current context. If increasing the count, an additional type argument is appended to the list. This additional type should be selected from the set of available types in the program, such as a type of a variable present in the current scope, a type from a previously defined template, or a built-in type like `int` or `void`. If decreasing the count, one template argument is removed from the end of the list.
+
+For example, given a seed code snippet:
+```
+template<typename T> void f(T a) {}
+void g() { f<int>(5); }
+```
+Mutation increasing count: Change `f<int>(5)` to `f<int, int>(5)` (adding an extra `int`). Note that this creates a mismatch because the template expects one type but two are provided.
+Mutation decreasing count: If the original call was `f<int, double>(5, 3.0)` (for a two-parameter template), mutate to `f<int>(5, 3.0)`.
+
+The mutation should ensure that the new template argument list is syntactically valid (composed of existing type names). The goal is to produce a program that is still compilable but contains a deliberate mismatch in template argument count, potentially triggering compiler crashes during error reporting in overload resolution similar to the original bug.

@@ -1,0 +1,1 @@
+# ! [feature (macro_rules)] macro_rules ! gen { ($ i : expr ;) => { } ; ($ i : expr ; $ n0 : ident , $ ($ n : ident ,) *) => { static $ n0 : int = $ i ; gen ! ($ i + 1 ; $ ($ n ,) *) } } gen ! { 0 ; I0 , I1 , I2 , I199 , } fn main () { }

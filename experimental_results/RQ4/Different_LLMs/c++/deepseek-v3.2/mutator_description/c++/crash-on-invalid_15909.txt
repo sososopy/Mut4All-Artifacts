@@ -1,0 +1,13 @@
+Mutation Operator: Replace atomic type comparison with mismatched non-atomic counterpart
+
+This mutation operator applies when a comparison operation involves an atomic type and a non-atomic type of a different underlying fundamental type. Specifically, it targets any binary comparison operator (<, >, ==, !=, <=, >=) where one operand is an atomic integer type (e.g., std::atomic<int>, std::atomic<unsigned>) and the other operand is a plain integer type (e.g., int, unsigned int) that has a mismatched signedness relative to the atomic's underlying type.
+
+The operator changes the atomic type operand to its non-atomic counterpart, while preserving the same underlying fundamental type. This creates a direct comparison between mismatched signedness types without the atomic wrapper, which may trigger similar type-checking failures in the compiler's parsing or semantic analysis stages.
+
+Example mutation:
+Original code: if (atomic_var > plain_int) { ... } 
+Where atomic_var is declared as std::atomic<unsigned> and plain_int is int.
+Mutated code: if (non_atomic_var > plain_int) { ... } 
+Here, non_atomic_var is introduced as a new variable of type unsigned int (the underlying type of atomic_var). The operator must first declare non_atomic_var in the same scope, initialized with atomic_var.load() to preserve semantics where possible: unsigned int non_atomic_var = atomic_var.load();
+
+The mutation requires that the atomic type's underlying fundamental type is extractable (e.g., std::atomic<T> where T is int or unsigned int). The new variable declaration is inserted immediately before the comparison statement. Only existing atomic variables from the seed program are used; no new atomic types are introduced. This mutation aims to expose crashes during parsing or type checking when the compiler handles comparisons with mismatched integer signedness, particularly after removing the atomic wrapper which might otherwise suppress certain diagnostic paths.

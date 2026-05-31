@@ -1,0 +1,1 @@
+pub fn foo () { println ! ("Foo!") ; } # [cfg (test)] mod tests { # [test] fn should_be_fine () { () } }

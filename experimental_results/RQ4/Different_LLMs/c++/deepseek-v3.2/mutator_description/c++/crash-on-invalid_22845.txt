@@ -1,0 +1,20 @@
+Mutation operator: Introduce rvalue reference binding to a temporary within a constexpr member function of a local struct, where the referenced variable is outside the struct's scope.
+
+This operator applies when a local struct (defined inside a function) contains a constexpr member function. The mutation modifies this constexpr member function to attempt to return or use an rvalue reference variable that is declared outside the struct's scope but within the same enclosing function. Specifically, it changes the constexpr function body to reference an external rvalue reference, creating a context where the constexpr function depends on a reference bound to a temporary whose lifetime may not extend into the constexpr evaluation context.
+
+To apply: In the seed program, locate a function containing a local struct definition. If that struct has any constexpr member function, mutate its body. If no such constexpr member exists, first add a simple constexpr member function to the struct (e.g., constexpr int f() { return 0; }). Then, within the enclosing function, declare an rvalue reference variable bound to a literal or temporary (e.g., int&& ext = 5;). Change the constexpr member function's body to return or use this external rvalue reference variable (e.g., change return 0; to return ext;).
+
+Example: Original code snippet:
+void test() {
+    struct Local {
+        constexpr int get() { return 10; }
+    };
+}
+Mutated version:
+void test() {
+    int&& ext = 10;
+    struct Local {
+        constexpr int get() { return ext; }
+    };
+}
+Note: The introduced rvalue reference ext must be declared before the struct definition, using a type that exists in the seed program (like int) and binding to a compatible temporary value. If no suitable type exists, use int as a default. The mutation does not require new types or functions beyond the existing ones; it only adds a variable and changes the constexpr function body to reference it.

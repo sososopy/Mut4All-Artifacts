@@ -1,0 +1,1 @@
+# ! [feature (rustc_attrs)] # [rustc_layout_scalar_valid_range_start (u32 :: MAX)] struct Foo (u32) ; fn main () { const N : usize = std :: mem :: size_of :: < Foo > () ; }

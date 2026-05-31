@@ -1,0 +1,18 @@
+mutation operator: Swap lambda captures and parameters in generic lambdas within template functions.
+
+This mutation operator targets generic lambdas defined inside template functions or template contexts. It applies when a lambda expression within a template uses auto parameters and potentially has a capture list. The operator swaps the capture list with the parameter list, altering the lambda's signature while keeping the body unchanged. Specifically, if a lambda has both a capture list (e.g., [call_constructor]) and a parameter list (e.g., (int, auto&&... args)), the mutation exchanges them, resulting in a lambda with the capture list becoming the parameter list and the original parameters becoming the capture list. This creates an unconventional lambda structure that may stress compiler handling of generic lambdas in templates.
+
+For example, consider a seed program with a generic lambda inside a template function:
+template<typename T>
+auto func() {
+    auto obj = T{};
+    auto lambda = [obj](auto&& x) { return obj + x; };
+    return lambda;
+}
+The mutation would change this lambda to:
+[auto&& x](obj) { return obj + x; };
+Note that the mutated lambda uses obj as a capture and auto&& x as a parameter, reversing the original order. This introduces a lambda where a previously captured variable is now a parameter and a generic parameter is now a capture, which may be syntactically valid but semantically unusual, potentially exposing bugs in template instantiation or concept checking.
+
+When applying this mutation, ensure all elements (variables, types) used in the mutated lambda already exist in the seed program. Do not introduce new variables or types. The mutation only swaps existing capture and parameter lists; the lambda body remains unchanged. If the original lambda has no capture list (e.g., [](...)), the mutation will attempt to swap an empty capture list with the parameters, resulting in a lambda like [...](), which may be invalid and should be avoided; thus, apply only to lambdas with non-empty capture lists. Similarly, if the lambda has no parameters, do not apply.
+
+This mutation targets complex interactions between generic lambdas, template functions, and concepts, as seen in the bug report where a generic lambda in a template function caused a compiler crash. By altering the lambda's capture and parameter structure, it may trigger similar issues in template argument deduction, concept satisfaction, or lambda compilation within templates.

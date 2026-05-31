@@ -1,0 +1,1 @@
+extern crate proc_macro ; # [doc = " [function_name]"] # [proc_macro_attribute] pub fn function_name (_attr : proc_macro :: TokenStream , item : proc_macro :: TokenStream) -> proc_macro :: TokenStream { item }

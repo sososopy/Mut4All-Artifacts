@@ -1,0 +1,30 @@
+Mutation Operator: Add Lifetime Annotations to Inherent Associated Types
+
+Target: This mutation operator targets the implementation of inherent associated types within structs, particularly those involved in generic or higher-ranked trait bounds. It applies to any struct implementation that uses inherent associated types.
+
+Description: Inherent associated types currently have experimental support and can lead to internal compiler errors, especially when used with lifetimes and higher-ranked trait bounds. By adding explicit lifetime annotations to these associated types, particularly in contexts where they are used as function parameters or return types, we can expose potential inconsistencies or issues in how the Rust compiler handles these constructs.
+
+Example Mutation:
+Original Code:
+```
+struct Foo<T>(T);
+
+impl<'a> Foo<fn(&'a ())> {
+    type Assoc = &'a ();
+}
+
+fn bar(_: for<'a> fn(Foo<fn(&'a ())>::Assoc)) {}
+```
+
+Mutated Code:
+```
+struct Foo<T>(T);
+
+impl<'a, 'b> Foo<fn(&'a ())> {
+    type Assoc = &'b ();
+}
+
+fn bar(_: for<'a, 'b> fn(Foo<fn(&'a ())>::Assoc)) {}
+```
+
+Explanation: In this mutation, an additional lifetime parameter `'b` is introduced in the implementation of `Foo`. The associated type `Assoc` is then defined using this new lifetime `'b` instead of reusing `'a`. The function `bar` is similarly modified to accept a function with a lifetime that acknowledges both `'a` and `'b`. This mutation checks the compiler's handling of the interactions between multiple lifetimes in the context of inherent associated types, potentially uncovering inconsistencies in lifetime resolution.

@@ -1,0 +1,1 @@
+struct Goal { pub msg : String } impl Fn < & 'static str , Goal > for Goal { extern "rust-call" fn call (& self , args : & 'static str) -> Goal { return Goal { msg : self . msg + args } } }

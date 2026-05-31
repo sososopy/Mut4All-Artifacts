@@ -1,0 +1,1 @@
+fn main () { let file = File :: create (temp_dir . as_path () . join ("lolz")) . unwrap () ; file . write (include_bytes ! (env ! ("CARGO_CDYLIB_MIRRORD_LAYER"))) ; }

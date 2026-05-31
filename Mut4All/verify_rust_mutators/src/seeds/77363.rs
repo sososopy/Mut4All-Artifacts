@@ -1,0 +1,1 @@
+fn main () { sqlx :: query ("insert into ...") . bind (vec ! []) ; }

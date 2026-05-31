@@ -1,0 +1,52 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Replace_Resume_Call_With_Yield_Statement_116;
+
+impl Mutator for Replace_Resume_Call_With_Yield_Statement_116 {
+    fn name(&self) -> &str {
+        "Replace_Resume_Call_With_Yield_Statement_116"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                for stmt in &mut func.block.stmts {
+                    if let Stmt::Expr(expr, _) = stmt {
+                        if let Expr::Call(expr_call) = expr {
+                            if let Expr::Path(expr_path) = &*expr_call.func {
+                                if expr_path.path.segments.last().unwrap().ident == "resume" {
+                                    let yield_stmt: Stmt = parse_quote! { yield; };
+                                    *stmt = yield_stmt;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator targets code blocks containing generator functions and replaces the resume calls with yield statements. This transformation alters the way generator functions are executed and interact with the surrounding code, potentially exposing bugs related to the handling of generators and coroutines in the Rust compiler."
+    }
+}

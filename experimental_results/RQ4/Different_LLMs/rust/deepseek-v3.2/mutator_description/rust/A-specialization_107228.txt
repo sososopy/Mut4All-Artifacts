@@ -1,0 +1,10 @@
+mutation operator
+Target: specialization with associated types in trait implementations.
+Apply: when a trait with an associated type has a default implementation using Self (or a type referencing Self) in the associated type definition, and the trait is implemented for a generic parameter (e.g., impl<C> Trait for C). The mutation changes the associated type definition in the default implementation to use a concrete type that is likely to cause conflicts or inconsistencies with the specialization mechanism, specifically by replacing the Self-referential type with a different concrete type that exists in the seed program, such as a unit type, a primitive, or another struct already defined, while keeping the trait bounds satisfied.
+
+Change: In the default associated type definition within the generic trait implementation, replace the type that references Self (e.g., Vec<Self>) with a different concrete type T that is already present in the seed program. Choose T as a type that is compatible with the trait bounds (e.g., if the trait has no additional constraints, T can be any type already defined). If no other suitable type exists, introduce a dummy struct (struct Dummy;) at the top of the module and use it. The mutation must ensure the trait implementation still syntactically valid, but the associated type now resolves to a non-self-referential type.
+
+Example: Seed has: impl<C> SpecTrait for C { default type Assoc = Vec<Self>; }
+Mutated to: impl<C> SpecTrait for C { default type Assoc = (); } if () is already used elsewhere in the seed, or to: impl<C> SpecTrait for C { default type Assoc = Dummy; } after adding struct Dummy; at the top.
+
+Rationale: This disrupts the consistency between the default implementation and potential specialized implementations, likely exposing bugs in drop glue or MIR generation due to mismatched associated types during specialization, mirroring the original bug scenario.

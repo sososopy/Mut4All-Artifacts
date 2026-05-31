@@ -1,0 +1,67 @@
+Mutation Operator: Template Variadic Expansion in Derived Classes
+
+Target Construct: Template Classes with Variadic Templates
+
+Step-by-Step Mutation Rule:
+
+1. Identify a variadic template class that uses inheritance from multiple base classes. Ensure that at least one of the base classes is a virtual base class.
+
+2. In the inheritance list of the template class, introduce a new base class that is not a virtual base class to add complexity to the inheritance chain. This base class should not alter the existing functionality but should introduce potential ambiguity in inheritance.
+
+3. Inside the template class, where member variables or functions are being referenced using the variadic template parameter pack, modify the access pattern by introducing an explicit scope resolution for one of the inherited base classes, using the form `BaseClass::member`.
+
+4. Alter the member access pattern to introduce multiple references to the same member variable from different base classes within the same member function scope. This can be done by accessing the same member from different base classes using the explicit scope resolution syntax.
+
+Example:
+
+Suppose you have a variadic template class like the following:
+
+```cpp
+struct Base1 {
+    int m{0};
+};
+
+struct Base2 : virtual public Base1 {
+};
+
+struct Base3 : virtual public Base1 {
+};
+
+template<typename... Bases>
+struct Derived : public Bases... {
+    using Bases::m...;
+    void modify() {
+        this->Base2::m = 1;
+        this->Base3::m = 2;
+    }
+};
+```
+
+Apply the mutation:
+
+1. Introduce an additional inheritance in the template instantiation:
+```cpp
+struct NonVirtualBase {
+    int dummy{0};
+};
+
+template<typename... Bases>
+struct MutatedDerived : public Bases..., public NonVirtualBase {
+    using Bases::m...;
+    void modify() {
+        this->Base2::m = 1;
+        this->Base3::m = 2;
+    }
+};
+```
+
+2. Access the member variable `m` using explicit scope resolution in `modify` method, ensuring to use different base class names to introduce potential ambiguity:
+```cpp
+void modify() {
+    this->Base2::m = 1;
+    this->Base3::m = 2;
+    this->Base1::m = 3; // Explicitly add another access with potential ambiguity
+}
+```
+
+By following these mutation steps, the variations in inheritance and explicit member access scope can potentially trigger edge cases or assertions similar to those in the provided bug report, especially in compilers handling complex C++20 constructs.

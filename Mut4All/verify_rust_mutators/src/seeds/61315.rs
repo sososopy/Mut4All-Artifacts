@@ -1,0 +1,1 @@
+struct A { } trait T { } impl A where dyn T : { fn f () { } }

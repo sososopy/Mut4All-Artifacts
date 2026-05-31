@@ -1,0 +1,1 @@
+pub fn main () { if true { } else if let a = 1 { } }

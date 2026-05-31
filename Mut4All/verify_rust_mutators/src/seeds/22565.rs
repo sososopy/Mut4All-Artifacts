@@ -1,0 +1,1 @@
+struct A ; impl A { extern "rust-call" fn b (i : i32) { } } fn main () { A :: b (10) ; }

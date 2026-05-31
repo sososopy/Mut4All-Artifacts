@@ -1,0 +1,1 @@
+# ! [feature (plugin , custom_derive , decl_macro)] # ! [plugin (rocket_codegen)] extern crate rocket ; extern crate rocket_contrib ; # [macro_use] extern crate serde_derive ; extern crate serde_json ; use rocket_contrib :: Value ; fn main () { Value :: json ! ("boo") ; println ! ("Hello, world!") ; }

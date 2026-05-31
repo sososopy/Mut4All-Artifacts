@@ -1,0 +1,1 @@
+# ! [feature (default_type_params)] trait Foo < T = Self > { fn method (& self) ; } fn foo (x : & Foo) { } fn main () { }

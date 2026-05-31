@@ -1,0 +1,1 @@
+pub fn main () { let copy = std :: intrinsics :: copy ; let assign : unsafe extern "rust-intrinsic" fn (* const i32 , * mut i32 , usize) = copy ; }

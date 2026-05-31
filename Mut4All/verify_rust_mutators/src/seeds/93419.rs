@@ -1,0 +1,1 @@
+extern "C" { pub fn Fg_Init () -> * mut Fg_Struct ; } # [derive (Debug , Copy , Clone)] pub struct Fg_Struct_s { _unused : [u8 ; 0] , } # [repr (transparent)] pub struct Fg_Struct (pub Fg_Struct_s) ; fn main () { println ! ("Hello, world!") ; }

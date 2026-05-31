@@ -1,0 +1,1 @@
+# ! [feature (adt_const_params)] pub async fn foo < const X : & 'static str > () { }

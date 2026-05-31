@@ -1,0 +1,1 @@
+fn main () { let id = "This is a &str" ; let bytes = id . as_bytes () ; bytes [2] = 0x2F ; }

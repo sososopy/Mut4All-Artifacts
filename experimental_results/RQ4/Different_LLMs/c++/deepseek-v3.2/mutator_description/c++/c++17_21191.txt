@@ -1,0 +1,11 @@
+mutation operator: Replace decltype expressions on generic lambda captures with decltype on the lambda's call operator parameter.
+
+This mutation applies when there is a generic lambda (a lambda with auto parameter or template parameter list) that captures variables by copy or reference, and the program contains a decltype expression referring to one of these captured variables. The operator changes decltype(captured_var) to decltype on the lambda's corresponding parameter. Specifically, for a generic lambda with parameter auto&& param, replace decltype(captured_var) with decltype(param). If the lambda has multiple parameters, choose the first auto parameter. The change is made at the point of the decltype expression, which can be inside or outside the lambda body, provided the captured variable is in scope.
+
+Example: Given seed code: auto lambda = [x](auto&& y) { return decltype(x){}; };
+Mutated code: auto lambda = [x](auto&& y) { return decltype(y){}; };
+If the lambda uses a template syntax: auto lambda = []<typename T>(T x) { decltype(x) var; };
+This is already using the parameter, so no change.
+For a lambda capturing by reference: auto lambda = [&z](auto a) { decltype(z) val; };
+Mutated code: auto lambda = [&z](auto a) { decltype(a) val; };.
+The mutation may introduce type mismatches or change semantics, aiming to trigger compiler crashes in decltype handling for generic lambdas.

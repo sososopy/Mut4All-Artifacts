@@ -1,0 +1,1 @@
+const TEST : & 'static [usize] = & [0] ; fn main () { let n = 0 ; TEST [n] ; }

@@ -1,0 +1,1 @@
+struct S ; impl S { fn foo (_ : Box < Option < S > >) { } fn bar () { Self :: foo (None) } }

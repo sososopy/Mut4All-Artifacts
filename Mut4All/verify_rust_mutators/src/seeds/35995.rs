@@ -1,0 +1,1 @@
+trait T { fn something (& self) -> i32 ; } struct S ; impl T for S { fn something (& self) -> i64 { panic ! () } } fn main () { }

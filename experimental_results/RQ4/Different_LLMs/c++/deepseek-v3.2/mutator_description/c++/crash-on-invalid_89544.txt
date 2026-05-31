@@ -1,0 +1,30 @@
+Based on the bug report, C++ compiler bugs are more likely to trigger in scenarios involving malformed class declarations combined with the instantiation of type traits or other template-based meta-programming features. Specifically, crashes often occur when the compiler attempts to evaluate properties (like trivial constructibility) of a class that has a syntactically or semantically invalid destructor or other special member function. The issue arises during the semantic analysis or instantiation phase, where the compiler must inspect the class's structure but encounters an ill-formed definition.
+
+Mutation operator: Malformed Destructor Injection with Type Trait Usage
+
+This mutation operator targets class definitions within the seed program. It applies when a class declaration exists that currently has a valid destructor (either implicitly defined or explicitly declared correctly). The operator modifies the destructor to become malformed, specifically by replacing its body or declaration with an invalid initializer syntax that resembles a pure-specifier but is incorrectly formed. Simultaneously, to increase the likelihood of compiler crash, it adds a usage of a type trait that queries the class's trivial constructibility properties. The mutation ensures that the malformed destructor is encountered when the compiler evaluates the type trait.
+
+Steps:
+1. Identify a class C in the seed program that has a destructor (either user-defined or compiler-generated). If the class does not currently have an explicit destructor, add one.
+2. Replace the destructor declaration with: ~C() = {} (This is invalid because {} is not a valid pure-specifier; it should be = default or = delete, or have a proper body).
+3. After the class definition, add a statement that uses a type trait from the <type_traits> header on class C. Choose one of: std::is_trivially_constructible<C>::value; std::is_trivially_default_constructible<C>::value; std::is_trivially_copy_constructible<C>::value; std::is_trivially_move_constructible<C>::value. If the seed program already includes <type_traits>, use it directly; otherwise, insert the include directive #include <type_traits> at the beginning of the mutated code segment.
+4. Ensure that any new elements (like the include directive) are placed appropriately to avoid syntax errors in the surrounding context. The mutation should preserve other parts of the program.
+
+Example illustration (pseudo-code):
+Original seed code snippet:
+class MyClass {
+public:
+    MyClass() {}
+    ~MyClass() {} // or no explicit destructor
+};
+
+After mutation:
+#include <type_traits> // if not already present
+class MyClass {
+public:
+    MyClass() {}
+    ~MyClass() = {} // Malformed destructor
+};
+std::is_trivially_default_constructible<MyClass>::value; // Added type trait usage
+
+Note: The mutation uses the existing class name MyClass and introduces the type trait query. The malformed destructor syntax ~MyClass() = {} is the key invalid construct. This mutation aims to replicate the conditions that led to the crash in the bug report, focusing on the interplay between invalid class member definitions and template metaprogramming constructs.

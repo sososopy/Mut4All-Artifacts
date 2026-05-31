@@ -1,0 +1,18 @@
+Mutation operator: InlineConstGenericTypeMethodCall  
+Applies to: Generic const functions where an inline const block invokes a method on a type parameter (e.g., `std::mem::size_of::<T>()`).  
+Description: Replace the method call inside the inline const block with another type-dependent intrinsic (e.g., `std::mem::needs_drop::<T>()` or `std::mem::align_of::<T>()`) that requires metadata resolution during MIR construction. This stresses the compiler's handling of different type-based intrinsics in generic contexts.  
+Example:  
+Original:  
+```rust  
+const fn test_me<T>(a: usize, b: usize) -> usize {  
+    const { std::mem::size_of::<T>() }  
+}  
+```  
+Mutated:  
+```rust  
+const fn test_me<T>(a: usize, b: usize) -> usize {  
+    const { std::mem::needs_drop::<T>() }  
+}  
+```  
+Effect: Forces the MIR builder to resolve metadata via a different type-based intrinsic, potentially exposing missing map entries for unresolved type dependencies.  
+Rationale: The ICE occurred during MIR building when resolving a type-dependent value in an inline const. Changing the intrinsic may alter how the compiler tracks or resolves type metadata, leading to similar key-missing scenarios in other compiler components.

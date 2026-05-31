@@ -1,0 +1,25 @@
+Based on the bug report analysis, the issue occurs when computing the layout of a type with mismatched alignment constraints between ABI and layout, specifically involving the transmutability feature with packed enums. The bug is triggered by a combination of: 1) feature-gated transmutability, 2) repr(C, packed(N)) enums, 3) layout computation during trait evaluation.
+
+Mutation Operator: Packed Enum Alignment Mismatch Mutation
+
+This mutation operator targets enum declarations with repr attributes. It modifies the alignment specification in packed enums to create alignment mismatches that may expose layout computation bugs.
+
+Target: Enum declarations with #[repr(packed(N))] or #[repr(C, packed(N))] attributes.
+
+Operation: For each enum with a packed(N) specification, mutate the alignment value N to create potential inconsistencies:
+1. If N is a power of two (e.g., 1, 2, 4, 8), change it to the next lower power of two (e.g., 2→1, 4→2, 8→4). If N=1, change to 2.
+2. If N is not a power of two, round it down to the nearest power of two.
+3. If the enum has repr(C, packed(N)), also create a variant with only repr(packed(N)) (removing C).
+4. If the enum has only repr(packed(N)), add C to create repr(C, packed(N)).
+
+Examples:
+Original: #[repr(packed(2))] enum E { V }
+Mutated: #[repr(packed(1))] enum E { V }
+
+Original: #[repr(C, packed(4))] enum F { A, B }
+Mutated: #[repr(C, packed(2))] enum F { A, B }
+
+Original: #[repr(packed(8))] enum G { X }
+Mutated: #[repr(C, packed(4))] enum G { X }
+
+The mutation should only be applied to enums that are used in contexts involving layout-sensitive operations like transmutability checks, type size queries, or FFI boundaries. The operator should avoid creating obviously invalid alignments (like 0 or values larger than target architecture limits).

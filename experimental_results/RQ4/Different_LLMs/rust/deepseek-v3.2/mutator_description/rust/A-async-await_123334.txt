@@ -1,0 +1,18 @@
+mutation operator: Insert a dereference of a leaked Box pointer before a move closure that captures it by reference.
+
+This mutation applies to async move closures that capture a reference to a value obtained via Box::leak. Specifically, it targets code where a leaked Box's dereference is captured by an async move closure, which can cause lifetime or type equality issues in the MIR. The mutation modifies the captured expression by inserting an explicit dereference operation on the leaked pointer before the closure, if not already present, to potentially alter the inferred types or borrow interactions.
+
+For example, given a seed program containing:
+let leaked_ref = Box::leak(Box::new(some_value));
+let closure = async move {
+    use leaked_ref;
+};
+
+The mutation would change it to:
+let leaked_ref = Box::leak(Box::new(some_value));
+let deref_copy = *leaked_ref;
+let closure = async move {
+    use deref_copy;
+};
+
+If the seed program already uses *leaked_ref inside the closure, the mutation does not apply. The mutation introduces a new variable, deref_copy, which is a copy of the dereferenced value (assuming the type implements Copy) or a move of it (if not Copy). This variable must be declared before the closure, using let deref_copy = *leaked_ref;. The type of deref_copy is the same as the dereferenced type of leaked_ref, which should be inferred by the compiler. The closure should then capture deref_copy instead of leaked_ref, adjusting usage accordingly. This change can expose bugs related to lifetime normalization or type equating in async contexts, as seen in the bug report where capturing a reference to a leaked Box in an async move closure triggered an ICE.

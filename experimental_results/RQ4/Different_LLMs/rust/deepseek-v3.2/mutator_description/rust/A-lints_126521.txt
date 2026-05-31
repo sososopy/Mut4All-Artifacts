@@ -1,0 +1,25 @@
+Mutation operator: Replace a macro invocation inside an async block or function with a different macro that generates trailing semicolons while keeping lint attributes applied to the async context.
+
+Target: This applies to macro invocations within async blocks or async functions where lint attributes (like #[expect], #[allow], #[warn]) are applied to the enclosing async context. The mutation should focus on cases where macro expansions produce expressions with trailing semicolons that interact with lint checking.
+
+Implementation: Find an async block or async function that contains a macro invocation. Replace that macro invocation with another macro from the same program that generates a trailing semicolon in its expansion. If no such macro exists, introduce a new macro definition that expands to a statement-like expression with a semicolon, such as:
+macro_rules! mutated_macro {
+    () => {
+        true;
+    };
+}
+Then replace the original macro call with this new macro. Ensure any lint attributes applied to the async context remain attached to the mutated code location.
+
+Example: Given original code:
+#[expect(semicolon_in_expressions_from_macros)]
+async {
+    let _ = some_macro!(arg);
+};
+Mutated code:
+#[expect(semicolon_in_expressions_from_macros)]
+async {
+    let _ = trailing_semicolon_macro!(arg);
+};
+Where trailing_semicolon_macro expands to an expression with a trailing semicolon. If the program lacks such a macro, add the mutated_macro definition above and use it.
+
+This mutation targets the interaction between macro expansion, async contexts, and lint attribute processing, which triggered the ICE in the bug report.

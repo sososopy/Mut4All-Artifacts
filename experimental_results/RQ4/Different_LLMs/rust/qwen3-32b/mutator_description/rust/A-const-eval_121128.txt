@@ -1,0 +1,29 @@
+Mutation Operator: Replace const/static declaration with non-Sized type and invalid dereference  
+Applies to: Any const/static declaration in the seed program using a valid type and value  
+
+Before:  
+`const X: ValidType = valid_value;`  
+`static Y: ValidType = valid_value;`  
+
+After:  
+1. Replace `ValidType` with `dyn Trait` (using an existing trait from the program, e.g., `Debug` or `Sync` from std)  
+2. Replace `valid_value` with `*()` or `*"stringLiteral"`  
+
+Example transformation:  
+Original:  
+`const C: i32 = 42;`  
+
+Mutated:  
+`const C: dyn Debug + Sync = *();`  
+
+Coverage rationale:  
+- Targets const/static declarations (common compile-time evaluation contexts)  
+- Introduces non-Sized types (`dyn` trait objects) and unsized `str` types  
+- Forces invalid dereference operations on unit and string literals  
+- Triggers MIR const evaluation paths via ICE-prone code structures  
+- Works with any existing program that contains a const/static declaration  
+
+Implementation notes:  
+- If the program lacks existing traits for `dyn` types, the mutation can use `Debug` from std (commonly imported)  
+- Maintains syntactic validity while creating a semantically invalid const expression that stresses const evaluation  
+- Avoids introducing new variables/types beyond what's already present in the seed program

@@ -1,0 +1,38 @@
+Mutation Operator: Modify Nested Parameter Packs in Lambdas
+
+Target Code Construct: Function Template with Parameter Packs Inside a Lambda Expression
+
+Mutation Rule:
+1. Identify a function template that uses parameter packs, especially where these packs are used within a lambda expression.
+2. Within the lambda, introduce an additional layer of nested lambdas that also capture these parameter packs.
+3. Ensure that the nested lambda expression performs some operation on the parameter packs but does not explicitly expand all packs. This creates a situation similar to the bug where parameter packs might get mishandled due to incomplete expansion.
+
+Step-by-Step Instructions:
+- Start with a function template with parameter packs, e.g., `template<typename... Ts>`.
+- Inside the function body, locate any existing lambda expressions that operate on these parameter packs.
+- Introduce a new lambda inside the existing one. This new lambda should take the same parameter packs or another set of packs derived from the initial packs.
+- Ensure that within the new lambda, there is some manipulation involving the parameter packs without fully expanding them. This could mean referencing them or performing a partial expansion operation (e.g., using them in a fold expression without full expansion).
+
+Example:
+Original pseudo-code:
+```cpp
+template <typename... Ts>
+void func(Ts... args) {
+    (void)[&](auto... params) { ([&] { args; params; }, ...); };
+}
+```
+
+Mutated pseudo-code:
+```cpp
+template <typename... Ts>
+void func(Ts... args) {
+    (void)[&](auto... params) {
+        ([&] {
+            (void)[&] { args; params; };  // New layer of lambda without full expansion
+        }, ...);
+    };
+}
+```
+
+Explanation:
+In this mutation, a new lambda is introduced inside the existing lambda. The new lambda captures the parameter packs but does not fully expand them before the lambda's body ends. This manipulation targets the handling of parameter packs in nested lambda contexts, a likely source for triggering similar compiler bugs.

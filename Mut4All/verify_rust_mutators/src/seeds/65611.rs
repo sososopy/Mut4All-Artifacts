@@ -1,0 +1,1 @@
+use arrayvec :: ArrayVec ; fn main () { let mut buffer = ArrayVec :: new () ; let x = buffer . last () . unwrap () . 0 . clone () ; buffer . reverse () ; }

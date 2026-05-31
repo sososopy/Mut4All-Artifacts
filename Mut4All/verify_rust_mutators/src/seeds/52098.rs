@@ -1,0 +1,1 @@
+struct IceCube < 'a > { v : Vec < & 'a char > } impl < '_ > IceCube { } fn main () { }

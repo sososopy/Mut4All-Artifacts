@@ -1,0 +1,1 @@
+fn main () { enum Foo { Bar (int) } let _x = * Bar (2) ; }

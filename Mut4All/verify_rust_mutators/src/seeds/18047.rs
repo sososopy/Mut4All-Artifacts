@@ -1,0 +1,1 @@
+extern crate iron ; use iron :: { Request , Response , IronResult , Iron , status } ; use std :: net :: ip :: Ipv4Addr ; fn main () { Iron :: new (hello_world) ; fn hello_world (_ : & mut Request) -> IronResult < Response > { Ok (Response :: with (status :: Ok , "hello world")) } }

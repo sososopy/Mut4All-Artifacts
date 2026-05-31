@@ -1,0 +1,1 @@
+const TEN : num :: bigint :: BigInt = match num :: bigint :: ToBigInt :: to_bigint (& 10) { Some (x) => x , None => panic ! ("Could not create bigint.") , } ;

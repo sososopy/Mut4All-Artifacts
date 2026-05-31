@@ -1,0 +1,1 @@
+# ! [feature (inherent_associated_types)] # ! [allow (incomplete_features)] struct S < T > (T) ; impl < 'a , T , > S < T > { type P = T ; } fn main () { type A = S < () > :: P ; }

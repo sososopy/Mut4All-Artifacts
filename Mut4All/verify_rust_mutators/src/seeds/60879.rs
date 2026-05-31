@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] struct Foo < T , const N : usize > ([T ; { N }]) ; impl < T , const N : usize > Foo < T , { N } > { fn foo (& self) -> usize { { N } } } fn main () { let foo = Foo ([0u32 ; 21]) ; }

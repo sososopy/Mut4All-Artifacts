@@ -1,0 +1,1 @@
+# ! [feature (no_core , lang_items , start)] # ! [no_std] # ! [no_core] # [lang = "sized"] trait Sized { } # [lang = "copy"] trait Copy { } # [repr (u64)] enum A { A = 0u64 , B = ! 0u64 , } fn cmp () -> A { A :: B } # [start] fn main (b : isize , a : * const * const u8) -> isize { 0 }

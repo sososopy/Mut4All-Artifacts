@@ -1,0 +1,46 @@
+Mutation Operator: Modify Lambda Expression with `decltype` and `declval`
+
+Target Code Construct: Lambda expressions involving `decltype` and `declval`
+
+Mutation Rule:
+1. Identify a lambda expression that captures variables and utilizes `decltype` and `std::declval` within its body.
+2. Modify the lambda expression to introduce a new `decltype` statement involving a `std::declval` call on a captured variable.
+3. Ensure that the new `decltype` statement references the return type of an operation involving the captured variable, potentially invoking a non-existent or ambiguous operator to induce a compiler crash.
+4. The operation should be valid in terms of syntax but semantically incorrect or ambiguous, causing the compiler to struggle with type deduction or operator overload resolution.
+
+Example Mutation:
+
+Original Code:
+```cpp
+auto lambda0 = []() { return true; };
+auto lambda1 = [l = std::move(lambda0)]
+    (auto&&... args) {
+        using Callable = decltype(l);
+        static_assert(std::is_same_v<
+            decltype(std::declval<const Callable>().operator()
+                (std::declval<decltype(args)>()...)
+            )
+        , bool>, "test failed");
+        return l(args...);
+    };
+```
+
+Mutated Code:
+```cpp
+auto lambda0 = []() { return true; };
+auto lambda1 = [l = std::move(lambda0)]
+    (auto&&... args) {
+        using Callable = decltype(l);
+        static_assert(std::is_same_v<
+            decltype(std::declval<const Callable>().operator()
+                (std::declval<decltype(args)>()...)
+            )
+        , bool>, "test failed");
+
+        // New decltype and declval introduction
+        using ResultType = decltype(std::declval<Callable>() + std::declval<int>());
+        return l(args...);
+    };
+```
+
+Note: The mutation introduces a `decltype` involving an addition operation (`+`) with `std::declval<int>()`. This is meant to create an ambiguous scenario where the `Callable` type is not expected to support operator `+`, potentially leading to a compiler crash during type deduction or overload resolution.

@@ -1,0 +1,1 @@
+# ! [feature (universal_impl_trait)] pub fn ice (f : impl Fn ()) { }

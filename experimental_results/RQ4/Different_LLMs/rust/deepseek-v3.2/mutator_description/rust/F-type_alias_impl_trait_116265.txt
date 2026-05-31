@@ -1,0 +1,55 @@
+Based on the bug report analysis, Rust compiler bugs related to F-type_alias_impl_trait often involve opaque types (impl Trait) in type alias positions interacting with pattern matching, closures, or control flow. Specifically, the bug occurs when the compiler's internal discriminant analysis encounters an opaque type alias during MIR dataflow analysis, particularly within match expressions or closure captures. This suggests mutations should focus on combining type alias impl Trait with pattern matching structures.
+
+Mutation operator: Insert a match expression on a value of an opaque type alias within a closure capture.
+
+This mutation applies when the seed program contains:
+- A type alias defined as `type T = impl Trait;`
+- A closure that captures a variable of type T (or could capture one).
+
+Steps:
+1. Identify a function containing a type alias `type T = impl Trait;`.
+2. Identify a variable `x` declared with type T (or that could be inferred as T).
+3. Insert a new closure that captures `x` by move and contains a match expression on `x`.
+   If the seed program already has a closure capturing `x`, modify its body to include a match on `x`.
+   If no closure exists, create a new closure that captures `x` and matches on it.
+4. The match expression should have at least two arms: one for a placeholder pattern and a default arm.
+   The placeholder pattern should be something like `Some(_)` if T could be an Option, or a tuple pattern if T could be a tuple.
+   Since the concrete type is opaque, use patterns that are plausible for common types (like tuples, Option, Result).
+   If the seed program has existing struct/enum definitions, prefer patterns using those types.
+
+Example transformation:
+Original seed code snippet:
+```
+type T = impl Copy;
+let val: T = some_expression;
+```
+After mutation:
+```
+type T = impl Copy;
+let val: T = some_expression;
+let closure = move || {
+    match val {
+        Some(_) => {},
+        _ => {},
+    };
+};
+```
+
+If the seed program already has a closure, modify it:
+Original:
+```
+let x: T = expr;
+let c = || { use(x); };
+```
+Mutated:
+```
+let x: T = expr;
+let c = || {
+    match x {
+        (a, b) => {},
+        _ => {},
+    };
+};
+```
+
+Note: The mutation introduces a closure and match expression using existing variable `x` and type alias `T`. No new types or variables are introduced beyond the closure binding. The patterns should be based on common Rust types or existing types in the seed program.

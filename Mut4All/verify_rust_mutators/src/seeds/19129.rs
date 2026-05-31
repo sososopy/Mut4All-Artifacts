@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] trait Trait < T > { type Output ; fn fun () -> < Self as Trait < T > > :: Output ; } impl < T > Trait < T > for () { type Output = () ; fn fun () { } } fn main () { }

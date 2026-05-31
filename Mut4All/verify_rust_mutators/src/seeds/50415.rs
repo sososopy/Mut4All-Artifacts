@@ -1,0 +1,1 @@
+fn main () { let full_length = 1024 ; let range = { None } ; let range = range . map (| (s , t) | s ..= t) . unwrap_or (0 ..= (full_length - 1)) ; println ! ("{:?}" , range) ; }

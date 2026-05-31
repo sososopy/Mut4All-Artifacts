@@ -1,0 +1,1 @@
+fn main () { let new_map : * mut Vec < * const str > = & mut Vec :: new () ; unsafe { (* new_map) . sort_by (| a , b | a . cmp (b)) ; } }

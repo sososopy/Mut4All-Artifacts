@@ -1,0 +1,14 @@
+mutation operator: Replace a generic type argument in a struct field with an associated type projection from a trait bound, where the associated type is nested inside another associated type.
+
+This mutation operator targets struct definitions with generic parameters that have trait bounds. It applies when a struct field's type uses a generic type parameter T. The mutation changes that field's type to a projection like <T as Trait>::AssocType, where AssocType is an associated type defined in Trait. Importantly, the mutation should choose an associated type that itself may have further associated types, creating a nested projection. The goal is to create complex type projections that the compiler must resolve during borrow checking or type checking.
+
+The operator works as follows: First, identify a struct definition with a generic parameter that has a trait bound, e.g., struct Example<T: TraitBound> { field: T }. Then, locate a field whose type is exactly the generic parameter T. Change the field's type to <T as TraitBound>::NestedAssoc, where NestedAssoc is an associated type defined in TraitBound. If TraitBound does not have a suitable associated type, the mutation does not apply. The associated type should ideally be defined to have its own associated items or constraints to increase complexity.
+
+For example, given a seed program with:
+trait Container { type Item; }
+struct Wrapper<T: Container> { data: T }
+The mutation could produce:
+struct Wrapper<T: Container> { data: <T as Container>::Item }
+This introduces an associated type projection. To increase likelihood of triggering bugs, prefer traits where the associated type itself is constrained by another trait with its own associated types, mimicking the nested structure in the bug report.
+
+The mutation should use existing trait definitions from the seed program. If no such trait exists, the mutation is not applied. Avoid introducing new types or traits; only use those already present. The change is made only in the struct definition, not in other uses of the struct. This can create mismatches or complex resolutions when the struct is used, particularly in functions with generics.

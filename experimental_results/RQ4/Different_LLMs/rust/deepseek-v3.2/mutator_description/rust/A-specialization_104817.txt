@@ -1,0 +1,38 @@
+Mutation Operator:
+
+This mutation operator targets trait implementations with specialization when a type alias impl Trait is involved. It changes a blanket trait implementation into a specialized implementation for a specific type alias impl Trait, potentially exposing bugs in the compiler's handling of specialization and TAIT coherence.
+
+The operator applies when the seed program contains a trait definition with at least one blanket implementation and a type alias defined with impl Trait. It modifies the blanket implementation to add a specialized implementation for the TAIT, using the existing trait and type alias names.
+
+Steps:
+
+1. Identify a trait definition in the seed program. Let's call this trait TraitName.
+2. Identify a blanket implementation for TraitName, i.e., an impl block of the form `impl<T> TraitName for T` or `impl<T: Constraint> TraitName for T`.
+3. Identify a type alias defined with impl Trait, i.e., a definition of the form `type AliasName = impl TraitBound;`. This alias must be in scope.
+4. Create a new specialized implementation for the TAIT. This new impl block should be placed after the existing blanket impl. It must use the `default` keyword on the items within, as per specialization rules. The new impl block should have the form: `impl TraitName for AliasName { default fn method_name(&self) { ... } }` if the trait has methods, or simply `impl TraitName for AliasName {}` if it is a marker trait. Use the existing method signatures from the blanket impl, marking them as default.
+
+Example using pseudo-code from the seed program:
+
+Original code snippet from bug report has:
+trait AnotherTrait {}
+impl<T: Send> AnotherTrait for T {}
+impl AnotherTrait for OpaqueType {}
+
+The mutation would not change this because it already contains a specialized impl for OpaqueType. Instead, for a seed program that lacks such a specialized impl, the operator would add it.
+
+Example seed program before mutation:
+trait ExampleTrait { fn example(&self); }
+impl<T> ExampleTrait for T { fn example(&self) {} }
+type MyOpaque = impl std::fmt::Debug;
+fn make_opaque() -> MyOpaque { 42 }
+
+After mutation:
+trait ExampleTrait { fn example(&self); }
+impl<T> ExampleTrait for T { fn example(&self) {} }
+impl ExampleTrait for MyOpaque { default fn example(&self) {} }
+type MyOpaque = impl std::fmt::Debug;
+fn make_opaque() -> MyOpaque { 42 }
+
+Note that the new impl block is inserted immediately after the blanket impl and before the type alias definition. The method `example` is copied from the blanket impl and marked `default`. This creates a specialization scenario where MyOpaque has a specialized implementation, which may trigger coherence and type locality checks similar to the bug.
+
+This mutation leverages existing program elements (trait, blanket impl, TAIT) and introduces a new impl block that is syntactically valid but may expose compiler bugs in the interaction between specialization and TAIT.

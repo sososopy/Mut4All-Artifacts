@@ -1,0 +1,1 @@
+use std :: ops :: { Index } ; trait Hierarchy { type Value ; type ChildKey ; type Children = Index < Self :: ChildKey , Output = Hierarchy > ; fn data (& self) -> Option < (Self :: Value , Self :: Children) > ; }

@@ -1,0 +1,1 @@
+# ! [feature (thread_local)] # [thread_local] static mut X : :: std :: sync :: atomic :: AtomicUsize = :: std :: sync :: atomic :: ATOMIC_USIZE_INIT ; fn main () { unsafe { let mut x = X ; let _y = x . get_mut () ; } }

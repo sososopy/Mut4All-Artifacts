@@ -1,0 +1,1 @@
+struct NonCopyable (()) ; fn main () { let z = NonCopyable { p : () } ; }

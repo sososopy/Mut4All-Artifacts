@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] trait Foo { type Cont < Item > : Container < Item > ; } pub trait Container < T > { }

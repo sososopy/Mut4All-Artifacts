@@ -1,0 +1,1 @@
+struct Foo < 'a , 'b , T > { field1 : dyn Bar < 'a , 'b , > } trait Bar < 'x , 's , U > where U : 'x , Self : 'x , Self : 's { } fn main () { }

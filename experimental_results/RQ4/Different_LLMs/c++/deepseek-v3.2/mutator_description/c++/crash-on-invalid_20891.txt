@@ -1,0 +1,18 @@
+Mutation Operator: Replace decltype(auto) with explicit type deduction mismatch in template function pointer contexts.
+
+This mutation operator applies when a variable is declared using decltype(auto) and initialized with a pointer to a function template where the return type is not fully specified or is dependent. The mutation changes the decltype(auto) to an explicit type that deliberately mismatches the deduced type, such as replacing it with auto or a concrete but incorrect type, to stress the compiler's type deduction and template instantiation logic.
+
+The operator targets declarations in the form: decltype(auto) var = &template_function<type_args>; It modifies this by substituting decltype(auto) with auto, or if a suitable existing type is present in the seed program, using that type instead. The goal is to create a scenario where the type deduction may conflict with the actual type of the expression, potentially exposing crashes or assertion failures during compilation.
+
+For example, given a seed code snippet:
+template <typename T>
+auto func(int param);
+
+decltype(auto) ptr = &func<int>;
+The mutation would change it to:
+auto ptr = &func<int>;
+Or, if there is an existing type like int* in the program, it could become:
+int* ptr = &func<int>;
+This introduces a type mismatch because func<int> returns auto, which is unresolved, and assigning its address to int* is invalid. The mutation leverages existing types from the seed to avoid introducing new declarations. If no suitable type exists, the fallback is to use auto, which still alters the deduction context.
+
+The changes are minimal: locate decltype(auto) declarations initialized with pointers to function templates, replace decltype(auto) with either auto or an existing pointer type from the seed code, ensuring the replacement type is syntactically valid but semantically inconsistent. This stresses compiler handling of template deduction and type checking in invalid scenarios.

@@ -1,0 +1,19 @@
+mutation operator: Replace a specialized default impl with a non-specialized impl for a concrete type.
+
+This operator targets code constructs involving specialization of trait implementations. It applies when the seed program contains a default impl (a blanket implementation marked with the default keyword) for a generic trait, and there exists at least one concrete type that satisfies the generic bounds of that default impl. The mutation involves creating a new, non-default (specific) impl for one of those concrete types, directly overriding the default impl for that type. This mimics the structure in the bug report where a default impl for T: Clone is specialized by a specific impl for u8.
+
+The operator first identifies all default impl blocks in the seed program. For each default impl, it examines the trait being implemented and the generic parameters and bounds. It then searches the seed program for concrete types (structs, enums, or built-in types like i32, String) that are used elsewhere in the code and that satisfy the bounds of the default impl (or, for practicality, we assume they satisfy them if the bounds are common like Clone or Debug, or we can use a type that already implements the trait via the default impl in the original program). If such a concrete type is found and there is not already an existing specific impl for that exact type-trait pair, the mutation is performed.
+
+The change is: Remove the `default` keyword from a copy of the impl block and replace the generic type parameter with the identified concrete type. The body of the impl (method definitions, associated type definitions) is kept identical, but all occurrences of the generic type parameter within the body are replaced with the concrete type name. This new impl is inserted into the code, typically after the default impl.
+
+Example: Suppose the seed program contains:
+default impl<T: Clone> ExampleTrait for T {
+    type Assoc = bool;
+    fn method(&self) -> Self::Assoc { true }
+}
+And the program also uses a type `ExistingStruct` (which presumably implements Clone). The mutation would produce:
+impl ExampleTrait for ExistingStruct {
+    type Assoc = bool;
+    fn method(&self) -> Self::Assoc { true }
+}
+This new impl is non-default and specializes the default impl for `ExistingStruct`. The goal is to create a scenario where the compiler must handle the specialization relationship between the new concrete impl and the existing default impl, potentially triggering bugs in the specialization graph construction or translation logic, as seen in the reported ICE.

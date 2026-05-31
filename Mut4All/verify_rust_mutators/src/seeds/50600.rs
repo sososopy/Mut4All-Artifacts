@@ -1,0 +1,1 @@
+struct Foo (fn ([u8 ; | x : u8 | { }])) ;

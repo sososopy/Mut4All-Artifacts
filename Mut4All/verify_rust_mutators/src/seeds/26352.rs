@@ -1,0 +1,1 @@
+use std :: rc :: Rc ; fn main () { let r = Rc :: new ([1 , 2]) as Rc < [i32] > ; }

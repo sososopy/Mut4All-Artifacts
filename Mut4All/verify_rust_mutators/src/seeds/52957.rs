@@ -1,0 +1,1 @@
+# [doc = " [link](::rand::random)"] pub fn foo () { }

@@ -1,0 +1,46 @@
+Mutation Operator: Introduce Inherent Associated Type with Self Reference
+
+Target: Implementations (impl blocks) for structs or enums.
+
+Mutation Rule:
+1. Identify an existing struct or enum in the seed program, say `struct S<T>(T);`.
+2. Ensure that the inherent associated types feature is enabled by adding `#![feature(inherent_associated_types)]` at the top if not already present.
+3. In the impl block of the identified struct or enum, introduce a new associated type that is defined in terms of itself. For instance, if `impl<T> S<T> {}` exists, modify it to include:
+   ```rust
+   impl<T> S<T> {
+       type P = Self::P;
+   }
+   ```
+4. Ensure that the new associated type is used in the program, for instance, by creating a type alias or a function signature using the associated type, like:
+   ```rust
+   fn example_function() {
+       type A = S<i32>::P;
+   }
+   ```
+5. Execute the program to observe if the compiler bug is triggered, which may result in an internal compiler error due to the self-referential nature of the associated type. 
+
+Example:
+Given the seed:
+```rust
+struct S<T>(T);
+
+impl<T> S<T> {
+    type P = T;
+}
+```
+
+Apply mutation to:
+```rust
+struct S<T>(T);
+
+impl<T> S<T> {
+    type P = Self::P;
+}
+
+fn main() {
+    type A = S<i32>::P;
+}
+```
+
+Explanation:
+This mutation introduces a self-referential associated type within an impl block, creating a potential for the compiler to encounter an infinite substitution loop or similar type-checking issues, thus increasing the likelihood of triggering compiler bugs related to associated items.

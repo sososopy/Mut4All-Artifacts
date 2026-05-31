@@ -1,0 +1,14 @@
+mutation operator
+This mutation operator targets trait bounds in where clauses that involve const trait bounds, specifically those using the `~const` syntax, which is part of the effects feature. It applies to any where clause in a trait or impl block that contains a bound of the form `Self: ~const TraitName`. The operator will modify the bound by removing the `~const` modifier, changing it to a regular trait bound, or by adding the `~const` modifier to a regular trait bound if the context already uses const trait features. The goal is to create mismatches or edge cases in const context handling that could trigger internal compiler errors similar to the reported bug.
+
+Specifically, for a given where clause bound like `Self: ~const TraitName`, the operator will change it to `Self: TraitName`. Conversely, if a bound is `Self: TraitName` and the surrounding context (e.g., the trait or impl is marked with `#[const_trait]` or uses const impls), the operator will change it to `Self: ~const TraitName`. This mutation should be applied only to bounds that involve traits, not lifetime or type bounds. The operator uses existing trait names and variables from the seed program; no new elements are introduced.
+
+For example, consider a seed program with a const trait and a where clause using `~const`. The original code might have:
+trait Bar { fn bar(); }
+#[const_trait] trait Foo { fn foo() where Self: ~const Bar; }
+The operator would mutate the where clause to: Self: Bar.
+Alternatively, if the seed has a regular bound in a const context: 
+#[const_trait] trait Foo { fn foo() where Self: Bar; }
+The operator would mutate to: Self: ~const Bar.
+
+This mutation is designed to test the compiler's handling of const trait bound consistency, particularly in lowering phases where missing host param ids might be encountered, potentially exposing internal compiler errors.

@@ -1,0 +1,1 @@
+fn main () { let a = 5 ; let b = 7 ; println ! ("{valuea} {valueb}" , valuea = a , valuec = b) ; }

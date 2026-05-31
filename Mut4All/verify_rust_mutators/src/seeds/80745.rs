@@ -1,0 +1,1 @@
+# ! [feature (const_evaluatable_checked)] # ! [feature (const_generics)] use core :: marker :: PhantomData ; use core :: mem :: size_of ; struct Object < T : ? Sized , const N : usize > { _phantom : PhantomData < T > , } fn bang < U > (val : U) -> Object < U , { size_of :: < U > () } > { todo ! () } fn main () { let _ = bang (0u32) ; }

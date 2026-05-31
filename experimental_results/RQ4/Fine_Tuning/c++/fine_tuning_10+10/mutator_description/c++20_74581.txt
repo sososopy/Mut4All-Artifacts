@@ -1,0 +1,45 @@
+Mutation Operator: Targeting Template Constructor with Constraints
+
+1. **Target Code Construct:**
+   This mutation targets template constructors in classes that have constraints on template parameters using `requires` clauses.
+
+2. **Mutation Rule:**
+   - Locate a class with a template constructor that uses a constraint involving type traits or concepts (such as `std::is_constructible_v`).
+   - Identify the constraint expression within the `requires` clause that utilizes one or more type traits/functions.
+   - Modify the constraint expression to introduce a cyclic dependency that references the template parameter in a way that could lead to semantic confusion or logical paradoxes.
+   
+3. **Step-by-Step Instructions:**
+   - Identify the class and its template constructor. For example:
+     ```
+     struct MyStruct {
+         template <typename F>
+             requires std::is_constructible_v<F>
+         MyStruct(F&& f);
+     };
+     ```
+   - Modify the `requires` clause to include a self-referential condition involving the template parameter. For example:
+     - Original: `requires std::is_constructible_v<F>`
+     - Mutated: `requires std::is_constructible_v<std::decay_t<F>, F>`
+   - Ensure the modified expression involves type traits that can logically refer back to the template parameter, potentially causing the compiler to evaluate an infinite or contradictory logic.
+   
+4. **Example Pseudo-Code:**
+   Original:
+   ```
+   struct Example {
+       template <typename T>
+           requires std::is_copy_constructible_v<T>
+       Example(T arg);
+   };
+   ```
+   
+   Mutated:
+   ```
+   struct Example {
+       template <typename T>
+           requires std::is_constructible_v<std::decay_t<T>, T>
+       Example(T arg);
+   };
+   ```
+
+5. **Explanation:**
+   This mutation introduces a requirement that checks the constructibility of a decayed version of the template parameter with itself, which can lead to logical inconsistencies during instantiation. This setup is prone to cause the compiler to crash, especially when the logic within the `requires` clause creates a self-referential or circular dependency that the type system struggles to resolve.

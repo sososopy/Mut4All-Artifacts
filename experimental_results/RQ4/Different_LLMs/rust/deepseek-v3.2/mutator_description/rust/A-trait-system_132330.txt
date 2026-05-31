@@ -1,0 +1,15 @@
+Mutation operator: Replace a trait bound in a where clause or inline bound with a projection equality constraint that uses an associated type from another trait.
+
+This mutation applies to trait bounds in function signatures, impl headers, or where clauses. Specifically, when a trait bound `T: TraitA<Assoc = Type>` is present, and `TraitA` has a supertrait `TraitB` with an associated type `B`, the operator changes the bound to `T: TraitA<Assoc = <T as TraitB>::B>`. This introduces a projection that must be resolved, testing the trait solver's handling of nested associated types and equality constraints.
+
+For example, if a seed program contains:
+trait Base { type B; }
+trait Derived: Base { type D; }
+fn foo<T: Derived<D = u32>>() {}
+The mutation changes the bound to:
+fn foo<T: Derived<D = <T as Base>::B>>() {}
+This uses existing traits and associated types from the seed. No new elements are introduced; it reuses `Base` and `B` which are already defined. The change is to replace the concrete type `u32` with the projection `<T as Base>::B`.
+
+In contexts without an explicit where clause, such as inline bounds in generic parameters, apply similarly: change `T: Trait<Assoc = Concrete>` to `T: Trait<Assoc = <T as OtherTrait>::OtherAssoc>`, ensuring `OtherTrait` and `OtherAssoc` exist in the seed program's trait definitions.
+
+This mutation targets complex trait relationships and can trigger bugs related to associated type projection mismatches, especially under the next-generation trait solver.

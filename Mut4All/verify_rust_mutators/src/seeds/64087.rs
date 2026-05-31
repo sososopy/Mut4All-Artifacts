@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] fn combinator < T , const S : usize > () -> [T ; S] { } fn main () { combinator () . into_iter () ; }

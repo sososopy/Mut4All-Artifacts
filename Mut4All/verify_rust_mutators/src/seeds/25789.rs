@@ -1,0 +1,1 @@
+fn main () { let v = vec ! [1 , 2 , 3 , 4] ; let vv : Vec < Vec < i32 > > = v . splitn (2 , | _ | { false }) . map (| i | { i . to_vec () as Vec < i32 > }) . collect () ; println ! ("{:?}" , vv) ; }

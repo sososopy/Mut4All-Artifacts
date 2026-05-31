@@ -1,0 +1,1 @@
+extern crate serde ; # [macro_use] extern crate serde_derive ; extern crate serde_json ; # [derive (Deserialize)] # [serde (tag = "variant")] enum A { A1 { x : usize } , } fn main () { let a : A = serde_json :: from_str ("") . unwrap () ; }

@@ -1,0 +1,1 @@
+struct Generic { pub size : u32 , pub data : [u32 ; Generic :: ckSize] } # [test] fn it_works () { }

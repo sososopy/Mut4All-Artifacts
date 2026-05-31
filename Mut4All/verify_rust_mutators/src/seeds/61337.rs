@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] fn f < T , const N : usize > (v : & mut [T ; N]) -> & mut [T ; N] { v } fn main () { }

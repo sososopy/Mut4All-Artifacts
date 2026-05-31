@@ -1,0 +1,1 @@
+fn main () { let string : & str = "test1" ; let ptr = string as * const _ as * const u8 ; }

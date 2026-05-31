@@ -1,0 +1,1 @@
+fn main () { [1] [1.5 as usize] ; }

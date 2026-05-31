@@ -1,0 +1,1 @@
+trait Nat { const VALUE : usize ; } struct Zero ; impl Nat for Zero { const VALUE : i32 = 0 ; } fn main () { let _ : [i32 ; Zero :: VALUE] = [] ; }

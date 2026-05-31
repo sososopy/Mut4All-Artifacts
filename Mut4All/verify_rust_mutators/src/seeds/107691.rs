@@ -1,0 +1,1 @@
+use rkyv :: { with :: { CopyOptimize , RefAsBox } , Archive , Serialize , } ; # [derive (Archive , Serialize , Debug)] pub struct Record < 'a > { # [with (CopyOptimize , RefAsBox)] payload : & 'a [u8] , }

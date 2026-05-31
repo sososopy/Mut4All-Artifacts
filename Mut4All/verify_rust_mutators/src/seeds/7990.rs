@@ -1,0 +1,1 @@
+struct Foo { x : i32 } impl Index < uint , i32 > for Foo { fn index (& self , _rhs : & uint) -> i32 { self . x } } fn main () { let mut foo = Foo { x : 0 } ; foo [0] += 5 ; }

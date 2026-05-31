@@ -1,0 +1,1 @@
+# ! [feature (alloc)] # ! [feature (lang_items)] # ! [feature (start)] # ! [no_std] extern crate alloc ; # [start] fn start (_argc : isize , _argv : * const * const u8) -> isize { alloc :: boxed :: Box :: < i32 > :: new (17) ; 0 } # [lang = "panic_fmt"] extern fn panic_fmt () -> ! { loop { } } # [lang = "eh_personality"] extern "C" { fn eh_personality () ; }

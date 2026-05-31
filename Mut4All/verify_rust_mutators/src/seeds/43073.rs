@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] fn suffixes (txt : & str) -> impl Iterator < Item = & str > { txt . char_indices () . skip (1) . map (| & (j , _) | & txt [j ..]) } fn main () { }

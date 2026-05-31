@@ -1,0 +1,27 @@
+Mutation Operator: Add redundant if let guard to match arms with never or irrefutable patterns  
+Applies to: Match arms containing a pattern that is either a never pattern (e.g., `!`) or an irrefutable pattern (e.g., a variable pattern `_` or `x`), where the arm already has an optional guard expression.  
+
+Change:  
+1. Select an existing Option-returning function call within the program (e.g., `split_last(&())` in the example)  
+2. Replace the existing pattern `P` in the match arm with `P` wrapped in an if let guard:  
+   `pattern if let _ = function_call()`  
+   Where `function_call()` returns `Option<_>`  
+
+Example:  
+Original:  
+```rust  
+match value {  
+    _ if condition() => {}  
+    _ => {}  
+}  
+```  
+
+Mutated:  
+```rust  
+match value {  
+    _ if let _ = split_last(&()) => {}  
+    _ => {}  
+}  
+```  
+
+This forces the compiler to handle the interaction between redundant if let guards and pattern coverage analysis, potentially exposing ICE conditions in MIR pattern construction. The mutation leverages existing Option-returning functions to avoid introducing new declarations while creating a scenario where the compiler's pattern guard validation logic may fail.

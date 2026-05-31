@@ -1,0 +1,1 @@
+struct Transform { x : f32 , y : f32 , } struct SliceWrapper < 'a , T > (& 'a [T]) ; impl < 'a , T > SliceWrapper < 'a , T > { fn slice (& self) -> & [T] { self . 0 } } fn foo (transforms : SliceWrapper < Transform >) { for t in transforms . slice () { t . x += 1.0 ; } } fn main () { }

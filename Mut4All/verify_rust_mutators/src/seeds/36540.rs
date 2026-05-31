@@ -1,0 +1,1 @@
+macro_rules ! mac { () => { i32 } } trait Foo { type Assoc ; } impl Foo for mac ! () { type Assoc = mac ! () ; }

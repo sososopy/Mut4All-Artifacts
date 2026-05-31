@@ -1,0 +1,1 @@
+use tokio :: prelude :: * ; use tokio :: runtime :: Runtime ; use tokio :: sync :: mpsc ; fn main () { let mut rt = Runtime :: new () . unwrap () ; let mut sum = 0 ; sum += rt . block_on (async { let (tx , mut rx) = mpsc :: unbounded_channel () ; tx . send (1) . unwrap () ; while let Some (res) = rx . recv () . await { println ! ("{:?}" , res) ; } 1 }) ; }

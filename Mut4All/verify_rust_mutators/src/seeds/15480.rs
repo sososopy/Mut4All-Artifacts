@@ -1,0 +1,1 @@
+fn main () { let & ref a = [0u] . as_slice () ; }

@@ -1,0 +1,1 @@
+# ! [feature (generators , generator_trait)] fn main () { let mut y = 2 ; let _ = move | | { y += 1 ; yield ; } ; }

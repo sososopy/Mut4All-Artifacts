@@ -1,0 +1,1 @@
+fn dummy < 'a > (x : & 'a u8) where 'a : 'static { } fn main () { }

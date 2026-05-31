@@ -1,0 +1,1 @@
+# ! [feature (let_else)] pub fn main () { let Some (x) = & Some (3) else { panic ! () ; } ; * x += 1 ; }

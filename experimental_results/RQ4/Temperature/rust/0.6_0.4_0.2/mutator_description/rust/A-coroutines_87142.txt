@@ -1,0 +1,49 @@
+Mutation Operator: Generator State Mutation
+
+Target Code Construct: This mutation operator targets generator functions that are defined within traits or structs, specifically focusing on the context or state management of the generator.
+
+Description: In Rust, generators are a form of coroutine that allow for the suspension and resumption of execution. When defining generators within traits or structs, especially when using type alias implementations, there is a potential for bugs related to generator state management and context linkage. This mutation operator introduces changes to the way generator state is managed or accessed, which can expose issues related to type alias implementation and coroutine behavior.
+
+Mutation Details:
+1. Identify generator functions within trait implementations or structs that utilize the `impl Generator` syntax.
+2. Modify the state management or context linkage within the generator function. This could involve changing the type of the state management structure (e.g., replacing `Box` with another pointer type like `Rc` or `Arc`), or altering how the context is used within the generator function.
+
+Example:
+Original Code:
+```rust
+struct Context<G: 'static + GeneratorProviderAlt> {
+    link: Box<G::Gen>,
+}
+
+impl GeneratorProviderAlt for () {
+    type Gen = impl Generator<(), Return=(), Yield=()>;
+    fn start(ctx: Context<Self>) -> Self::Gen {
+        move || {
+            match ctx { _ => () }
+            yield ();
+        }
+    }
+}
+```
+
+Mutated Code:
+```rust
+struct Context<G: 'static + GeneratorProviderAlt> {
+    link: Rc<G::Gen>, // Change Box to Rc for shared ownership
+}
+
+impl GeneratorProviderAlt for () {
+    type Gen = impl Generator<(), Return=(), Yield=()>;
+    fn start(ctx: Context<Self>) -> Self::Gen {
+        move || {
+            // Alter the context usage pattern
+            if let Some(_) = Rc::get_mut(&mut ctx.link) {
+                // Do something with the mutable reference
+            }
+            yield ();
+        }
+    }
+}
+```
+
+By changing the state management from `Box` to `Rc` and altering the way context is accessed, this mutation can potentially expose issues related to the internal compiler error (ICE) when handling generator states in conjunction with type alias implementations.

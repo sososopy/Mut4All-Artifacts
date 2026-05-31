@@ -1,0 +1,18 @@
+Mutation Operator: Constant Parameter Environment Mutation in Generic Const Expressions with Inline Attribute
+
+Target: Functions or methods using generic const parameters (const N: usize) within where clauses that involve array length expressions (e.g., [(); N / 2]:), and marked with an inline attribute (especially #[inline(always)]).
+
+Description: This mutation modifies the environment in which const generic parameters are evaluated during constant propagation, particularly when inlining is forced. It targets the interaction between constant evaluation contexts and parameter environments that may not be properly set as const during optimization passes.
+
+Changes: For any function or method definition that meets all the following criteria: 1) has at least one generic const parameter, 2) uses that const parameter in a where clause involving an array length expression (e.g., [(); <expr>]: where <expr> contains the const parameter), and 3) has an inline attribute (#[inline] or #[inline(always)]), mutate by removing the inline attribute. If the function does not have an inline attribute, add #[inline(never)] to suppress inlining.
+
+Example: Given a function:
+#[inline(always)]
+fn function<const N: usize>() where [(); N * 2]: { ... }
+Mutated to:
+fn function<const N: usize>() where [(); N * 2]: { ... }
+Or if the original had no inline attribute:
+#[inline(never)]
+fn function<const N: usize>() where [(); N * 2]: { ... }
+
+Rationale: The bug occurs when constant evaluation during MIR optimization (specifically const propagation) encounters a parameter environment that is not marked as const, triggering an assertion failure. This often happens with forced inlining combined with generic const expressions in where clauses. By altering the inlining hint, we change the optimization path, potentially exposing mismatches between the const evaluation context and the parameter environment. This mutation directly targets the combination of features that caused the ICE: generic_const_exprs, inline attributes, and const generic parameters used in array length bounds.

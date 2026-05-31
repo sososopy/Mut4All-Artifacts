@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] pub trait Foo { const MIN : i32 ; fn get_min () -> i32 { Self :: MIN } } fn main () { }

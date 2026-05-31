@@ -1,0 +1,1 @@
+use super :: Hasher ; # [doc = " [`Hasher`]"] pub use core :: hash :: * ;

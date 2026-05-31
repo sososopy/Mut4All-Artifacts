@@ -1,0 +1,37 @@
+Mutation Operator: Trait Lifetime Manipulation
+
+This mutation operator targets trait definitions and their usage, specifically manipulating generics and lifetime parameters. The goal is to exploit potential mishandlings of lifetimes and generic bounds within the Rust compiler, which have been shown to trigger internal errors (ICEs) as demonstrated in the bug report.
+
+Where it applies:
+- Applies to trait definitions and their implementations or usage in function signatures.
+
+Mutation Description:
+1. Identify a trait in the seed program that has a generic parameter or lifetime constraint.
+2. Remove any explicit lifetime parameters from the trait definition. For instance, if the trait is defined as `trait MyTrait<'a>`, change it to `trait MyTrait`.
+3. Propagate this change to all instances where that trait is used, removing unnecessary lifetime parameters.
+4. Introduce a conflicting lifetime annotation in a function that implements or uses this trait by adding a new lifetime parameter where it was not originally required. For example, use `impl<'b> MyTrait` in a function signature where the trait `MyTrait` no longer requires a lifetime.
+
+Example:
+Original Code:
+```
+trait MyTrait<'a> {
+    fn do_something(&self) -> &'a str;
+}
+
+fn use_trait<'a>(x: impl MyTrait<'a>) -> &'a str {
+    x.do_something()
+}
+```
+
+Mutated Code:
+```
+trait MyTrait {
+    fn do_something(&self) -> &str; // Removed explicit lifetime 'a
+}
+
+fn use_trait<'b>(x: impl MyTrait) -> &'b str {
+    x.do_something() // Introduced a new lifetime 'b that wasn't necessary
+}
+```
+
+This operator aims to expose compiler handling issues related to incorrect or unnecessary lifetime annotations as seen in the provided bug report. It utilizes the removal and introduction of lifetimes to push the boundaries of the compiler's trait system.

@@ -1,0 +1,17 @@
+mutation operator: Replace member access with a different member of the same class when the accessed member is of integral or enumeration type and another accessible member of compatible type exists in the same class.
+
+This operator applies when a C++ member access expression (using the . or -> operator) accesses a non-static data member that is of integral or enumeration type (e.g., int, long, enum). The operator modifies the expression to access a different non-static data member from the same class, provided the new member is accessible (public or within the same context) and is of a type that is compatible (either the same integral/enumeration type or a type to which the original member's value could be implicitly converted without altering the expression's type in a way that would cause a syntax error in the surrounding context). The change is made only if such an alternative member exists in the class. The operator should prefer members that are defined earlier in the same class to minimize dependencies.
+
+For example, consider a seed program containing:
+class Example {
+public:
+    int flag;
+    int counter;
+    double value;
+    void method() {
+        if (flag > 0) { ... }
+    }
+};
+The operator could mutate the access to flag in if (flag > 0) to counter, resulting in if (counter > 0), because both flag and counter are public int members in the same class. The operator would not replace flag with value because value is of type double, which might change the semantics of the comparison in a way that could introduce a type error, unless the context allows it (e.g., if the comparison operator works with numeric types). To ensure wide adaptation, the operator should only consider members of the same or convertible integral/enumeration type.
+
+In the context of the bug report, which involves error recovery and class definition queries, this mutation can create situations where the compiler's internal representation of class members becomes inconsistent, especially if the mutation is applied within template code or during parsing of malformed input, potentially triggering assertions related to class definition data.

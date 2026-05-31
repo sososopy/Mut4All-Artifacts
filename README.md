@@ -45,24 +45,73 @@ Here are the main useful files and directories:
 			|-- c++_fine_tune_*.cpp
 	|-- experimental_results ## Experimental Data Results
 		|-- RQ2
+			|-- c++_500_700
+			|-- rust_500_700
+		|-- RQ3
 			|-- rust_uncovered_bugs.xlsx
 			|-- c++_uncovered_bugs.xlsx
-		|-- RQ3
-			|-- token.xlsx
 		|-- RQ4
+			|-- Agents
+				|-- c++
+					|-- no_agent1
+					|-- no_agent3
+				|-- rust
+					|-- no_agent1
+					|-- no_agent3
+			|-- Different_LLMs
+				|-- c++
+					|-- deepseek-v3.2
+					|-- llama-3.3-70b-instruct
+					|-- qwen3-32b
+				|-- rust
+					|-- deepseek-v3.2
+					|-- llama-3.3-70b-instruct
+					|-- qwen3-32b
+			|-- Fine_Tuning
+				|-- c++
+					|-- fine_tuning_0
+					|-- fine_tuning_10+10
+					|-- fine_tuning_20+20
+				|-- rust
+					|-- fine_tuning_0
+					|-- fine_tuning_10+10
+					|-- fine_tuning_20+20
+			|-- Refinement_Rounds
+				|-- c++_valid_mutator_by_round.csv
+				|-- rust_valid_mutator_by_round.csv
+			|-- Seed_Enhancement
+				|-- c++.xlsx
+				|-- rust.xlsx
+			|-- Temperature
+				|-- c++
+					|-- ...
+				|-- rust
+					|-- ...
+		|-- RQ5
+			|-- token.xlsx
+		|-- RQ6
 			|-- c++_valid_mutators.xlsx
 			|-- c++_invalid_mutators.xlsx
-			|-- c++_token.json		##c++ tokens
 			|-- rust _valid_mutators.xlsx
 			|-- rust _invalid_mutators.xlsx
-			|-- rust_token.json		##rust tokens
 ```
 
 
 
 ## Run the Mut4All
 
-- Before using the Mut4All tool, please ensure that you have entered the api_key in config.json and selected the model you wish to use in Mutator_Invention.py, Mutator_Implementation_Synthesis.py, and Mutator_Refinement.py.
+- Before using Mut4All, please fill in the `api_key`, `url`, and `model` fields in `config.json`, as shown below:
+
+```json
+{
+    "api_key": "",
+    "url": "",
+    "model": ""
+}
+```
+
+Please make sure that `Bug-labels.txt` contains the tag names of the bug reports you want to use. These tag names should correspond to the folders under `bug-labels/rust/` or `bug-labels/c++/`. Mut4All will load bug reports according to the selected language and the labels listed in this file.
+
 
 ```
 python main.py --language <language-name> --config ./config.json
@@ -72,4 +121,4 @@ python main.py --language <language-name> --config ./config.json
 
 ## Uncovered Bugs
 
-Table `/experimental_results/RQ2/*_uncovered_bugs.xlsx` records all the bugs reported with the corresponding ISSUE IDs and status. 
+Table `/experimental_results/RQ3/*_uncovered_bugs.xlsx` records all the bugs reported with the corresponding ISSUE IDs and status. 

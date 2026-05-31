@@ -1,0 +1,70 @@
+mutation operator: dyn* Trait Conversion from dyn Trait with Unsized Function Parameters
+
+This mutation operator targets the interaction between dyn* conversions and unsized function parameters, specifically when converting a dyn Trait parameter to dyn* Trait. It applies to functions that have a dyn Trait parameter and within the function body, attempt to convert that parameter to dyn* Trait.
+
+The mutation is applied when the seed program contains a function with a parameter of type `dyn Trait` (where Trait is any trait, but preferably one that is marked with `#[pointer_like]` or a common trait like `Debug`). The function must also be in a context where the `dyn_star` and `unsized_fn_params` features are enabled (or could be enabled by the mutation). The mutation changes the function parameter type from `dyn Trait` to `dyn Trait` (it remains the same) but then inside the function body, it introduces a conversion of that parameter to `dyn* Trait`.
+
+Specifically, for a seed function like:
+fn foo(x: dyn SomeTrait) {
+    // existing body
+}
+
+The mutation will transform it to:
+fn foo(x: dyn SomeTrait) {
+    let _: dyn* SomeTrait = x;
+    // existing body (or the mutation may replace the body)
+}
+
+However, to ensure the mutation compiles and triggers the bug, the function must be generic over the trait with a `?Sized` bound, as in the bug report. Therefore, the mutation actually targets a function that takes a generic parameter `T: Trait + ?Sized` and is called with a `dyn Trait` argument. The mutation changes the function body to include the conversion.
+
+For a seed program that contains:
+fn bar<T: SomeTrait + ?Sized>(x: T) {
+    // existing body
+}
+
+And a call site:
+bar(some_dyn_trait_value);
+
+The mutation will change the function `bar` to:
+fn bar<T: SomeTrait + ?Sized>(x: T) {
+    let _: dyn* SomeTrait = x;
+    // existing body
+}
+
+If the seed program does not have a suitable generic function, the mutation may introduce one. It will identify a trait used in the program (e.g., `Debug`). It will then create a new function that takes a generic parameter bounded by that trait and `?Sized`, and inside, perform the conversion. It will also add a call to this function with a `dyn Trait` argument. For example, if the seed uses `std::fmt::Debug`, it will add:
+fn mutate_debug_conversion<T: std::fmt::Debug + ?Sized>(x: T) {
+    let _: dyn* std::fmt::Debug = x;
+}
+
+And then call it somewhere, such as in `main`, with a `dyn Debug` value. To obtain a `dyn Debug` value, the mutation can use an existing variable of some type that implements `Debug` and cast it via `as &dyn Debug`. For instance, if there is a variable `val` of type `i32`, it can create `&val as &dyn std::fmt::Debug`.
+
+The mutation must also add the necessary feature flags at the crate root: `#![feature(dyn_star, unsized_fn_params)]`. It will add these only if not already present.
+
+Steps for the mutation:
+1. Identify a trait used in the seed program (e.g., `Debug`, `Display`, or a user-defined trait). Prefer traits that are likely to be used with `dyn`.
+2. If the seed already has a generic function with a `T: Trait + ?Sized` parameter, mutate its body by inserting `let _: dyn* Trait = x;` at the beginning, where `x` is the parameter name.
+3. If no such function exists, create a new function with signature `fn mutate_fn<T: Trait + ?Sized>(x: T)` that contains `let _: dyn* Trait = x;`. Then, find a suitable call site (e.g., in `main` or another function) to call this function. To create a `dyn Trait` argument, take an existing expression `expr` of a type that implements `Trait` and create `(expr as &dyn Trait)`.
+4. Ensure the crate enables `#![feature(dyn_star, unsized_fn_params)]`. Add these lines at the top of the crate if not present.
+5. The mutation should avoid introducing new types or variables that are not derived from the seed. The `dyn* Trait` type uses the same `Trait` identified from the seed.
+
+Example in pseudo-code:
+Seed snippet:
+use std::fmt::Debug;
+fn test() {
+    let num = 42;
+    println!("{:?}", num);
+}
+
+After mutation:
+#![feature(dyn_star, unsized_fn_params)]
+use std::fmt::Debug;
+fn mutate_debug<T: Debug + ?Sized>(x: T) {
+    let _: dyn* Debug = x;
+}
+fn test() {
+    let num = 42;
+    mutate_debug(&num as &dyn Debug);
+    println!("{:?}", num);
+}
+
+This mutation is designed to trigger the specific ICE related to converting `dyn Trait` to `dyn* Trait` in the context of unsized function parameters, as seen in the bug report.

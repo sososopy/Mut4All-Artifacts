@@ -1,0 +1,45 @@
+Mutation Operator: 
+**MIR-Optimization-RefToFnConst**
+
+**Applies to:** 
+- Code that assigns a function literal to a `const` item (e.g., `const RNG: fn() = || {};`), then takes a reference to that `const` item in a function body (e.g., `let _x = &RNG;`), particularly in optimized and incremental build modes.
+
+**Description:**  
+This mutation operator targets the use of a `const` item assigned with a function literal (closure-like function pointer), followed by taking a reference to that `const` item in a function body. This combination is known to cause issues in MIR optimization passes, especially when the program is compiled with optimization and under incremental compilation.
+
+**Triggering Conditions:**  
+The mutation is most effective when:
+- The `const` item is of function pointer type (e.g., `fn()`).
+- The `const` is used in a function body via a reference (e.g., `let _x = &RNG;`).
+- The program is compiled in an optimized (`--release`) or incremental build mode.
+
+**Mutation Example (Pseudo-code):**  
+Given an original code snippet like:
+
+```rust
+const RNG: fn() = || {};
+fn with_rng() {
+    let _x = &RNG;
+}
+```
+
+The mutation would look like this:
+
+```rust
+const RNG: fn() = || {};
+fn with_rng() {
+    let _x = &RNG; // Reference to const fn item
+}
+```
+
+This pattern may be further enhanced by adding additional call sites for `RNG` or using it in a `#[inline]` function to increase pressure on MIR optimization and symbol reuse.
+
+**Key Mutation Insight:**  
+The use of `const` function pointers and referencing them in function bodies increases the chances of triggering MIR optimization bugs, especially in scenarios where the compiler relies on the identity and immutability of `const` items during monomorphization and incremental compilation.
+
+**Impact on Seed Programs:**  
+This operator is widely applicable to any program that:
+- Declares `const` items of function type.
+- Uses them in function bodies, especially in conjunction with references.
+
+This mutation increases the possibility of exposing compiler bugs in MIR optimization and const evaluation logic, especially in complex build environments with aggressive optimization and caching strategies.

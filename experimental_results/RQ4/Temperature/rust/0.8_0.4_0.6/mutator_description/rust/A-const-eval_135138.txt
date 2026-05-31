@@ -1,0 +1,31 @@
+Mutation Operator: Introduce Uncomputable Constant Layout
+
+Target Code Construct: This mutation operator targets functions with constant evaluations that involve types with potentially uncomputable layouts.
+
+Where it Applies: The operator applies to functions that have constant arrays initialized with expressions involving types that might not have a computable size or layout due to unsatisfied trait bounds or restrictions.
+
+Description of the Mutation: The mutation introduces a constant array within a function. The array's size or initialization involves a type that does not satisfy the `Sized` trait. This can trigger scenarios where the Rust compiler may encounter issues in constant evaluation, particularly when analyzing trait bounds.
+
+Example of Mutated Content:
+
+Original Code:
+```
+fn example_function() {
+    let x: [i32; 3] = [0; 3];
+}
+```
+
+Mutated Code:
+```
+fn example_function()
+where
+    str: Sized, // Introduce a trivial bound on `str`
+{
+    let x: [(); { let _y: Option<str> = None; 0 }]; // Introduce a constant array with uncomputable layout
+}
+```
+
+Explanation of Changes:
+1. A where clause is added to impose a `Sized` trait bound on `str`, which is inherently unsatisfiable as `str` is an unsized type.
+2. A constant array `x` is introduced within the function. The size of the array is determined by an expression involving an `Option<str>`, which leads to an uncomputable layout due to the unsatisfied `Sized` trait bound on `str`.
+3. This mutation is designed to exploit issues related to constant evaluation in the Rust compiler, particularly when dealing with layout calculations that involve unsized types.

@@ -1,0 +1,1 @@
+# [inline (always)] pub fn changed_iter (& self) -> impl Iterator < Item = & (ParamSelector , CtrlVal) > { self . changed_last_frame . iter () }

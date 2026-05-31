@@ -1,0 +1,19 @@
+mutation operator: Insert a spurious identifier before a constructor declaration within a struct or class definition.
+
+This operator applies when a struct or class definition contains a constructor declaration. It targets the syntactic location where a constructor is declared, specifically the line where the constructor's name and parameter list appear. The mutation inserts an arbitrary identifier token immediately before the constructor's name, creating a malformed but syntactically plausible line that resembles a misplaced member name or label.
+
+The operator scans the seed program for struct or class definitions. For each constructor found (including default, copy, move, and other user-defined constructors), it modifies the declaration by adding an identifier prefix. The identifier should be chosen from a pool of simple, common names (like 'temp', 'label', 'data') that are not already used as type names or reserved keywords in the immediate scope. The identifier is inserted directly before the constructor name, separated by whitespace.
+
+Example: In a seed program with a struct definition like:
+struct S {
+    S(int x) { ... }
+};
+The mutation produces:
+struct S {
+    temp S(int x) { ... }
+};
+Here, 'temp' is the inserted identifier. The operator must ensure that 'temp' is not a type or variable already present in the struct's scope; if it conflicts, a different identifier from the pool is used.
+
+The change is made only to the constructor declaration line; the rest of the struct definition remains unchanged. This mimics the invalid code pattern from the bug report, where an identifier precedes the constructor, potentially causing parser confusion or crash during constant expression evaluation or static assertion contexts.
+
+The operator aims to expose bugs in compiler frontends related to parsing constructor declarations in class definitions, especially when these constructs are used in contexts requiring constant expressions (like static_assert, template arguments, or constexpr evaluations). It increases coverage by targeting a specific syntactic anomaly that may trigger crashes during semantic analysis or AST construction.

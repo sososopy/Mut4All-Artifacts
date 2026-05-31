@@ -1,0 +1,1 @@
+use std :: io :: Read ; fn read_contents (path : & str) -> String { let mut buf = Vec :: new () ; match std :: fs :: File :: open (path) . and_then (| x | x . read_to_string (& mut buf)) { Ok (x) => x , Err (_) => String :: new () , } } fn main () { }

@@ -1,0 +1,1 @@
+fn ice () { println ! ("{:?}" , Some (257.0f32 as u8)) ; }

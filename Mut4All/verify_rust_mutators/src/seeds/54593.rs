@@ -1,0 +1,1 @@
+# ! [feature (nll)] fn foo () -> impl Copy { | | bar () ; } fn bar () -> impl Copy { | | foo () ; }

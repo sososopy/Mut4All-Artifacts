@@ -1,0 +1,1 @@
+use std :: { mem , raw } ; fn main () { let a = & [1 , 2 , 3i] ; let raw :: Slice { data : ptr , len : len } : raw :: Slice < int > = unsafe { mem :: transmute (a) } ; let b = unsafe { mem :: transmute (Slice { data : ptr , len : len }) } ; }

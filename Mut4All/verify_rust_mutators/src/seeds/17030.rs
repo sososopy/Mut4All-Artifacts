@@ -1,0 +1,1 @@
+# [deriving (Show)] struct A { b : int } impl A { } enum A { }

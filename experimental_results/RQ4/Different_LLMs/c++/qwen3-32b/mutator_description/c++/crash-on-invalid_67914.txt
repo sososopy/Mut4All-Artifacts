@@ -1,0 +1,25 @@
+Mutation operator: Replace a type alias that conditionally resolves to a non-member type with one that resolves to 'void', leading to uninitialized members in constructor initializer lists.
+
+Applies to: Template structs/class with constructor initializer lists referencing members whose types are conditionally resolved by template metafunctions.
+
+Mutation steps: 
+1. Identify a type alias (e.g., `conditional_t<Param, TypeA, TypeB>`) where `TypeB` is a valid member type.
+2. Modify the template parameters to force the type alias to resolve to `void` (e.g., change `conditional_t<IsMask_, Array, void>` to resolve void when IsMask_=1).
+3. Ensure the constructor initializer list still references the member declared via the original type alias (now void).
+
+Example:
+Before mutation:
+struct X {
+  using T = conditional_t<Cond, A, B>;
+  T t;
+  X() : t() {}
+};
+
+After mutation:
+struct X {
+  using T = conditional_t<Cond, A, void>;  // Now resolves to void
+  T t;  // Still present (but void)
+  X() : t() {}  // References void member
+};
+
+This forces the compiler to process an initializer list for a 'void' member during template instantiation. The mutation exploits the interaction between SFINAE-friendly type aliases and constructor initialization, often triggering assertion failures during template specialization when the compiler cannot generate valid initializers for void members.

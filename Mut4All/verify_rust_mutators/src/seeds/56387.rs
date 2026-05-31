@@ -1,0 +1,1 @@
+use std :: ffi :: OsStr ; fn main () { let s = None ; match s { Some (OsStr :: new ("png")) => { } , } ; }

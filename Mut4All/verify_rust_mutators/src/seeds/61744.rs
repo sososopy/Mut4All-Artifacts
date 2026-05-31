@@ -1,0 +1,1 @@
+pub const unsafe fn fake_type < T > () -> T { hint_unreachable () } # [allow (unconditional_recursion)] pub const unsafe fn hint_unreachable () -> ! { hint_unreachable () } trait Const { const CONSTANT : i32 = unsafe { fake_type () } ; } impl < T > Const for T { } pub fn main () -> () { dbg ! (i32 :: CONSTANT) ; }

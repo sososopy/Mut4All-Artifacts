@@ -1,0 +1,1 @@
+# [repr (packed (1))] union U { x : u32 , } const B : U = U { x : 0 } ; fn main () { }

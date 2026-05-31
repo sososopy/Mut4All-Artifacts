@@ -1,0 +1,23 @@
+mutation operator: Introduce Default Template Argument Containing Lambda Expression
+
+Applies to: Template parameter declarations where a default argument is allowed, specifically when the parameter is constrained by a concept (like std::predicate) or is a template template parameter, and the default argument is not already a lambda.
+
+Description: This operator mutates a template parameter list by adding or replacing the default argument of a suitable parameter with a lambda expression. The lambda is crafted to have a matching signature or requirements implied by the parameter's type or concept constraint. This aims to stress the compiler's parsing and semantic analysis of lambdas in template default arguments, especially within concept checks.
+
+Change Needed:
+1. Identify a template parameter that can have a default argument. This includes non-type, type, or template template parameters. If the parameter already has a default argument, consider replacing it; otherwise, add a new default argument.
+2. For a type parameter constrained by a callable concept (e.g., std::invocable, std::predicate, std::regular_invocable), the default argument should be a lambda whose call operator matches the concept's arguments. Example: if constrained by `std::predicate<int>`, create a lambda `[](int){ return true; }`.
+3. For an unconstrained type parameter, if the surrounding template body uses it in a callable context (e.g., `T()(args)`), infer a lambda signature from that usage. Otherwise, use a simple lambda with no captures and a dummy body.
+4. For non-type template parameters of pointer-to-function or pointer-to-member-function type, the default can be a stateless lambda convertible to that pointer type.
+5. The lambda body should be trivial (e.g., `return true;` or `return 0;`) to avoid introducing undefined symbols. Use existing types from the seed program for parameters and return types where possible. If a new type is needed for the lambda parameter, use `int` or a fundamental type already present.
+6. If the template parameter is a template template parameter, this operator does not apply.
+
+Example (based on seed program structure):
+Original template: `template <typename T> void func();`
+Mutated to: `template <typename T = decltype([](int x){ return x*2; })> void func();`
+
+Example (concept constrained):
+Original template: `template <std::regular_invocable<int> F> void call(F f);`
+Mutated to: `template <std::regular_invocable<int> F = decltype([](int){ return 0; })> void call(F f);`
+
+Note: The operator should avoid creating lambdas with captures unless the seed program already uses lambda captures, to minimize additional complexity. The primary goal is to insert a lambda expression syntactically into a template default argument context.

@@ -1,0 +1,1 @@
+enum E { A { x : i32 } } fn main () { E :: A { x : 5 } . x ; }

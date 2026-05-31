@@ -1,0 +1,81 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Replace_Const_Arg_With_Fn_Call_432;
+
+impl Mutator for Replace_Const_Arg_With_Fn_Call_432 {
+    fn name(&self) -> &str {
+        "Replace_Const_Arg_With_Fn_Call_432"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Impl(item_impl) = item {
+                for impl_item in &mut item_impl.items {
+                    if let syn::ImplItem::Fn(func) = impl_item {
+                        if let syn::ReturnType::Type(_, ref mut ty) = func.sig.output {
+                            if let Type::Path(TypePath {
+                                qself: None,
+                                path: SynPath {
+                                    leading_colon: None,
+                                    segments,
+                                },
+                            }) = &**ty
+                            {
+                                if let Some(segment) = segments.last() {
+                                    if let Some(angle_bracketed) = &segment.arguments {
+                                        if let PathArguments::AngleBracketed(angle_bracketed) = angle_bracketed {
+                                            for arg in &mut angle_bracketed.args {
+                                                if let GenericArgument::Const(arg) = arg {
+                                                    let fn_ident = Ident::new("n", Span::call_site());
+                                                    let fn_call = ExprCall {
+                                                        attrs: Vec::new(),
+                                                        func: ExprPath {
+                                                            qself: None,
+                                                            path: SynPath {
+                                                                leading_colon: None,
+                                                                segments: Punctuated::from_iter(vec![PathSegment {
+                                                                    ident: fn_ident,
+                                                                    arguments: PathArguments::None,
+                                                                }]),
+                                                            },
+                                                        },
+                                                        args: punctuated::Punctuated::new(),
+                                                    };
+                                                    *arg = GenericArgument::Const(Expr::Call(fn_call));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator replaces const arguments in trait implementations for array types with a call to a function that returns a value of the same type as the const argument. This transformation tests the handling of const arguments in trait implementations and can trigger bugs related to the handling of const arguments."
+    }
+}

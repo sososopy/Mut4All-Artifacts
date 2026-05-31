@@ -1,0 +1,1 @@
+fn main () { let f = [() ; { & loop { break } as * const _ as usize }] ; }

@@ -1,0 +1,42 @@
+Mutation operator: Generator Yield with Dereference of Non-Sized Type  
+Target: Generators (created with `static || { ... }` or `move || { ... }`) containing an existing variable of non-sized type (e.g., `str`, `[T]`), or where such a variable can be introduced.  
+
+Action:  
+1. Identify a generator and locate an expression within its body.  
+2. Replace the expression with a block `{ yield; *V }`, where:  
+   - `V` is an existing variable of non-sized type in the generator scope (e.g., `s` of type `str` or `&str`).  
+   - If no such variable exists, introduce `let V = "";` (e.g., `let s = "";`) in the generator and use `*V`.  
+
+Example (using existing variable):  
+Original generator:  
+```rust  
+static || {  
+    let x = 5;  
+    x  
+}  
+```  
+Mutated generator:  
+```rust  
+static || {  
+    let s = "";  
+    { yield; *s }  
+}  
+```  
+
+Example (introducing new variable):  
+Original generator:  
+```rust  
+static || {  
+    let x = 0;  
+}  
+```  
+Mutated generator:  
+```rust  
+static || {  
+    let s = "";  
+    { yield; *s }  
+}  
+```  
+
+Purpose:  
+Triggers the compiler's layout calculation for generators that involve dereferencing a non-sized type after a yield, potentially exposing ICEs related to `field.0.is_sized()` assertions.

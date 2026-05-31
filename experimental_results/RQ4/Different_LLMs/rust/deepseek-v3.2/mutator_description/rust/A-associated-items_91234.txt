@@ -1,0 +1,23 @@
+mutation operator: Replace an associated type projection in an enum variant with its fully qualified trait path, moving the projection into the enum's where clause if not already present.
+
+This mutation applies when an enum variant contains a field whose type is an associated type projection (e.g., `<Type as Trait>::Assoc`). The operator modifies the enum definition by moving the projection out of the variant field and into the enum's where clause as a bound on a generic lifetime parameter, while keeping the field type as the associated type projection. Specifically, if the enum does not already have a where clause, one is added. A new generic lifetime parameter is introduced if needed, but preference is given to existing lifetime parameters in the seed program. The associated type projection in the variant field remains unchanged. If the projection already uses a generic lifetime, that lifetime is reused; otherwise, a new lifetime parameter is declared and used to reference the type implementing the trait in the where clause.
+
+Example: Suppose the seed program contains an enum definition like:
+enum Enum {
+    Variant(<SomeType as SomeTrait>::Assoc)
+}
+After mutation, it becomes:
+enum Enum<'a> where &'a SomeType: SomeTrait {
+    Variant(<&'a SomeType as SomeTrait>::Assoc)
+}
+Here, 'a is a new lifetime parameter introduced because the original enum had none. The where clause is added with the bound &'a SomeType: SomeTrait, and the field type is updated to use the same lifetime, becoming <&'a SomeType as SomeTrait>::Assoc.
+
+If the seed program already has a generic lifetime on the enum, that lifetime may be used instead of introducing a new one. For instance, if the original is:
+enum Enum<'b> {
+    Variant(<OtherType as OtherTrait>::Output)
+}
+After mutation, it could become:
+enum Enum<'b> where &'b OtherType: OtherTrait {
+    Variant(<&'b OtherType as OtherTrait>::Output)
+}
+The operator ensures the trait and type in the projection exist in the seed program; no new types or traits are introduced. The change specifically targets the normalization of associated types in enum layouts, which can trigger internal compiler errors like the one in the bug report.

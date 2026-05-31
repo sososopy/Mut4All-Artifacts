@@ -1,0 +1,18 @@
+mutation operator: Insert an anonymous constant within a const generic argument that contains a macro invocation that expands to an identifier that is not in scope, while also missing a required body for the constant item.
+
+This mutation operator targets constant items with const generic arguments, specifically focusing on the interaction between anonymous constants in generic arguments and macro expansions that produce unresolved identifiers. The mutation applies when a constant item is declared without a body (i.e., no `= <expr>;`) and uses a const generic argument that is an anonymous constant block `{ ... }`. Inside that block, insert a macro invocation that expands to a single identifier which is not defined in the current scope. The macro should be defined locally to ensure it is expanded during lowering. The surrounding context must include a missing type for the constant item (e.g., using an undefined type name) to create additional errors that may interact with the lowering process.
+
+To apply this mutation, first identify a constant item in the seed program that could be mutated, such as `const _: SomeType<{ ... }>;`. If no such item exists, introduce a new constant item with the following structure:
+- Use `const _: UndefinedType<{ ... }>;` where `UndefinedType` is a type name not present in the current scope.
+- Inside the braces `{ ... }`, place a macro invocation. If a macro is already defined in the seed program, use it; otherwise, define a simple macro `macro_rules! m { () => { undefined_ident }; }` and invoke it as `m!{}`.
+- Ensure the constant item lacks an initializer (no `= <expr>;`).
+
+The goal is to create a scenario where the compiler attempts to define an anonymous constant (from the const generic argument) that contains a macro-expanded identifier, while also encountering errors due to the missing constant body and undefined type, potentially triggering internal compiler errors during HIR lowering when duplicate definitions are registered.
+
+Example mutation for a seed program that lacks such a constant:
+Original seed may have no constant items. After mutation, add:
+```
+macro_rules! m { () => { undefined_ident }; }
+const _: UndefinedType<{ m!{} }>;
+```
+This introduces an anonymous constant block with a macro that expands to an undefined identifier, alongside a missing constant body and an undefined type, mimicking the conditions that led to the bug.

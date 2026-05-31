@@ -1,0 +1,1 @@
+enum ABC { A , B , C } mod test { fn test (abc : :: ABC) { match abc { :: A => { } :: B => { } :: C => { } } } } fn main () { }

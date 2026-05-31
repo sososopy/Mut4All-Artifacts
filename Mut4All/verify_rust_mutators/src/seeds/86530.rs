@@ -1,0 +1,1 @@
+# ! [allow (incomplete_features)] # ! [feature (const_generics)] # ! [feature (const_evaluatable_checked)] pub trait X { const Y : usize ; } fn z < T > (t : T) where T : X , [() ; T :: Y] : , { } fn unit_literals () { z (" ") ; }

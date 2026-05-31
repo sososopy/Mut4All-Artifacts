@@ -1,0 +1,37 @@
+Mutation Operator: Replace rvalue reference with lvalue reference in constexpr context
+
+This mutation operator targets the interaction between constexpr member functions and variable capture in local structs. Specifically, it applies when a constexpr member function inside a local struct attempts to use a variable from the enclosing scope, and that variable is declared as an rvalue reference.
+
+Where it applies:
+1. The seed program must contain a local struct (defined inside a function).
+2. This local struct must have a member function declared as constexpr.
+3. The constexpr member function must refer to a variable (by name) that is declared in the enclosing function's scope.
+4. This referenced variable must be declared as an rvalue reference (using &&).
+
+Changes to make:
+1. Identify the rvalue reference variable in the enclosing function that is used inside the constexpr member function.
+2. Change its declaration from an rvalue reference to an lvalue reference. For example, change `int&& i = 1;` to `int& i = some_valid_lvalue;`.
+3. Since an lvalue reference cannot bind to a temporary like `1`, you must also provide a valid lvalue for it to bind to. To do this:
+   a) Introduce a new non-reference variable of the same type in the enclosing scope before the reference declaration.
+   b. Then declare the lvalue reference, binding it to this new variable.
+   This ensures the code remains syntactically valid for mutation purposes.
+
+Example using the seed structure from the bug report:
+Original code snippet:
+int main() {
+    int&& i = 1;
+    struct A {
+        constexpr int a() { return i; }
+    };
+}
+
+Mutated code:
+int main() {
+    int temp = 1; // New variable introduced
+    int& i = temp; // rvalue reference changed to lvalue reference bound to 'temp'
+    struct A {
+        constexpr int a() { return i; }
+    };
+}
+
+Rationale: This mutation alters the reference category of the captured variable. The original bug likely involves compiler handling of rvalue references in constexpr contexts within local types. By changing it to an lvalue reference, we test the compiler's consistency in dealing with different reference types under the same capture and constexpr evaluation rules, potentially exposing crashes or diagnostic errors that are specific to the rvalue reference case.

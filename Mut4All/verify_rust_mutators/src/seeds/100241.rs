@@ -1,0 +1,1 @@
+# ! [doc = " docs"] # ! [doc = " See [`S`]."] mod mymodule { mod experiment { # ! [cfg (feature = "unstable-stuff")] pub struct S ; } # [cfg (feature = "unstable-stuff")] pub use inner :: S ; } pub use mymodule :: * ; # [cfg (doc)] use mymodule :: S ;

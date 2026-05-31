@@ -1,0 +1,1 @@
+# ! [feature (quote)] fn main () { macro_rules ! foo { ($ bar : expr) => { { quote_expr ! (cx , { $ bar }) } } } foo ! (0) ; }

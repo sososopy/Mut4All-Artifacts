@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; use std :: ops :: Fn ; pub struct Test < F , X > (F , PhantomData < X >) ; impl < F , X > Test < F , X > where F : Fn (X) { fn go (self , x : X) { let Test (f , _) = self ; f (x) } } fn main () { let t = Test (| x : isize | { println ! ("{:?}" , x) } , PhantomData) ; t . go (12) ; }

@@ -1,0 +1,1 @@
+fn drop_test () { struct DropCounter < 'a > { count : & 'a int , } impl < 'a > Drop for DropCounter < 'a > { fn drop (& mut self) { } } }

@@ -1,0 +1,1 @@
+trait AsOwned { type R ; } impl < 'a > AsOwned for & 'a str { type R = String ; } fn as_owned < 'a > (a : & 'a str) -> < & 'a str as AsOwned > :: R { a . to_owned () }

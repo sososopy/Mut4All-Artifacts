@@ -1,0 +1,1 @@
+fn div_ceil (x : usize , m : usize) -> usize { (x + m - 1) / m } fn f1 (x : & [u8] , n : usize , i : usize) { } fn f2 (x : & [u8] , n : usize , i : usize) { } fn f3 < B : Foo > (x : & B) { } fn f4 < B : Foo > (x : & B) { unreachable ! () } fn f5 < B : Foo > (_ : & B) -> usize { 0 } pub trait Foo { } pub fn entry < F : Foo > (x : & F) -> u64 { 0u64 << f5 (x) } fn main () { }

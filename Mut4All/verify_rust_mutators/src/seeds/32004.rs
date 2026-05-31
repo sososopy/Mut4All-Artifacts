@@ -1,0 +1,1 @@
+enum Foo { Bar (i32) , Baz } fn main () { let x = Foo :: Bar (1) ; if let Foo :: Bar = x { println ! ("Hello") ; } }

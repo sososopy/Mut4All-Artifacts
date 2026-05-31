@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] struct Foo ; impl Foo { pub const FOO : u32 = 3 ; } fn main () { Foo :: FOO ; }

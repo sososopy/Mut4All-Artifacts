@@ -1,0 +1,1 @@
+# ! [feature (const_closures)] # ! [feature (const_trait_impl)] # ! [allow (incomplete_features)] pub const fn test () { let cl = const | | { } ; cl () ; } const _ : () = { test () ; } ;

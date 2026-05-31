@@ -1,0 +1,1 @@
+fn main () { let receiver : fn (& mut < & Vec < String > as IntoIterator > :: IntoIter) = | iter | iter . for_each (| s | println ! ("{}" , s)) ; }

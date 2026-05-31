@@ -1,0 +1,1 @@
+trait MyTrait { } struct Foo ; impl MyTrait for Foo { } fn main () { let x = Foo ; let a = & x ; let y = Foo ; let z = & y as & MyTrait ; if a as * const MyTrait == z as * const MyTrait { println ! ("They match") ; } }

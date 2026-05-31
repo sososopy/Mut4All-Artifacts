@@ -1,0 +1,1 @@
+extern crate alloc ; use alloc :: collections :: BTreeMap ; struct Struct { map : BTreeMap < String , String > , } fn main () { let mut map = BTreeMap :: new () ; map . insert (("a" . to_string () , "a" . to_string ())) ; let mut structdef = Struct { map } ; }

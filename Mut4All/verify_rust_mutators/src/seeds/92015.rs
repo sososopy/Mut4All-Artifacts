@@ -1,0 +1,1 @@
+fn main () { let foo = Some (& 0) . unwrap () ; * foo = 1 ; }

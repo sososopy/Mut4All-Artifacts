@@ -1,0 +1,1 @@
+# [derive (Debug)] pub struct Type { _ : u8 , }

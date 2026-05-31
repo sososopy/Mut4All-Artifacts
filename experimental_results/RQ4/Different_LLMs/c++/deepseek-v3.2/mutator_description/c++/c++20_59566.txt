@@ -1,0 +1,11 @@
+Mutation operator: Replace a concept constraint in a template parameter declaration with a recursive concept constraint referencing the same template parameter list.
+
+This mutation targets template parameter declarations using C++20 concepts. It applies when a template parameter has a type constraint expressed via a concept, e.g., template<typename T> where T is constrained by a concept like SomeConcept<T>. The mutation replaces the concept name with a concept that recursively uses the same template parameters, potentially leading to infinite recursion during instantiation or type checking.
+
+Specifically, find a template parameter list that includes a constrained parameter like: template<SomeConcept T> or template<typename T> requires SomeConcept<T>. Identify the concept used (call it C). Replace C with a concept that is defined to require C itself on the same template parameters. If such a concept does not exist in the seed program, introduce a new concept definition. The new concept should be declared before the template, using the same template parameter names. For example, if the seed has template<C1 T> class X{}, define a new concept C2 as template<typename U> concept C2 = C1<U> && C2<U>; then replace C1 with C2 in the template parameter declaration.
+
+The change should be made directly in the template parameter list, altering only the concept name. The rest of the template and its body remain unchanged. This mutation creates a recursive constraint that may cause compiler crashes during concept satisfaction checking or template instantiation, similar to the bug report where nested template instantiations lead to a segmentation fault.
+
+Example: Original code snippet: template<typename T> concept Incrementable = requires(T t) { ++t; }; template<Incrementable T> class Test { }; After mutation: Introduce concept RecursiveIncrementable: template<typename U> concept RecursiveIncrementable = Incrementable<U> && RecursiveIncrementable<U>; Then change template<Incrementable T> to template<RecursiveIncrementable T> in the class Test declaration.
+
+This mutation operator is designed to trigger bugs in concept handling, especially in recursive or nested template contexts, by creating a potentially infinite recursion in the concept satisfaction evaluation.

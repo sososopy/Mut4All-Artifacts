@@ -1,0 +1,1 @@
+# ! [feature (associated_types)] pub trait Foo { type Bar ; } impl Foo for int { type Bar = int ; } struct Thing < F : Foo > { a : F , b : F :: Bar , } fn main () { let _ = Thing { a : 1i , b : 2i } ; }

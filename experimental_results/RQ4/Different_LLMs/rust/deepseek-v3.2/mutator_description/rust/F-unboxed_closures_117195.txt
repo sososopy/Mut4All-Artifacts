@@ -1,0 +1,33 @@
+Based on the bug report analysis, Rust compiler bugs are more likely to be triggered by complex interactions involving higher-ranked trait bounds (HRTBs), async functions, unboxed closures, and associated types, particularly when combined with implied bounds computation and coroutine handling.
+
+Mutation operator: HRTB Associated Type Projection in Async Function
+
+This mutation operator targets async functions with where clauses. It introduces a higher-ranked trait bound that projects an associated type from a closure trait (FnOnce, FnMut, or Fn) on a non-closure type, then constrains that associated type with a trait bound that references the bound lifetime. Specifically, it applies to any async function definition that has at least one type parameter and a where clause.
+
+The mutation adds a new where clause of the form: for<'a> <ExistingType as FnOnce<(&'a mut ExistingTypeReference,)>>::Output: TraitBound + 'a
+
+Where:
+- ExistingType is a concrete type from the seed program (like i32, bool, or a user-defined type) that does NOT implement the closure trait.
+- ExistingTypeReference is either the same as ExistingType or another concrete type from the program that can be referenced mutably.
+- TraitBound is a trait that ExistingType already implements (like Copy, Send, or a user-defined trait from the seed program).
+- The 'a lifetime ensures the output is tied to the input lifetime.
+
+Implementation steps:
+1. Identify all async function definitions in the seed program.
+2. For each async function with a where clause and at least one type parameter:
+   a. Select a concrete type T from the program's visible types (primitive types or user-defined types in scope).
+   b. Select a trait Tr that T implements.
+   c. Insert a new where clause: for<'a> <T as FnOnce<(&'a mut T,)>>::Output: Tr + 'a
+3. If the function has multiple type parameters, also consider adding a nonsensical bound using for<> syntax with a non-lifetime parameter if the seed program already uses #![feature(non_lifetime_binders)].
+
+Example transformation:
+Original async function:
+async fn process<T>(value: T) where T: Send { ... }
+
+Mutated async function:
+async fn process<T>(value: T) where 
+    T: Send,
+    for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Copy + 'a 
+{ ... }
+
+Note: This creates a type error (i32 doesn't implement FnOnce) but may trigger internal compiler inconsistencies during implied bounds computation, particularly for the async function's coroutine. The mutation should use types and traits that already exist in the seed program to avoid introducing undeclared elements.

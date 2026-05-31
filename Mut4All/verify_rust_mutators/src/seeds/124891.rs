@@ -1,0 +1,1 @@
+type Tait = impl FnOnce () -> () ; fn reify_as_tait () -> Thunk < Tait > { Thunk :: new (| mut cont | { Thunk (f) ; cont }) } struct Thunk < F > (F) ; impl < F > Thunk < F > { fn new (f : F) -> Self where F : ContFn , { Thunk (f) } } trait ContFn { } impl < F : FnOnce (Tait) -> () > ContFn for F { }

@@ -1,0 +1,1 @@
+fn foo < const N : usize > (val : & [u8 ; N]) { }

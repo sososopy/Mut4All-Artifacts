@@ -1,0 +1,1 @@
+use std :: cell :: Cell ; fn main () { let xs : Cell < Option < () > > = Cell :: new (None) ; if Some (xs) = xs . take () { } }

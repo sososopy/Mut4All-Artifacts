@@ -1,0 +1,1 @@
+fn main () { please . crash :: < u8 > () ; }

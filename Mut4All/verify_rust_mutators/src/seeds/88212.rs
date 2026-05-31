@@ -1,0 +1,1 @@
+# ! [feature (unsized_locals)] trait Example { } struct Foo () ; impl Example for Foo { } fn example () -> Box < dyn Example > { Box :: new (Foo ()) } fn main () { let x : dyn Example = * example () ; (move | | { let _y = x ; }) () ; }

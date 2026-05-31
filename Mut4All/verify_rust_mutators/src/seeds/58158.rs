@@ -1,0 +1,1 @@
+use nalgebra as na ; # [repr (packed)] struct Foo (na :: Vector3 < f32 >) ; fn main () { std :: mem :: size_of :: < Foo > () ; }

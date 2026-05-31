@@ -1,0 +1,1 @@
+fn main () { | y : Vec < [() ; for x in 0 .. 1 { }] > | { } }

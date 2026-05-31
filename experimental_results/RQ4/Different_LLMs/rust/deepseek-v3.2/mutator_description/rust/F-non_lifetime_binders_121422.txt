@@ -1,0 +1,40 @@
+Based on the bug report, which involves an internal compiler error (ICE) related to the non_lifetime_binders feature and the resolution of a DefId, I will summarize the structures that are more likely to trigger Rust compiler bugs and then design a mutation operator that targets such structures.
+
+Summary of structures likely to trigger compiler bugs:
+The bug occurs in the interaction between high-level type system features, specifically:
+1. The use of the incomplete feature non_lifetime_binders.
+2. Complex trait bounds involving impl Trait in associated type positions within for<T> binders.
+3. The combination of higher-ranked trait bounds (HRTB) with associated type projections.
+These structures often involve edge cases in the compiler's type resolution and binding logic, where the handling of early-bound vs. late-bound parameters, or the resolution of names within nested opaque types, can fail.
+
+Mutation Operator: Introduce Opaque Associated Type Binding in Higher-Ranked Context
+
+This mutation operator targets function return types that use impl Trait, specifically when combined with for<T> binders. It applies to any function that returns an impl Trait where the trait could potentially have an associated type. The operator modifies the return type to introduce an associated type binding that uses impl Trait within the higher-ranked binder, mimicking the structure that triggered the ICE.
+
+The mutation applies when:
+- The seed program contains at least one trait definition.
+- There is a function with a return type that uses impl Trait.
+- The trait in the return type does not already have an associated type binding in that context.
+
+Mutation steps:
+1. Identify a function in the seed program with a return type of the form `impl Trait<...>`.
+2. Identify a trait (call it TraitX) used in that return type. If the return type is `impl TraitX`, proceed. If multiple traits exist, choose one that is defined in the seed program.
+3. Modify the function's return type to: `impl for<T> TraitX<(), Assoc = impl TraitX<T>>`. Here, `Assoc` is a new associated type name. The type `T` is a new type parameter introduced by the `for<T>` binder. The associated type is set to `impl TraitX<T>`, creating a nested opaque type referencing the binder variable.
+4. Ensure the feature `#![feature(non_lifetime_binders)]` is added at the crate root if not already present.
+5. The function body should be changed to return a value that is valid for the original return type (e.g., a default value like `()` or a integer if compatible). If the original body returns a specific type, attempt to coerce it or wrap it to satisfy the new bound, but note this may lead to type errors; the primary goal is to trigger compiler ICEs.
+
+Example transformation:
+Original seed code snippet:
+trait TraitA {}
+fn foo() -> impl TraitA {
+    ()
+}
+After mutation:
+#![feature(non_lifetime_binders)]
+trait TraitA {}
+fn foo() -> impl for<T> TraitA<(), Assoc = impl TraitA<T>> {
+    ()
+}
+Note: The trait TraitA originally had no associated type. The mutation adds an associated type binding `Assoc`. This may be invalid if TraitA does not have such an associated type, leading to a normal compilation error. However, the bug report shows that such invalid code can still trigger an ICE during resolution, which is the target of this mutation.
+
+Preference: Use existing trait names from the seed program. If no trait exists, introduce a minimal trait definition (e.g., `trait Dummy {}`) and apply the mutation to a function returning `impl Dummy`. The new associated type name `Assoc` should be used consistently; it does not need to be declared in the trait, as the bug occurs when it is missing.

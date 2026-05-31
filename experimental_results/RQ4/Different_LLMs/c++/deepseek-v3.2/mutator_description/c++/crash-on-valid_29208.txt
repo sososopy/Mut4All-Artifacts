@@ -1,0 +1,19 @@
+mutation operator: replace initializer_list rvalue with explicit temporary array
+
+Applies to: any expression where an initializer_list is constructed from a braced-init-list and immediately used as an rvalue, particularly when member functions like begin(), end(), size(), or data() are called on it.
+
+Description: This mutation targets the compiler's handling of std::initializer_list temporaries. It replaces a direct initializer_list rvalue (e.g., from a braced-init-list) with an explicitly created array temporary that is then used to construct the initializer_list. This can stress the lifetime extension and materialization rules for the underlying array of the initializer_list. The change is applied when the initializer_list is used as the object of a member access operator (dot or arrow) to call a member function.
+
+Changes: For an expression of the form `{value1, value2, ...}.begin()` (or similar member function calls like `end()`, `size()`, `data()`), transform it as follows:
+1. Introduce a new unnamed automatic variable of an array type that holds the values. The array type is deduced from the common type of the braced-init-list elements. If the seed program already contains a suitable type alias or typedef for this array, use it; otherwise, construct the array type directly (e.g., `const T[N]` where T is the common type and N is the count).
+2. Use this array to initialize the initializer_list.
+3. Call the member function on this initializer_list.
+
+The transformation must ensure that the array's lifetime correctly encompasses the use of the initializer_list. In practice, this is done by binding the array to a reference in the same full-expression.
+
+Example in pseudo-code:
+Original code snippet: `auto it = {1, 2, 3}.begin();`
+Mutated code: `const int arr[3] = {1, 2, 3}; auto it = std::initializer_list<int>(arr).begin();`
+To avoid introducing new identifiers in a way that could conflict, the array can be declared in a nested scope or use a compound literal if the language extension is allowed, but for standard C++, a reference binding is used: `const int (&arr)[3] = {1, 2, 3}; auto it = std::initializer_list<int>(arr).begin();`
+
+Preference: Use existing types from the seed program for the array element type. If `std::initializer_list` is not in scope, ensure its header is included or the mutation may be skipped. The mutation should only apply when the braced-init-list is directly used to form an initializer_list rvalue in a context that calls a member function.

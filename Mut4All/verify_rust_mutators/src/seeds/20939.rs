@@ -1,0 +1,1 @@
+trait Foo { } impl < 'a > Foo for Foo + 'a { } fn main () { }

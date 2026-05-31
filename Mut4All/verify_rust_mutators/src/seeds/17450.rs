@@ -1,0 +1,1 @@
+# ! [allow (dead_code)] static mut x : int = 3 ; static mut y : int = unsafe { x } ; fn main () { }

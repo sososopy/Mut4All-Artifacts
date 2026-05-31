@@ -1,0 +1,1 @@
+# ! [allow (dead_code)] use std :: simd :: u64x2 ; extern { fn foo (a : u64x2) ; } fn main () { }

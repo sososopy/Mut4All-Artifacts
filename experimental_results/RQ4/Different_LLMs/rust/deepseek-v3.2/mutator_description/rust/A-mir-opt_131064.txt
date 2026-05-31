@@ -1,0 +1,7 @@
+mutation operator: Replace a transmute from a raw pointer type to an integer type with a transmute to a MaybeUninit of the same integer type. This mutation applies when encountering an unsafe transmute where the source expression has a raw pointer type (*const T or *mut T) and the destination type annotation is an integer type (e.g., usize, u64). The mutation changes the destination type to the corresponding MaybeUninit wrapper of that integer type. The goal is to expose bugs related to provenance tracking and representation assumptions when pointer bits are stored in MaybeUninit containers, as seen in the bug report where transmuting a pointer to a MaybeUninit<usize> triggered an assertion failure. The change is localized to the type annotation on the left-hand side of the assignment or binding.
+
+For example, if the seed program contains:
+let addr: usize = unsafe { std::mem::transmute(ptr) };
+where `ptr` is of type *const i32, mutate it to:
+let addr: std::mem::MaybeUninit<usize> = unsafe { std::mem::transmute(ptr) };
+The mutation requires that std::mem is in scope, either via a use statement or fully qualified path. If std::mem is not already in scope, the mutated code must use the full path std::mem::MaybeUninit. The source expression and the transmute call itself remain unchanged; only the destination type annotation is modified. This operator should be applied only once per eligible transmute occurrence in a function body.

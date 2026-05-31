@@ -1,0 +1,1 @@
+extern { static foo : u64 ; } static bar : u64 = foo ; fn main () { }

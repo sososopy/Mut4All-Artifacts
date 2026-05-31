@@ -1,0 +1,19 @@
+Mutation Operator: Const Context Effect Parameter Removal
+
+This mutation operator targets const items (const, static, or const blocks) that use const closures or const trait method calls. It applies when a seed program contains a const item that includes a const closure expression, which may invoke a const trait method. The mutation removes the const qualifier from the closure or the trait method call within the const item, potentially creating a mismatch in const context expectations that could expose compiler bugs similar to the reported ICE.
+
+The operator searches for const items in the seed program. Within those items, it identifies closure expressions annotated with the const keyword or method calls on types that implement const traits. The mutation changes a const closure into a non-const closure by removing the const keyword, or it changes a const trait method call into a regular method call by removing the const qualifier from the method invocation path. If both are present, only one mutation is applied per instance to avoid generating overly complex code.
+
+For example, given a seed program with a const item containing a const closure that calls a const trait method, such as:
+const FOO: () = {
+    (const || some_value.const_trait_method())();
+};
+The mutation could produce:
+const FOO: () = {
+    (|| some_value.const_trait_method())();
+};
+Or alternatively, if focusing on the trait method call:
+const FOO: () = {
+    (const || some_value.trait_method())();
+};
+Note that some_value and trait_method must be existing elements in the seed program, referring to a value of a type that implements a const trait and the corresponding trait method name. The mutation does not introduce new variables, types, or functions; it only modifies existing const qualifiers. This change aims to create a scenario where the const context's effect parameter handling may become inconsistent, potentially triggering an ICE during type-checking.

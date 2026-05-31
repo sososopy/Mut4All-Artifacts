@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] fn test < const F : & 'static dyn Fn (u32) -> u32 > (i : u32) -> u32 { F (i) } const F : & 'static dyn Fn (u32) -> u32 = & | x | x * x ; fn main () { println ! ("{}" , test ::< { F } > (5)) ; }

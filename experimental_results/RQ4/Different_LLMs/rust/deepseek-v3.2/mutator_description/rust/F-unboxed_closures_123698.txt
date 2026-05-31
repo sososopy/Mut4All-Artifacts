@@ -1,0 +1,12 @@
+mutation operator: change an async closure parameter type from a single tuple parameter to its individual fields, requiring adaptation of the closure body and any associated trait bounds.
+
+applies to: async closures used in contexts with unboxed_closures feature, where the closure takes a single tuple argument (e.g., |x: (T1, T2)| { ... }) and is constrained by AsyncFnOnce or similar traits.
+
+changes: identify an async closure that has a single parameter whose type is a tuple with two or more elements. rewrite the closure signature to take each tuple element as a separate parameter. update the closure body to use the new parameter names instead of tuple field accesses (e.g., x.0 becomes first parameter). adjust any explicit trait bounds referring to the closure's input type: change the tuple type in the bound to a tuple of the individual parameter types. ensure the closure's return type and any lifetime binders remain unchanged.
+
+example: if seed contains: async |scope: (&'a Scope, &'b i32)| { scope.0.some_method(); *scope.1 }
+mutate to: async |scope1: &'a Scope, scope2: &'b i32| { scope1.some_method(); *scope2 }
+and if a bound exists like: for<'scope> B: async FnOnce((&'scope Scope, &'scope i32))
+change it to: for<'scope> B: async FnOnce(&'scope Scope, &'scope i32)
+
+note: this mutation should only be applied when the tuple type has named fields or is a simple tuple struct; avoid if tuple fields are accessed via pattern destructuring in the original closure body. introduce new parameter names by reusing existing variable names from the closure body if they refer to tuple fields, otherwise generate simple names like 'arg1', 'arg2' ensuring they are unique within the closure's parameter list.

@@ -1,0 +1,1 @@
+# [derive (FromForm)] struct SteamResult < 'r > { openid : OpenId < 'r > } # [derive (FromForm)] struct OpenId < 'r > { identity : & 'r str , } # [get ("/auth?<steam_result..>")] fn api_auth (steam_result : SteamResult < 'static > , cookies : & CookieJar < '_ >) -> & 'static str { steam_result . openid . identity }

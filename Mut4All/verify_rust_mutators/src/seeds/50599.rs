@@ -1,0 +1,1 @@
+fn main () { const N : u32 = 1_000 ; const M : usize = (f64 :: from (N) * std :: f64 :: LOG10_2) as usize ; let mut digits = [0u32 ; M] ; }

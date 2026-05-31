@@ -1,0 +1,1 @@
+struct Node < T : ? Sized + Send > { next : Option < Box < Node < Send > > > , value : T , } fn clear (head : & mut Option < Box < Node < Send > > >) { while let Some (node) = head . take () { * head = node . next ; } } fn main () { }

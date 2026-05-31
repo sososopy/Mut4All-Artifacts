@@ -1,0 +1,1 @@
+# ! [feature (rustc_private)] extern crate rustc_middle ; use rustc_middle :: ty :: TyCtxt ; fn foo (tcx : TyCtxt < '_ >) { let krate = tcx . hir () . krate () ; for & item in krate . items () { todo ! () } }

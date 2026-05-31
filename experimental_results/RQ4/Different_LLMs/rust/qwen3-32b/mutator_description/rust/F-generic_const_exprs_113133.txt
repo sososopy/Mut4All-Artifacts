@@ -1,0 +1,41 @@
+Mutation Operator: Insert inline const function call in generic const expression
+Applies to: Function definitions with where clauses using generic const expressions
+
+Change:
+Original code:
+pub fn foo()
+where
+    for<const N: usize = 1> ():,
+{}
+
+Mutated to:
+pub fn foo()
+where
+    for<const N: usize = { const fn bar() { /* empty body */ } bar(); 1 }> ():,
+{}
+
+Mechanism:
+1. Locate any generic const expression in a where clause
+2. Replace the expression value with a block containing:
+   - An inline const fn declaration
+   - A call to that function
+   - Return the original value after the call
+
+Effects:
+- Adds nested const function definition and execution within generic expression
+- Maintains the original value after function call
+- Triggers the same const evaluation context as the original bug
+- Creates complex AST structure that may exceed compiler's analysis capabilities
+
+Example mutation:
+Original:
+for<const X: usize = 10 + 2> ()
+
+Mutated:
+for<const X: usize = { const fn tmp() { } tmp(); 10 + 2 }> ()
+
+Coverage:
+- Targets generic_const_exprs feature usage patterns
+- Works with any arithmetic const expression (addition, bitwise, etc.)
+- Applies to both function and impl block constraints
+- Compatible with existing const parameters in where clauses

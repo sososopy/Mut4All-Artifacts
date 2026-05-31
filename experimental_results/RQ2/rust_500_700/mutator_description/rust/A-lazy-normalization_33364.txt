@@ -1,0 +1,44 @@
+Mutation Operator: Introduce Additional Layer of Trait Implementation
+
+This mutation operator targets trait implementation structures within Rust code. It applies specifically when a trait is implemented for a type or a complex structure like a tuple. The goal is to introduce an additional layer of trait implementation by creating a new trait that uses the existing trait as a supertrait. This can help reveal bugs related to trait resolution and associated types in the presence of lazy normalization.
+
+Description of Mutation:
+
+1. Identify a trait in the program, such as `Foo`, that is implemented for a particular type or structure.
+2. Define a new trait, `SuperFoo`, that has the existing trait as a supertrait. For example, `trait SuperFoo: Foo<'a> {}`.
+3. Implement this new trait for the same type or structure that the original trait was implemented for.
+4. Replace occurrences of the original trait in the function constraints with the new trait, ensuring that the functionality remains consistent.
+5. Ensure that all associated types and functions match those expected by the new trait and the underlying trait.
+
+Example of Mutated Content:
+
+Before Mutation:
+```rust
+trait Foo<'a> {
+    type Item: 'a;
+    fn consume<F>(self, f: F) where F: Fn(Self::Item);
+}
+
+impl<'a, A: 'a, B: 'a, C: 'a> Foo<'a> for (PhantomData<A>, PhantomData<B>, PhantomData<C>) {
+    type Item = (&'a A, &'a B, &'a C);
+
+    fn consume<F>(self, f: F) where F: Fn(Self::Item) {
+        f(get());
+    }
+}
+```
+
+After Mutation:
+```rust
+trait SuperFoo<'a>: Foo<'a> {}
+
+impl<'a, A: 'a, B: 'a, C: 'a> SuperFoo<'a> for (PhantomData<A>, PhantomData<B>, PhantomData<C>) {}
+
+impl<T: for<'a> SuperFoo<'a>> Wrap<T> {
+    fn consume<F>(self, f: F) where F: for<'a> Fn(<T as Foo<'a>>::Item) {
+        self.foo.consume(f);
+    }
+}
+```
+
+This mutation introduces an additional layer of trait abstraction, which can expose issues related to trait resolution and associated types in the presence of lazy normalization.

@@ -1,0 +1,1 @@
+enum Foo { Bar { a : usize } , } fn main () { let foo = Foo :: Bar { a : 42 } ; foo . a += 1 ; }

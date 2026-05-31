@@ -1,0 +1,1 @@
+enum Value < 'a > { Sum (& 'static str , usize , & 'a [[Value < 'a >]]) , } fn visit_object < 'a > (root : & 'a Value < 'a >) { } fn main () { }

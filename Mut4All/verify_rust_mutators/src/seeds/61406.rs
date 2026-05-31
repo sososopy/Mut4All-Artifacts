@@ -1,0 +1,1 @@
+const X : i16 = 0i16 . rotate_left (124) ;

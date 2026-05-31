@@ -1,0 +1,40 @@
+Mutation Operator: Boxed Trait Object Replacement
+
+This mutation operator targets boxed dynamically sized types (DST) within struct definitions and function parameters. It is specifically applicable to code constructs where a boxed DST is used, such as `Box<T>`, where `T` is a trait object or a type parameter bounded by traits.
+
+Description:
+Replace a `Box` containing a DST with an `Rc` or `Arc` containing the same DST, while ensuring that the new type's capabilities are compatible with the original use case.
+
+Mutation Steps:
+1. Identify the `Box` containing a DST in struct fields or function parameters, e.g., `Box<Node<Send>>`.
+2. Replace `Box` with `Rc` (reference-counted pointer) or `Arc` (atomic reference-counted pointer), selecting based on thread-safety requirements.
+3. Update all relevant code regions (such as struct fields, function parameters, variable assignments, and method calls) to use the new type. Ensure that the required traits, such as `Clone` for `Rc` or `Send` and `Sync` for `Arc`, are properly implemented or derived where necessary.
+
+Example:
+Original Code:
+struct Node<T: ?Sized + Send> {
+    next: Option<Box<Node<Send>>>,
+    value: T,
+}
+
+fn clear(head: &mut Option<Box<Node<Send>>>) {
+    while let Some(node) = head.take() {
+        *head = node.next;
+    }
+}
+
+Mutated Code:
+use std::rc::Rc;
+
+struct Node<T: ?Sized + Send> {
+    next: Option<Rc<Node<Send>>>,
+    value: T,
+}
+
+fn clear(head: &mut Option<Rc<Node<Send>>>) {
+    while let Some(node) = head.take() {
+        *head = node.next.clone();
+    }
+}
+
+This mutation can expose bugs related to reference counting and ownership semantics, providing insights into the type system and memory safety features of the Rust compiler.

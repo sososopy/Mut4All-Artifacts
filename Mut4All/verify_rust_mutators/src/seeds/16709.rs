@@ -1,0 +1,1 @@
+use std :: ptr ; use std :: raw ; fn main () { unsafe { let nil : * const u8 = ptr :: null () ; let slice : raw :: Slice < u8 > = Slice { data : nil , len : 0 , } ; } }

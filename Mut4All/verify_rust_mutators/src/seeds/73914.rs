@@ -1,0 +1,1 @@
+use tokio :: sync :: RwLock ; use std :: io ; # [tokio :: main] async fn main () -> io :: Result < () > { State :: default () . crash_compiler () . await ; Ok (()) } # [derive (Default)] struct State { value : RwLock < u64 > , } impl State { async fn crash_compiler (& mut self) { let i : u64 = 1 ; * self . value . write () . await = * self . value . read () . await + i ; } }

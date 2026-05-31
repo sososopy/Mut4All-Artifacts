@@ -1,0 +1,32 @@
+Based on the bug report, C++ compiler bugs are more likely to be triggered by complex interactions involving templates, static storage duration variables, and scope-dependent name lookup, especially when these elements are nested or combined in non-obvious ways. The specific crash occurs when a scoped static variable is used as a template argument to a variable template that expects a reference to const. This points to a vulnerability in the compiler's handling of dependent names and template argument deduction in contexts where the linkage and addressability of a variable are context-sensitive.
+
+Mutation Operator: Replace a non-type template argument that is a named variable with a scoped static variable of the same type.
+
+This mutation operator applies when a template instantiation uses a non-type template argument that is a variable with static or thread storage duration (like a global, namespace-scope static, or function-local static). The mutation changes the argument to be a function-local static variable, which has internal linkage and whose address is only valid within its scope, potentially exposing compiler bugs in template argument substitution and mangling.
+
+Step 1: Identify a template instantiation where a non-type template argument is a variable. This variable must be of a type that can be used as a non-type template parameter (integral, enumeration, pointer, reference, or nullptr). The variable should be declared at namespace scope or as a static member.
+
+Step 2: If the seed program contains a function template or a member function of a class template that can be called from within a function, mutate the call site. Introduce a new static variable inside the function body with the same type and a dummy value. Replace the original template argument with this new scoped static variable.
+
+Step 3: Ensure the new static variable is declared within the same function where the template is instantiated. If the template is instantiated at global scope, this mutation may not apply unless wrapped inside a function.
+
+Example in pseudo-code:
+
+Original seed code snippet:
+```
+const int global_const = 42;
+template <int N> struct S {};
+S<global_const> instance;
+```
+
+Mutated code:
+```
+const int global_const = 42;
+template <int N> struct S {};
+void some_function() {
+    static const int scoped_static = 42; // Same type and value as global_const
+    S<scoped_static> instance; // Mutation: using scoped static as template argument
+}
+```
+
+If the seed does not have an existing function to contain this, you may need to wrap the instantiation inside a new function, like a dummy test function. The new static variable should be given a value that is valid for its type, preferably copying the value from the original argument if it is a constant expression. This mutation directly mimics the structure that caused the crash: a template argument that depends on a scoped static variable, testing the compiler's ability to correctly handle the linkage and lifetime of such arguments during template instantiation.

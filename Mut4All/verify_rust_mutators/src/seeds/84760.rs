@@ -1,0 +1,1 @@
+# ! [deny (unsafe_code)] # ! [feature (decl_macro)] mod events { pub struct Event < 'a , T > { subscribers : Vec < Box < dyn FnMut (& T) + 'a > > , } impl < 'a , T > Event < 'a , T > { pub fn new () -> Self { Self { subscribers : Vec :: new () , } } pub fn emit (& self , data : & T) { for callback in self . subscribers . as_slice () { callback (& data) ; } } } }

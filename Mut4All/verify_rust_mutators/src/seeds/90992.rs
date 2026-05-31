@@ -1,0 +1,1 @@
+struct Banana < 'a > (& 'a ()) ; pub trait Peach : Sized { fn chaenomeles () -> Self ; fn apple () -> Self { Self :: chaenomeles () } } impl < 'a > Peach for Banana < 'a > where & 'a () : Peach { fn chaenomeles () -> Banana < 'a > { unimplemented ! () } }

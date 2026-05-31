@@ -1,0 +1,1 @@
+# ! [feature (box_patterns)] fn main () { let mut a = E :: StructVar { boxed : Box :: new (5_i32) } ; match a { E :: StructVar { box boxed } => { } } }

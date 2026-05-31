@@ -1,0 +1,1 @@
+pub struct A < T > { _item : T , } impl < T > A < T > { fn foo (& self) { let _ : fn () = | | { } ; } } fn main () { let a = A :: < i32 > { _item : 0 } ; a . foo () ; }

@@ -1,0 +1,1 @@
+use thiserror :: Error ; # [derive (Debug , Error)] pub enum LexicalError { # [error ("{0.what}ㅇ")] InvalidCode (i32) , }

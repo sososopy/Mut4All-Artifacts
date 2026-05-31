@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; trait HasType { type Type ; } impl HasType for () { type Type = () ; } pub struct MyStruct { _field : < () as HasType > :: Type , } pub fn do_insert (map : & mut HashMap < * const MyStruct , () > , key : * const MyStruct) { map . insert (key , ()) ; }

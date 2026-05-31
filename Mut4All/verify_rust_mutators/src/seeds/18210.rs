@@ -1,0 +1,1 @@
+pub trait GValuePrivate { type Ret ; fn get_gvalue (& self) -> * const < Self as GValuePrivate > :: Ret { self } } impl GValuePrivate for i32 { }

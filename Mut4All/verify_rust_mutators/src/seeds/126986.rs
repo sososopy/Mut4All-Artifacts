@@ -1,0 +1,1 @@
+macro_rules ! some_cool_macro { () => { } ; } fn main () { println ! ("Hello, world!") ; }

@@ -1,0 +1,1 @@
+fn main () { let x = :: std :: num :: Float :: tan (4.0) ; println ! ("{}" , x) }

@@ -1,0 +1,1 @@
+trait PrivateTrait { const FOO : usize ; } struct LocalType ; impl bugreport :: PrivateTrait for LocalType { const FOO : usize = 1 ; } fn main () { }

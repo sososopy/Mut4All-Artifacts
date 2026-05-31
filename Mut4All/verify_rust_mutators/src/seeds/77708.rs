@@ -1,0 +1,1 @@
+# ! [feature (const_generics , const_evaluatable_checked)] # ! [allow (incomplete_features)] use core :: { convert :: TryFrom , num :: NonZeroUsize } ; struct A < const N : NonZeroUsize > ([u8 ; N . get ()]) where [u8 ; N . get ()] : Sized ;

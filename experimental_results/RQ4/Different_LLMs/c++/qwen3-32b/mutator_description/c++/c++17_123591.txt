@@ -1,0 +1,39 @@
+Mutation Operator 1: Convert a template type alias with a single parameter to a variadic template and use the pack in a non-expandable context.  
+Applies to: Template type aliases using a fixed list of types in the alias definition.  
+Description: Replace the non-variadic template parameter with a variadic pack (e.g., change `template <typename T>` to `template <typename... T>`) and insert the pack parameter into a position in the type list where it is not followed by an ellipsis (e.g., `std::variant<AstProgram, T, AstDecl, ...>`). This creates a scenario where the compiler must process a pack in a context requiring a single type, potentially exposing substitution logic errors.  
+Example:  
+Original:  
+`template <typename T> using AstNode = std::variant<AstProgram, AstDecl, AstExpr, AstStmt>;`  
+Mutated:  
+`template <typename... T> using AstNode = std::variant<AstProgram, T, AstDecl, AstExpr, AstStmt>;`  
+This forces the compiler to substitute the pack `T` where a single type is expected, likely triggering the crash if pack expansion handling is flawed.  
+
+Mutation Operator 2: Insert a template parameter into a type list of a non-template alias.  
+Applies to: Non-template type aliases that use a fixed list of types.  
+Description: Add a placeholder template parameter to the alias declaration (e.g., `template <typename T>`) and include a new type parameter in the type list (e.g., `std::variant<AstProgram, T, AstDecl, ...>`). This tests the compiler's ability to handle missing or unused parameters in template aliases.  
+Example:  
+Original:  
+`using AstNode = std::variant<AstProgram, AstDecl, AstExpr, AstStmt>;`  
+Mutated:  
+`template <typename T> using AstNode = std::variant<AstProgram, T, AstDecl, AstExpr, AstStmt>;`  
+The compiler may crash when attempting to substitute `T` in the variant, especially if the alias is instantiated without proper parameter binding.  
+
+Mutation Operator 3: Replace a fixed-type template alias with a mix of fixed and deduced types.  
+Applies to: Template aliases with a fixed set of types.  
+Description: Modify the alias type list to include a combination of fixed types and deduced template parameters (e.g., `std::variant<T, AstDecl, AstExpr>`). This stresses template argument deduction and substitution phases.  
+Example:  
+Original:  
+`template <typename T> using AstNode = std::variant<AstProgram, AstDecl, AstExpr, AstStmt>;`  
+Mutated:  
+`template <typename T> using AstNode = std::variant<AstProgram, T, AstDecl, AstExpr, AstStmt>;`  
+Using `T` alongside fixed types may expose bugs in compilers that mishandle template arguments in heterogeneous type lists.  
+
+Mutation Operator 4: Add redundant pack expansion in a template alias context.  
+Applies to: Template aliases using variadic templates.  
+Description: Insert an unnecessary ellipsis in the alias type list (e.g., `std::variant<AstProgram, T...>`). This checks if the compiler correctly rejects invalid pack expansions in non-variadic contexts.  
+Example:  
+Original:  
+`template <typename T> using AstNode = std::variant<AstProgram, T, AstDecl, ...>;`  
+Mutated:  
+`template <typename T> using AstNode = std::variant<AstProgram, T..., AstDecl, AstExpr, AstStmt>;`  
+If `T` is not a pack type, the ellipsis would be invalid, but a faulty compiler might crash instead of reporting the error.

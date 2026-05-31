@@ -1,0 +1,11 @@
+mutation operator: Replace trait bound in return position of function signature with concrete type from function's generic parameters or associated types. This applies to functions that return `impl Trait` where the trait is one of the standard comparison traits (PartialEq, PartialOrd, Eq, Ord). The mutation changes the return type from `impl Trait` to a concrete type that is already present in the function's generic parameters or could be derived from them, specifically targeting scenarios where the compiler infers complex equality constraints.
+
+Where it applies: In any function signature where the return type is `impl PartialEq`, `impl PartialOrd`, `impl Eq`, or `impl Ord`, and the function has at least one generic type parameter or uses a type with associated types.
+
+How to mutate: Identify a function with return type `impl Trait` where Trait is one of the listed comparison traits. Change the return type to a concrete type that is already in scope. Prefer to use one of the function's own generic type parameters directly. If no generic parameter is suitable, use a related type such as a tuple of generic parameters or a reference to one. Do not introduce new types not already present or easily constructed from existing ones.
+
+Example: Original function: `fn example<T, U>() -> impl PartialEq { ... }` Mutated function: `fn example<T, U>() -> T { ... }` Note that the body may need adjustment, but for bug-finding we focus on the signature change to trigger type system inconsistencies.
+
+Another example: Original: `fn example<'a, A>(x: &'a A) -> impl PartialEq where A: SomeTrait { ... }` Mutated: `fn example<'a, A>(x: &'a A) -> &'a A::AssocType where A: SomeTrait { ... }` assuming A has an associated type AssocType from SomeTrait.
+
+This mutation targets the compiler's handling of opaque return types and trait resolution, particularly when debug assertions are enabled, as seen in the bug report where an internal compiler error occurs with param types differing in name.

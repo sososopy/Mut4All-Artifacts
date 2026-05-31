@@ -1,0 +1,59 @@
+Mutation Operator: AsyncFutureStaticLifetimeMismatch  
+Target: Async functions returning `impl Future` with an output bound to a long-lived lifetime (e.g. `'static`)  
+Action: Introduce a non-static reference to a local variable in the async block, then use it in a context expecting the long-lived lifetime (e.g. return it or pass it to a function expecting `'static`). This creates a region inference constraint violation that may trigger ICE during borrowck.  
+
+Example:  
+Original:  
+async fn example() -> impl Future<Output = &'static u8> { ... }  
+
+Mutated:  
+async fn example() -> impl Future<Output = &'static u8> {  
+    let x = 0;  
+    x // non-static reference used in a 'static context  
+}  
+
+Mutation Operator: OpaqueTraitLifetimeConflict  
+Target: Functions returning `impl Trait` with a trait bound containing lifetime requirements (e.g. `dyn Trait: 'static`)  
+Action: Return a value implementing the trait from a non-static context. For example, return a reference to a local variable when the trait requires `'static`.  
+
+Example:  
+Original:  
+fn example() -> Box<dyn MyTrait> { Box::new(...) }  
+
+Mutated:  
+fn example() -> Box<dyn MyTrait> {  
+    let x = 0;  
+    Box::new(&x) // Non-static reference returned as dyn MyTrait when MyTrait: 'static  
+}  
+
+Mutation Operator: AsyncClosureStaticCapture  
+Target: Async closures capturing values with implied 'static lifetime (e.g. in `impl Future`)  
+Action: Capture a non-static local variable in the async closure but imply it must live 'static. This can occur when async closures are passed to functions expecting `'static` traits or stored in `impl Future<Output = _>`.  
+
+Example:  
+Original:  
+fn example() {  
+    let x = 0;  
+    let f = async move { x };  
+    consume_future(f);  
+}  
+
+Mutated:  
+fn example() {  
+    let x = 0;  
+    let f = async move { x };  
+    consume_static_future(f); // consume_static_future expects Future<Output = 'static>  
+}  
+
+Mutation Operator: TraitImplLifetimeMismatch  
+Target: Trait impl blocks with lifetime bounds (e.g. `T: 'static`)  
+Action: Implement the trait for a non-static type. For example, implement a `T: 'static`-bounded trait for a type containing a local or non-static reference.  
+
+Example:  
+Original:  
+struct MyStruct<T: 'static>(T);  
+impl<T: 'static> MyTrait for MyStruct<T> { ... }  
+
+Mutated:  
+struct MyStruct<T>(&T);  
+impl<T> MyTrait for MyStruct<T> { ... } // MyTrait requires 'static but MyStruct contains a non-static reference

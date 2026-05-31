@@ -1,0 +1,15 @@
+Based on the bug report, the issue involves an internal compiler error (ICE) due to a cycle detection in query computations when using inherent associated types (IATs). The bug is triggered by a function signature computation cycle. The program uses the incomplete inherent_associated_types feature and defines a generic struct with an associated type that depends on the generic parameter, leading to a cycle during type inference. 
+
+Given this context, Rust compiler bugs are more likely to trigger in scenarios involving complex type dependencies, especially with incomplete or experimental features like IATs. Specifically, cycles can arise when computing function signatures, type variances, or trait resolutions in the presence of recursive or self-referential type definitions.
+
+Mutation Operator: Insert a self-referential inherent associated type within a generic impl block where the associated type is used in a function return type.
+
+This operator applies when a seed program contains a generic impl block with at least one associated type declaration. The mutation modifies the associated type definition to reference the impl's Self type, potentially creating a cycle during type resolution.
+
+Specifically, locate an impl block for a generic struct or enum (e.g., impl<T> Struct<T>) that defines an associated type (e.g., type Assoc = ...). Change the associated type's definition to be Self::Assoc (or another self-referential form using the impl's Self). If the associated type is already defined, replace its right-hand side with Self::Assoc. If no associated type exists, add a new one: type NewAssoc = Self::NewAssoc. Ensure the impl block has at least one method or function where this associated type could be referenced, though not strictly necessary for cycle induction.
+
+Example: Suppose the seed program has: impl<T> Struct<T> { type Item = T; fn get() -> T { ... } }. Mutate to: impl<T> Struct<T> { type Item = Self::Item; fn get() -> T { ... } }.
+
+If the seed program lacks an associated type, add: impl<T> Struct<T> { type NewType = Self::NewType; }. Use existing generic parameters and type names from the seed. Avoid introducing new items unless specified; here, only the associated type's definition is altered or added.
+
+The mutation should be applied to one impl block per mutation instance, focusing on generic impls to increase the likelihood of cycle formation during compiler queries. This targets the F-inherent_associated_types label by exploiting incomplete feature handling in type resolution paths.

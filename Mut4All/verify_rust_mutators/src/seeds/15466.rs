@@ -1,0 +1,1 @@
+fn main () { extern { fn f (v : * mut i8) ; } let mut buf = [0] ; unsafe { f (buf . as_mut_ptr () as * mut _) ; } }

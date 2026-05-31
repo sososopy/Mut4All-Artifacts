@@ -1,0 +1,1 @@
+fn main () { enum R { REB (()) } struct Tau { t : uint } enum E { B (R , Tau) } let e = B (REB (()) , Tau { t : 3 }) ; let u = match e { B (Tau { t : x } , _) => x , } ; println ! ("u: {}" , u) ; }

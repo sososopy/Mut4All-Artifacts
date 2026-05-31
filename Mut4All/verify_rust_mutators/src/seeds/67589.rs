@@ -1,0 +1,1 @@
+enum TokenType { } # [derive (Clone , Copy)] struct Position { column : u64 , line : u64 } struct Token { position : Position , type_ : TokenType , value : String } fn main () { }

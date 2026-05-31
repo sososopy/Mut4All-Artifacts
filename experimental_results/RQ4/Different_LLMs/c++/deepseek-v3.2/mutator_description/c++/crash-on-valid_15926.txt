@@ -1,0 +1,36 @@
+Mutation Operator: Introduce a pointer-to-member type with a nested-name-specifier that requires context entry, such as within a template instantiation or a dependent scope, and then use it in a context where template argument deduction or SFINAE may occur. This applies when a class or namespace has nested types or members, and templates are involved.
+
+Specifically, within a template function or class that is being instantiated, replace a non-dependent type with a pointer-to-member type that uses a nested-name-specifier which is dependent on template parameters. This forces the compiler to enter the context of the nested-name-specifier during parsing or instantiation, potentially triggering issues in the "EnteringContext" mechanism.
+
+For a seed program that contains a class with nested types and a template function, modify the template to use a pointer-to-member to a nested type. For example, if the seed has:
+
+template<typename T>
+void func(T obj) {
+    // existing code
+}
+
+And there exists a class Outer with a nested class Inner, change the template to:
+
+template<typename T>
+void func(T obj) {
+    // Introduce a pointer-to-member type based on nested-name-specifier
+    typename T::NestedType T::* ptr = nullptr;
+    // Optionally use it in a way that may affect compilation, like in a decltype or sizeof
+    (void)ptr;
+}
+
+If T does not have a NestedType, this may lead to substitution failure if used in SFINAE context. To avoid always causing errors, ensure the mutation is applied only when a suitable nested type exists in the seed. For instance, if the seed has a class like:
+
+struct Outer {
+    struct Inner {};
+};
+
+Then, when func is instantiated with Outer, the mutation becomes:
+
+template<typename T>
+void func(T obj) {
+    typename Outer::Inner Outer::* ptr = nullptr;
+    (void)ptr;
+}
+
+This mutation should be applied to template functions or classes where the template parameter can be deduced or specified to a type that has nested members. It aims to stress the compiler's handling of pointers-to-members with nested-name-specifiers during template instantiation, as seen in the bug report where such interactions caused a crash.

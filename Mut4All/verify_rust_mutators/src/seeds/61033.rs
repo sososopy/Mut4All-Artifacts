@@ -1,0 +1,1 @@
+macro_rules ! test { ($ x : ident , $ ($ tt : tt) *) => { $ ($ tt) + } } fn main () { test ! (x ,) }

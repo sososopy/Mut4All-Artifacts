@@ -1,0 +1,1 @@
+# ! [feature (lang_items)] # [lang = "fn"] trait MyFn < T > { const call : i32 = 42 ; } # [lang = "fn_mut"] trait MyFnMut < T > { fn call (i : i32 , j : i32) -> i32 { i + j } } fn main () { let a = | | 42 ; a () ; let mut i = 0 ; let mut b = | | { i += 1 ; } ; b () ; }

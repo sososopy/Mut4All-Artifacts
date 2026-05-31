@@ -1,0 +1,1 @@
+macro_rules ! import { ($ ($ name : ident) ,*) => { $ (mod $ name ; pub use self ::$ name ;) * } } import ! (day1) ;

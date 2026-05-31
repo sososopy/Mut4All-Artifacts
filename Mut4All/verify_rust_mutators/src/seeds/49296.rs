@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] const unsafe fn transmute < T : Copy , U : Copy > (t : T) -> U { union Transmute < T : Copy , U : Copy > { from : T , to : U , } Transmute { from : t } . to } const fn wat (x : u64) -> & 'static u64 { unsafe { transmute (& x) } } const X : u64 = * wat (42) ; fn main () { println ! ("{}" , X) ; }

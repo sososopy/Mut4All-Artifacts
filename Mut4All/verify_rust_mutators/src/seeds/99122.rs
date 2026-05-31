@@ -1,0 +1,1 @@
+pub unsafe fn test () { let pointer = 1u32 as * const _ ; core :: arch :: asm ! ("nop" , in ("eax") pointer ,) ; }

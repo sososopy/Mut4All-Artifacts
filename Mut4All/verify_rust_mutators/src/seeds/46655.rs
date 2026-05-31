@@ -1,0 +1,1 @@
+trait Foo { # [derive (Clone)] type Bar ; }

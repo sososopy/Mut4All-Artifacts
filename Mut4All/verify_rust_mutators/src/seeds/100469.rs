@@ -1,0 +1,1 @@
+pub trait Foo { } impl Foo for () { } pub async fn bar < 'a : 'b , 'b > () -> impl Foo + 'b { todo ! () }

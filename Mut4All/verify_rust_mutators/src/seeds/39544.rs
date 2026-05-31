@@ -1,0 +1,1 @@
+pub enum SaveDir { Temp (TempDir) , Perm (PathBuf) , } impl SaveDir { pub fn keep (& mut self) { use self :: SaveDir :: * ; * self = match mem :: replace (self , Perm (PathBuf :: new ())) { Temp (tempdir) => Perm (tempdir . into_path ()) , old_self => old_self , } ; } }

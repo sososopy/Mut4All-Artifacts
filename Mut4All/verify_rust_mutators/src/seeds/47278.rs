@@ -1,0 +1,1 @@
+# [repr (C)] pub struct Foo (u64) ; pub extern fn foo (_ : Foo) -> Foo { loop { } }

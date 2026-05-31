@@ -1,0 +1,1 @@
+enum Foo { Bar (usize) , } fn main () { let i = Foo :: Bar ; assert_eq ! (Foo :: Bar , i) ; }

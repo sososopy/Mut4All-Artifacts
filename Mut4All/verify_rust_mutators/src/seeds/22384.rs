@@ -1,0 +1,1 @@
+trait Trait { fn foo () ; } fn main () { < < i32 as Copy > :: foobar as Trait > :: foo () ; }

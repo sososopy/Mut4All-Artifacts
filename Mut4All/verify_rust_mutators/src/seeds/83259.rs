@@ -1,0 +1,1 @@
+# [no_mangle] pub extern "C" fn double (x : i32) -> i32 { x * 2 } # [cfg (test)] mod tests { use super :: * ; # [test] fn double_test () { assert_eq ! (double (2) , 4) ; } }

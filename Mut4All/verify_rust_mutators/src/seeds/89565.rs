@@ -1,0 +1,1 @@
+# [proc_macro] pub fn oopsy (input : proc_macro :: TokenStream) -> proc_macro :: TokenStream { "b\"😊\"" . parse () . unwrap () } # [test] fn crash () { crate :: oopsy ! ("anything") ; }

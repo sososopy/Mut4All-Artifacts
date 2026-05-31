@@ -1,0 +1,1 @@
+use E :: { A , B } ; # [derive (Debug , Clone)] enum E { A (i64) , B (Box < E >) , } fn f (a : & mut E) { * a = match * a { B (ref b) => * b . clone () , _ => a . clone () , } } fn main () { let mut a = B (Box :: new (A (1))) ; f (& mut a) ; }

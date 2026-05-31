@@ -1,0 +1,1 @@
+# ! [feature (plugin)] # ! [plugin (regex_macros)] extern crate regex ; fn main () { let re = regex ! (r"(+)") ; }

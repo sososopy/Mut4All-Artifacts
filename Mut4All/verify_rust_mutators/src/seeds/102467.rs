@@ -1,0 +1,1 @@
+# ! [feature (associated_const_equality)] trait T { type A : S < C < X = 0i32 > = 34 > ; } trait S { const C : i32 ; } fn main () { }

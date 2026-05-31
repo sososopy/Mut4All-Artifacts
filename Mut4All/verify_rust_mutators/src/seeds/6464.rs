@@ -1,0 +1,1 @@
+pub static fun : extern fn () = foo ; fn foo () { println ("Foo") ; }

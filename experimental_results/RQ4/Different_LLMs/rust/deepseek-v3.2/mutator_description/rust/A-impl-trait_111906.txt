@@ -1,0 +1,24 @@
+mutation operator: Replace the bound of a lifetime parameter in a where clause or trait bound with a self-referential bound that creates a cycle, specifically targeting functions that return `impl Trait` and have lifetime parameters.
+
+This operator applies when a function has at least one lifetime parameter and returns an `impl Trait`. It modifies the bounds on the lifetime parameter(s) to introduce a self-referential constraint, such as `'a: 'a`, which is a tautological bound that can lead to unexpected behavior in region checking.
+
+Step 1: Identify a function definition in the seed program that returns an `impl Trait` and has at least one lifetime parameter. For example, `fn foo<'a>() -> impl Sized { ... }`.
+
+Step 2: Locate the where clause associated with this function. If no where clause exists, add one. If a where clause exists, proceed to modify it.
+
+Step 3: For each lifetime parameter in the function's generic parameters (e.g., `'a`), add a bound `'a: 'a` to the where clause. If the lifetime parameter already has bounds, replace the existing bounds with `'a: 'a`, or add `'a: 'a` as an additional bound if the existing bounds are not self-referential. Ensure that the bound is explicitly written as `'a: 'a` using the same lifetime parameter name.
+
+Step 4: If the function uses trait bounds on the lifetime parameter (e.g., `'a: Trait`), change them to `'a: 'a` instead, removing any trait bounds. This focuses on lifetime bounds only, not trait bounds.
+
+Step 5: The mutation must not introduce new data names, types, or variable names beyond the existing lifetime parameter. Use only the lifetime parameters already declared in the function signature.
+
+Example transformation:
+Original: `fn foo<'a>() -> impl Sized where 'a: 'static { ... }`
+Mutated: `fn foo<'a>() -> impl Sized where 'a: 'a { ... }`
+
+Original: `fn bar<'b, T>(x: &'b T) -> impl Debug where 'b: 'b { ... }` (already has self-referential bound, so no change needed; skip mutation for this function).
+
+Original: `fn baz<'c>() -> impl Clone { ... }` (no where clause)
+Mutated: `fn baz<'c>() -> impl Clone where 'c: 'c { ... }`
+
+This operator targets the interaction between self-referential lifetime bounds and opaque return types, which can expose bugs in region inference and trait resolution for `impl Trait`. It achieves high coverage by applying to any function with lifetime parameters and `impl Trait` return, common in Rust code for generics and lifetimes. The changes are minimal and use existing elements, avoiding ambiguous or complex modifications.

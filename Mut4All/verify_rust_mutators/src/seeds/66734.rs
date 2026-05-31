@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] trait Foo { type Bar < 'a > ; fn baz < 'a > (& self , val : Self :: Bar) -> Self :: Bar ; } struct Qux { x : i32 , y : i32 , } impl Foo for Qux { type Bar < 'a > = & 'a [u8] ; fn baz < 'a > (& self , val : Self :: Bar) -> Self :: Bar { val } } fn main () { }

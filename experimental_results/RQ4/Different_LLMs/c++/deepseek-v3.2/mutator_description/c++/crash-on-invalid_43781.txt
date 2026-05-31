@@ -1,0 +1,21 @@
+Summary of structures: C++ compiler bugs are more likely to trigger in scenarios involving template instantiation, dependent base class lookup, and member function pointer casting within templated classes. Specifically, unqualified name lookup into dependent bases of a class template can lead to crashes, especially when combined with Microsoft extensions or delayed template parsing.
+
+Mutation operator: Introduce unqualified lookup into dependent base classes of a templated class. This mutation applies when a template class inherits from a base class that is dependent on the template parameter. The operator modifies a member function of the derived class to reference a member (function or variable) from the base class without qualification (i.e., without using `this->` or explicitly naming the base class). If the base class is dependent, this unqualified lookup is ambiguous and may trigger compiler-specific handling. The mutation should target existing template classes in the seed program that have a dependent base. For each such class, select a member function definition. Within that function, replace a qualified access to a base class member (if present) with an unqualified one, or if no such access exists, introduce a new expression that attempts to call a base class member function or access a base class variable without qualification. For example, if the seed contains:
+
+template<typename T>
+class Derived : public Base<T> {
+    void method() {
+        this->baseFunc();
+    }
+};
+
+Mutate to:
+
+template<typename T>
+class Derived : public Base<T> {
+    void method() {
+        baseFunc();
+    }
+};
+
+If the base class member does not exist in the seed, do not introduce new members. Instead, use an existing member name from the base class if known, or if the base class is templated and its members are unknown, use a plausible name like `check` or `value` that might exist. However, to avoid undeclared identifiers, this mutation should only be applied when the base class is explicitly defined in the seed program and has at least one member function or variable. If the base class is not defined or has no members, skip this mutation for that template. The change is solely to remove the qualification (`this->` or `Base<T>::`) from an existing access, or to add a new unqualified call using an existing base member name. This mimics the bug scenario where unqualified lookup into a dependent base occurs, potentially causing a crash during parsing or instantiation.

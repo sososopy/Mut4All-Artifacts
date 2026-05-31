@@ -1,0 +1,18 @@
+Mutation Operator: Mutate associated type bounds in where clauses to add nested higher-ranked trait bounds.
+
+This operator applies to where clauses that contain associated type bounds (e.g., Trait<Assoc: Bound>). It transforms a simple associated type bound into a more complex one by adding a higher-ranked trait bound (for<'a> ...) to the associated type's bound. The operator should target where clauses in functions, impls, or trait definitions. The transformation should use existing types and traits from the seed program to ensure validity. If the seed program lacks suitable traits, the operator should not apply.
+
+Example: Suppose the seed program contains a where clause like: where T: Iterator<Item: Clone>. The operator could mutate this to: where T: Iterator<Item: for<'a> SomeTrait<'a>>, provided SomeTrait exists in the seed. If no suitable trait exists, the mutation is skipped.
+
+Specifically, the operator should:
+1. Identify a where clause in the seed program that contains an associated type bound of the form Path: Trait<Assoc: Bound>.
+2. Check if there exists a trait in the seed program that takes lifetime parameters (e.g., trait TraitL<'a> { ... }). If such a trait exists, proceed.
+3. Replace the Bound in the associated type bound with a higher-ranked trait bound using the existing trait. For instance, change Assoc: Bound to Assoc: for<'a> TraitL<'a>.
+4. Ensure that any lifetimes used are fresh (e.g., 'a) and do not conflict with existing ones. If the bound already involves higher-ranked traits, the operator may attempt to add an additional layer, but caution is needed to avoid infinite recursion or invalid syntax.
+
+Example transformation in pseudo-code:
+Original: fn foo<T>() where T: TraitA<AsA: TraitB> { ... }
+After mutation: fn foo<T>() where T: TraitA<AsA: for<'b> TraitC<'b>> { ... }
+Here, TraitC must be an existing trait in the seed that takes a lifetime parameter.
+
+This mutation generates complex nested bounds similar to those in the bug report, potentially exposing issues in bound variable resolution.

@@ -1,0 +1,1 @@
+pub fn parse (version : ()) { p (& b'.' , b"0") ; } # [inline (always)] fn p (byte : & u8 , s : & [u8]) { ! (s [0] == * byte) ; }

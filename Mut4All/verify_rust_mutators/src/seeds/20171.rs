@@ -1,0 +1,1 @@
+fn f < A , R , F > (_ : F) where F : Fn < A , R > { } fn main () { f (| | ()) }

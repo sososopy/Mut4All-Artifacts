@@ -1,0 +1,1 @@
+extern crate eclectic ; use eclectic :: * ; use std :: collections :: HashMap ; fn main () { let mut m = Box :: new (HashMap :: new ()) as Box < Map < Key = u32 , Value = u16 , MapValue = u16 > > ; }

@@ -1,0 +1,1 @@
+pub trait Emulator < 'a > { const m : State < 'a > = State :: new () ; fn init (& self , ram_64K : & mut u8) ; fn load (& mut self , regs : [u8 ; Sizes :: REGISTER_COUNT as usize]) ; fn run (clock_count : isize) ; }

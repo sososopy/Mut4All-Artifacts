@@ -1,0 +1,1 @@
+use std :: mem :: swap ; fn foo < T > (a : & mut Vec < T >) { let mut b = Vec :: new () ; swap (& mut a , & mut b) ; } fn main () { }

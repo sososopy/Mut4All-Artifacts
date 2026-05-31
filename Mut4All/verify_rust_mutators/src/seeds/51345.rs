@@ -1,0 +1,1 @@
+# ! [feature (nll)] fn main () { use std :: collections :: HashMap ; let mut m : HashMap < () , () > = HashMap :: new () ; m . insert (() , unimplemented ! ()) ; }

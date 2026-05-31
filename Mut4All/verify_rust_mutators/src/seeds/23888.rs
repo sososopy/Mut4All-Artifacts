@@ -1,0 +1,1 @@
+fn main () { let foo = (& 0) as & Copy as * const Copy ; let bar = (& 0) as & Copy as * const Copy ; foo == bar ; }

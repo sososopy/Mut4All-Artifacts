@@ -1,0 +1,25 @@
+Mutation Operator: ClosureOpaqueTraitSpecialization
+Applies to functions returning concrete types. Replace the return type with an opaque type aliasing a closure, add a blanket impl for all types, and introduce a specialized impl for the opaque type that requires trait specialization. The mutation must create a scenario where the compiler's trait coherence checks process a closure-based opaque type with overlapping impls.
+
+Example:
+Original code:
+fn example() -> i32 {
+    0
+}
+
+Mutated code:
+trait OpaqueTrait {}
+impl<T> OpaqueTrait for T {}
+type OpaqueType = impl OpaqueTrait;
+fn example() -> OpaqueType {
+    || 0
+}
+impl<O: OpaqueTrait> SomeOtherTrait for O {}
+impl SomeOtherTrait for OpaqueType {}
+
+Note: SomeOtherTrait must be declared in the program. If not present, add:
+trait SomeOtherTrait {}
+impl<T: Send> SomeOtherTrait for T {}
+impl SomeOtherTrait for OpaqueType {}
+
+The mutation introduces an opaque type that wraps a closure, creates a blanket impl for all types, and adds a specialized impl for the opaque type. This combination stresses the compiler's handling of trait coherence with type_alias_impl_trait and specialization features, potentially exposing ICEs related to closure type analysis.

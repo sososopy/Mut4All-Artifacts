@@ -1,0 +1,19 @@
+Mutation operator: Replace a dependent template argument expression inside a constexpr static member initialization with an explicit template argument list that mismatches the function template's parameter count.
+
+This mutation targets the initialization of constexpr static members within class templates or non-template classes containing templated member functions. It applies when a constexpr static member is initialized with a call to a member function template, and the call site uses explicit template arguments. The mutation modifies the explicit template argument list to have a different number of arguments than the function template expects, or changes the types in a way that creates a dependent expression that the compiler must evaluate during parsing/instantiation.
+
+Specifically, locate a constexpr static member declaration of the form:
+static constexpr some_type member_name = some_call<explicit_template_args>();
+
+where some_call is a member function template (or a static member function template) of the current class or a base class. The mutation changes the explicit_template_args to either:
+- Add an extra template argument that is dependent on the class or its template parameters, e.g., replace <some_arg> with <some_arg, some_dependent_type>.
+- Remove a template argument if there are multiple, e.g., replace <arg1, arg2> with <arg1>.
+- Replace an existing argument with a different dependent expression that still syntactically resembles a template argument but may be ill-formed when substituted.
+
+If the function some_call is not a template, this mutation does not apply. The new template arguments should be constructed using existing types or expressions from the surrounding context to avoid introducing undeclared identifiers. For example, if the class is a template with parameter T, use T or decltype(some_member) as an extra argument. If no suitable dependent type exists, use an integer literal like 0 as an extra non-type template argument.
+
+Example transformation:
+Original: static constexpr int size = helper<1>();
+Mutated: static constexpr int size = helper<1, T>();
+
+This creates a mismatch in the number of template arguments expected by helper (assuming helper is a function template with one template parameter). The compiler may crash or produce an error during overload resolution or template argument deduction, particularly in constexpr contexts where the evaluation happens early. This mutation is designed to trigger bugs in the compiler's handling of explicit template arguments in constexpr member initializers, similar to the crash in the bug report which involved std::tuple_size and an incorrect template argument count.

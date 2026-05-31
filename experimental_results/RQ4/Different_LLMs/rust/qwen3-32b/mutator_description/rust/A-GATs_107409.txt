@@ -1,0 +1,14 @@
+Mutation Operator: In a trait implementation for a GAT that defines a type parameter with a nested lifetime and a 'where' clause relating the environment's lifetime to the nested lifetime, replace the GAT's type with a nested structure involving an additional level of the same struct and adjust the 'where' clause to maintain lifetime constraints, potentially triggering ICEs in the compiler's handling of nested GATs and HRTBs.  
+
+Application Example:  
+Original code:  
+impl<'env, T: Rootable<'env>> Rootable<'env> for Gc<'env, T> {  
+    type AsRoot<'r> = Gc<'r, T::AsRoot<'r>> where 'env: 'r;  
+}  
+
+Mutated code:  
+impl<'env, T: Rootable<'env>> Rootable<'env> for Gc<'env, T> {  
+    type AsRoot<'r> = Gc<'r, Gc<'r, T::AsRoot<'r>>> where 'env: 'r;  
+}  
+
+This increases the nesting of the GAT's return type and preserves the lifetime 'where' clause, creating a deeper interaction between GATs and HRTBs that may expose compiler bugs.

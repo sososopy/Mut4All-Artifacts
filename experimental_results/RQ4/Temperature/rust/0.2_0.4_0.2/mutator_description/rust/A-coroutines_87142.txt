@@ -1,0 +1,40 @@
+Mutation Operator: Modify Generator Return Type
+
+Target Code Construct: This mutation operator targets the return type of generator functions within implementations of traits that use the `Generator` trait. Specifically, it applies to the `type Gen` associated type in trait implementations that utilize the `impl Trait` syntax for generators.
+
+Mutation Description: The mutation involves altering the return type of the generator function to a different type that is still compatible with the `Generator` trait. This can expose bugs related to type inference and generator state management, especially when using `impl Trait` and associated types.
+
+Mutation Steps:
+1. Identify the `type Gen` associated type declaration in a trait implementation that uses `impl Trait` for a generator.
+2. Modify the return type of the generator function to a different compatible type. For example, if the original return type is `impl Generator<(), Return=(), Yield=()>`, change it to `impl Generator<(), Return=Option<()>, Yield=()>`.
+3. Ensure that the generator function's body is updated to accommodate the new return type, such as by returning `Some(())` instead of `()`.
+
+Example:
+Original Code:
+```
+impl GeneratorProviderAlt for () {
+    type Gen = impl Generator<(), Return=(), Yield=()>;
+    fn start(ctx: Context<Self>) -> Self::Gen {
+        move || {
+            match ctx { _ => () }
+            yield ();
+        }
+    }
+}
+```
+
+Mutated Code:
+```
+impl GeneratorProviderAlt for () {
+    type Gen = impl Generator<(), Return=Option<()>, Yield=()>;
+    fn start(ctx: Context<Self>) -> Self::Gen {
+        move || {
+            match ctx { _ => () }
+            yield ();
+            Some(())
+        }
+    }
+}
+```
+
+This mutation operator aims to test the Rust compiler's handling of generator return types and associated type inference, potentially exposing issues related to the interaction between `impl Trait` and generator state management.

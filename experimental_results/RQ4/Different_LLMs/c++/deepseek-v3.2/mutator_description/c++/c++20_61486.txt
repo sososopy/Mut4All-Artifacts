@@ -1,0 +1,34 @@
+Mutation operator: ConceptRequirementMutation
+
+Target: C++20 concept definitions and their requires-expressions, specifically within the constraint body where template arguments are involved. This mutation applies when a concept is defined and used, particularly in contexts where the concept is evaluated or specialized, such as within template declarations, class definitions, or function constraints.
+
+The mutation operator modifies the requires-expression inside a concept definition by altering the template argument list used in a requirement. It changes the argument list to be empty or to reference a non-existent template parameter, aiming to trigger scenarios where the AST writer might encounter a null or malformed TemplateArgumentListInfo during serialization, similar to the crash in ASTWriter.cpp:5814.
+
+To apply this mutation, locate a concept definition in the seed program. Within its requires-expression, identify a requirement that uses a template argument list, such as a nested requirement or a type requirement involving a template. Replace the template argument list with an empty list or with a list that refers to a template parameter not present in the immediate context, ensuring the change uses existing elements from the seed program.
+
+Example: If the seed program contains a concept like:
+template<typename T>
+concept ExampleConcept = requires(T a) {
+    { a.size() } -> std::same_as<std::size_t>;
+};
+
+And there is a related template structure, mutate to:
+template<typename T>
+concept ExampleConcept = requires(T a) {
+    { a.size() } -> std::same_as<std::size_t>;
+    requires sizeof(T) == 0; // Added requirement with potentially problematic template argument list context
+};
+
+Or, if the concept already uses template arguments, change them to be empty or mismatched. For instance, if there is:
+template<template<typename> class StorageType>
+concept IsFixedIndexBasedStorage = requires(const StorageType<int>& a) {
+    a[0];
+};
+
+Mutate to:
+template<template<typename> class StorageType>
+concept IsFixedIndexBasedStorage = requires(const StorageType<>& a) {
+    a[0];
+};
+
+This mutation should be applied only when the seed program has existing template parameters or concepts, avoiding introduction of new types or variables. The goal is to create a scenario where the concept specialization might lead to an empty or invalid template argument list during AST serialization.

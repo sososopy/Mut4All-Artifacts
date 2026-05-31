@@ -1,0 +1,26 @@
+mutation operator: nested_coroutine_borrow_ice  
+target: functions containing mutable references passed to nested generators with yield statements.  
+mutation: insert a nested generator inside an existing generator that captures a mutable reference from the outer scope, takes a reborrow via `&mut *`, and includes a `yield` after the reborrow.  
+
+example:  
+before mutation:  
+fn f(x: &mut i32) {  
+    let a = &mut *x;  
+}  
+
+after mutation:  
+fn f(x: &mut i32) {  
+    let mut g = || {  
+        let mut h = || {  
+            let a = &mut *x;  
+            yield;  
+        };  
+        yield;  
+    };  
+}  
+
+explanation:  
+- applies to functions with mutable references (`x: &mut T`) and potential generator contexts.  
+- uses existing variables (`x`) and introduces nested generators that reborrow `x` across yields.  
+- leverages `&mut *x` syntax (as in the bug report) to create overlapping mutable borrows.  
+- ensures high coverage by targeting coroutine-specific drop-tracking logic in MIR borrowck.

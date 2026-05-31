@@ -1,0 +1,27 @@
+Mutation Operator: Insert a yield statement after a variable declaration but before its first use within a generator.
+
+This mutation applies to generator bodies (closures with yield statements) that contain local variable declarations. It targets the interaction between variable initialization, suspension points, and drop tracking by altering the control flow and liveness intervals.
+
+Steps: 
+1. Identify a generator in the seed program (a closure containing at least one yield statement).
+2. Within the generator body, locate a local variable declaration (e.g., let x = ...;).
+3. Ensure the variable is used at least once after its declaration (to avoid trivial dead code).
+4. Insert a yield statement immediately after the variable declaration, before any other statements.
+5. If the generator does not already have a yield, this mutation will introduce the first yield, requiring the closure to be explicitly annotated as a generator (e.g., by adding a yield elsewhere or ensuring the closure is used in a generator context). Prefer generators that already contain yield to avoid annotation issues.
+
+Example of mutation in pseudo-code:
+
+Original generator segment:
+let a = 5;
+let b = compute();
+use(b);
+yield;
+
+Mutated generator segment:
+let a = 5;
+yield;
+let b = compute();
+use(b);
+yield;
+
+Note: This mutation uses existing variables and control flow. It does not introduce new names or types. The yield statement is inserted using the same syntax as existing yields in the seed program. This can expose bugs where the compiler incorrectly handles variables that become live across a suspension point, particularly under -Zdrop-tracking, as seen in the bug report where an index out-of-bounds occurred during drop range computation.

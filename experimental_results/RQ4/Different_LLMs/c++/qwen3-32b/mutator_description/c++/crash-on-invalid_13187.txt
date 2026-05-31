@@ -1,0 +1,70 @@
+mutation operator ForwardDeclaredNestedUnion
+applies to unions with transparent_union attributes
+structure: forward declare a union type and nest it inside another union with a transparent_union attribute
+example:
+// original
+union B { ... };
+
+// mutated
+union B;
+typedef union {
+    union B b;
+} A __attribute__ ((__transparent_union__));
+changes: 1) insert forward declaration of any existing union 2) nest it inside a new union with transparent_union 3) wrap in typedef
+
+mutation operator RecursiveForwardDeclarations
+applies to nested union declarations
+structure: create mutually forward-referenced unions with transparent_union attributes
+example:
+// original
+union A { union B b; };
+union B { union A a; };
+
+// mutated
+typedef union A __attribute__ ((__transparent_union__)) A;
+typedef union B __attribute__ ((__transparent_union__)) B;
+union A; // forward
+union B { union A a; };
+union A { union B b; };
+changes: 1) add transparent_union attributes to both unions 2) create forward declaration before first use 3) maintain mutual nesting
+
+mutation operator AttributeStacking
+applies to type definitions with special attributes
+structure: combine transparent_union with other layout-affecting attributes
+example:
+// original
+typedef union { int x; } U;
+
+// mutated
+typedef union __attribute__ ((__transparent_union__, __packed__)) { 
+    union { int x; } nested; 
+} U;
+changes: 1) add __packed__ to existing transparent_union 2) nest union inside modified attributes 3) maintain original type name
+
+mutation operator ForwardIncompleteDeclaration
+applies to type alias declarations
+structure: use incomplete forward declarations in complex type compositions
+example:
+// original
+typedef struct { int a; } S;
+
+// mutated
+struct S; // forward
+typedef union __attribute__((__transparent_union__)) {
+    struct S s;
+    int i;
+} Combined;
+changes: 1) insert forward declaration before union 2) add transparent_union attribute 3) include opaque struct in union
+
+mutation operator AttributeReordering
+applies to attribute annotations
+structure: change attributes ordering in complex type definitions
+example:
+// original
+__attribute__((__transparent_union__)) typedef union { ... } U;
+
+// mutated
+typedef union __attribute__((__transparent_union__)) {
+    union { int x; } nested;
+} U __attribute__((aligned(16)));
+changes: 1) move transparent_union attribute placement 2) add additional layout attribute 3) maintain nested union structure

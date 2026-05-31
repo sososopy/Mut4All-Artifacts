@@ -1,0 +1,21 @@
+Based on the bug report, the ICE occurs when using the non_lifetime_binders feature with generic_const_exprs, specifically in a where clause with a for binder that includes const parameters with default values. The compiler crashes during THIR construction for the constant expression in the default value. Bugs are more likely in complex interactions between multiple incomplete features, particularly involving novel syntactic forms like for<T, const N: usize> binders, const generics with default values, and where clause constraints. The mutation operator should target these combined features.
+
+Mutation Operator: NonLifetimeBinderDefaultConstExprMutation
+
+This mutation applies to where clauses that contain for binders with const parameters. It modifies default values of const parameters in for binders by replacing them with other constant expressions that use the bound const parameters. The goal is to create various constant expressions that may expose missing handling in the compiler's internal maps.
+
+Applicability: The mutation applies when a where clause contains a for binder that declares at least one const parameter with a default value. Specifically, it targets patterns like: where for<T, const N: usize, const M: usize = { expr }> T: Trait.
+
+Procedure: For each const parameter in the for binder that has a default value expression, replace the default value with a new constant expression. The new expression must be a valid const expression that uses the previously bound const parameters from the same for binder. Choose from the following replacement patterns, ensuring all identifiers refer to existing bound parameters:
+
+1. Replace with a simple arithmetic operation using the bound const parameter. For example, if the bound const parameter is N, change the default to { N + 1 } or { N * 2 }.
+2. Replace with a conditional expression that depends on the bound const parameter. For example, change to { if N > 0 { N } else { 1 } }.
+3. Replace with a block expression containing multiple statements, ending with a expression using the bound const parameter. For example, change to { let x = N; x + 1 }.
+4. If the default is already a block expression, modify its internal expressions by changing arithmetic operators or constants.
+
+If the for binder has multiple const parameters, the new expression can use any of them, but must not introduce new identifiers beyond those bound in the same for binder. Do not change the trait bound part (T: Trait). This mutation requires the features generic_const_exprs and non_lifetime_binders to be enabled.
+
+Example: Original: fn foo() where for<T, const N: usize, const M: usize = { N + 1 }> T: Copy {}
+Mutated: fn foo() where for<T, const N: usize, const M: usize = { if N == 0 { 1 } else { N * 2 } }> T: Copy {}
+
+The mutation creates different constant expressions to test the compiler's ability to look up bound const parameters during THIR construction, potentially triggering missing key errors.

@@ -1,0 +1,15 @@
+Mutation Operator: Apply format_arg attribute with out-of-range parameter index to varargs functions.
+
+Target: Function declarations or definitions that use the GNU __attribute__((format_arg(index))) attribute, specifically when applied to functions that have a variadic parameter list (i.e., use '...').
+
+Description: The mutation changes the integer index specified in the format_arg attribute to a value that is out-of-range relative to the function's declared parameters. For a function with N named parameters (excluding the variadic '...'), the valid indices for format_arg are 1 through N. The mutation sets the index to a value less than 1 or greater than N. If the function has zero named parameters (only '...'), then any positive index is invalid. If the function has N named parameters, the mutation chooses an invalid index such as 0 or N+1.
+
+Procedure: For a given seed program, identify all function declarations or definitions that have a variadic parameter list and currently have a format_arg attribute, or could potentially have one added. If a function already has a format_arg attribute, replace its index with an invalid one. If the function does not have such an attribute, add a __attribute__((format_arg(invalid_index))) where invalid_index is chosen as described. Ensure the attribute is placed appropriately according to GNU C syntax (typically after the function declarator). Use an existing integer constant from the seed program if possible to construct the invalid index; if none exists, introduce a new integer constant with a value that is clearly out-of-range. For example, if a seed function is 'void func(int a, int b, ...)', valid indices are 1 or 2. An invalid index could be 0 or 3. Introduce a constant like const int invalid_idx = 3; and use it in the attribute. Do not use ambiguous terms; specify the exact integer value or expression.
+
+Example (based on bug report): Original: __attribute__((__format_arg__(2))) void test(int i, ...) { } Mutated: __attribute__((__format_arg__(3))) void test(int i, ...) { } Here, index 3 is invalid because the function has only two parameters (i and the variadic part), so valid indices are 1 and 2.
+
+Example with added attribute: Seed: void my_print(const char* fmt, ...) { /* implementation */ } Mutated: __attribute__((format_arg(0))) void my_print(const char* fmt, ...) { /* implementation */ } Here, index 0 is invalid.
+
+Example using existing constant: Seed contains: const int max_params = 5; void log_message(int severity, const char* msg, ...) { ... } Mutated: __attribute__((format_arg(max_params))) void log_message(int severity, const char* msg, ...) { ... } Since max_params is 5, but the function has only two named parameters (severity and msg), index 5 is invalid.
+
+The mutation should be applied only to functions with a variadic parameter list. Do not apply to non-variadic functions. This targets the specific interaction between format_arg attribute validation and varargs functions that triggered the compiler crash.

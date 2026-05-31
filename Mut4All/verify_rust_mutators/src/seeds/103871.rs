@@ -1,0 +1,1 @@
+# ! [feature (let_chains)] pub fn main () { if let Some (_) = Some (0) && let Some (_must_have_name) = Some (vec ! [0]) { } }

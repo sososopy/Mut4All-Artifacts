@@ -1,0 +1,1 @@
+fn hash_material (material : & Material , changes : & [BindGroupEntryArc]) -> u64 { let mut hasher = std :: collections :: hash_map :: DefaultHasher :: default () ; std :: ptr :: hash (Arc :: as_ptr (& material . bind_group_layout . 0) , & mut hasher) ; hasher . finish () }

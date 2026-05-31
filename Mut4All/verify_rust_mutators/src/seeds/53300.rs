@@ -1,0 +1,1 @@
+fn bug () -> Wrapper < impl A > { }

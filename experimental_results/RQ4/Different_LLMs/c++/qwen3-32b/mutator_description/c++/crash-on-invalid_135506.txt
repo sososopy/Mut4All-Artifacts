@@ -1,0 +1,29 @@
+Mutation Operator: Introduce 'requires' clause in defaulted constexpr destructor of existing class template
+Applies to: Any class template with a user-declared or implicitly generated destructor, possibly nested within a namespace
+
+Changes:
+1. Modify an existing class template destructor to be a constexpr defaulted destructor
+2. Add a 'requires' constraint using existing type traits or concepts from the program's standard library usage
+   - If no existing concepts are present, introduce a new concept using a type alias from the seed program
+3. Ensure the required expression involves template parameters of the class
+
+Example transformation:
+Original code:
+template<typename T>
+class X {
+public:
+    ~X();
+};
+
+Mutated code:
+template<typename T>
+class X {
+public:
+    constexpr ~X() = default;
+    template<typename U> using Enable = std::enable_if_t<std::is_same_v<U, T>>;
+};
+
+// ... later in the class ...
+    constexpr ~X() requires (Enable<T>()) = default;
+
+Stack trace analysis suggests the crash occurs during constexpr destructor analysis, specifically when parsing constraints in template declarations. This mutation targets the interaction between defaulted destructors, constexpr, and requires clauses, which is likely to expose parser/linker analysis bugs in template instantiation paths.

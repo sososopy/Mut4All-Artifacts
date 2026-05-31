@@ -1,0 +1,22 @@
+mutation operator: This mutation operator targets template instantiation contexts where a lambda expression captures a pointer to the current object (e.g., 'this') and that pointer is used in a nested class or local class defined within a template member function. The operator modifies the capture of 'this' to be implicit or explicit in a different manner, which can affect how the pointer is represented during template substitution and potentially expose bugs in the compiler's TreeTransform logic during instantiation.
+
+Applicability: This operator applies when a lambda expression within a template class or function captures 'this', and the lambda is used in a context that leads to deep template instantiation (such as within a member function template, especially those involving recursive template structures or variadic expansions). Specifically, it targets lambda expressions that are defined inside a template member function and are invoked through a series of template instantiations.
+
+Changes: For each lambda expression inside a template member function that captures 'this' explicitly (e.g., '[this]'), change the capture to an implicit capture by reference (e.g., '[&]') if it does not already use that form. Conversely, if the lambda uses an implicit capture (e.g., '[&]' or '[=]'), change it to an explicit capture of 'this' (e.g., '[this]'). Ensure that the change does not introduce new variables or types; it only modifies the capture clause. If the lambda captures other variables, preserve those captures unchanged. The goal is to alter the capture representation without changing the lambda's body or the surrounding code's semantics.
+
+Example: Suppose the seed program contains a template class with a member function that includes a lambda capturing 'this' explicitly:
+    template<typename T>
+    class Example {
+        void method() {
+            auto lambda = [this](auto x) { return x + value; };
+            // ... use lambda
+        }
+        int value;
+    };
+After mutation, change the capture to implicit by reference:
+    auto lambda = [&](auto x) { return x + value; };
+Alternatively, if the original uses implicit capture:
+    auto lambda = [&](auto x) { return x + value; };
+Mutate to explicit capture:
+    auto lambda = [this](auto x) { return x + value; };
+This change should be applied only to lambdas within template functions that are subject to instantiation.

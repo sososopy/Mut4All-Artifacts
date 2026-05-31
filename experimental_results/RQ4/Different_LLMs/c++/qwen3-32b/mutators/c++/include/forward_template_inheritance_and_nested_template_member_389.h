@@ -1,0 +1,33 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Forward_Template_Inheritance_And_Nested_Template_Member_389
+ */ 
+class MutatorFrontendAction_389 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(389)
+
+private:
+    class MutatorASTConsumer_389 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_389(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result) override;
+    private:
+        Rewriter &Rewrite;
+        bool forwardTemplateDeclared = false;
+        bool nestedTemplateDeclared = false;
+        std::vector<const clang::CXXRecordDecl *> templateClasses;
+    };
+};
+

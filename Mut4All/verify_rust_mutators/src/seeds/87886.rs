@@ -1,0 +1,1 @@
+struct HasLifetime < 'a > (core :: marker :: PhantomData < & 'a u32 >) ; struct Wrap < T : for < 'a > FnMut (HasLifetime < 'a >) > (T) ; fn doesnt_satisfy_requirements < 'a > (args : HasLifetime < 'a >) { } static STATIC_OR_CONST_VAR : Wrap < & 'static dyn for < 'a > FnMut (HasLifetime < 'a >) > = Wrap (& doesnt_satisfy_requirements) ;

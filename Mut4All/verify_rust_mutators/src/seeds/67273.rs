@@ -1,0 +1,1 @@
+struct A { } impl A { fn f (self) { let mut i : i64 = 0 ; match i { 1 => true , 2 => true , 3 => i = 1 , _ => () , } println ! ("{}" , i) ; } } fn main () { }

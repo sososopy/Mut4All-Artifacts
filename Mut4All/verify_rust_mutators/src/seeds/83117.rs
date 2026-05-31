@@ -1,0 +1,1 @@
+# ! [no_std] # ! [feature (lang_items)] extern crate ice_test_lib ; use core :: panic :: PanicInfo ; fn main () { } # [panic_handler] fn panic_handler (_ : & PanicInfo) -> ! { loop { } } # [lang = "eh_personality"] fn eh_personality () { }

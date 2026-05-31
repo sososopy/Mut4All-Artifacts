@@ -1,0 +1,1 @@
+type Node = int ; trait NodeBase < 'self > { fn base_node (& 'self self) -> & 'self Node ; } impl NodeBase < 'self > for float { fn base_node (& self) -> & Node { fail ! ("woo") } } fn main () { }

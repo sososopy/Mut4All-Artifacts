@@ -1,0 +1,1 @@
+use std :: mem :: { transmute , size_of } ; pub fn as_raw_bytes < 'a , T > (obj : & 'a T) -> & 'a [u8] { unsafe { transmute (Slice { data : transmute (obj) , len : size_of :: < T > () }) } }

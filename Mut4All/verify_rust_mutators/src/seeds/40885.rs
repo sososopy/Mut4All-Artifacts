@@ -1,0 +1,1 @@
+unsafe fn load (& self) { let idtr = IDTR { size : (41 * 16) - 1 , offset : ((self as * const IDT) as u64) } ; asm ! ("lidt ($0)" :: "r" (idtr) : "memory") ; }

@@ -1,0 +1,1 @@
+fn main () { rec (std :: iter :: empty :: < () > () , 0) ; } fn rec (mut it : impl Iterator , n : u32) -> usize { if n == 0 { it . count () } else { rec (it . by_ref () , n - 1) } }

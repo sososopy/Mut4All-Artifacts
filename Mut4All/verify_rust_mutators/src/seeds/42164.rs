@@ -1,0 +1,1 @@
+macro_rules ! define_f { ($ name : expr) => { # [export_name = $ name] fn f () { } } } define_f ! (concat ! ("exported_" , "f")) ;

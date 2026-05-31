@@ -1,0 +1,1 @@
+impl < T , const X : usize , const Y : usize > Mul < T > for Matrix < T , X , Y > where T : Data + Mul < Output = T > + From < i32 > , [T ; X * Y] : Sized , { type Output = Self ; fn mul (self , rhs : T) -> Self :: Output { let mut dat_copy = [0 . into () ; X * Y] ; for (i , e) in self . dat . iter () . enumerate () { dat_copy [i] = rhs * * e ; } Matrix { dat : dat_copy } } }

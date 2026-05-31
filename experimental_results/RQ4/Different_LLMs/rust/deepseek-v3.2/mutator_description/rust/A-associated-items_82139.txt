@@ -1,0 +1,26 @@
+mutation operator: Introduce an unresolved identifier within a closure that is part of the return expression of a trait implementation method where the associated type is defined as an impl Trait in type alias position.
+
+This mutation operator applies specifically to trait implementations where the associated type is defined using `type Associated = impl Bound;` and the method `func` returns `Self::Associated`. The operator modifies the method's return expression to include a closure that references a variable which is not in scope. The goal is to create a scenario where the compiler must handle both the type inference of the impl Trait and the resolution error of the unknown identifier, potentially exposing bugs in the interaction between these two systems.
+
+The mutation is applied as follows: locate a trait implementation where the associated type is an impl Trait. Within the method that returns this associated type, find or create a closure (for example, as an argument to a method like `map`, `and_then`, or `filter`). Inside this closure's body, replace an existing expression or insert a new expression that uses a simple identifier which is not declared anywhere in the current scope. The identifier should be a single lowercase letter not otherwise used in the surrounding context, such as `z`. The closure should remain syntactically valid, but semantically incorrect due to the unresolved identifier.
+
+For example, given a seed program that already contains:
+trait Trait {
+    type Associated;
+    fn func() -> Self::Associated;
+}
+trait Bound {}
+pub struct Struct;
+impl Trait for Struct {
+    type Associated = impl Bound;
+    fn func() -> Self::Associated {
+        Some(42).map(|x| x)
+    }
+}
+
+The mutation would change the method body to:
+fn func() -> Self::Associated {
+    Some(42).map(|x| z)
+}
+
+Here, `z` is introduced inside the closure. No new declarations for `z` are added; it is intentionally unresolved. The mutation uses existing structures (the trait, impl, closure) and only alters the closure's internal expression. This targets the compiler's handling of name resolution within closures when the closure's return type influences the inferred type of an associated impl Trait.

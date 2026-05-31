@@ -1,0 +1,1 @@
+extern { # [link (name = "libtestline" , kind = "static" , link_name = "main")] fn main () -> isize ; }

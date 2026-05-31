@@ -1,0 +1,1 @@
+fn main () { let mut bytes = vec ! [] ; bytes . append (& mut include_bytes ! ("main.rs") . to_vec ()) ; println ! ("Byte count: {}" , bytes . len ()) ; }

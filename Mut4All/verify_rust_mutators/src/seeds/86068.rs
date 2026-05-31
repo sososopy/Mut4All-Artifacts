@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] # ! [feature (const_evaluatable_checked)] trait SomeTrait { } struct SomeStruct < const S : bool > ; impl < const S : bool > SomeTrait for SomeStruct < S > { } fn func < 'a > () -> impl 'a + SomeTrait { SomeStruct :: < { true } > }

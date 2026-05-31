@@ -1,0 +1,1 @@
+# [derive (PartialEq)] struct Opaque (i32) ; impl Eq for Opaque { } const FOO : & & Opaque = & & Opaque (42) ; fn main () { match FOO { FOO => { } , Opaque (_) => { } } }

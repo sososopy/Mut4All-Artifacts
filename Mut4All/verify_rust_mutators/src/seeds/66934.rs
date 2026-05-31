@@ -1,0 +1,1 @@
+# ! [feature (slice_patterns)] const fn f () { let x = [()] ; let [y @ ..] = x ; }

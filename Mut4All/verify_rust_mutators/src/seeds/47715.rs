@@ -1,0 +1,1 @@
+# ! [feature (universal_impl_trait)] trait Foo { } trait Iterable { type Item ; type Iter : Iterator < Item = Self :: Item > ; fn iterator (& self) -> Self :: Iter ; } struct Container < T : Iterable < Item = impl Foo > > { field : T }

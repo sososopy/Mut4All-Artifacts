@@ -1,0 +1,1 @@
+pub struct Foo < 'self , A > (& 'self A) ; impl < 'self , A > Foo < 'self , A > { pub fn new (a : & 'self A) -> Foo < 'self , A > { Foo (a) } } # [test] fn test_foo () { let _ = Foo :: new (& 1i) ; }

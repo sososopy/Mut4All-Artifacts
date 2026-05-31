@@ -1,3 +1,4 @@
+import os
 import argparse
 import Mutator_Invention
 import Mutator_Implementation_Synthesis
@@ -8,6 +9,9 @@ def main():
     parser.add_argument("--language", default="Rust", help="Language to process (Rust, C++)")
     parser.add_argument("--config", default="config.json", help="The absolute path of the configuration file")
     args = parser.parse_args()
+    for file in ["token.json", "records.json"]:
+        if not os.path.exists(file):
+            open(file, "w", encoding="utf-8").write("[]")
     print("Starting BugToMutation_Generator...")
     Mutator_Invention.main(args)
     print("\nStarting MutationToCode_Generator...")

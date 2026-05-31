@@ -1,0 +1,1 @@
+pub struct LockedClosure < F > { closure : Mutex < F > } impl < F , Args , Result > Fn < Args , Result > for LockedClosure < F > where F : FnMut < Args , Result > , F : Send { # [rust_call_abi_hack] fn call (& self , args : Args) -> Result { self . closure . lock () . deref_mut () . call_mut (args) } }

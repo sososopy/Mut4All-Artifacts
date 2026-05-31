@@ -1,0 +1,32 @@
+Based on the bug report, the internal compiler error occurs when parsing an anonymous namespace that is missing its closing brace, combined with a goto statement that bypasses a variable with a non-trivial destructor inside that namespace, under MS compatibility mode. This crash suggests vulnerabilities in the compiler's handling of incomplete syntactic structures combined with specific semantic constructs. To systematically expose such bugs, a mutation operator should target the interplay between incomplete scopes (like missing braces) and control flow that jumps over object lifetime boundaries.
+
+Mutation Operator: IncompleteNamespaceWithGotoAndDestructor
+This operator applies when the seed program contains at least one namespace (named or anonymous) and a function with a goto label. It mutates by removing the closing brace of a namespace that encloses a function containing a goto statement that jumps past a variable with a non-trivial destructor. The operator ensures the code remains syntactically invalid but structured to stress the compiler's recovery mechanisms.
+
+Procedure:
+1. Identify a namespace in the seed program. If multiple exist, select the innermost or first encountered.
+2. Within that namespace, locate a function definition that includes a goto statement and a label.
+3. Ensure there is a variable declaration with a non-trivial destructor (e.g., an object of a class type, possibly via a template alias as in the bug) placed between the goto and its target label. If no such variable exists, introduce one using types already present in the program. For instance, if the program has a class 'MyClass' with a destructor, declare 'MyClass var;' between the goto and label. Do not introduce new types; use existing ones.
+4. Delete the closing brace of the selected namespace. This creates an unclosed namespace scope.
+5. The mutation must be applied in a way that the goto jumps bypass the variable declaration, mimicking the bug scenario.
+
+Example in pseudo-code:
+Original snippet:
+namespace N {
+    void func() {
+        goto label;
+        ExistingClass obj;
+        label:
+        return;
+    }
+}
+After mutation:
+namespace N {
+    void func() {
+        goto label;
+        ExistingClass obj;
+        label:
+        return;
+    }
+// Missing closing brace intentionally
+Note: The example uses 'ExistingClass' which must be a type already defined in the program, ensuring no undeclared identifiers. The mutation leaves the namespace open, and the goto jumps over 'obj', which has a non-trivial destructor if ExistingClass has one. This mutation should be applied to seed programs that include classes with destructors and goto statements within namespaces, aiming to trigger crashes in the CFG construction phase under specific compiler flags like MS compatibility.

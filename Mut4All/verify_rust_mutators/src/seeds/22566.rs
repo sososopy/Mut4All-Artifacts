@@ -1,0 +1,1 @@
+extern "rust-call" fn a () { } fn main () { }

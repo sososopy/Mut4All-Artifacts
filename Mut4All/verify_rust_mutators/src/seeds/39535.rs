@@ -1,0 +1,1 @@
+trait Foo { } impl < T > Foo for T where Self :: X : Clone { } fn main () { }

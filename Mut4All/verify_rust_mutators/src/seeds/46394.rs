@@ -1,0 +1,1 @@
+trait Nat { const VALUE : usize ; } struct Zero ; impl Nat for Zero { const VALUE : usize = 0 ; } struct Succ < N > (N) ; impl < N : Nat > Nat for Succ < N > { const VALUE : usize = N :: VALUE + 1 ; } fn main () { type A = [u8 ; Succ :: < Succ < Zero > > :: VALUE] ; eprintln ! ("::std::mem::size_of::<xs>() = {:?}" , :: std :: mem :: size_of ::< A > ()) ; }

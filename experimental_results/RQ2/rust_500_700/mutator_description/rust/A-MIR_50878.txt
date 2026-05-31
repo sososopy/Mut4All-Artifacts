@@ -1,0 +1,65 @@
+Mutation Operator: Modify Generator Usage in Macros
+
+This mutation operator targets the usage of generators within macros, specifically focusing on altering the way generators are passed and invoked inside macro definitions.
+
+Description:
+When a generator is used within a macro, alter the invocation pattern of the generator to use explicit variable bindings instead of directly passing generator expressions. This involves defining a generator variable before the macro call and using that variable within the macro. This change can expose bugs related to the handling of generator state and macro expansion in the Rust compiler.
+
+Mutation Steps:
+1. Identify any instances where a generator expression is directly passed to a macro.
+2. Introduce a new variable before the macro invocation to hold the generator.
+3. Modify the macro invocation to use this new variable instead of the direct generator expression.
+
+Example:
+Original Code:
+```
+macro_rules! yield_from {
+    ($generator:expr) => {
+        unsafe {
+            loop {
+                match $generator.resume() {
+                    GeneratorState::Yielded(y) => yield y,
+                    GeneratorState::Complete(ret) => break ret,
+                }
+            }
+        }
+    };
+}
+
+fn main() {
+    || {
+        yield_from!(|| {
+            yield;
+        });
+        return;
+    };
+}
+```
+
+Mutated Code:
+```
+macro_rules! yield_from {
+    ($generator:expr) => {
+        unsafe {
+            loop {
+                match $generator.resume() {
+                    GeneratorState::Yielded(y) => yield y,
+                    GeneratorState::Complete(ret) => break ret,
+                }
+            }
+        }
+    };
+}
+
+fn main() {
+    || {
+        let gen = || {
+            yield;
+        };
+        yield_from!(gen);
+        return;
+    };
+}
+```
+
+By explicitly binding the generator to a variable before passing it to the macro, this mutation tests how the Rust compiler handles generator state when the usual direct invocation pattern is modified. This approach can reveal issues in the macro expansion and generator management in the Rust compiler's internals.

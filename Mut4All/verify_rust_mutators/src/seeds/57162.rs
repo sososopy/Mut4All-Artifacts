@@ -1,0 +1,1 @@
+trait Foo { } impl Foo for dyn Send { } impl < T : Send > Foo for T { } fn main () { }

@@ -1,0 +1,31 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Replace_Base_Class_Pointer_With_Derived_190
+ */ 
+class MutatorFrontendAction_190 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(190)
+
+private:
+    class MutatorASTConsumer_190 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_190(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        
+    };
+};
+

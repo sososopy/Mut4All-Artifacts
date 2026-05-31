@@ -1,0 +1,1 @@
+macro_rules ! mac { ($ eval : expr) => { let mut $ eval = () ; } ; } fn foo () { mac ! { does_not_exist ! () } }

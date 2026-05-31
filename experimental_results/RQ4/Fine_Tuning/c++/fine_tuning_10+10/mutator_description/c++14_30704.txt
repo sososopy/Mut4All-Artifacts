@@ -1,0 +1,56 @@
+Mutation Operator: Inheritance with Multiple Generic Lambdas
+
+Target: This mutation targets inheritance within struct templates that involve generic lambdas.
+
+Mutation Rule:
+1. Identify a struct template that inherits from a template parameter, such as `struct Base: Func`.
+2. Ensure that the struct has a constructor that takes the inherited template parameter, e.g., `Base(Func func): Func{func} {}`.
+3. Add a second generic lambda function as a member of the struct. For example, introduce an additional lambda `auto newLambda = [](auto ...) { /* empty */ };`.
+4. Modify an existing method within the struct that uses the inherited template parameter (e.g., a `decltype` or a method call on `Func::operator()`) to also invoke the new lambda with variadic parameters.
+5. Adjust the main function or any function that uses an instance of the struct to call the new lambda method, if applicable.
+
+Example:
+Original Code:
+```cpp
+template<typename Func>
+struct Base: Func {
+    Base(Func func): Func{func} {}
+
+    template<typename... Args>
+    auto operator()(Args... args)
+    -> decltype(Func::operator()(args...), void()) {
+        Func::operator()(args...);
+    }
+};
+
+int main() {
+    auto l = [](auto &&) {};
+    Base<decltype(l)> mixin{l};
+    mixin(0);
+}
+```
+
+Mutated Code:
+```cpp
+template<typename Func>
+struct Base: Func {
+    Base(Func func): Func{func} {}
+
+    auto newLambda = [](auto ...args) { /* empty lambda function */ };
+
+    template<typename... Args>
+    auto operator()(Args... args)
+    -> decltype(Func::operator()(args...), void()) {
+        Func::operator()(args...);
+        newLambda(args...); // Invoke the new generic lambda
+    }
+};
+
+int main() {
+    auto l = [](auto &&) {};
+    Base<decltype(l)> mixin{l};
+    mixin(0);
+}
+```
+
+In this mutation, the addition of `newLambda` into the struct and its invocation within the existing method creates an environment where the interaction between multiple generic lambdas and inheritance might expose compiler bugs, especially around template instantiation and type deduction in the C++14 standard.

@@ -1,0 +1,32 @@
+//source file
+#include "../include/Create_Template_Function_With_Make_Tuple_198.h"
+
+// ========================================================================================================
+#define MUT198_OUTPUT 1
+
+void MutatorFrontendAction_198::Callback::run(const MatchFinder::MatchResult &Result) {
+    //Check whether the matched AST node is the target node
+    if (auto *MT = Result.Nodes.getNodeAs<clang::TranslationUnitDecl>("main")) {
+      //Filter nodes in header files
+      if (!MT || !Result.Context->getSourceManager().isWrittenInMainFile(
+                     MT->getLocation()))
+        return;
+      //Get the source code text of target node
+      auto content =
+          stringutils::rangetoStr(*(Result.SourceManager), MT->getSourceRange());
+      //Perform mutation on the source code text by applying string replacement
+      content += "\n/*mut198*/template <auto T> void f() { std::make_tuple(T); }";
+      content += "\nint main() { f<42>(); }";
+      //Replace the original AST node with the mutated one
+      Rewrite.ReplaceText(CharSourceRange::getTokenRange(MT->getSourceRange()), content);
+    }
+}
+  
+void MutatorFrontendAction_198::MutatorASTConsumer_198::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    //Define one or more ASTMatchers to identify the target AST node for mutation.
+    DeclarationMatcher matcher = translationUnitDecl().bind("main");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

@@ -1,0 +1,1 @@
+extern { fn foo (x : Option < str >) ; } fn main () { }

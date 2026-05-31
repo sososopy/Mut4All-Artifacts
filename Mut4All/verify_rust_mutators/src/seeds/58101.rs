@@ -1,0 +1,1 @@
+fn abc () { let thread = std :: thread :: thread_info :: current_thread () ; }

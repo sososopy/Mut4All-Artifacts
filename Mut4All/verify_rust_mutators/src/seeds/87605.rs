@@ -1,0 +1,1 @@
+pub fn deconstruct (self) -> (impl IntoIterator < Item = Apply < impl IntoIterator < Item = (H256 , H256) > > > , impl IntoIterator < Item = Log >) { self . substate . deconstruct (self . backend) }

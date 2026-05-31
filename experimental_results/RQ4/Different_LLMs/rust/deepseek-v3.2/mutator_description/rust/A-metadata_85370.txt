@@ -1,0 +1,15 @@
+mutation operator
+Target the interaction between procedural macro attributes and extern crate declarations in the same module. The mutation applies when a seed program contains a procedural macro attribute applied to an item (like a function, struct, or the module itself) and there exists at least one extern crate statement (either explicit or implied via a use of an external crate name). The operator will insert a new extern crate declaration that references the same crate name used by the procedural macro's defining crate (or a common external crate) but placed in a different relative position within the same module, specifically after the attributed item, to potentially disrupt the compiler's metadata loading order during resolution.
+
+Specifically, for a seed program containing a procedural macro attribute `#[proc_macro_attribute] pub fn proc(...)` (or similar) and an existing `extern crate some_crate;` statement (or an equivalent `use` from an external crate), the operator will duplicate the extern crate statement. If the original extern crate statement appears before the attributed item, the duplicate is inserted immediately after the attributed item's definition. If the original appears after, the duplicate is inserted immediately before. If no explicit extern crate exists but a crate is used (e.g., `use some_crate::something;`), the operator will construct an explicit `extern crate some_crate;` statement using that crate's name and insert it at the opposing side of the attributed item relative to the first use statement. The new extern crate statement must use a crate name that is already referenced in the seed program; no new crate names are introduced.
+
+Example: Seed pseudo-code contains:
+extern crate neon;
+#[proc_macro_attribute]
+pub fn proc(attr: TokenStream, item: TokenStream) -> TokenStream { panic!() }
+The original extern crate is before the attributed item. The mutation inserts a duplicate extern crate neon; after the proc function definition, resulting in:
+extern crate neon;
+#[proc_macro_attribute]
+pub fn proc(attr: TokenStream, item: TokenStream) -> TokenStream { panic!() }
+extern crate neon;
+If the seed had `use neon::types::Value;` instead of an explicit extern crate, and this use is before the attributed item, the mutation constructs `extern crate neon;` and inserts it after the proc function definition. The change is solely the insertion of a redundant extern crate declaration at a strategic position to potentially cause metadata loading conflicts.

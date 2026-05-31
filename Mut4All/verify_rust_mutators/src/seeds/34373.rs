@@ -1,0 +1,1 @@
+trait Trait < T > { fn foo (_ : T) { } } pub struct Foo < T = Box < Trait < DefaultFoo > > > ; type DefaultFoo = Foo ;

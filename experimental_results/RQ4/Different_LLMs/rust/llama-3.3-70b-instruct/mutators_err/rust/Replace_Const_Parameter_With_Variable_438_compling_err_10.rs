@@ -1,0 +1,60 @@
+use syn::{GenericParam, FnArg, PatType, Pat, Type, TypePath, punctuated::Punctuated, PathSegment, PathArguments, Generics};
+use crate::mutator::Mutator;
+
+struct Replace_Const_Parameter_With_Variable_438;
+
+impl Mutator for Replace_Const_Parameter_With_Variable_438 {
+    fn name(&self) -> &str {
+        "Replace_Const_Parameter_With_Variable_438"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Fn(func) = item {
+                if let syn::Signature { generics, .. } = &mut func.sig {
+                    if let Some(ref mut generics) = generics {
+                        for param in generics.params.iter_mut() {
+                            if let GenericParam::Const(const_param) = param {
+                                let new_param = GenericParam::Type(syn::TypeParam {
+                                    attrs: const_param.attrs.clone(),
+                                    ident: const_param.ident.clone(),
+                                    colon_token: Some(const_param.colon_token.clone()),
+                                    bounds: Default::default(),
+                                    default: None,
+                                    eq_token: Default::default(),
+                                });
+                                *param = new_param;
+                                let new_arg = FnArg::Typed(PatType {
+                                    attrs: vec![],
+                                    pat: Box::new(Pat::Ident(syn::PatIdent {
+                                        attrs: vec![],
+                                        by_ref: None,
+                                        mutability: None,
+                                        ident: const_param.ident.clone(),
+                                        subpat: None,
+                                    })),
+                                    colon_token: Default::default(),
+                                    ty: Box::new(Type::Path(TypePath {
+                                        qself: None,
+                                        path: syn::Path {
+                                            leading_colon: None,
+                                            segments: Punctuated::from_iter(vec![PathSegment {
+                                                ident: const_param.ident.clone(),
+                                                arguments: PathArguments::None,
+                                            }]),
+                                        },
+                                    })),
+                                });
+                                func.sig.inputs.push(new_arg);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator replaces constant parameters in generic functions with variable parameters. This transformation tests the compiler's ability to handle changes in parameter types and infer the type of the variable."
+    }
+}

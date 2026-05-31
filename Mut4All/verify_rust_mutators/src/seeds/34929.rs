@@ -1,0 +1,1 @@
+enum E { V { x : u8 } } fn main () { match (E :: V { x : 0 }) { E :: V_Typoed { .. } => { } } }

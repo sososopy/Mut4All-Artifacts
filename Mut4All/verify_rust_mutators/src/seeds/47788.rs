@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] use std :: time :: Instant ; pub struct GlobalTimer { time : Instant , } union DummyUnion { time : Instant , junk : u32 } impl GlobalTimer { pub const fn init () -> GlobalTimer { const DUMMY : DummyUnion = DummyUnion { junk : 0 } ; const UNINIT : Instant = unsafe { DUMMY . time } ; GlobalTimer { time : UNINIT , } } } fn main () { }

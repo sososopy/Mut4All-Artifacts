@@ -1,0 +1,1 @@
+# [export_name = "\0foo"] pub fn baz () { } fn main () { }

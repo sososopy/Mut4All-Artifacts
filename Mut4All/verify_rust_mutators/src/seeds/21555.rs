@@ -1,0 +1,1 @@
+trait AnyTrait { } trait Foo where Self :: Bug : AnyTrait { } fn main () { }

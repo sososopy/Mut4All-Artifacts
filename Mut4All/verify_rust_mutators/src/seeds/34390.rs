@@ -1,0 +1,1 @@
+const S : str = * "foo" ; fn main () { println ! ("{}" , & S) ; }

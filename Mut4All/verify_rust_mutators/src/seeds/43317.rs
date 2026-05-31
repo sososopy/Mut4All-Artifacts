@@ -1,0 +1,1 @@
+# ! [feature (repr_align , attr_literals)] # [repr (packed)] # [repr (align (4))] pub struct BadStruct { foo : i32 } fn main () { BadStruct { foo : 0 } ; }

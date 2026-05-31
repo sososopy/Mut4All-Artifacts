@@ -1,0 +1,1 @@
+fn foo () { } fn combine_block () { foo ((1 , 2 , 3 , | x | { let y = x + 1 ; })) ; } pub fn main () { }

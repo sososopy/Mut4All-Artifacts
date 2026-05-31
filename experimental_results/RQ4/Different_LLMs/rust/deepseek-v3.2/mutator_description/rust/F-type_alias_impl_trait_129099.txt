@@ -1,0 +1,31 @@
+Mutation operator: Replace opaque type alias impl Trait with concrete type from function signature.
+
+This mutation operator targets code constructs where a type alias is defined with `impl Trait` and is used within a function. Specifically, it applies when a function returns an opaque type alias (`type Opaque = impl Sized;` or similar) and the function body assigns a value of a different type to a variable declared as that opaque type. The operator replaces the opaque type alias in the variable assignment with a concrete type derived from the function's return type, if such a concrete type can be inferred or is explicitly present.
+
+The mutation modifies the assignment statement where a variable is declared with the opaque type alias. It replaces the opaque type alias in the variable's type annotation with a concrete type that is compatible with the function's return signature. For example, if the function returns `Option<Opaque>`, the concrete type used should be the type that would normally be inside the `Option`, based on other expressions in the function. If no such concrete type is directly available, the mutation introduces a new concrete type that matches the expected trait bounds, such as a unit type `()` if `Sized` is the only constraint.
+
+Changes to be made:
+1. Locate a function that returns an opaque type alias (e.g., `fn define() -> Option<Opaque>`).
+2. Inside that function, find a variable assignment where the variable is declared with the opaque type alias (e.g., `let _: Opaque = ...`).
+3. Replace the opaque type alias in the variable's type annotation with a concrete type. This concrete type should be:
+   - If the function's return type is a wrapper like `Option<T>`, use the inner type `T` that is explicitly used elsewhere in the function (e.g., `None` implies `Option<()>` could be used, so `()` might be suitable).
+   - If no explicit inner type is present, introduce a new type that satisfies the trait bounds of the opaque alias. For `impl Sized`, use `()`.
+   - Ensure the new type is declared in the scope if it does not exist. For `()`, it is built-in and does not require declaration.
+4. Adjust the assigned expression to match the new concrete type if necessary, but preference is given to using existing variables or expressions from the seed program.
+
+Example based on the bug report seed code:
+Original code snippet:
+type Opaque = impl Sized;
+fn define() -> Option<Opaque> {
+    let _: Opaque = dyn_hoops::<u8>(0);
+    None
+}
+
+Mutated code snippet:
+type Opaque = impl Sized;
+fn define() -> Option<Opaque> {
+    let _: () = dyn_hoops::<u8>(0);
+    None
+}
+
+In this mutation, the opaque type `Opaque` in the variable declaration is replaced with the concrete type `()`, which is `Sized`. The expression `dyn_hoops::<u8>(0)` remains unchanged, but it may now cause a type mismatch that could trigger different compiler behavior, potentially exposing bugs related to type checking of opaque types versus concrete types.

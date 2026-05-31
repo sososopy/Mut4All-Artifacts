@@ -1,0 +1,98 @@
+use proc_macro2::{Span,*};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command,*};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Closure_Capture_Order_Alteration_44;
+
+impl Mutator for Closure_Capture_Order_Alteration_44 {
+    fn name(&self) -> &str {
+        "Closure_Capture_Order_Alteration_44"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let Item::Fn(func) = item {
+                if func.sig.constness.is_some() {
+                    if let Some(block) = &mut func.block {
+                        let mut new_stmts = vec![];
+                        let mut stmts = std::mem::take(&mut block.stmts);
+                        let mut local_vars: std::collections::HashMap<Ident, (usize, Stmt)> = std::collections::HashMap::new();
+                        
+                        for (i, stmt) in stmts.iter().enumerate() {
+                            if let Stmt::Local(local) = stmt {
+                                if let Pat::Ident(pat_ident) = &local.pat {
+                                    local_vars.insert(pat_ident.ident.clone(), (i, stmt.clone()));
+                                }
+                            }
+                        }
+
+                        for (i, stmt) in stmts.iter().enumerate() {
+                            if let Stmt::Expr(expr) = stmt {
+                                if let Expr::Return(expr_return) = &**expr {
+                                    if let Some(value) = &expr_return.expr {
+                                        if let Expr::Closure(closure) = &**value {
+                                            let mut collector = MatchVarCollector { vars: std::collections::HashSet::new() };
+                                            collector.visit_expr(closure);
+                                            let vars = collector.vars;
+
+                                            let mut to_move = vec![];
+                                            for var in &vars {
+                                                if let Some((_, stmt)) = local_vars.get(var) {
+                                                    to_move.push(stmt.clone());
+                                                }
+                                            }
+
+                                            new_stmts.push(stmt.clone());
+                                            for s in to_move {
+                                                new_stmts.push(s);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        for s in stmts {
+                            new_stmts.push(s);
+                        }
+
+                        block.stmts = new_stmts;
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator alters the order of variable captures in closures returned from const functions, placing the closure before the declaration of variables used in match patterns. This disrupts the expected capture order, potentially exposing ICEs during closure type inference or pattern matching resolution."
+    }
+}
+
+struct MatchVarCollector {
+    vars: std::collections::HashSet<Ident>,
+}
+
+impl<'ast> Visit<'ast> for MatchVarCollector {
+    fn visit_pat(&mut self, pat: &Pat) {
+        if let Pat::Ident(pat_ident) = pat {
+            self.vars.insert(pat_ident.ident.clone());
+        }
+        syn::visit::visit_pat(self, pat);
+    }
+}

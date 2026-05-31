@@ -1,0 +1,1 @@
+struct Test { mem : int , } pub static g_test : Test = Test { mem : 0 , } ; impl Drop for Test { fn drop (& self) { } } fn main () { }

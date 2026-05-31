@@ -1,0 +1,1 @@
+enum Foo { Foo (i32) , } fn bar (foo : Foo) { | | { let Foo :: Foo (baz) = foo ; } ; }

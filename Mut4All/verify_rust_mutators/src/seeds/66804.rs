@@ -1,0 +1,1 @@
+macro_rules ! doc_comment { ($ x : expr) => { # [doc = $ x] extern { } } ; } macro_rules ! some_macro { ($ t1 : ty) => { doc_comment ! { format ! ("{coor}" , coor = stringify ! ($ t1)) . as_str () } } } fn main () { some_macro ! (u8) ; }

@@ -1,0 +1,1 @@
+fn x < T > (val : & T) { let mut buf = String :: new () ; let mut formatter = core :: fmt :: Formatter :: new (& mut buf) ; fmt :: Display :: fmt (val , & mut formatter) . unwrap () ; }

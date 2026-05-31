@@ -1,0 +1,23 @@
+Mutation Operator: Nested Impl Trait in Closure Return Type
+
+This mutation operator targets function signatures where a function returns a closure (e.g., impl Fn(...) or impl FnMut(...) or impl FnOnce(...)). It modifies the return type to introduce a nested impl Trait within the closure's parameter list. This operator applies when the function already returns an impl Trait that is a function trait (Fn, FnMut, FnOnce). The mutation changes a parameter type inside the closure's parameter list to an impl Trait, provided the original parameter type is a named type (like a concrete type or a type parameter) that can be replaced. If the seed program does not have a suitable parameter type, the mutation may not apply.
+
+Steps:
+1. Identify a function in the seed program that returns an impl Trait which is a function trait (e.g., impl Fn(Type1, Type2) -> ReturnType). Let the return type be impl Fn(T1, T2, ..., Tn) -> R, where each Ti is a parameter type.
+2. Select one of the parameter types Ti that is a named type (not already an impl Trait, and not a reference or other complex type that would be invalid to replace with impl Trait). If no such Ti exists, the mutation does not apply.
+3. Replace the selected Ti with impl TraitBound, where TraitBound is a trait that the original type Ti implements. If Ti does not implement any trait, use a common trait like Debug or Default if available in scope. If no suitable trait is in scope, introduce a new trait bound by adding a dummy trait (e.g., trait DummyTrait {} ) and ensuring Ti implements it via a local impl, but this may be complex; prefer to use an existing trait from the seed program.
+4. Ensure the closure body remains valid; if the closure uses the parameter, the usage must be compatible with the new impl Trait (e.g., only trait methods can be called).
+
+Example before mutation: 
+fn foo() -> impl Fn(i32) -> i32 {
+    |x| x + 1
+}
+
+Example after mutation:
+fn foo() -> impl Fn(impl Debug) -> i32 {
+    |x| { let _ = format!("{:?}", x); 1 }
+}
+
+Note: The closure body may need adjustment to use the parameter via the trait (e.g., calling Debug::fmt). If the original closure does not use the parameter, the body can remain unchanged (as the parameter is still present but unused). The goal is to create the nested impl Trait structure that triggered the bug.
+
+This mutation aims to replicate the conditions that caused the ICE: a closure returned from a function with an impl Trait return type, where the closure's parameter is itself an impl Trait, and the closure captures variables (if any exist in the seed function). The seed function should have a local variable that can be captured by the closure; if not, the mutation may still trigger the bug but without capture.

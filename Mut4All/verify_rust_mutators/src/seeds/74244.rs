@@ -1,0 +1,1 @@
+# ! [feature (type_alias_impl_trait)] use nalgebra :: Vector3 ; pub type A = impl Fn (Vector3 < f64 >) ; pub fn foo () -> A { | _ | () }

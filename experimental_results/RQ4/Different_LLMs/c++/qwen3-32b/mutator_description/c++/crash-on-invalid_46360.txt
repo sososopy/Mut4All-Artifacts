@@ -1,0 +1,14 @@
+mutation operator: replace a standard function or lambda with one that captures a variable, then use `decltype(std::declval<captured_type>().operator()(...))` in a `static_assert` to force type evaluation, targeting complex or invalid expressions that may crash the compiler during type deduction.  
+
+example:  
+original:  
+`int foo(int x) { return x + 1; }`  
+
+mutated:  
+`auto lambda = [x = 42](auto y) {  
+   using F = decltype([x](auto z) { return x + z; });  
+   static_assert(std::is_same_v<decltype(std::declval<F>().operator()(std::declval<y>()) * 0), int>);  
+   return x + y;  
+};`  
+
+note: this introduces a nested lambda capturing `x`, then uses `declval` to evaluate its `operator()` return type in a `static_assert`, creating a scenario where the compiler must process a potentially invalid or complex type involving a captured lambda, which may trigger crashes during invalid type deduction.

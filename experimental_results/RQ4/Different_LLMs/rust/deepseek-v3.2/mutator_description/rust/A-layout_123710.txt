@@ -1,0 +1,14 @@
+mutation operator: Insert a union with a packed enum field that has an explicit integer representation and initialize it with a value that does not correspond to a valid discriminant.
+
+This mutation applies to code that defines an enum with an explicit integer representation (e.g., `#[repr(u32)]`). It introduces a new union type that contains two fields: one field is a primitive integer type matching the enum's representation (e.g., `u32`), and the other field is the packed enum type. The union must be declared within the same scope, such as inside a function. The union is then instantiated, initializing the integer field with a value. This value should be chosen such that when interpreted as the enum's discriminant, it may be invalid (e.g., out of range for the defined variants). The mutation does not require unsafe code for the union definition or initialization, but any subsequent use of the enum field should be wrapped in an unsafe block. The goal is to create a scenario where the compiler must handle the layout of a packed enum within a union, particularly when the stored integer might not correspond to a valid enum variant.
+
+Example of changes to seed code:
+If the seed code contains an enum definition like `#[repr(u16)] enum Color { Red, Green }`, and a function `fn main() { }`, the mutation would add within `main`:
+```
+union MutatedUnion {
+    int: u16,
+    color: Color,
+}
+let _mu = MutatedUnion { int: 1000 };
+```
+Here, `Color` is the existing packed enum, `u16` matches its representation, and `1000` is an example value not among the defined discriminants (Red=0, Green=1). No new types or functions beyond the union are introduced; the union uses existing types. The union is declared locally inside the function.

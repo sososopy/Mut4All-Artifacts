@@ -1,0 +1,15 @@
+Mutation operator: Replace a function call argument with a large negative integer constant that requires more than 64 bits to represent in two's complement.
+
+This mutation operator applies when a function call expression is encountered in the source code. It targets one of the integer literal arguments passed to the function. The operator replaces the original argument with a large negative integer constant that has a magnitude large enough that its absolute value cannot be represented within a signed 64-bit integer (int64_t). Specifically, it should be a value less than or equal to -2^63 (i.e., -9223372036854775808LL or lower, considering extended integer types). In practice, for C++ integer literals, this can be achieved using a negative value with the `LL` suffix and a magnitude of 2^63 or more, which may be interpreted as an `__int128` or similar extended type in some compiler contexts, potentially triggering internal overflow or representation issues in the compiler's constant handling logic.
+
+The operator first identifies a function call within the seed program. It then selects one argument that is an integer constant (like `5`, `-1`, `100LL`). This argument is replaced. The new constant should be a literal like `-9223372036854775809LL` (which is -2^63 - 1) or `-18446744073709551616LL` (which is -2^64). The exact value must be a compile-time integer constant that is negative and whose bit width exceeds 64 bits when considered as a signed value. The operator should prefer to use a suffix (e.g., `LL`) that matches or extends the type of the original constant if present, to maintain syntactic consistency. If the original constant had no suffix, `LL` can be added to the new constant.
+
+Example mutation:
+Original seed code snippet: `int x = some_function(10, 20);`
+After mutation: `int x = some_function(-9223372036854775809LL, 20);`
+
+Or, if the original argument is already a large constant:
+Original: `void foo(long long p = 1000000000000LL);`
+After mutation: `void foo(long long p = -18446744073709551616LL);`
+
+The mutation introduces a new integer literal; no new variables or types are declared. It relies on existing function call structures. The change is made directly in the argument list of the function call. This can expose bugs in compiler frontends when they process extreme integer constants in specific contexts, such as within function arguments that may be evaluated for constant expressions or template arguments, leading to assertion failures like the one in APSInt.h.

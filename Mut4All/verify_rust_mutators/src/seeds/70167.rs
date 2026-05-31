@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] use std :: ops :: Div ; use num :: Float ; # [doc = " Abstract vector over some finite field"] pub trait Vector < const N : usize > : Div < < Self as Vector < N > > :: Field , Output = Self > + Copy { type Field : Float ; fn cons (vs : [Self :: Field ; N]) -> Self { todo ! () } }

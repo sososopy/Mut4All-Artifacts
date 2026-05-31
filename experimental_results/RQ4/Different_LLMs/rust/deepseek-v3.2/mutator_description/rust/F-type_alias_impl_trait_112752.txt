@@ -1,0 +1,25 @@
+Based on the bug report which involves an internal compiler error in debuginfo generation for a type alias impl Trait (TAIT) used in a static mut variable, we can identify that bugs are more likely to trigger at the intersection of advanced type system features (like TAIT) and specific contexts where those types are used (like static or const items, especially mutable ones). The compiler's debuginfo infrastructure may not fully handle the concrete type substitution or monomorphization for such opaque types in all contexts.
+
+mutation operator: Replace a static item's type with a type alias impl Trait (TAIT) that is defined in the same scope and implements the required traits.
+
+This operator applies when a seed program contains a static item (either `static` or `static mut`) with an explicit concrete type. The operator will attempt to replace that concrete type with a TAIT that is defined to be an impl Trait of a compatible trait. The goal is to introduce the pattern that caused the ICE: a TAIT used in a static context.
+
+Procedure:
+1. Identify all static items in the seed program (both `static` and `static mut`). For each candidate, examine its explicitly annotated type T (if present).
+2. Check if type T implements any well-known, commonly used traits that can be used with `impl Trait`, such as `Debug`, `Clone`, `Default`, `Send`, `Sync`, or a trait that is already in scope (e.g., from a `use` statement or a local trait). If T does not implement any such trait, this operator does not apply to that static item.
+3. For a selected static item with type T that implements trait Tr (e.g., `Debug`), create a type alias at an appropriate scope (typically the same module as the static). The alias should be defined as `type NewAlias = impl Tr;`. Ensure the alias name does not conflict with existing identifiers; if necessary, generate a unique name by appending a suffix like `_alias`.
+4. Replace the static item's type annotation T with the new alias name NewAlias.
+5. Add a function that returns the type `NewAlias` and whose body returns a value of the original concrete type T. This function serves to define the concrete type for the TAIT. Place this function in the same module. The function should be named uniquely to avoid conflicts.
+6. Adjust the static item's initializer expression if necessary. The initializer must be of a type that matches the TAIT's constraints. Since the TAIT is defined as `impl Tr` and we know T implements Tr, and the initializer is of type T (originally), it should be compatible. However, if the initializer is not a simple expression of type T, we may need to cast or wrap it. For simplicity, if the initializer is not exactly of type T (e.g., it's a literal that infers to T), we assume the compiler can infer it. If the initializer is complex, we may need to coerce it to T explicitly.
+
+Example transformation of a seed code snippet:
+Seed code:
+static COUNTER: u32 = 0;
+After mutation, assuming u32 implements Debug:
+type AliasCounter = impl Debug;
+static COUNTER: AliasCounter = 0;
+fn _define_alias_counter() -> AliasCounter { 0u32 }
+
+Note: The operator must ensure that the feature gate `#![feature(type_alias_impl_trait)]` is added to the crate root if not already present. This is required for TAIT.
+
+This mutation operator targets the specific interaction between TAIT and static items, which is the core of the reported bug. It can be applied to any static with a type that implements a suitable trait, increasing the chance of triggering similar debuginfo generation issues.

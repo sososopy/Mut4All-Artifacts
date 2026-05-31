@@ -1,0 +1,1 @@
+fn f < T > (v : T) -> T { v } fn main () { let _ = f (()) as uint ; }

@@ -1,0 +1,1 @@
+struct Foo < A > ; impl < A : Copy > Copy for Foo < A > where < A as Repr > :: Data : Copy { } trait Repr { type Data ; } impl < A > Repr for A { type Data = u32 ; } fn main () { }

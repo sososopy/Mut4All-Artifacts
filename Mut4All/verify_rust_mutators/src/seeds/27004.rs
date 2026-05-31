@@ -1,0 +1,1 @@
+macro_rules ! foo { () => () } pub fn main () { for foo ! () in (1 ..) { } }

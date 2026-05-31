@@ -1,0 +1,26 @@
+Mutation Operator: AddSliceTraitBoundToGenericFn  
+Applies to: Functions with a generic parameter and a slice parameter (e.g., `fn f<T>(s: &[T])`)  
+Effect: Adds a `where` clause requiring the slice's element type (`[T]`) to implement a trait (e.g., `Clone`), even if the function body does not use the trait.  
+
+Example before mutation:  
+```rust  
+fn process<T>(data: &[T]) {  
+    // ...  
+}  
+```  
+
+Example after mutation:  
+```rust  
+fn process<T>(data: &[T])  
+where  
+    [T]: Clone,  
+{  
+    // ...  
+}  
+```  
+
+Rationale:  
+This mutation forces the compiler to handle the `where [T]: Clone` bound during MIR optimization. Slices are not scalar types, and improper handling of such bounds in optimization passes (e.g., value analysis) may trigger ICEs like "slices are not scalars." The mutation avoids introducing new variables or types; it uses the existing generic parameter `T` and slice type `[T]` from the target function.  
+
+Coverage:  
+Applies to functions with slice parameters in generic contexts, increasing likelihood of exposing bugs in MIR optimizations involving type constraints and non-scalar values.

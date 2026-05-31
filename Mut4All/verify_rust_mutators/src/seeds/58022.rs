@@ -1,0 +1,1 @@
+pub trait Foo : Sized { const SIZE : usize ; fn new (slice : & [u8 ; Foo :: SIZE]) -> Self ; } pub struct Bar < T : ? Sized > (T) ; impl Bar < [u8] > { const SIZE : usize = 32 ; fn new (slice : & [u8 ; Self :: SIZE]) -> Self { Foo (Box :: new (* slice)) } } fn main () { println ! ("Hello, world!") ; }

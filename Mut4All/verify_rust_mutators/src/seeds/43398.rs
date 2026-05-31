@@ -1,0 +1,1 @@
+# ! [feature (core_intrinsics)] # ! [feature (i128_type)] # [repr (i128)] enum Big { A , B } fn main () { unsafe { println ! ("{} {:?}" , std :: intrinsics :: discriminant_value (& Big :: A) , std :: mem :: discriminant (& Big :: B)) ; } }

@@ -1,0 +1,1 @@
+trait MyTrait { } struct Foo ; impl MyTrait for Foo { } fn main () { let foo : Foo = Foo ; let t = foo as MyTrait ; }

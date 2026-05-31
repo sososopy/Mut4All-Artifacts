@@ -1,0 +1,1 @@
+macro_rules ! def_response_type { ($ ($ n : $ ty ,) *) => { struct Bar { $ ($ n : $ ty ,) } impl Bar { } } ; }

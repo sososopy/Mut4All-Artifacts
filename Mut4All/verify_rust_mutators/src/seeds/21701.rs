@@ -1,0 +1,1 @@
+fn foo < U > (t : U) { let y = t () ; } pub fn main () { foo (| | { 1 }) ; }

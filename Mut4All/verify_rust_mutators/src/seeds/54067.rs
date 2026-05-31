@@ -1,0 +1,1 @@
+# ! [feature (asm)] pub fn boot (addr : Option < u32 >) { unsafe { asm ! ("mov sp, $0" : : "r" (addr)) ; } }

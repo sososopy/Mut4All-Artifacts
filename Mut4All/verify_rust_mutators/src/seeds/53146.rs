@@ -1,0 +1,1 @@
+pub struct Foo ; pub trait Bar { } fn mk () -> Vec < Foo < impl Bar > > { }

@@ -1,0 +1,1 @@
+use proc_macro :: TokenStream ; # [proc_macro] pub fn cause_ice (_ : TokenStream) -> TokenStream { quote :: quote ! (enum IceCause { Variant , } pub use IceCause :: Variant ;) . into () }

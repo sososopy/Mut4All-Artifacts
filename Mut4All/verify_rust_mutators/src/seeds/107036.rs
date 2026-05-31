@@ -1,0 +1,1 @@
+pub trait T { } impl T for () { } pub struct S { } impl S { pub async fn f < 'a > (& self) -> impl T + 'a { () } } use crate1 :: S ; async fn f () { S { } . f () . await ; }

@@ -1,0 +1,1 @@
+use std :: convert :: TryInto ; fn main () { let x : u32 = 5i32 . try_into :: < 32 > () . unwrap () ; }

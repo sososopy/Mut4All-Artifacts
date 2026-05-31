@@ -1,0 +1,18 @@
+Mutation Operator: Insert a nested async closure within an existing async item.
+
+This operator targets code constructs involving async functions, async blocks, or closures. It applies when a seed program contains at least one async item (such as an `async fn` or an `async` block). The mutation creates a new, immediately-invoked async closure inside an existing async context. This aims to replicate the nested closure pattern that triggered the original bug, potentially exposing similar index mismatches in the compiler's coverage instrumentation or HIR mapping logic.
+
+Specifically, locate an existing async function body or async block. Within its body, identify a statement (or the final expression if it's an expression-oriented block). Insert a new statement before it. This new statement should define and immediately call an async closure. The closure should capture one or more variables from the outer scope (using `move` if necessary to satisfy ownership rules) and have a simple body, such as a unit expression `()`.
+
+For example, given a seed async function like:
+async fn example() {
+    let x = 5;
+    perform_work(x).await;
+}
+The mutation could transform it to:
+async fn example() {
+    let x = 5;
+    (async move || { let _ = x; })().await;
+    perform_work(x).await;
+}
+Here, `(async move || { let _ = x; })()` is the inserted async closure. The closure captures `x` from the outer scope. The operator should use variable names and types that already exist in the seed program's scope to avoid introducing undeclared identifiers. If no suitable variable exists to capture, the closure body can be empty `{}`. This mutation increases nesting depth and creates additional closure nodes that may stress the compiler's internal indexing for coverage instrumentation.

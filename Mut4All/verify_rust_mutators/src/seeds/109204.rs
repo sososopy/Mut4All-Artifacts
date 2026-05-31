@@ -1,0 +1,1 @@
+trait Fun { type Output ; fn call < 'x > (& 'x self) -> Self :: Output ; } struct Holder { x : String } impl < 'a > Fun for Holder { type Output = & 'a str ; fn call < 'b > (& 'b self) -> & 'b str { & self . x [..] } } fn main () { }

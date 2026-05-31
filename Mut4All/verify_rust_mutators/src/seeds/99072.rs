@@ -1,0 +1,1 @@
+fn main () { let f = fix (| _ : & dyn Fn () | { }) ; f () ; } fn fix < F : Fn (G) , G : Fn () > (f : F) -> impl Fn () { move | | f (fix (& f)) }

@@ -1,0 +1,1 @@
+# ! [feature (drop_types_in_const)] struct Dropper ; impl Drop for Dropper { fn drop (& mut self) { println ! ("dropping") ; } } static mut D : Dropper = Dropper ; fn main () { unsafe { D = Dropper ; } }

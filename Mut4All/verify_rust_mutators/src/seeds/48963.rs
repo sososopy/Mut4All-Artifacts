@@ -1,0 +1,1 @@
+trait Broken < 'a > { const LEN : usize ; fn buf () -> & 'a [u8 ; Broken :: LEN] ; fn buf_mut () -> & 'a mut [u8 ; Broken :: LEN] ; }

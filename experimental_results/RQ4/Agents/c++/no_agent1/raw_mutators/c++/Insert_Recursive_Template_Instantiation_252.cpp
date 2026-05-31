@@ -1,0 +1,66 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Insert_Recursive_Template_Instantiation_252
+ */ 
+class MutatorFrontendAction_252 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(252)
+
+private:
+    class MutatorASTConsumer_252 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_252(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        std::vector<const clang::ClassTemplateDecl *> templates;
+    };
+};
+
+//source file
+#include "../include/insert_recursive_template_instantiation_252.h"
+
+// ========================================================================================================
+#define MUT252_OUTPUT 1
+
+void MutatorFrontendAction_252::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *CTD = Result.Nodes.getNodeAs<clang::ClassTemplateDecl>("Templates")) {
+        if (!CTD || !Result.Context->getSourceManager().isWrittenInMainFile(CTD->getLocation()))
+            return;
+
+        templates.push_back(CTD);
+
+        if (templates.size() >= 2) {
+            const auto *template1 = templates[0];
+            const auto *template2 = templates[1];
+
+            std::string template1Name = template1->getNameAsString();
+            std::string template2Name = template2->getNameAsString();
+
+            std::string instantiation = "template<> struct " + template1Name + "<" + template2Name + "<" + template1Name + "<int>>> {};\n";
+            instantiation = "/*mut252*/" + instantiation;
+
+            SourceLocation insertLoc = template2->getEndLoc();
+            Rewrite.InsertTextAfterToken(insertLoc, instantiation);
+        }
+    }
+}
+
+void MutatorFrontendAction_252::MutatorASTConsumer_252::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    DeclarationMatcher matcher = classTemplateDecl().bind("Templates");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

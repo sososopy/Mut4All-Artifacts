@@ -1,0 +1,1 @@
+# ! [feature (optin_builtin_traits)] pub struct A () ; impl ! Send for A { } impl ! Sync for A { } pub struct B < T : ? Sized > (A , Box < T >) ;

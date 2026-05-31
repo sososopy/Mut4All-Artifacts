@@ -1,0 +1,20 @@
+mutation operator: Replace a variable template partial specialization with an equivalent class template partial specialization, targeting variable templates that have template template parameters and are partially specialized.
+
+This mutation applies when the seed program contains a variable template that is partially specialized, and the specialization involves a template template parameter. The mutation changes the variable template and its partial specialization into a class template with a static constexpr member variable, preserving the same specialization pattern.
+
+For a variable template declaration of the form:
+template <typename... Ts> template <typename T, template <Ts...> class C> static constexpr bool var = false;
+And a partial specialization of the form:
+template <template <Ts...> class C, Ts... Us> static constexpr bool var<C<Us...>, C> = true;
+Replace with:
+template <typename... Ts> template <typename T, template <Ts...> class C> struct var_wrapper { static constexpr bool value = false; };
+And for the specialization:
+template <template <Ts...> class C, Ts... Us> struct var_wrapper<C<Us...>, C> { static constexpr bool value = true; };
+Then update all uses of the original variable template to access the value member, e.g., change var<Args...> to var_wrapper<Args...>::value.
+
+The mutation must use existing template and parameter names from the seed program. The new class template name should be derived by appending a suffix like "_wrapper" to the original variable template name, ensuring it does not conflict with existing identifiers. If such a name already exists, modify the suffix to avoid conflict, e.g., "_mutated". The static constexpr member must be named value.
+
+Example transformation based on the bug report:
+Original code snippet: template <typename... param_types> struct is_specified_instantiation_of { template <typename T, template <param_types...> class container> static constexpr bool value = false; template <template <param_types...> class container, param_types... params> static constexpr bool value<container<params...>, container> = true; };
+Mutated code: template <typename... param_types> struct is_specified_instantiation_of { template <typename T, template <param_types...> class container> struct value_wrapper { static constexpr bool value = false; }; template <template <param_types...> class container, param_types... params> struct value_wrapper<container<params...>, container> { static constexpr bool value = true; }; };
+Then, update the static_assert to use value_wrapper<...>::value instead of the original variable template.

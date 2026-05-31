@@ -1,0 +1,1 @@
+# ! [feature (dyn_star)] # ! [allow (incomplete_features)] use core :: fmt :: Debug ; fn main () { let i = 42 as & dyn * Debug ; }

@@ -1,0 +1,1 @@
+# ! [feature (async_await)] fn main () { } async fn response (data : Vec < u8 >) { data . reverse () ; }

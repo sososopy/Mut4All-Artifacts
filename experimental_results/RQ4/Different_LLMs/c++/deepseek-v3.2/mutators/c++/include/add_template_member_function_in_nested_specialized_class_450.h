@@ -1,0 +1,33 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Add_Template_Member_Function_In_Nested_Specialized_Class_450
+ */ 
+class MutatorFrontendAction_450 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(450)
+
+private:
+    class MutatorASTConsumer_450 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_450(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        //Necessary node information record used in the mutation process
+        std::vector<const clang::CXXRecordDecl*> nestedClasses;
+        std::vector<const clang::FunctionDecl*> candidateFunctions;
+    };
+};
+

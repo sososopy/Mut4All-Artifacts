@@ -1,0 +1,1 @@
+mod MyMod { } fn main () { let myVar = MyMod { T : 0u64 } ; }

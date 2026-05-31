@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] trait Quux { } fn foo () -> impl Quux { struct Foo < T > (T) ; impl < T > Quux for Foo < T > { } Foo (bar ()) } fn bar () -> impl Quux { struct Bar < T > (T) ; impl < T > Quux for Bar < T > { } Bar (foo ()) } fn main () { foo () ; }

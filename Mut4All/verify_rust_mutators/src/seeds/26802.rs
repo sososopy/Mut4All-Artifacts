@@ -1,0 +1,1 @@
+trait Foo < 'a > { fn bar < 'b > (& self , _ : & 'b u8) where 'a : 'b { } } pub struct FooBar ; impl Foo < 'static > for FooBar { } fn test (foobar : FooBar) -> Box < Foo < 'static > > { Box :: new (foobar) }

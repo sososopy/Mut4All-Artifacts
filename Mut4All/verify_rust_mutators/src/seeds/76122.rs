@@ -1,0 +1,1 @@
+trait Trait { type Type ; const VALUE : Self :: Type ; } trait TraitExt { type Array ; } impl < T > TraitExt for dyn Trait < Type = T > { type Array = [usize ; Self :: VALUE] ; }

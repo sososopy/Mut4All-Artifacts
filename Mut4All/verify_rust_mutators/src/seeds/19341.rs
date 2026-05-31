@@ -1,0 +1,1 @@
+mod point { } fn main () { let point = point { x : 0 , y : 0 } ; }

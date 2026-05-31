@@ -1,0 +1,1 @@
+pub trait Trait where Self :: Out : std :: fmt :: Show { type Out ; }

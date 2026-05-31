@@ -1,0 +1,1 @@
+struct Foo ; impl Foo { fn iter (& self) -> Box < Iterator < Item = usize > > { return Box :: new (range (0 , 3) . map (| i | { return i ; })) ; } } fn main () { for i in Foo . iter () { println ! ("{:?}" , i) ; } }

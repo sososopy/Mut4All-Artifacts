@@ -1,0 +1,1 @@
+fn main () -> Result < () , Box < Option < & 'static str > > > { Err (Box :: new (None)) }

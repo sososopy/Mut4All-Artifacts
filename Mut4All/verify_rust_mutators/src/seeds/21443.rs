@@ -1,0 +1,1 @@
+macro_rules ! weird { ($ a : elem , $ b : expr) => { } } fn main () { weird ! (a , b) ; }

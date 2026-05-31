@@ -1,0 +1,21 @@
+Mutation Operator: Replace Allocator Argument with Generic Type Parameter
+This mutation operator targets function calls that use allocator APIs, specifically those with an explicit allocator argument. It replaces the allocator argument with a generic type parameter that is constrained to implement the Allocator trait, thereby introducing a generic context that may expose issues in type transformation passes like those used by CFI sanitization.
+
+Where it applies: This operator applies to any function call expression where an allocator argument is provided, such as calls to Box::new_in, Vec::with_capacity_in, or similar functions from the allocator_api feature. The seed program must already be using the allocator_api feature (via #![feature(allocator_api)]) and contain at least one such function call.
+
+Changes to make: For a given function call with an allocator argument, modify the enclosing function (or introduce a new generic function) to take a generic type parameter for the allocator. Then, replace the concrete allocator argument in the call with that generic parameter. If the seed program does not have a suitable enclosing function, wrap the call in a new generic function that is immediately invoked.
+
+Example: Suppose the seed program contains the following code within a function:
+let x = Box::new_in(value, &std::alloc::Global);
+We introduce a new generic function (or modify the existing function) as follows:
+fn generic_allocator_function<T, A>(value: T, allocator: &A) -> Box<T, A>
+where
+    A: std::alloc::Allocator,
+{
+    Box::new_in(value, allocator)
+}
+Then, replace the original call with:
+let x = generic_allocator_function(value, &std::alloc::Global);
+Alternatively, if the seed program already has a generic context, we can add a generic parameter for the allocator and change the call to use that parameter instead of a concrete allocator.
+
+The mutation should use existing variable names and types from the seed program. The generic parameter name should be chosen to not conflict with existing names (e.g., by using a fresh identifier like A if not already used). This introduces a generic type parameter that the compiler must handle during typeid transformation, potentially exposing bugs like the one reported.

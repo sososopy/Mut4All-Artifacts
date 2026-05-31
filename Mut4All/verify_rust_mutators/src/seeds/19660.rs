@@ -1,0 +1,1 @@
+# ! [feature (lang_items)] # ! [no_std] # [lang = "sized"] trait Sized { } # [start] fn main (_ : int , _ : * const * const u8) -> int { 0 }

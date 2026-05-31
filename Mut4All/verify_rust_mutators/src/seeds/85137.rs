@@ -1,0 +1,1 @@
+trait Hello { } type HelloType < T = impl Hello > = T ; fn muchwow () -> HelloType { unimplemented ! () } fn main () { }

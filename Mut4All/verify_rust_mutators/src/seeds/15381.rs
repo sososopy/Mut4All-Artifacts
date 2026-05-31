@@ -1,0 +1,1 @@
+struct Wrapper < 'a > { slice : & 'a [u8] } fn main () { let foo = Some (b"Hello World!") ; let bar : Option < Wrapper < 'static > > = foo . map (| & x | Wrapper { slice : x }) ; }

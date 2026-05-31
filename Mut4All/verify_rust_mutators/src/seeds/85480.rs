@@ -1,0 +1,1 @@
+struct Foo { _ : union { } } fn main () { }

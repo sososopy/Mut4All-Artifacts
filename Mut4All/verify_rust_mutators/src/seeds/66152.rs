@@ -1,0 +1,1 @@
+use core :: mem :: size_of ; struct Foo < 'a > { foo0 : Option < Foo < 'a > > , foo1 : Option < Foo < 'a > > , lots_of_foos : [u64 ; size_of :: < Option < Foo < 'a > > > ()] } fn main () { }

@@ -1,0 +1,1 @@
+struct A ; impl A { fn m (& self) { fn x () { self . m () } } }

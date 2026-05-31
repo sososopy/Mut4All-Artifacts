@@ -1,0 +1,1 @@
+fn f < I > (i : I) where I : IntoIterator , I :: Item : for < 'a > Into < & 'a () > , { } fn main () { f (& [f ()]) ; }

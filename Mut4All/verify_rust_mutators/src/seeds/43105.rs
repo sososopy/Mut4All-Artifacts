@@ -1,0 +1,1 @@
+const NUM : u8 = std :: mem :: size_of :: < u8 > () as u8 ; fn main () { match 1 { NUM => unimplemented ! () , _ => unimplemented ! () , } }

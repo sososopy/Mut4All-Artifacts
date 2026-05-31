@@ -1,0 +1,29 @@
+Based on the bug report, the internal compiler error (ICE) occurs due to the interaction of consteval constructors, deleted copy constructors, and nested initialization. The bug is triggered by a specific pattern involving consteval functions and deleted copy operations, likely due to improper handling during constant evaluation. To expose such bugs, mutation operators should focus on consteval functions, copy/move operations, and nested or complex initialization contexts.
+
+Mutation Operator: Introduce a deleted copy or move operation in a class with consteval functions.
+
+This mutation operator applies to class definitions that contain at least one consteval member function (constructor or other method). It modifies the class by adding a deleted copy constructor or deleted move constructor, even if the class currently has implicit copy/move operations. The goal is to create a situation where the compiler must evaluate consteval functions while copy/move operations are explicitly forbidden, potentially triggering ICEs during constant evaluation of nested initializations or method calls.
+
+Step-by-step changes:
+1. Identify a class in the seed program that has at least one consteval member function.
+2. If the class does not already have an explicitly deleted copy constructor, add one: 'ClassName(const ClassName&) = delete;'
+3. If the class does not already have an explicitly deleted move constructor, add one: 'ClassName(ClassName&&) = delete;'
+4. Ensure the added declarations are placed appropriately within the class body, typically after other member declarations.
+5. If the seed program uses variables or objects of this class in nested initializations (e.g., ClassName{ClassName{}}), method calls on temporaries, or other contexts that require constant evaluation, the mutation may directly replicate the bug pattern.
+6. If new elements are introduced, they are limited to these deleted function declarations within the existing class. No new variables, types, or functions outside the class are introduced.
+
+Example illustration:
+Original class may look like:
+struct MyClass {
+    consteval MyClass() {}
+    consteval void doSomething() {}
+};
+After mutation, it becomes:
+struct MyClass {
+    consteval MyClass() {}
+    MyClass(const MyClass&) = delete;
+    consteval void doSomething() {}
+};
+Then, if the seed program contains usage like 'MyClass{MyClass{}}.doSomething();', the mutated code may trigger an ICE similar to the reported bug.
+
+This operator targets the core issue: consteval functions combined with deleted copy operations in nested initialization contexts. It adapts widely by applying to any class with consteval functions, using the existing class name and structure, and does not require customized data names. It achieves coverage by affecting classes across different program structures that use consteval, a feature introduced in C++20. The changes are clear and avoid ambiguous terms, focusing solely on adding deleted copy/move constructors to existing classes.

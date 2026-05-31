@@ -1,0 +1,1 @@
+# ! [allow (dead_code)] mod x { # [no_mangle] fn f () { } } mod y { # [no_mangle] fn f (_ : i32) { } } fn main () { }

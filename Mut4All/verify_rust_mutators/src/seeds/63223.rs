@@ -1,0 +1,1 @@
+const FOO : & str = b ! ("foo") ; pub struct Bar { pub (in :: a) x : u64 }

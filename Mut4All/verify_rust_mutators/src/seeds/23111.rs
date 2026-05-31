@@ -1,0 +1,1 @@
+trait Data { fn values_iter (& self) -> Values ; } struct Values < 'a > { iter : Box < Iterator < Item = & 'a Data > > } type ValuesIter < 'a > = Box < Iterator < Item = & 'a Data > > ; impl < 'a > Values < 'a > { fn use_iter (consume_iter : ValuesIter) -> Values { Values { iter : consume_iter } } } fn main () { }

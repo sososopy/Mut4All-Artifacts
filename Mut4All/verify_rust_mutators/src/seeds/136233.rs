@@ -1,0 +1,1 @@
+trait Foo { fn bar (self) -> impl Deref ; } impl Foo < u8 > for Bar { }

@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] struct Foo < const N : usize > () ; fn main () { let _ = Foo :: < 3 > () ; }

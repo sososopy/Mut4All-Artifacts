@@ -1,0 +1,1 @@
+use std :: fmt ; struct T2 < U , V : fmt :: Display > (U , V) ; impl < V : fmt :: Display , U > Drop for T2 < U , V > { fn drop (& mut self) { println ! ("{}" , self . 1) ; } } fn main () { let _ = T2 (() , 1) ; }

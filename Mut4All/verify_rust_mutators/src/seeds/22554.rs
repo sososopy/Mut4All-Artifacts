@@ -1,0 +1,1 @@
+# [repr (C)] # [allow (dead_code)] struct Slice < T > { data : * const T , len : usize , } fn main () { let text = "Hello World!\n" ; let t1 = text as * const str ; let t2 = t1 as * const Slice < u8 > ; }

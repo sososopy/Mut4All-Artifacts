@@ -1,0 +1,1 @@
+fn foo < F > (_ : F) where F : FnOnce () -> _ { }

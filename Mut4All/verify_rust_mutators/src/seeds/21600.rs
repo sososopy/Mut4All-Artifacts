@@ -1,0 +1,1 @@
+use std :: rand :: { Rng , StdRng } ; fn maker < T , F : Fn (usize) -> T > (count : usize , f : F) -> Vec < T > { let mut vec = Vec :: with_capacity (count) ; for i in (0 .. count) { vec . push (f (i)) } vec } fn main () { let mut rng = StdRng :: new () . unwrap () ; let outer = maker (10 , | i : usize | { maker (10 , | j : usize | { rng . gen :: < i32 > () }) }) ; }

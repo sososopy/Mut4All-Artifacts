@@ -1,0 +1,1 @@
+# ! [feature (capture_disjoint_fields)] enum Variant { A , B , } struct A { field : Variant , } fn main () { let here = A { field : Variant :: A } ; let out_ref = & here . field ; | | match out_ref { Variant :: A => () , Variant :: B => () , } ; }

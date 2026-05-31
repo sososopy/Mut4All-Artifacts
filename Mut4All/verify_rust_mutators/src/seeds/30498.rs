@@ -1,0 +1,1 @@
+# ! [feature (const_fn)] enum Cake { BlackForest , Marmor , } use Cake :: * ; struct Small { _cake : Cake } const fn construct () -> Small { Small { _cake : BlackForest } } const QUX : Small = construct () ; fn main () { let cake = Small { _cake : Marmor } ; if let QUX = cake { println ! ("hi") } }

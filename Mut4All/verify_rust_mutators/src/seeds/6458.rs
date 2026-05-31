@@ -1,0 +1,1 @@
+pub struct TypeWithState < State > ; pub struct MyState ; pub fn foo < State > (_ : TypeWithState < State >) { } pub fn bar () { foo (TypeWithState) ; }

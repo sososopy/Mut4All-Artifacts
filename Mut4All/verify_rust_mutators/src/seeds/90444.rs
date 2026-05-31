@@ -1,0 +1,1 @@
+type A = () ; pub struct B (()) ; enum Thing { } type FnAlias < R = B > = fn (A , & [B] , R) ; impl From < FnAlias < () > > for Thing { fn from (_ : FnAlias) -> Self { } }

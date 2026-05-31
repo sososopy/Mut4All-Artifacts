@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] pub trait VecN { const DIM : usize ; } pub trait Mat where Self :: Row : VecN { type Row ; fn a (& self) -> usize { Self :: Row :: DIM } } fn main () { }

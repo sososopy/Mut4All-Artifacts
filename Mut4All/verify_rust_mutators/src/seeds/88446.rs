@@ -1,0 +1,1 @@
+struct Options { } fn demo (options : & Options) { let p1 : DataPayload < HelloWorldV1Marker > = todo ! () ; let p2 : DataPayload < HelloWorldV1MessageMarker > = p1 . map_project_with_capture (options , | obj , options , _ | todo ! ()) ; }

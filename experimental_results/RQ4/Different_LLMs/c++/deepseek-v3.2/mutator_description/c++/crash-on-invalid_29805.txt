@@ -1,0 +1,39 @@
+Mutation Operator: Explicit Instantiation of Dependent Name within Nested Class Template Bodies
+
+Target Construct: Explicit instantiation directives (e.g., `template<>`) applied to members (types, functions, variables) of class templates, where the member's name is dependent on the template parameters of its enclosing class, and this instantiation is placed within the body of a nested class (struct/union/class) definition.
+
+Applicability: This mutation applies when the seed program contains at least one class template with nested class definitions (inner structs, classes, or unions). The mutation targets explicit instantiation statements inside these nested class bodies.
+
+Mutation Description: Within the body of a nested class inside a class template, insert an explicit instantiation directive for a dependent member name of the enclosing class template. The instantiation should target a member that is declared within the enclosing template but is referenced using a name that depends on the template parameters (e.g., a typedef, static member, or member type that uses the template parameters). The instantiation statement will be syntactically placed before any member declarations or definitions inside the nested class body.
+
+Changes Required:
+1. Identify a class template `TemplateClass` with at least one template parameter (e.g., `typename T`).
+2. Within `TemplateClass`, identify a nested class `NestedClass` (its definition body).
+3. Inside the body of `NestedClass`, before any other members, insert a line: `template<> typename TemplateClass<T>::DependentMemberName;`
+   - `DependentMemberName` must be an existing member of `TemplateClass` whose name is dependent on `T`. Examples include:
+     - A typedef alias defined as `using DependentMemberName = T;` or `using DependentMemberName = SomeType<T>;` within `TemplateClass`.
+     - A static data member declared as `static T DependentMemberName;`.
+     - A member type defined as `class DependentMemberName { };` within `TemplateClass`.
+4. Ensure the instantiation uses the exact existing member name from `TemplateClass`. Do not introduce new member names.
+5. The instantiation directive should be a declaration (not a definition) and use the `typename` keyword if the member is a type.
+
+Example Seed Structure:
+template<typename T>
+struct Outer {
+    using Alias = T;
+    struct Inner {
+        int some_member;
+    };
+};
+
+Mutation Applied:
+template<typename T>
+struct Outer {
+    using Alias = T;
+    struct Inner {
+        template<> typename Outer<T>::Alias;
+        int some_member;
+    };
+};
+
+Note: The mutation introduces an explicit instantiation (`template<>`) of the dependent type name `Outer<T>::Alias` directly inside the body of `Inner`. This construct is invalid because explicit instantiation of dependent names is not allowed in this context, and the compiler's assertion indicates it may crash when processing such code. The mutation leverages existing template structures and member names from the seed to create an invalid instantiation scenario likely to trigger the crash-on-invalid bug described.

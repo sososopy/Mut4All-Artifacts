@@ -1,0 +1,1 @@
+use clap :: { Arg , Command } ; fn main () { let m = Command :: new ("BubblePop") . arg (Arg :: new ("exe") . short ('x') . takes_value (true) . value_name ("exe") . required (true) . help ("The program you wish to run") ,) . get_matches () ; let cmd = m . subcommand_matches ("exe") . unwrap () ; println ! ("exe: {:?}" , cmd) ; }

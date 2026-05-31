@@ -1,0 +1,20 @@
+Mutation Operator: NestedGenericLifetimeConflict
+Target code constructs: Nested generic functions within trait implementations that use non-static lifetimes or overlapping generics.
+Applies to: Method bodies of trait implementations with inner functions containing generic parameters (including lifetimes) not fully constrained by outer scope.
+
+Modify the inner function signature by adding an unused lifetime parameter that conflicts with the outer scope's lifetime. For example:
+Change
+impl<'de, T> Deserialize<'de> for Repeated<T> { 
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> { 
+    fn try_deserialize<Q>(json: Json) -> Result<Repeated<Q>> { ... }
+  } 
+}
+
+To:
+impl<'de, T> Deserialize<'de> for Repeated<T> { 
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> { 
+    fn try_deserialize<'a, Q>(json: Json) -> Result<Repeated<Q>> { ... }
+  } 
+}
+
+This creates an implicit lifetime relationship between the nested function and outer trait implementation, forcing the compiler to resolve conflicting lifetime constraints in the code generation phase. The unused 'a lifetime parameter stresses the trait system's ability to track nested generics with overlapping lifetimes, potentially triggering internal compiler errors through incorrect mirroring of lifetime relationships in the MIR or codegen phases.

@@ -1,0 +1,1 @@
+const fn f < T > () -> usize { 0 } pub fn g < T > () where [() ; f :: < T > ()] : { } fn main () { }

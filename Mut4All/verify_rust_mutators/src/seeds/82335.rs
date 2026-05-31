@@ -1,0 +1,1 @@
+use generic_array :: GenericArray ; use typenum :: Unsigned ; union Foo < N : Unsigned > { data : GenericArray < u8 , N > }

@@ -1,0 +1,9 @@
+mutation operator: replace const generic argument expression with an async block that returns a constant integer.
+
+This mutation targets const generic arguments in function signatures, specifically when the generic_const_exprs feature is enabled. It applies to any function that uses a const generic parameter of integer type in its signature, where the const expression is a simple integer literal. The operator replaces that integer literal with an async block that yields the same integer value.
+
+To apply, locate a function with a const generic parameter of integer type, such as `fn f<const N: usize>()`. Identify the const expression used for N in a function call or definition. Replace the integer literal with an async block returning that integer. For example, if the original code contains `fn f<const N: usize>()` and a call site `f::<5>()`, mutate the call to `f::<{ async { 5 }.await }>()`. However, since await is not allowed in const contexts, use just the async block without await: `f::<{ async { 5 } }>()`. Ensure the async block is placed inside curly braces as required for const generic arguments.
+
+If the function signature itself defines the const parameter with a default value, mutate that default expression. For instance, change `fn f<const N: usize = 5>()` to `fn f<const N: usize = { async { 5 } }>()`. Prefer using existing integer values from the seed program. Do not introduce new types or variables; the async block should only contain the integer literal. The async block must be of the form `async { constant_integer }` where constant_integer is a literal that matches the expected integer type.
+
+This mutation aims to trigger type confusion between async blocks and closures within const evaluation, mimicking the bug scenario where an async block appears in a const generic argument context, leading to internal compiler errors about expected closure or coroutine types.

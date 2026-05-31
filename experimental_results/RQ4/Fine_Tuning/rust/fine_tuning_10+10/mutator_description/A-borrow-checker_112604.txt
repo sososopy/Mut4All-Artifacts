@@ -1,0 +1,28 @@
+Mutation Operator: Lifetime Parameter Modification in Trait Implementations
+
+Target: Trait Implementations
+
+Description: Modify the lifetime parameters used in trait implementations to introduce inconsistencies between the expected and the provided lifetimes.
+
+Mutation Rule:
+1. Identify a trait that has an associated type or method with lifetime parameters. In the provided code, the `WithLifetime` trait and its `type T` are of interest.
+2. Locate an implementation of this trait that uses a lifetime parameter. For example, the implementation of `WithLifetime<'lt>` for `crate::higher_kinded_types::__private::HKT<T>`.
+3. Modify the lifetime parameter in the implementation such that it does not match the expected lifetime from the trait definition.
+
+Step-by-step:
+1. Locate the trait `WithLifetime<'lt>` which is defined with a lifetime parameter `'lt`.
+2. Find an implementation of this trait, such as:
+   ```rust
+   impl<'lt, T: ?Sized + WithLifetime<'lt>> WithLifetime<'lt> for crate::higher_kinded_types::__private::HKT<T> {
+       type T = T::T;
+   }
+   ```
+3. Change the lifetime parameter in the implementation to a different, conflicting one:
+   ```rust
+   impl<'other_lt, T: ?Sized + WithLifetime<'other_lt>> WithLifetime<'lt> for crate::higher_kinded_types::__private::HKT<T> {
+       type T = T::T;
+   }
+   ```
+   Here, `'other_lt` is used in place of `'lt` in `WithLifetime<'other_lt>`, creating a mismatch between the trait's expected and the implementation's provided lifetime.
+
+Effect: This modification can lead to a situation where the lifetimes cannot be properly unified, potentially causing the Rust borrow checker to produce an internal compiler error (ICE) due to the mismatch in expected and provided lifetimes.

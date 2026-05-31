@@ -1,0 +1,99 @@
+Mutation Operator: AddConstToReferenceDeclarator  
+Applies to: Variable declarations, function parameters, and return types that use reference types (e.g., `T&` or `T&&`).  
+
+Description:  
+Inserts a `const` qualifier immediately after the reference symbol (`&` or `&&`) in the declarator. This creates an invalid construct where `const` is applied to the reference itself (which is not allowed in C++) and tests the parser's error recovery when references are nested or misqualified.  
+
+Example:  
+Original code:  
+```cpp  
+int& foo(int& x, int&& y) { return y; }  
+```  
+
+Mutated code:  
+```cpp  
+int& const foo(int& const x, int&& const y) { return y; }  
+```  
+
+Effect:  
+The parser will encounter syntactically invalid `const` qualifiers attached to references, leading to repeated error reports and potential crashes if error handling fails to terminate. This operator targets the parser's ability to reject malformed types and avoid infinite loops during error recovery.  
+
+Mutation Operator: NestedReferenceExpansion  
+Applies to: Function declarations or variable definitions involving nested references (e.g., `T&`, `T*&`, `T**&`).  
+
+Description:  
+Replaces a single-level reference type in a declarator with a deeply nested reference chain (e.g., `T&` becomes `T& & & & &`). This creates invalid, overly nested references to test the parser's handling of type recursion and error propagation.  
+
+Example:  
+Original code:  
+```cpp  
+void bar(const int& a) { }  
+```  
+
+Mutated code:  
+```cpp  
+void bar(const int& & & & & a) { }  
+```  
+
+Effect:  
+The parser must handle excessive nesting of reference symbols, which can cause confusion in type resolution and lead to crashes if recursion or error limits are not properly enforced.  
+
+Mutation Operator: MisplacedFriendQualifier  
+Applies to: Non-class declarations or non-friend contexts where the `friend` keyword is not valid.  
+
+Description:  
+Adds the `friend` keyword to a declaration that does not involve a class member or a friend function/typedef. This tests the parser's ability to detect and reject incorrect use of context-specific modifiers outside class bodies.  
+
+Example:  
+Original code:  
+```cpp  
+int x;  
+```  
+
+Mutated code:  
+```cpp  
+friend int x;  
+```  
+
+Effect:  
+The parser will generate an error about `friend` being used outside a class, but the mutation ensures the context is invalid. If error handling fails to recover, the parser might crash.  
+
+Mutation Operator: ExcessiveTypeQualifierChain  
+Applies to: Variable or function declarations with basic type qualifiers (e.g., `const`, `volatile`).  
+
+Description:  
+Appends a chain of type qualifiers (e.g., `const`, `volatile`, `restrict`) to the rightmost part of a declarator after a reference or pointer, exceeding standard valid syntax. This stresses the parser's validation of type qualifier placement and application order.  
+
+Example:  
+Original code:  
+```cpp  
+void baz(int* value) { }  
+```  
+
+Mutated code:  
+```cpp  
+void baz(int* const volatile restrict& value) { }  
+```  
+
+Effect:  
+The parser must reject the invalid qualifier chain applied to a reference declaration. This can expose bugs in qualifier parsing logic, especially when combined with nested references.  
+
+Mutation Operator: RecursiveReferencePointerMix  
+Applies to: Pointer declarations that reference a type (e.g., `T*`).  
+
+Description:  
+Replaces a pointer declaration with a recursive mixture of pointers and references (e.g., `T*&*&`). This creates invalid constructs that test the parser's ability to validate and reject ambiguous or recursive pointer/reference combinations.  
+
+Example:  
+Original code:  
+```cpp  
+int* ptr;  
+```  
+
+Mutated code:  
+```cpp  
+int*&*& ptr;  
+```  
+
+Effect:  
+The parser must detect that the declarator alternates between pointers and references in a way that is not syntactically valid. This often triggers assertion failures or segfaults due to unhandled edge cases in type parsing.

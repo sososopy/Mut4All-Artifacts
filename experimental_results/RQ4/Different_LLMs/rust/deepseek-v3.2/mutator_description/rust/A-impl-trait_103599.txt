@@ -1,0 +1,22 @@
+Mutation operator: Recursive Impl Trait Return Type Mutation
+
+This mutation operator targets functions that return an impl Trait type. It modifies a function that returns impl Trait to recursively call itself with its own return value, creating a potentially infinite recursion in the type system similar to the bug report pattern. The operator applies to any function with a return type of impl Trait where the function body can be modified.
+
+For a seed program containing a function with signature fn function_name(parameters) -> impl Trait, where the body is not already recursive in this specific way, replace the function body with a recursive call that passes the function's own return value. Specifically, change the body to function_name(function_name(original_argument)) where original_argument is either the first parameter if available, or a placeholder using existing variables/types from the context.
+
+Implementation steps:
+1. Identify all functions in the seed program with return type containing impl Trait.
+2. For each such function, examine its parameters. If it has at least one parameter, use the first parameter as the argument.
+3. Replace the entire function body with: function_name(function_name(argument)).
+4. If the function has no parameters but the impl Trait return type, introduce a dummy parameter of the same trait type using an existing trait from the program context, or create a unit type parameter if no traits exist.
+
+Example transformation:
+Original: fn process(item: impl Display) -> impl Display { item }
+Mutated: fn process(item: impl Display) -> impl Display { process(process(item)) }
+
+If the function has no parameters:
+Original: fn generate() -> impl Iterator<Item = i32> { iter::once(1) }
+Mutated: fn generate(_dummy: ()) -> impl Iterator<Item = i32> { generate(generate(())) } 
+(Introducing a unit parameter to enable the recursive pattern)
+
+This mutation creates the specific pattern that triggered the ICE in the bug report: a function returning impl Trait that recursively calls itself with its own return value, potentially causing infinite type recursion during trait solving.

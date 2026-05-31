@@ -1,0 +1,7 @@
+mutation operator: replace a sym operand in inline assembly with a nested const generic argument containing an inline const block that itself contains a closure expression.
+
+this mutation applies to any sym operand within a global_asm! or asm! macro invocation. the mutation transforms the operand by wrapping it in a const generic argument that includes an inline const block. the inline const block must contain a closure expression followed by a comma and a literal value, mimicking the nesting pattern from the bug report.
+
+specifically, for any occurrence of `sym function_name` within an asm macro, replace it with `sym function_name::<{ const { || {}; 0 } }>`. this uses an inline const block `const { ... }` inside the const generic argument. the block contains a closure expression `|| {}` followed by a semicolon and a literal `0`. the function `function_name` must be an existing function in the seed program that accepts a const generic parameter. if no such function exists, introduce a new function `fn dummy<const N: usize>() {}` at an appropriate scope to serve as the target. the closure should be a simple empty closure to avoid introducing new variables.
+
+example transformation: given `global_asm!("{}", sym bar);` and an existing function `fn bar<const N: usize>() {}`, mutate to `global_asm!("{}", sym bar::<{ const { || {}; 0 } }>);`. ensure the asm template string has a placeholder for the operand. the mutation should only apply when the asm macro is already present in the code.

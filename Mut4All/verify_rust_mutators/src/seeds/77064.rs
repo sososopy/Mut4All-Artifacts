@@ -1,0 +1,1 @@
+use std :: mem ; struct Foo (Box < [u8] >) ; impl < 'a > From < & 'a i32 > for Foo { fn from (value : & 'a i32) -> Self { let value = unsafe { mem :: transmute :: < _ , [u8 ; mem :: size_of :: < & 'a i32 > ()] > (value) } ; Self (Box :: new (value)) } }

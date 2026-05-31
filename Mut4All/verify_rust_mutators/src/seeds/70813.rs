@@ -1,0 +1,1 @@
+pub trait Foo { } pub trait FooExt where for < 'b > & 'b & mut Self : Foo { } impl < T > FooExt for T where for < 'a > & 'a mut T : Foo { } fn main () { }

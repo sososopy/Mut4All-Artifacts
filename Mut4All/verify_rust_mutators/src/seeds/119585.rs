@@ -1,0 +1,1 @@
+use std :: future :: Future ; trait AsyncFn < I , O > : Fn (I) -> Self :: Fut { type Fut : Future < Output = O > ; } impl < F , Fut , I , O > AsyncFn < I , O > for F where F : Fn (I) -> Fut , Fut : Future < Output = O > { type Fut = Fut ; } fn okay < F : for < 'a > AsyncFn < & 'a mut Vec < u8 > , () > > (f : F) { let mut data = vec ! [] ; let fut = f (& mut data) ; }

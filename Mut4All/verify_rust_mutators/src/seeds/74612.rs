@@ -1,0 +1,1 @@
+pub trait MyTrait { type AssocFn : std :: ops :: Fn (_) ; } fn main () { }

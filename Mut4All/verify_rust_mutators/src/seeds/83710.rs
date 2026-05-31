@@ -1,0 +1,1 @@
+use std :: env ; fn main () { let args : Vec < String > = env :: args () . collect () ; if args . len () < 2 { println ! ("Commands: create | complete | remove | view ") ; } if let Some (arg) = args . get (1) { match arg { _ => { println ! ("No errs yet") ; } } } }

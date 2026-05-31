@@ -1,0 +1,1 @@
+enum Foo { Bar (int , [int]) , } fn main () { let _x : & (int , [int]) ; let _y : & Foo ; }

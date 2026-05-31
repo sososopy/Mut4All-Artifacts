@@ -1,0 +1,20 @@
+Mutation Operator: OpaqueTraitSubtypePatternMismatch
+
+Applies to functions returning `impl Trait` where the Trait involves higher-ranked lifetimes (HRTBs). Replace a match arm expecting a specific variant of an enum with a variant from a different type that is not a valid supertype of the function's actual return type, creating an invalid pattern match scenario that triggers an ICE during subtyping checks.
+
+Example:
+Original code:
+fn create_closure() -> impl for<'a> Fn(Inv<'a>) {
+    |x| x.0 // example closure
+}
+match create_closure() {
+    MyEnum::Variant(x) => x(Inv(&mut &())),
+}
+
+Mutated code:
+match create_closure() {
+    MyEnum::Variant(x) => x(Inv(&mut &())),
+    OtherEnum::Variant(y) => y(Inv(&mut &()), Inv(&mut &())),
+}
+
+`OtherEnum::Variant` has a type parameter `impl for<'a, 'b> Fn(Inv<'a>, Inv<'b>)`, which is not a valid supertype of the closure's `impl for<'a> Fn(Inv<'a>)`. This mismatch forces the compiler to perform an invalid subtyping check between HRTB types, potentially exposing ICEs in type inference or variance handling. The mutation uses existing enum variants but changes the expected type in the match arms to violate the actual return type's constraints.

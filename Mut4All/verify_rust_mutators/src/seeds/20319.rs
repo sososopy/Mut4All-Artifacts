@@ -1,0 +1,1 @@
+fn main () { let _f = std :: intrinsics :: assume ; }

@@ -1,0 +1,107 @@
+use proc_macro2::{Span, *};
+use quote::*;
+use rand::{Rng, seq::SliceRandom, thread_rng};
+use regex::Regex;
+use std::{collections::HashSet, default, fs, ops::Range, panic, path::Path, process::Command, *};
+use syn::{
+    BoundLifetimes, Expr, ExprCall, ExprPath, File, FnArg, GenericArgument, GenericParam, Ident,
+    Item, ItemFn, ItemStruct, Lifetime, LifetimeParam, Local, Pat, PatType, Path as SynPath,
+    PathArguments, ReturnType, Stmt, TraitBound, TraitBoundModifier, Type, TypeImplTrait,
+    TypeParamBound, TypePath, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    token,
+    token::Comma,
+    token::{Paren, Plus},
+    visit::Visit,
+    visit_mut::VisitMut,
+    *,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Replace_Generic_Type_Parameter_With_Another_Type_Parameter_280;
+
+impl Mutator for Replace_Generic_Type_Parameter_With_Another_Type_Parameter_280 {
+    fn name(&self) -> &str {
+        "Replace_Generic_Type_Parameter_With_Another_Type_Parameter_280"
+    }
+
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let syn::Item::Trait(trait_item) = item {
+                if let syn::Generics::None = trait_item.generics {
+                    continue;
+                }
+                let generics = trait_item.generics.clone();
+                let params: Vec<_> = generics.params().iter().collect();
+                if params.len() > 1 {
+                    let idx_to_replace = thread_rng().gen_range(0..params.len());
+                    let replacement_idx = thread_rng().gen_range(0..params.len());
+                    let mut new_params = generics.params().clone();
+                    new_params[idx_to_replace] = params[replacement_idx].clone();
+                    trait_item.generics = syn::Generics {
+                        params: new_params,
+                        where_clause: generics.where_clause,
+                        ..Default::default()
+                    };
+                }
+            } else if let syn::Item::Struct(struct_item) = item {
+                if let syn::Generics::None = struct_item.generics {
+                    continue;
+                }
+                let generics = struct_item.generics.clone();
+                let params: Vec<_> = generics.params().iter().collect();
+                if params.len() > 1 {
+                    let idx_to_replace = thread_rng().gen_range(0..params.len());
+                    let replacement_idx = thread_rng().gen_range(0..params.len());
+                    let mut new_params = generics.params().clone();
+                    new_params[idx_to_replace] = params[replacement_idx].clone();
+                    struct_item.generics = syn::Generics {
+                        params: new_params,
+                        where_clause: generics.where_clause,
+                        ..Default::default()
+                    };
+                }
+            } else if let syn::Item::Fn(func) = item {
+                if let syn::Generics::None = func.sig.generics {
+                    continue;
+                }
+                let generics = func.sig.generics.clone();
+                let params: Vec<_> = generics.params().iter().collect();
+                if params.len() > 1 {
+                    let idx_to_replace = thread_rng().gen_range(0..params.len());
+                    let replacement_idx = thread_rng().gen_range(0..params.len());
+                    let mut new_params = generics.params().clone();
+                    new_params[idx_to_replace] = params[replacement_idx].clone();
+                    func.sig.generics = syn::Generics {
+                        params: new_params,
+                        where_clause: generics.where_clause,
+                        ..Default::default()
+                    };
+                }
+            } else if let syn::Item::Impl(impl_item) = item {
+                if let syn::Generics::None = impl_item.generics {
+                    continue;
+                }
+                let generics = impl_item.generics.clone();
+                let params: Vec<_> = generics.params().iter().collect();
+                if params.len() > 1 {
+                    let idx_to_replace = thread_rng().gen_range(0..params.len());
+                    let replacement_idx = thread_rng().gen_range(0..params.len());
+                    let mut new_params = generics.params().clone();
+                    new_params[idx_to_replace] = params[replacement_idx].clone();
+                    impl_item.generics = syn::Generics {
+                        params: new_params,
+                        where_clause: generics.where_clause,
+                        ..Default::default()
+                    };
+                }
+            }
+        }
+    }
+
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator replaces a generic type parameter with another type parameter in trait, struct, function, and impl definitions. This transformation tests the compiler's handling of generic types and their constraints, potentially revealing bugs related to type inference, type checking, and trait resolution."
+    }
+}

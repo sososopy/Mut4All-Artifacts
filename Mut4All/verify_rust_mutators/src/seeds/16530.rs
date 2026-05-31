@@ -1,0 +1,1 @@
+# [deriving (Eq , PartialEq , Hash)] struct Foo ; pub fn main () { }

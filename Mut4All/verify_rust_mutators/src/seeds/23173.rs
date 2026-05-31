@@ -1,0 +1,1 @@
+enum Token { LeftParen , RightParen , Plus , Minus , } fn use_token (token : & Token) { unimplemented ! () } fn main () { use_token (& Token :: LeftParens) ; }

@@ -1,0 +1,89 @@
+Mutation Operator 1: Introduce Higher-Ranked Trait Bounds on Function Types with Async Output
+
+Target Construct: Function types that implement traits with higher-ranked lifetime parameters (`for<'a>`) and return async types (e.g., `Future`).
+
+Mutation Description: For any existing trait implementation that has a function type as a parameter or constraint, add a `for<'a>` bound. If the function type returns an `async` block or function, replace the return type with a `Future` trait bound. This can be applied to existing function-type parameters in impl blocks or trait definitions.
+
+Example Pseudo-Code:
+Before:
+```
+impl<T: Fn(&(),)> Dispatch for T
+```
+After:
+```
+impl<T: for<'a> Fn<(&'a (),)>> Dispatch for T
+    where
+        for<'a> <T as FnOnce<(&'a (),)>>::Output: Future,
+```
+
+Mutation Operator 2: Replace a Regular Function Call with an Async Function Call
+
+Target Construct: Function calls that invoke a method or closure with a return type that is not async.
+
+Mutation Description: Identify any existing function call in the body of a method, closure, or function that is not async. Replace it with a call to an `async fn` function that takes parameters from the existing context. The async function should return a type that implements `Future`. If the original function does not exist, declare a new `async fn` with the same name and parameters as the function call, ensuring it returns a `Future`.
+
+Example Pseudo-Code:
+Before:
+```
+fn example(_: &()) {}
+example(&());
+```
+After:
+```
+async fn example(_: &()) {}
+example(&()).await;
+```
+
+Mutation Operator 3: Add an Extra Indirection with a Higher-Ranked Lifetime in a `where` Clause
+
+Target Construct: Function or trait implementations with no explicit lifetime parameters or `where` clauses.
+
+Mutation Description: Wherever a function or trait implementation is defined without a `where` clause, introduce a `where` clause that binds a higher-ranked lifetime (`for<'a>`) to a type in the signature. This is especially effective when applied to closures or functions that already have lifetime annotations or use generics.
+
+Example Pseudo-Code:
+Before:
+```
+impl<T: Fn(&(),)> Dispatch for T
+```
+After:
+```
+impl<T: for<'a> Fn<(&'a (),)>> Dispatch for T
+    where
+        for<'a> <T as FnOnce<(&'a (),)>>::Output: Future,
+```
+
+Mutation Operator 4: Replace Regular Function Definitions with Async Function Definitions in Trait Methods
+
+Target Construct: Trait method definitions that do not use `async` or return a future.
+
+Mutation Description: Replace a standard method implementation in a trait body with an `async` method. Ensure that the return type implements `Future`. This can be applied where the trait method signature already exists and is called in the body of existing logic, which helps retain context and reduce ambiguity.
+
+Example Pseudo-Code:
+Before:
+```
+trait Dispatch {
+    fn dispatch(self);
+}
+```
+After:
+```
+trait Dispatch {
+    async fn dispatch(self);
+}
+```
+
+Mutation Operator 5: Add a Closure That Invokes an Async Function with a Higher-Ranked Lifetime
+
+Target Construct: Standalone closures or `impl Trait` closures that do not return futures or use async logic.
+
+Mutation Description: Modify an existing closure (or declare a new one if it does not exist) to return an async function call with a higher-ranked lifetime. This includes converting a closure into an unboxed closure using the `unboxed_closures` feature.
+
+Example Pseudo-Code:
+Before:
+```
+let closure = |x| (x);
+```
+After:
+```
+let closure = |x| async move { foo(x) };
+```

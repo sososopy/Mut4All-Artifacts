@@ -1,0 +1,1 @@
+struct S < T : Sized > (T) ; impl < T : Sized > Iterator for S < T > { type Item = T ; fn next (& mut self) -> Option < < Self as Iterator > :: Item > { union U { a : < Self as Iterator > :: Item , } None } }

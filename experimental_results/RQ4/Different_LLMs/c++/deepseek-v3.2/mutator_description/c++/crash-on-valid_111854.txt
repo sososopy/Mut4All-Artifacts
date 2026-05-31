@@ -1,0 +1,14 @@
+Based on the bug report, the crash occurs during semantic analysis of a conditional operator (ternary operator) where one branch is a throw expression, and the result is used in a comparison. The assertion failure indicates the compiler expected an integer type but encountered something else, likely due to the throw expression introducing a void or non-integer type context.
+
+Summarizing structures prone to such bugs: C++ compiler bugs are more likely triggered by edge cases involving type systems, such as unusual combinations of operators (especially conditional, comma, throw), expressions with void types, overloaded operators, template instantiations, and implicit conversions. Specifically, the conditional operator with differing branch types (especially when one branch is a throw, which has type void) can lead to incorrect type deduction or missing checks.
+
+Mutation Operator:
+Mutation Operator: Replace a non-throw expression in a conditional operator branch with a throw expression.
+
+Target: This mutation applies to any conditional operator expression (`a ? b : c`) found in the seed program where at least one of the branches `b` or `c` is not already a throw expression.
+
+Method: For each conditional operator `cond ? expr1 : expr2` identified, if `expr1` is not a throw expression, mutate it to `throw expr1` (or `throw` with a default value if `expr1` is not suitable). Similarly, if `expr2` is not a throw expression, mutate it to `throw expr2`. If both branches are non-throw, prioritize mutating the second branch (`expr2`) first, as it is often less tested. Ensure the throw expression uses a valid operand: if `expr1` or `expr2` is of a type that can be thrown (e.g., integer, pointer, or class type), use it directly; otherwise, introduce a simple default like `throw 0` for integer contexts or `throw nullptr` for pointer contexts, but only if such types exist in the seed program (e.g., `int` or a pointer type is declared). If no suitable type exists, skip the mutation.
+
+Example: Given a seed code snippet: `int x = (y > 0) ? 5 : z;`, mutate to `int x = (y > 0) ? throw 5 : z;` (assuming `int` is present in the program). Alternatively, if `z` is a pointer, mutate to `int x = (y > 0) ? 5 : throw nullptr;` (if `nullptr` or pointer types are used elsewhere).
+
+Goal: This mutation introduces throw expressions into conditional branches, creating type system stress similar to the bug report, potentially exposing crashes in compiler assertion checks during semantic analysis or code generation.

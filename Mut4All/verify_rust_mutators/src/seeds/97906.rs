@@ -1,0 +1,1 @@
+# [derive (Debug)] pub enum Task { WriteFile { digest : Digest , path : PathBuf } , WriteBlob { digest : Digest , buff : Vec < u8 > } , }

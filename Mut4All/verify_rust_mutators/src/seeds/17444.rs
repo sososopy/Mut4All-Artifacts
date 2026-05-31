@@ -1,0 +1,1 @@
+extern crate libc ; use std :: c_vec :: CVec ; fn void_buf () -> libc :: c_void { unsafe { std :: mem :: transmute (b'0') } } fn main () { unsafe { CVec :: new (void_buf () as * mut f32 , 0) ; } }

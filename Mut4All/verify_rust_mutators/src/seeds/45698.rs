@@ -1,0 +1,1 @@
+fn main () { let x = 0 ; | | { let y = & mut x ; & mut x ; * y = 1 ; } ; }

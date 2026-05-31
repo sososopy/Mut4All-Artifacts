@@ -1,0 +1,20 @@
+mutation operator: Replace a trait method's arbitrary self type with a different arbitrary self type that introduces a cyclic dependency involving the trait's generic parameter and the return type.
+
+This mutation applies to trait definitions that have at least one generic parameter and at least one method. It specifically targets methods that use an arbitrary self type (i.e., `self: SomeType`). The operator modifies the method's self type and/or its return type to create a layout computation scenario similar to the bug report. The change should use existing types and traits from the seed program to avoid introducing new elements.
+
+The operator performs the following steps:
+1. Identify a trait in the seed program that has at least one generic parameter (call it `P`) and at least one method.
+2. For a chosen method in that trait, examine its self type. If the self type is not already an arbitrary self type (i.e., it is `self` or `&self` etc.), change it to be an arbitrary self type using the trait's generic parameter `P` (or a type that includes `P`). If the method already has an arbitrary self type, proceed to step 3.
+3. Modify the method's return type to be a `dyn Trait<P>`, where `Trait` is the current trait's name and `P` is the same generic parameter used in the self type or the trait's definition. Ensure the return type uses the `dyn` keyword.
+4. If necessary, add trait bounds to the generic parameter `P` to include `DispatchFromDyn<P>` and `Deref<Target = Self>`, where `Self` refers to the trait. These bounds should be added to the trait's generic parameter list if not already present.
+
+Example illustration using pseudo-code:
+Original trait in seed program:
+trait MyTrait<T> {
+    fn method(&self) -> i32;
+}
+After mutation, one possible outcome:
+trait MyTrait<T: Deref<Target = Self> + DispatchFromDyn<T>> {
+    fn method(self: T) -> dyn MyTrait<T>;
+}
+Note: The bounds on `T` and the use of `dyn` in the return type are introduced. The operator should use the existing trait name `MyTrait` and generic parameter `T` from the seed. If the seed program does not have `Deref` or `DispatchFromDyn` in scope, they are not added; the mutation focuses on creating the cyclic dependency in layout computation.

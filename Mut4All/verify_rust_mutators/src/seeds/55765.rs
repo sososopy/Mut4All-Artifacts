@@ -1,0 +1,1 @@
+# [macro_use] extern crate partial_init_derive ; extern crate partial_init_core ; # [derive (PartialInit)] struct Foo < T > { thing : (T ,) , } fn main () { let foo = < Foo < _ > as partial_init_core :: PartialInit > :: uninit () . build () ; }

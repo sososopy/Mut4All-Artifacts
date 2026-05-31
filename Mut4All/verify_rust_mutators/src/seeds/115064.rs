@@ -1,0 +1,1 @@
+# [doc = " [`…foo`] [`…bar`] [`Err`]"] pub struct Broken { }

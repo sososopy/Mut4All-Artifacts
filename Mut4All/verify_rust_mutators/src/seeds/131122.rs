@@ -1,0 +1,1 @@
+# ! [no_std] # [repr (align (65536))] struct Hello ; pub fn bar () -> usize { core :: mem :: align_of :: < Hello > () }

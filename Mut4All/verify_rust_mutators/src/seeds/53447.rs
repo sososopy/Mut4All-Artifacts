@@ -1,0 +1,1 @@
+# ! [feature (async_await)] # [test] fn non_stupid () { async { true } . wait () ; }

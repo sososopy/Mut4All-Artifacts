@@ -1,0 +1,1 @@
+impl < T : Copy + Mul > HasNorm for Vec < T > where < T as Mul > :: Output : ToPrimitive + Add + Zero { fn norm (& self) -> f64 { self . iter () . fold (< T as Mul > :: Output :: zero () , | sum , & x | sum + x * x) . to_f64 () . unwrap () . sqrt () } }

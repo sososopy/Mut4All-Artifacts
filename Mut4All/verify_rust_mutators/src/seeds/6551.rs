@@ -1,0 +1,1 @@
+trait Tr < 'self > { fn f (& self) -> & 'self int ; } fn g < T : Tr < 'self > > () { } fn main () { }

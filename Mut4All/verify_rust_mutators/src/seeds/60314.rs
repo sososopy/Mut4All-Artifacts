@@ -1,0 +1,1 @@
+fn foo < T > (_ : & '_ T) where for < 'a > & 'a T : Trait < AssociatedType = & 'a () > , { }

@@ -1,0 +1,11 @@
+Mutation operator: Specialize a default trait implementation for a concrete type that also appears in an associated type projection within another trait implementation.
+
+This operator targets code structures involving trait specialization, default trait implementations, and associated type projections. It applies when a seed program contains a trait with a default implementation for a generic type parameter, and at least one concrete type that implements that trait. The mutation involves adding a specialized implementation for that concrete type, and then creating another trait that is implemented for the associated type projection of that concrete type. Specifically, for a given trait T1 with a default impl<T> T1 for T, and a concrete type CT that already has an impl T1 for CT, we introduce a new trait T2 and add an impl T2 for <CT as T1>::Output. The associated type Output must be defined in T1; if it does not exist, we first add a type Output to T1, using an existing type from the program (e.g., bool or i32) as the default. The mutation ensures that the specialized impl for CT and the impl for the associated type projection coexist, which can trigger edge cases in the compiler's specialization and coherence checking logic.
+
+Example: Suppose the seed program contains:
+trait T1 { type Output; }
+default impl<T> T1 for T { type Output = bool; }
+impl T1 for u8 {}
+We introduce a new trait T2 (using an existing trait name if available, or a new trait if not; if new, declare as trait T2 {}). Then we add impl T2 for <u8 as T1>::Output {}.
+
+Note: The mutation requires the specialization feature (#![feature(specialization)]) to be enabled if not already present. It should avoid introducing undefined names; all traits and types must be present or newly declared in the mutation step. This operator is designed to replicate scenarios where the compiler must handle overlapping specializations and normalized associated types, potentially exposing bugs like assertion failures in intercrate mode.

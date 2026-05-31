@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] # ! [feature (conservative_impl_trait , generators , generator_trait , nll)] use std :: ops :: Generator ; pub fn render < 'a > (input : & 'a str) -> impl Generator < Yield = () , Return = () > + 'a { move | | { let _t = input ; yield () ; } }

@@ -1,0 +1,59 @@
+Mutation Operator 1: Recursive Opaque Return Type with Borrowed Input  
+Target: A recursive function returning `impl Trait` that captures a borrowed input and passes it recursively in a way that introduces a non-universal lifetime.  
+
+Description:  
+This mutation applies to functions that take a generic iterator or other borrowed input and return an `impl Trait` type. The mutation wraps the input in a recursive call to the same function and forces an early resolution of the opaque return. This can cause the compiler to mishandle lifetime inference for recursive impl-trait returns involving borrowed types.  
+
+Example (pseudo-code):  
+Original:  
+fn process<'a>(iter: impl Iterator<Item = &'a str>) -> impl Iterator<Item = &'a str> { ... }
+
+Mutated:  
+Inside the function body, replace a direct return with a recursive call that returns early:  
+return process(iter); // or similar, where the same input is passed recursively  
+or:  
+return process(some_expr).map(|x| x.into()); // if the opaque closure introduces type variance  
+
+Effect:  
+This forces the compiler to resolve the opaque type in a recursive context where lifetimes may not be correctly generalized, potentially triggering an ICE in region inference or opaque type resolution.
+
+Mutation Operator 2: Nested Return of `impl Trait` in Recursive Context  
+Target: Recursive functions that return `impl Trait` and are nested within other control structures (e.g., `if`, `match`, loops).  
+
+Description:  
+This mutation applies to functions where the return of `impl Trait` occurs inside a nested conditional or loop, especially when the recursive call is guarded by a condition and returns the opaque type conditionally. This causes the compiler to mismanage the opaque return type during borrow checking in the presence of recursive lifetimes.  
+
+Example (pseudo-code):  
+Original:  
+fn nested_recursive<'a>(input: impl Iterator<Item = &'a str>) -> impl Iterator<Item = &'a str> { ... }
+
+Mutated:  
+Inside the function, place the recursive call under a conditional that always returns true (e.g., `if true`), but returns the opaque type from the recursive call:  
+if true {  
+    return nested_recursive(input);  
+}  
+...  
+
+Effect:  
+This can cause the compiler to lose track of the correct opaque type and its lifetime during recursive resolution, potentially exposing bugs in how opaque types are handled with `impl Trait` in recursive contexts.
+
+Mutation Operator 3: Return `impl Trait` from a Function Taking a Closure with Recursive Borrow  
+Target: Functions that take a closure capturing a value and return an `impl Trait` that involves a borrowed value.  
+
+Description:  
+This mutation applies to functions where the return type is `impl Trait`, and the function argument is a closure that captures a borrowed input. The mutation causes the closure to be nested in a recursive call, where the borrowed value is not properly generalized, resulting in a broken opaque type resolution.  
+
+Example (pseudo-code):  
+Original:  
+fn with_closure<'a, F>(f: F) -> impl Iterator<Item = &'a str>  
+where  
+    F: FnOnce() -> impl Iterator<Item = &'a str>,  
+{ ... }
+
+Mutated:  
+Inside the function body, invoke the closure recursively:  
+f().into_iter().collect::<Vec<_>>();  
+return with_closure(|| f()); // this creates a recursive opaque return
+
+Effect:  
+This can expose compiler bugs in the handling of nested or recursive opaque types that include non-universal lifetimes, especially when the closure captures the lifetime from a recursive call.

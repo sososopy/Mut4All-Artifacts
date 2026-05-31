@@ -1,0 +1,11 @@
+Based on the bug report, the Internal Compiler Error (ICE) occurs during constraint satisfaction calculation in requires clauses within complex lambda expressions, particularly involving nested lambdas with recursive patterns and template argument deduction. Structures more likely to trigger such bugs are intricate requires clauses that involve nested lambdas, recursive lambda captures, and template-dependent expressions within requires expressions. These structures stress the compiler's ability to correctly handle variable capture and constraint satisfaction in template instantiation contexts.
+
+Mutation operator: Introduce a requires clause in a lambda that captures a lambda parameter within its own requires expression, forming a self-referential dependency.
+
+This mutation targets lambda expressions that are declared with a trailing requires clause. It applies specifically to lambda expressions that already have a parameter list and a body. The mutation adds or modifies a requires clause to include a requires expression that references one of the lambda's own parameters, creating a recursive dependency in the constraint checking.
+
+For example, consider a seed program containing a lambda like: auto f = [](auto x) { return x; }; The mutation would transform it to: auto f = [](auto x) requires requires { x; } { return x; }. If the lambda already has a requires clause, the mutation modifies it to include a nested requires referencing a parameter, e.g., from auto g = []() requires true { return 0; } to auto g = []() requires requires { true; } { return 0; }.
+
+The mutation uses existing variables or parameters from the lambda's parameter list. No new elements are introduced; it solely adds or alters the requires clause. The change involves inserting 'requires requires { param; }' where param is a parameter from the lambda's parameter list, ensuring the param is already declared. If the lambda has multiple parameters, one is chosen arbitrarily, preferably the first. If the lambda has no parameters, the mutation does not apply.
+
+The goal is to create a requires clause that forces the compiler to evaluate a constraint involving a lambda parameter during template deduction or constraint satisfaction, potentially exposing bugs in the capture and constraint checking logic similar to the reported ICE.

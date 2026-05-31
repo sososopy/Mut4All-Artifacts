@@ -1,0 +1,23 @@
+Mutation Operator 1: Apply the #[repr(packed(N))] attribute to an existing union type where N is a power-of-two integer less than the ABI alignment of at least one of its fields. Additionally, introduce a const or static declaration that initializes the union with an aggregate that includes such a field. This mutation exploits the conflict between the union's explicit alignment and the minimum alignment required by its fields during layout computations, potentially triggering assertion failures or ICEs in the compiler's layout validation logic.
+
+Example:
+Original code:
+union U {
+    a: u16,
+    b: u32,
+}
+
+fn main() {
+    let u = unsafe { U { a: 0 } };
+}
+
+Mutated code:
+#[repr(packed(1))]
+union U {
+    a: u16,
+    b: u32,
+}
+
+const C: U = U { b: 0 };
+
+The mutation adds a repr(packed(1)) attribute to the union to force ABI alignment of 1 byte, while its u32 field requires 4-byte alignment. It then replaces an unsafe variable initialization with a const declaration that initializes the union using the misaligned field, creating a scenario where the compiler must reconcile conflicting alignment constraints during layout checks.

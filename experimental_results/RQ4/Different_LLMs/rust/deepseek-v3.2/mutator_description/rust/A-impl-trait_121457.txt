@@ -1,0 +1,46 @@
+mutation operator
+
+This mutation operator targets trait implementations that use Return Position Impl Trait in Trait (RPITIT) and have associated types with lifetime parameters. Specifically, it applies to impl blocks that implement a trait containing a method returning `impl Trait` and an associated type with a lifetime parameter, where the associated type is used in the return type of the method. The operator modifies the associated type reference within the RPITIT return type to use a lifetime that is not in scope for that part of the code.
+
+The operator applies when: 
+- There is a trait with an associated type that has a lifetime parameter (e.g., `type Item<'a>;`).
+- The trait has a method that returns `impl Trait` (RPITIT).
+- An impl block implements this trait for some type.
+- In the impl block, the method's return type uses the associated type with a lifetime argument (e.g., `Self::Item<'some_lifetime>`).
+
+The mutation changes the lifetime used in the associated type reference within the RPITIT return type to a lifetime that is not declared in the appropriate scope. For instance, if the associated type is referenced as `Self::Item<'a>`, where `'a` is a lifetime parameter of the impl block, the operator replaces `'a` with a new lifetime name that is not declared in the impl block's generic parameters, nor in the method's generic parameters, nor introduced via a `for<>` binder in the return type. The new lifetime name should be constructed by taking an existing lifetime name from the seed program (if any) and appending a suffix like `_invalid` to create a fresh, undeclared lifetime identifier. If no lifetime names exist in the seed, generate a simple new name like `'missing`.
+
+Steps:
+1. Identify an impl block implementing a trait that has an RPITIT method and an associated type with a lifetime parameter.
+2. Locate the method within that impl block that returns `impl Trait`.
+3. Examine the return type of that method. If it contains a reference to the associated type with a lifetime argument (e.g., `Self::Item<'some_lifetime>`), proceed.
+4. Let `L` be the lifetime used in that argument. Determine if `L` is declared in the impl block's generic parameters (e.g., `impl<'a, ...>`) or in the method's generic parameters (e.g., `fn method<'b>(...)`). Also check if `L` is introduced by a higher-ranked trait bound (HRTB) in the return type (e.g., `impl for<'c> Trait`).
+5. If `L` is declared in any of these scopes, replace `L` with a new lifetime identifier that is not declared in any of these scopes. Construct this new identifier by taking an existing lifetime name from the seed program (preferably one not used in this context) and appending `_invalid`, or if none exist, use `'missing`.
+6. Ensure the replacement is syntactically correct; i.e., the new lifetime identifier must start with a tick (`'`).
+
+Example:
+Seed code snippet:
+```rust
+trait Trait {
+    type Assoc<'a>;
+    fn method(&self) -> impl Iterator<Item = Self::Assoc<'some_lifetime>>;
+}
+impl<'a, T> Trait for &'a T {
+    type Assoc<'b> = &'b T;
+    fn method(&self) -> impl Iterator<Item = Self::Assoc<'a>>;
+}
+```
+In the impl block, the return type uses `Self::Assoc<'a>`, where `'a` is declared in the impl block (`impl<'a, T>`). The operator would change `'a` to an undeclared lifetime, e.g., `'missing`. Mutated code:
+```rust
+trait Trait {
+    type Assoc<'a>;
+    fn method(&self) -> impl Iterator<Item = Self::Assoc<'some_lifetime>>;
+}
+impl<'a, T> Trait for &'a T {
+    type Assoc<'b> = &'b T;
+    fn method(&self) -> impl Iterator<Item = Self::Assoc<'missing>>;
+}
+```
+This introduces an undeclared lifetime `'missing` in the return type, which mimics the bug-triggering condition from the report.
+
+Note: The operator only modifies the lifetime argument within the associated type reference in the RPITIT return type. It does not change any other part of the code. The goal is to create a mismatch between the lifetime used and the lifetimes in scope, potentially exposing bugs in RPITIT refinement checking related to regions.

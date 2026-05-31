@@ -1,0 +1,1 @@
+# ! [feature (unsize)] use std :: marker :: Unsize ; fn unsizing < T : Unsize < T > > (value : T) -> Box < T > { Box :: new (value) as Box < T > } fn main () { unsizing :: < () > (()) ; }

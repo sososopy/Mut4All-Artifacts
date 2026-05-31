@@ -1,0 +1,1 @@
+use log :: error ; pub struct Foo { } impl Foo { pub async fn bar (& self) { error ! ("ICE") } }

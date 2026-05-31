@@ -1,0 +1,23 @@
+Mutation operator: Mutate the default value expression of a const generic parameter to reference a different generic parameter from the same item, potentially creating a dependency cycle or out-of-range reference.
+
+Based on the bug report, Rust compiler bugs related to F-generic_const_exprs are more likely to trigger when there are complex interactions between generic parameters, especially const generics, default values, and type definitions, leading to cycles, out-of-range substitutions, or name conflicts. The mutation operator should target these specific structures.
+
+This operator applies to any struct, enum, or function definition that has at least two generic parameters, where at least one is a const generic parameter with a default value. Specifically, it targets the default value expression in the definition.
+
+For a seed program containing a definition like:
+struct Name<const N: usize, const M: usize = { N + 1 }>;
+The mutation would change the default expression to reference a different generic parameter, possibly causing a cycle or invalid reference. For example, if there is another generic parameter P (type or const), change the default to { P } or a similar reference, even if P is not a const or has a different type, which may trigger type errors or cycles.
+
+Steps:
+1. Identify a definition with at least two generic parameters, where at least one const generic parameter has a default value expression.
+2. In the default value expression, replace the current expression with a reference to another generic parameter from the same item. If the other parameter is a type, use it as a type in the expression (e.g., size_of::<P>()). If it is a const, use it directly.
+3. Ensure the reference uses the exact name of the other parameter as defined in the item.
+4. If the default expression originally referenced a parameter, change it to reference a different one.
+5. Do not introduce new variables or types; use only existing parameters from the item.
+
+Example mutation:
+Original: struct Container<const X: usize, const Y: usize = { X * 2 }, T = u8>;
+Mutated: struct Container<const X: usize, const Y: usize = { T }, T = u8>;
+Here, T is a type parameter, and using it in a const expression may cause a type mismatch or cycle.
+
+Note: This mutation may produce programs that are semantically invalid but syntactically correct, testing the compiler's handling of such edge cases in generic_const_exprs.

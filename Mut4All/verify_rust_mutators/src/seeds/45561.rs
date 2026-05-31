@@ -1,0 +1,1 @@
+# ! [allow (warnings)] # ! [feature (rustc_attrs)] struct MyStruct { field : String } # [rustc_mir_borrowck] fn main () { let mut my_struct = MyStruct { field : format ! ("Hello") } ; let value = & mut my_struct . field ; loop { my_struct . field . push_str ("Hello, world!") ; return ; } }

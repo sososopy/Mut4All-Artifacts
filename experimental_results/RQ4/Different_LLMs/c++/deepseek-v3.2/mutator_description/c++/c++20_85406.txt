@@ -1,0 +1,25 @@
+Mutation Operator: Insert Extraneous Template Parameter List in Alias Template Declarations.
+
+This mutation operator targets alias template declarations (using statements) within C++ seed programs. It applies when a seed program contains a valid alias template declaration that defines a type alias for a template class or another alias template. The operator modifies the declaration by inserting an additional, erroneous template parameter list before the alias name, mimicking the bug-triggering structure from the report.
+
+Specifically, for each alias template declaration in the seed program of the form:
+template <typename T1, typename T2, ...>
+using AliasName = SomeTemplate<T1, T2, ...>;
+
+The operator will mutate it to:
+template <typename T1, typename T2, ...>
+template <typename K>
+using AliasName = SomeTemplate<T1, T2, ...>;
+
+Here, an extra 'template <typename K>' is inserted between the original template parameter list and the 'using' keyword. The new template parameter 'K' is introduced. It should be declared as a typename parameter. This new parameter is not used in the underlying type (SomeTemplate<T1, T2, ...>), making it extraneous and invalid according to the standard, similar to the bug example. The operator only applies if the original declaration is a template (i.e., starts with 'template'). It does not apply to non-template alias declarations.
+
+For example, if a seed program contains:
+template <typename U>
+using MyVec = std::vector<U>;
+
+The mutation produces:
+template <typename U>
+template <typename K>
+using MyVec = std::vector<U>;
+
+This creates an alias template with two template parameter lists, which is erroneous and may trigger compiler crashes or diagnostic errors related to CTAD or alias template parsing, especially in contexts where the alias is later used (e.g., in variable declarations attempting CTAD). The operator uses the existing alias name (MyVec) and existing template parameter (U). It introduces a new template parameter K, which is a typename not referenced elsewhere.

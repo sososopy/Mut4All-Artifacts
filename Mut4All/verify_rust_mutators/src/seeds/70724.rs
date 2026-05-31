@@ -1,0 +1,1 @@
+fn a () -> i32 { 3 } pub fn main () { assert_eq ! (a , 0) ; }

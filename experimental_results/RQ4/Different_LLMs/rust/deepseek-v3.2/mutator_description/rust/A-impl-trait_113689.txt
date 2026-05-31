@@ -1,0 +1,12 @@
+mutation operator: Replace a function call argument with a function that returns an opaque type, where the argument expects a closure that returns a concrete type.
+
+This mutation operator applies when a function call passes an argument that is expected to be a closure or function item. It targets calls where the expected closure return type is a concrete type (like a scalar, struct, or enum). The mutation changes the argument to be a function (or closure) that returns an `impl Trait` opaque type, where the opaque type's hidden type is the expected concrete type. The operator must use existing functions or declare a simple new helper function inline if needed.
+
+Specifically, for a function call `func( arg )` where `func` expects a parameter of type `impl Fn() -> T` (or similar) with `T` being a concrete type, mutate the argument `arg`. If `arg` is currently a function name or a closure, replace it with a new function that returns `impl Sized` but actually returns a value of type `T`. If no suitable existing function is present, introduce a new local function immediately before the call. The new function should have a return type of `impl Sized` and its body should return a value of the concrete type `T` using an existing expression of type `T` from the surrounding context, or a default value like `Default::default()` if available.
+
+Example: Original code has `returns_u8(foo)` where `returns_u8` expects `impl Fn() -> u8`. The function `foo` returns `impl Sized`. The mutation could keep this as is if already present, or if the argument were a concrete function returning `u8`, change it to a new function returning `impl Sized` that returns a `u8`. For instance, if seed code is `fn bar() -> u8 { 5 }` and call `returns_u8(bar)`, mutate to:
+```
+fn mutated_helper() -> impl Sized { bar() }
+returns_u8(mutated_helper);
+```
+Or using a closure: `returns_u8(|| -> impl Sized { bar() })`. Ensure the hidden type of the opaque type matches the expected concrete type (here `u8`). The mutation should be applied only when the expected return type is concrete and the function/closure can be altered to return an opaque type instead.

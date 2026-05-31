@@ -1,0 +1,34 @@
+Mutation Operator: Replace a field or type alias using an associated type directly with a nested struct that wraps the associated type as a generic parameter, specifically within a type alias or struct field that combines it with another existing generic container. This forces the compiler to handle layered associated-item inference during borrowck.  
+Example:  
+Original:  
+type Data = T::Assoc;  
+struct Container { field: T::Assoc; }  
+
+Mutated:  
+type Data = Pooled<T::Assoc>;  
+struct Container { field: NdBufferView<(), T::Assoc>; }  
+struct NdBufferView<B, D> { buffer: B, data_type_h: D::Data; }  
+
+Mutation Operator: Modify a generic function to use a higher-ranked associated type (HRTA) by adding a nested trait bound that requires resolving associated types through multiple levels of generics. This increases complexity in ParamEnvAnd resolution during type-checking.  
+Example:  
+Original:  
+fn foo<T: Trait>() { ... }  
+
+Mutated:  
+fn foo<T: Trait<Assoc: NestedTrait>>() { ... }  
+
+Mutation Operator: Inject an type alias that composes an associated type with an existing generic struct (e.g., Arc or HashMap), creating a scenario where the compiler must infer lifetimes and type relationships across associated-item projections and containers.  
+Example:  
+Original:  
+type Value = L::DataType;  
+
+Mutated:  
+type Value = Arc<HashMap<u32, L::DataType::NestedAssociated>>;  
+
+Mutation Operator: Replace a concrete type in a struct field with a projection of an associated type through a generic struct parameter, forcing the compiler to perform MIR borrowck on complex type relationships.  
+Example:  
+Original:  
+struct Example { data: Vec<T>; }  
+
+Mutated:  
+struct Example { data: NdBufferView<(), T::DataTypeHolder>; }

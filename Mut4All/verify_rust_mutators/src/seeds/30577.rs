@@ -1,0 +1,1 @@
+type WillRobinson = u8 ; trait Danger { } impl Danger for WillRobinson { } static mut danger : * mut Danger = (0 as * mut WillRobinson) as * mut Danger ; fn main () { }

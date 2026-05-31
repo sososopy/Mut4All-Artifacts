@@ -1,0 +1,1 @@
+fn main () { let vec : Vec < String > = Vec :: new () ; let _ : Vec < (& String ,) > = vec . iter () . map (| s | (s ,)) . filter (| (& s ,) | ! (vec . len () > s . len ())) . collect () ; }

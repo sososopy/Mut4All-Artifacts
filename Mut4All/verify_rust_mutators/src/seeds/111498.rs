@@ -1,0 +1,1 @@
+fn main () { println ! ("Hello, world!") ; use argminmax :: ArgMinMax ; let arr : Vec < i32 > = (0 .. 200_000) . collect () ; let (min , max) = arr . argminmax () ; println ! ("min: {}, max: {}" , min , max) ; println ! ("arr[min]: {}, arr[max]: {}" , arr [min] , arr [max]) ; }

@@ -1,0 +1,1 @@
+use bevy :: prelude :: * ; fn crash (mut colliders : ResMut < bevy_rapier3d :: rapier :: geometry :: ColliderSet >) { } fn main () { App :: build () . insert_resource (Msaa { samples : 4 }) . add_plugins (DefaultPlugins) . add_plugin (bevy_rapier3d :: physics :: RapierPhysicsPlugin) . add_system (crash . system ()) . run () ; }

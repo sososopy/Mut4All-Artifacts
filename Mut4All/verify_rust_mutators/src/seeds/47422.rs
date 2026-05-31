@@ -1,0 +1,1 @@
+# ! [feature (conservative_impl_trait)] # ! [feature (const_fn)] pub struct S ; pub const fn f (t : S) -> impl Fn () { move | | { & t ; } }

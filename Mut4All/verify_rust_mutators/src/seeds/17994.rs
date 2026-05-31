@@ -1,0 +1,1 @@
+trait Tr { } type Huh < T > where T : Tr = isize ; fn main () { }

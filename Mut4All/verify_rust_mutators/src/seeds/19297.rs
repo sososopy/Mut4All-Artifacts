@@ -1,0 +1,1 @@
+fn main () { [] . sort_by (| a , b | a . partial_cmp (b)) }

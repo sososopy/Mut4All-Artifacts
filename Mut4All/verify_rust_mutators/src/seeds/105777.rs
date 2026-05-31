@@ -1,0 +1,1 @@
+# ! [feature (dyn_star)] const _ : dyn * Send = & () ; fn main () { }

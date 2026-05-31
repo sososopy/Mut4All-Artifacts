@@ -1,0 +1,22 @@
+Mutation operator: Replace a primary template variable or static member with a partial specialization that uses template template parameters in its template argument list, while ensuring the partial specialization's template parameters mismatch in count or ordering relative to the primary template.
+
+This mutation applies to variable templates or static constexpr bool members within template structs that are defined as primary templates. The operator modifies the primary template by adding a partial specialization that introduces a template template parameter. Specifically, it changes a simple primary template definition into one that includes a partial specialization where the specialized argument is a template-id involving a template template parameter, but the partial specialization's template parameter list is rearranged or has different parameter kinds compared to the primary template, creating an invalid partial specialization.
+
+For example, given a seed program containing a template struct with a static constexpr bool member or a variable template, such as:
+template <typename... Types>
+struct Checker {
+  template <typename T>
+  static constexpr bool value = false;
+};
+The mutation operator transforms it by adding a partial specialization for value that uses a template template parameter. It reorders or alters the template parameters of the partial specialization relative to the primary template's member template. The mutated code becomes:
+template <typename... Types>
+struct Checker {
+  template <typename T>
+  static constexpr bool value = false;
+
+  template <template <Types...> class C, Types... Args>
+  static constexpr bool value<C<Args...>, C> = true;
+};
+Here, the primary template for value has one template parameter (typename T), but the partial specialization introduces two template parameters (a template template parameter C and a parameter pack Args) and attempts to specialize value with a template argument list <C<Args...>, C>, which mismatches the primary template's single parameter. This invalid partial specialization, especially when the template parameter pack Types is used inconsistently, is likely to trigger compiler crashes similar to the bug report.
+
+The operator should use existing template parameter names from the seed program (like Types) and introduce only necessary new elements such as C and Args, which are declared within the partial specialization's template parameter list. Avoid introducing new types or variables outside the template; the mutation solely adds the partial specialization within the same struct. Ensure the partial specialization's template argument list references existing templates or types from the seed program, such as using a template-id like C<Args...> where C is a template template parameter and Args are parameters from the pack. This creates a complex and potentially invalid specialization that stresses the compiler's frontend during instantiation or matching, aiming to expose crashes.

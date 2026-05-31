@@ -1,0 +1,1 @@
+extern { static __foo : u32 ; } pub static mut FOO : u32 = __foo ;

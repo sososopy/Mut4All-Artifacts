@@ -1,0 +1,23 @@
+mutation operator
+Target code construct: generic struct instantiations with explicit allocator parameters, specifically `Box<T, A>` where `A` is an allocator type, combined with operations that may influence LLVM optimization passes like LTO. Applies to any generic struct where a type parameter is used to specify an allocator, but the primary focus is `Box::new_in` calls or similar allocator-aware allocations.
+
+The mutation changes the explicit allocator argument at the allocation site from a reference to an allocator instance (like `&Global`) to a direct instance of the allocator type (like `Global`), or vice versa, when the allocator type implements the `Allocator` trait and the API expects a reference. This mismatch in expected argument type can alter the generated LLVM IR and may expose type mismatches during LTO.
+
+Steps:
+1. Locate a call expression that is a method call or function call related to allocation with an explicit allocator parameter, such as `Box::new_in(value, allocator)`.
+2. Identify the allocator argument expression. If it is a reference expression (e.g., `&Global` or `&my_allocator`), replace it with the dereferenced value (e.g., `Global` or `my_allocator`). If it is a non-reference value, wrap it with a reference (e.g., change `Global` to `&Global`), ensuring the resulting expression type-checking may fail or produce different IR.
+3. Ensure the change only applies when the allocator type is known to implement the required allocator trait, to avoid trivial compilation errors unrelated to the bug class.
+
+Example seed code snippet:
+let node = Box::new_in(Node { v: &(), b: false }, &Global);
+
+Mutated code snippet:
+let node = Box::new_in(Node { v: &(), b: false }, Global);
+
+Or if the seed uses a non-reference:
+let node = Box::new_in(value, my_allocator);
+
+Mutated to:
+let node = Box::new_in(value, &my_allocator);
+
+This mutation targets the specific interaction between allocator type representation and LTO as seen in the bug report, where the type mismatch in IR can lead to compiler ICEs.

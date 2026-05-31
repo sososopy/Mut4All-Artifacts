@@ -1,0 +1,62 @@
+Mutation Operator 1: Introduce a const trait impl with an unimplemented trait method.  
+Target: `const_trait_impl` with associated functions.  
+Apply when a trait is marked as `#[const_trait]` and contains method declarations but the impl block does not implement them, or implements a different method than declared.  
+Example:  
+Original:  
+```rust  
+#[const_trait]  
+trait Foo {  
+    fn foo(&mut self, x: T) -> T;  
+}  
+impl const Foo for () {  
+    fn foo(&mut self, x: T) -> T {  
+        x  
+    }  
+}  
+```  
+Mutated:  
+```rust  
+#[const_trait]  
+trait Foo {  
+    fn foo(&mut self, x: T) -> T;  
+}  
+impl const Foo for () {  
+    fn bar(&mut self, x: T) -> T { // method name differs from trait declaration  
+        x  
+    }  
+}  
+```
+
+Mutation Operator 2: Use an unimported or unqualified trait in a const trait impl.  
+Target: `const_trait_impl` with trait bounds and referenced types.  
+Apply when a const impl or method uses a trait like `<Self as Index>::Output` or other associated items from a trait that is not imported or qualified.  
+Example:  
+Original:  
+```rust  
+use std::ops::Index;  
+#[const_trait]  
+trait Foo {  
+    fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;  
+}  
+```  
+Mutated:  
+```rust  
+#[const_trait]  
+trait Foo {  
+    fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output; // Index is not imported  
+}  
+```
+
+Mutation Operator 3: Mismatch `const` and non-`const` trait bounds in function arguments or return types.  
+Target: `const_trait_impl` with opaque return types or trait bounds.  
+Apply when the function signature uses `~const T` but the actual impl or bound does not match the constness.  
+Example:  
+Original:  
+```rust  
+const fn rpit() -> impl ~const T { S }  
+```  
+Mutated:  
+```rust  
+const fn rpit() -> impl T { S } // `~const` is missing from the trait bound  
+```  
+This change may cause ICEs related to missing `const` in trait processing.

@@ -1,0 +1,30 @@
+//source file
+#include "../include/erroneous_union_member_initializer_23.h"
+
+// ========================================================================================================
+#define MUT23_OUTPUT 1
+
+void MutatorFrontendAction_23::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *UD = Result.Nodes.getNodeAs<clang::CXXRecordDecl>("UnionDecl")) {
+        if (!UD || !Result.Context->getSourceManager().isWrittenInMainFile(
+                       UD->getLocation()))
+            return;
+
+        for (const auto *field : UD->fields()) {
+            if (field->hasInClassInitializer()) {
+                auto initRange = field->getInClassInitializer()->getSourceRange();
+                std::string erroneousInit = "/*mut23*/ = ";
+                Rewrite.ReplaceText(initRange, erroneousInit);
+                break;
+            }
+        }
+    }
+}
+  
+void MutatorFrontendAction_23::MutatorASTConsumer_23::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    DeclarationMatcher matcher = cxxRecordDecl(isUnion()).bind("UnionDecl");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

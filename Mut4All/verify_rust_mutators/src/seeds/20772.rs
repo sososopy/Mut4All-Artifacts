@@ -1,0 +1,1 @@
+trait T : Iterator < Item = Self :: Item > { }

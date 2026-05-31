@@ -1,0 +1,1 @@
+fn foo < const N : usize > (x : & [u8 ; N]) -> & [u8 ; N - 1] { match x { [_ , ref xs @ ..] => xs } } fn main () { }

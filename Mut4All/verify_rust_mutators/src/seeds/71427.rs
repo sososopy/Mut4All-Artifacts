@@ -1,0 +1,1 @@
+trait Foo { fn bar (self : Pin < & mut Self >) -> bool ; } impl Foo for & 'static str { fn bar (self : Pin < & mut Self >) -> bool { true } } fn main () { let mut test : Pin < Box < dyn Foo > > = Box :: pin ("foo") ; test . as_mut () . bar () ; }

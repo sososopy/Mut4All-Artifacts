@@ -1,0 +1,1 @@
+enum Src { Foo (u8) , Bar , } enum Dst { Foo (u8) , } fn main () { let e : Src = Src :: Foo (0) ; let _ : Dst = match e { Src :: Foo (x) => Dst :: Foo (x) , Src :: Bar => Dst :: Foo (0) , } ; }

@@ -1,0 +1,1 @@
+static FOOBAR : & 'static [char] = ['A'] ;

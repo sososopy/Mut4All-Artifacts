@@ -1,0 +1,27 @@
+Mutation operator: Inline Assembly Operand Type Mutation with Erroneous Type Context
+
+Target: This operator applies to inline assembly blocks (core::arch::asm! or llvm_asm!) within functions. Specifically, it mutates the operand expression in an input or output constraint to use a value that depends on a type with a known compilation error (e.g., unresolved type, borrow checker error) from elsewhere in the same function or its surrounding scope. The goal is to create a scenario where the compiler is type-checking the inline assembly operand while the surrounding context is already tainted by earlier errors.
+
+Application: For any function containing an inline assembly block, identify all input and output operands. For each operand expression, analyze the function body for existing type errors or introduce a controlled type error in a related declaration. Then, mutate the operand expression to reference a value whose type depends on that erroneous declaration.
+
+Procedure:
+1. In the seed program, locate a function containing an inline assembly block.
+2. Within the same function, introduce or identify a type error. For instance, if the function uses a generic struct, add a field or parameter with an undefined type name (e.g., replace a concrete type in a variable declaration with a non-existent type like `UndefinedType`). Ensure this error is syntactically valid but semantically incorrect, causing a compilation error during type resolution.
+3. Select an operand expression in the inline assembly block that currently uses a valid value (e.g., a variable of a correct type). Mutate this expression to instead use a value that is constructed from or references the erroneous type. For example, if a variable `x` of type `UndefinedType` was declared, change the operand to `&x` or `x` (if the operand expects a pointer or value).
+4. If no existing type error is present, create one by modifying a local variable declaration or a struct instantiation within the function to include an undefined type. Then, update the assembly operand to use that variable.
+
+Example (pseudo-code):
+Original function snippet:
+unsafe fn example() {
+    let val: i32 = 42;
+    core::arch::asm!("nop", in("eax") val);
+}
+After mutation:
+unsafe fn example() {
+    let error_val: UndefinedType = unsafe { std::mem::zeroed() }; // Introduced type error
+    let val: i32 = 42;
+    core::arch::asm!("nop", in("eax") error_val); // Mutated operand to use erroneous type
+}
+Note: The mutation introduces `UndefinedType` as a new, undefined type name, which will cause a compilation error. The operand `error_val` is then used in the assembly, mimicking the bug scenario where the compiler processes inline assembly with tainted type context.
+
+Constraints: The mutation must preserve syntactic validity of the Rust code (e.g., using `unsafe` blocks or `std::mem::zeroed()` for initialization to avoid undefined variables). The introduced type name should be unique and not conflict with existing types in the scope (e.g., use a placeholder like `ErrType`). The operand expression change should align with the assembly constraints (e.g., if the constraint expects a register like `eax`, the mutated value should be of a type that can be coerced or is valid for that constraint, though the type error may override this). This operator is designed to trigger edge cases in the compiler's error recovery during inline assembly type checking.

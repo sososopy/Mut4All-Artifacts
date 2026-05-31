@@ -1,0 +1,1 @@
+trait Ice { } impl < const N : usize > Ice for [() ; N] where [() ; 2 * N] : { }

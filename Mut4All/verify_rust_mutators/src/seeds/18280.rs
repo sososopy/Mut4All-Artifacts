@@ -1,0 +1,1 @@
+fn foo (x : Box < str >) { let y : & str = & * x ; }

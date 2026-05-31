@@ -1,0 +1,1 @@
+# [allow (unused_extern_crates)] extern crate self as core ;

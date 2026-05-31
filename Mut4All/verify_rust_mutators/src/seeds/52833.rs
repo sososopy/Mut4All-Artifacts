@@ -1,0 +1,1 @@
+async fn foo < 'a > (x : & 'a u8 , y : & 'a u8) -> u8 { * x + * y }

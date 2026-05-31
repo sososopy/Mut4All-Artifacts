@@ -1,0 +1,1 @@
+fn main () { let x = Some (1) . unwrap_or_else (| | Some (2)) ; }

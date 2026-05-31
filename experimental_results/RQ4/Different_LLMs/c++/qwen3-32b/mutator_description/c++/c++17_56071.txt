@@ -1,0 +1,51 @@
+Mutation Operator 1: Lambda-Variadic Scope Interaction
+Target: Functions using variadic templates with pack expansion and local variables
+Action: Inject a lambda with a return type using decltype(local_var) inside a template function that employs pack expansion. Replace a direct use of a local variable in the template with a lambda that references it via decltype, then invoke the lambda within a folded expression or pack expansion context.
+Example:
+Before:
+template<typename... Ts> void f(Ts... args) { int x; ... }
+
+After:
+template<typename... Ts> void f(Ts... args) { int x; (..., [](auto a) -> decltype(x) { return x; }(args)); }
+
+Mutation Operator 2: Nested Template Lambda Capture
+Target: Template functions calling other template functions
+Action: Convert a direct function call between templates to use a lambda that captures a local variable from the outer template and returns decltype(captured_var), then execute this lambda inside the inner template instantiation.
+Example:
+Before:
+template<typename T> void g(T t) { f<T>(t); }
+
+After:
+template<typename T> void g(T t) { int x; auto l = [x](auto a) -> decltype(x) { return x; }; f<T>(l); }
+
+Mutation Operator 3: Deferred Return Type Pack Expansion
+Target: Variadic templates with simple parameter packs
+Action: Replace a basic pack expansion with a lambda that has a return type using decltype(local_var) and is invoked in the expansion context. Ensure the local_var is declared in the variadic template's body.
+Example:
+Before:
+template<typename... Ts> void f() { (Ts() , ...); }
+
+After:
+template<typename... Ts> void f() { int x; (Ts(), [](auto a) -> decltype(x) { return x; }(x)) , ...; }
+
+Mutation Operator 4: Cross-Template Lambda Capture
+Target: Functions that instantiate nested templates
+Action: Insert a lambda with a captured local variable and decltype return type in the outer template, then pass it as a parameter to an inner template that instantiates and executes it.
+Example:
+Before:
+template<typename F> void outer(F f) { inner<F>(); }
+
+After:
+template<typename F> void outer(F f) { int x; auto l = [x](auto a) -> decltype(x) { return x; }; inner<decltype(l)>(l); }
+
+Mutation Operator 5: Scope Chaining in Template Instantiation
+Target: Template functions with nested template calls
+Action: Add a lambda with a return type using decltype(local_var) in the innermost template, where local_var is declared in the outermost template's scope, creating multiple layers of scope during instantiation.
+Example:
+Before:
+template<typename T> void inner(T t) { ... }
+template<typename T> void outer(T t) { inner<T>(t); }
+
+After:
+template<typename T> void inner(T t) { int x; [](auto a) -> decltype(x) { return x; }(t); }
+template<typename T> void outer(T t) { int x; inner<T>(t); }

@@ -1,0 +1,1 @@
+# ! [feature (trait_alias)] pub trait SelfInput = Fn (& mut Self) ; pub fn f (_f : & dyn SelfInput) { } fn main () { }

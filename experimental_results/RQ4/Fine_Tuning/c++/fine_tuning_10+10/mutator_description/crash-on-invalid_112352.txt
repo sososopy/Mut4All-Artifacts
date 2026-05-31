@@ -1,0 +1,37 @@
+Mutation Operator: Template Parameter Pack Misuse
+
+Target Code Construct: Function Template
+
+Mutation Rule:
+1. Identify a function template that uses parameter packs. This can be recognized by the presence of the ellipsis operator ('...') within the template parameter list.
+   
+2. Modify the template parameter pack to introduce an unexpanded parameter pack scenario. Do this by including an unused parameter pack within a nested templated function call or expression inside the function body. This parameter pack should be syntactically valid but semantically unused, causing the compiler to attempt to instantiate it without having a proper expansion.
+
+3. Ensure the function containing the unexpanded parameter pack is called or instantiated within the program to trigger the bug.
+
+Example:
+Original Pseudo-Code:
+```cpp
+template<typename... Args>
+void ExampleFunction(Args... args) {
+    // Original code that uses Args...
+}
+```
+
+Mutated Pseudo-Code:
+```cpp
+template<typename... Args>
+void ExampleFunction(Args... args) {
+    auto unused_pack = [&](auto... unused) {
+        // Intentionally leave 'unused' unexpanded within a function call or expression
+        (void)sizeof...(unused);
+    };
+    // Call the lambda without actually expanding its parameter pack
+    unused_pack();
+    
+    // Original code that uses Args...
+}
+```
+
+Explanation:
+By introducing a lambda `unused_pack` that accepts a parameter pack `unused` and calling it without expanding its parameters, we can potentially create a situation where the compiler fails to track or understand the unused parameter packs, leading to a possible assertion failure similar to the one described in the bug report. This mutation tests the compiler's ability to handle and diagnose unexpanded parameter packs within complex template expressions.

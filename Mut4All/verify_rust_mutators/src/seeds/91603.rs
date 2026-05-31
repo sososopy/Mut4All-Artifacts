@@ -1,0 +1,1 @@
+fn first_child < 'w , 's , Q : WorldQuery , F : WorldQuery > (query : Query < 'w , 's , Q , F > ,) -> impl FnOnce (& Children) -> Result < QueryItem < Q > , QueryEntityError > where F :: Fetch : FilterFetch , { move | children | children . first () . ok_or (QueryEntityError :: NoSuchEntity) . and_then (| child | query . get_mut (* child)) }

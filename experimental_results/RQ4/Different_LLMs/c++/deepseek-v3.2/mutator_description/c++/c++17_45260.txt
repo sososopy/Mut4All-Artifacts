@@ -1,0 +1,20 @@
+Mutation operator: Corrupt template deduction guide syntax in valid contexts.
+
+This mutation applies to C++17 code containing explicit template deduction guide declarations. It targets the syntax of deduction guides declared outside a template class, specifically corrupting the guide's declarator part while preserving the template head.
+
+The mutation replaces a valid deduction guide declarator with a malformed sequence that mimics the bug report pattern. It operates only when the seed program already contains at least one explicit deduction guide (e.g., "template<typename T> S(T) -> S<T>;").
+
+Changes: For each explicit deduction guide found, replace the declarator (the part after "->") with a corrupted form. The pattern is: take the template class name (which must exist), append "()", then append a single lowercase letter variable name that does not exist in the current scope. Example transformation:
+
+Original: template<typename T> MyClass(T) -> MyClass<T>;
+Mutated: template<typename T> MyClass(T) -> MyClass() x;
+
+Implementation rules:
+1. Identify all explicit deduction guides in the seed program.
+2. For each guide, extract the template class name (the type after "->" in original).
+3. Generate a new declarator: concatenate class name + "()" + random lowercase letter (e.g., 'a', 'b', 'c').
+4. Ensure the appended letter is not a variable, type, or function name present in the current scope.
+5. Replace the original declarator entirely with this new corrupted declarator.
+6. Preserve the template head and parameter list unchanged.
+
+This mutation creates syntactically invalid deduction guides that match the crash-triggering pattern from the bug report, while using elements (template class name) already present in the program. The introduced lowercase letter is guaranteed novel to avoid conflicts with existing identifiers.

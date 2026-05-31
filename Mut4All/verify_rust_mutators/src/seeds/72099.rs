@@ -1,0 +1,1 @@
+# ! [feature (no_core , lang_items)] # ! [no_core] # [lang = "sized"] trait Sized { } fn foo () -> bool { () }

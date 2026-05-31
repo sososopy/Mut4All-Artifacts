@@ -1,0 +1,61 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Constexpr_Incorrect_Definition_318
+ */ 
+class MutatorFrontendAction_318 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(318)
+
+private:
+    class MutatorASTConsumer_318 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_318(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        
+    };
+};
+
+//source file
+#include "../include/constexpr_incorrect_definition_318.h"
+
+// ========================================================================================================
+#define MUT318_OUTPUT 1
+
+void MutatorFrontendAction_318::Callback::run(const MatchFinder::MatchResult &Result) {
+    if (auto *FD = Result.Nodes.getNodeAs<clang::FunctionDecl>("ConstexprFunc")) {
+      if (!FD || !Result.Context->getSourceManager().isWrittenInMainFile(
+                     FD->getLocation()))
+        return;
+      if (!FD->isConstexpr())
+        return;
+      if (!FD->hasBody())
+        return;
+      auto definition = stringutils::rangetoStr(*(Result.SourceManager),
+                                                FD->getSourceRange());
+      definition += "=delete";
+      Rewrite.ReplaceText(CharSourceRange::getTokenRange(FD->getSourceRange()),
+                          definition);
+    }
+}
+  
+void MutatorFrontendAction_318::MutatorASTConsumer_318::HandleTranslationUnit(ASTContext &Context) {
+    MatchFinder matchFinder;
+    auto matcher = functionDecl().bind("ConstexprFunc");
+    Callback callback(TheRewriter);
+    matchFinder.addMatcher(matcher, &callback);
+    matchFinder.matchAST(Context);
+}

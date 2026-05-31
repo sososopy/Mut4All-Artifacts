@@ -1,0 +1,24 @@
+mutation operator: Introduce a pattern destructuring of an enum variant inside an async block where the destructured variable is captured by a nested closure, but the destructured binding is not used in the async block body, only passed into the closure.
+
+This mutation applies to code that contains an async block or async function that destructures an enum variant via a let binding. The mutation modifies the async block to wrap the destructured binding in a closure that captures it, without using the binding directly in the async block's statements. The closure should be defined but not necessarily called, or called in a trivial way, to ensure the capture occurs. The goal is to stress the compiler's handling of captured destructured data within async contexts.
+
+Specifically, for a seed program that contains an async block with a destructuring pattern like `let Enum::Variant { field } = value;`, transform it by moving the destructured binding into a closure that captures it. The closure can be a simple move closure that takes the binding as an argument or captures it from the environment. The closure should be defined inside the async block, and optionally invoked with a unit argument if it is a FnOnce, to avoid dead code elimination if desired. Use existing variable names from the seed; do not introduce new types or functions beyond a closure definition.
+
+Example transformation:
+
+Original seed code snippet within an async block:
+async move {
+    let EnumName::VariantName { field_name } = some_variable;
+    // possibly other statements
+}
+
+Mutated code:
+async move {
+    let EnumName::VariantName { field_name } = some_variable;
+    let closure = move || {
+        let _ = field_name; // capture field_name, use it trivially
+    };
+    closure(); // invoke closure to ensure capture is utilized
+}
+
+Alternatively, if the async block already contains other statements, the closure can be defined and called immediately. The key is that the destructured binding is captured by a closure inside the async block, which may alter the compiler's analysis of ownership and borrowing within the async state machine. This mutation targets potential bugs in the interaction between pattern destructuring, closure captures, and async code generation.

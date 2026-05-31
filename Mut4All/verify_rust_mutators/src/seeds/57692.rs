@@ -1,0 +1,1 @@
+fn foo () { static map : u64 = 0 ; }

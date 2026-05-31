@@ -1,0 +1,1 @@
+# ! [feature (negative_impls)] trait MyPredicate < 'a > { } impl < 'a , T > ! MyPredicate < 'a > for & T where T : 'a { } trait MyTrait < 'a > { } impl < 'a , T : MyPredicate < 'a > > MyTrait < 'a > for T { } impl < 'a , T > MyTrait < 'a > for & 'a T { } fn main () { }

@@ -1,0 +1,1 @@
+# ! [feature (core)] use std :: simd :: i16x8 ; fn main () { let x = i16x8 (1 , 2 , 3 , 4 , 1 , 2 , 3 , 4) ; let y = i16x8 (4 , 3 , 2 , 1 , 1 , 2 , 3 , 4) ; let z = x * y ; let i16x8 (a , b , c , d , e , f , g , h) = z ; println ! ("{:?}" , (a , b , c , d , e , f , g , h)) ; }

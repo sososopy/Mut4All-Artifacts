@@ -1,0 +1,22 @@
+mutation operator: Introduce a recursive call to an opaque-typed function with lifetime parameters that are constrained to be equal to themselves via where-clause or bound, within a let-statement that type-annotates a reference with one of those lifetimes.
+
+This mutation targets functions that return an opaque type (e.g., `impl Trait`) where the opaque type includes lifetime parameters. Specifically, it applies when the function has lifetime parameters that have a bound that forces them to be equal to themselves (like `'a: 'a`). The mutation creates a let-statement inside the function body that calls the same function recursively, explicitly specifying the lifetime arguments, and assigns the result to a type-annotated variable where the type is a reference (e.g., `&'a ()`) using one of the self-bounded lifetimes. The function body must also contain a diverging expression (like `loop {}` or `panic!()`) after the let-statement to ensure the function does not actually return normally, but the mutation focuses on introducing the recursive call and the annotated let-statement.
+
+Steps for mutation:
+1. Identify a function in the seed program that returns an opaque type (e.g., `impl Trait<...>`) and has at least one lifetime parameter.
+2. For each lifetime parameter of the function, add a bound that the lifetime outlives itself (e.g., change `'a` to `'a: 'a`). If such a bound already exists, leave it unchanged.
+3. Inside the function body, at a suitable place (e.g., at the beginning of the block), insert a let-statement: `let _: &'a () = function_name::<'a, ...>();` where `function_name` is the name of the function being mutated, and the lifetime arguments are the same lifetimes used in the function's parameters, listed in the same order. Use a fresh variable name if needed (e.g., `_` or a new unused identifier).
+4. Ensure the function body after the inserted let-statement contains a diverging expression (if not already present, add `loop {}` or `panic!()` at the end to prevent return).
+5. The trait used in the opaque return type must exist; if not, introduce a minimal trait definition (e.g., `trait Dummy {}` and an impl for all types `impl<T> Dummy for T {}`) before the function.
+
+Example based on the bug report structure (using generic names):
+Given a seed function: `fn bar<'x>() -> impl SomeTrait<'x> { ... }`
+Mutated code:
+First, ensure a dummy trait is present (if not in seed): `trait SomeTrait<'a> {} impl<'a, T> SomeTrait<'a> for T {}`
+Then mutate function:
+`fn bar<'x: 'x>() -> impl SomeTrait<'x> {
+    let _: &'x () = bar::<'x>();
+    loop {}
+}`
+
+This mutation is likely to expose bugs in the compiler's handling of opaque types with recursive calls and self-bounded lifetimes, particularly in region inference and borrow checking phases.

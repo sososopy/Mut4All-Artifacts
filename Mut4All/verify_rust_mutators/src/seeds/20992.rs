@@ -1,0 +1,1 @@
+struct State < I > ; trait Parser { type Input ; } impl Parser for () { type Input = () ; } struct IntoIter < P : Parser > { input : State < < P as Parser > :: Input > } fn main () { let p = IntoIter :: < () > { input : State :: < () > } ; }

@@ -1,0 +1,1 @@
+use rustc_expand :: base :: SyntaxExtension ; fn register_builtin_macros () { macro register_derive ($ ($ f : expr ,)) { $ (Box :: SyntaxExtension ($ f)) } register_derive ! { clone , } }

@@ -1,0 +1,1 @@
+pub trait Tr { type A = () ; } pub struct S < T , U > { data : T , more_data : U , } impl < T : Tr + Copy > S < T , < T as Tr > :: A > { pub fn it_exists (& self) { } } # [test] fn test () { let x = S { data : () , more_data : () , } ; x . it_exists () ; }

@@ -1,0 +1,32 @@
+Mutation Operator:
+
+Target: Compound statements and conditional expressions inside a constexpr function
+
+Mutation Rule: Modify a compound statement used within a conditional expression to include an additional operation that involves both integral and non-integral types. This modification targets the misuse of integral and non-integral types in binary operations, which has shown to trigger assertion failures in certain cases.
+
+Step-by-Step Instructions:
+1. Identify a `constexpr` function with a conditional statement that includes a compound statement.
+2. Within the compound statement, locate any declaration or operation involving an integral type (e.g., `int`, `char`).
+3. Introduce a new binary operation that combines an existing integral type variable with a newly declared non-integral type variable (e.g., pointer, floating point).
+4. Ensure that the binary operation logically fits within the context of the compound statement, even if the semantics are nonsensical.
+
+Example:
+Original code snippet:
+```
+constexpr int example() {
+  if (({ int x; x = 0; if (x) break; }))
+    return 2;
+  return 1;
+}
+```
+
+Mutated code snippet:
+```
+constexpr int example() {
+  if (({ int x; x = 0; float *ptr = nullptr; if (x + reinterpret_cast<int>(ptr)) break; }))
+    return 2;
+  return 1;
+}
+```
+
+Explanation: The mutation introduces a logical error by performing a binary operation between an integral variable `x` and a non-integral variable `ptr`. This operation, combined with the reinterpretation, can lead to complex type-handling issues, potentially triggering assertion failures in the compiler when it attempts to evaluate the constexpr function.

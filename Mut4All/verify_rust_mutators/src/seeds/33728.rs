@@ -1,0 +1,1 @@
+macro_rules ! _test { ($ pat : pat) => (fn test () { let $ (pat) (ref vec) = * self ; }) } _test ! (None) ;

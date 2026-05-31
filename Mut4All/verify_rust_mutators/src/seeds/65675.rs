@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] pub struct Foo < T , const N : usize > ([T ; N]) ; impl < T , const N : usize > Foo < T , { N } > { } fn main () { }

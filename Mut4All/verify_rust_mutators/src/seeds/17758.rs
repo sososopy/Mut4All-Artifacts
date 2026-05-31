@@ -1,0 +1,1 @@
+pub trait Nothing < 'a > { fn nothing (& 'a mut self) -> () ; fn twice_nothing (& mut self) -> () { { self . nothing () ; } { self . nothing () ; } } }

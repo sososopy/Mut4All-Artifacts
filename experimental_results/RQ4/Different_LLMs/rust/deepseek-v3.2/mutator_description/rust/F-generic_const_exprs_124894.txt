@@ -1,0 +1,21 @@
+mutation operator
+
+Target code construct: const generic expressions used in trait bounds, specifically those involving size_of or other intrinsics that may be unsound for unsized types. This applies to const expressions in where clauses of trait implementations or declarations.
+
+The mutation operator replaces a const generic expression that uses size_of or similar intrinsics with an expression that applies the same intrinsic to a trait object type derived from the context. In seed programs that have a trait T, introduce a dyn T type into the const expression. If the seed program does not have a suitable trait, no mutation is performed.
+
+Steps:
+1. Identify a const generic expression in a where clause that uses std::mem::size_of::<T>() or similar (like align_of). Let the type parameter be named T.
+2. Check if there exists a trait definition in scope (could be the trait being implemented or another trait). Select one such trait, call it TraitX.
+3. Replace size_of::<T>() with size_of::<dyn TraitX>().
+4. Ensure the mutation only applies if the original const expression is used in a trait bound context (e.g., where (): SomeTrait<{ expr }>).
+
+Example seed snippet:
+pub trait Marker<const B: bool> {}
+impl<T> Marker<{ std::mem::size_of::<T>() == 0 }> for T {}
+
+After mutation:
+pub trait Marker<const B: bool> {}
+impl<T> Marker<{ std::mem::size_of::<dyn Marker<true>>() == 0 }> for T {}
+
+If no trait is present, skip mutation. This mutation is likely to trigger bugs in const evaluation during coherence checking, as seen in the bug report, because size_of on dyn traits is invalid.

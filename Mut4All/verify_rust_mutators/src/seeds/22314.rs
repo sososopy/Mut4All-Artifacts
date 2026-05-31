@@ -1,0 +1,1 @@
+trait SomeTrait { } struct SomeStruct (i32) ; impl SomeTrait for SomeStruct { } fn main () { let tobj : Box < SomeTrait > = Box :: new (SomeStruct (1)) ; let ptr = & * tobj as * const _ ; println ! ("{}" , :: std :: mem :: size_of_val (& ptr)) ; }

@@ -1,0 +1,1 @@
+# ! [feature (unboxed_closures)] pub struct Foo ; impl < A > Fn < (A ,) > for Foo { type Output = () ; extern "rust-call" fn call (& self , (_ ,) : (A ,)) { } } pub fn main () { println ! ("{:?}" , Foo ("bar")) ; }

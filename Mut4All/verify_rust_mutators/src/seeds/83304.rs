@@ -1,0 +1,1 @@
+# ! [feature (allocator_api)] pub fn foo () -> u8 { * Box :: new_in (0 , & std :: alloc :: Global) }

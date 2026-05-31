@@ -1,0 +1,1 @@
+use std :: rc :: Rc ; use std :: gc :: Gc ; fn main () { let rc1 = Rc :: new (1) ; let rc2 = rc1 . clone () ; println ! ("{}" , * rc1 . borrow () + * rc2 . borrow ()) ; let gc1 = Gc :: new (1) ; let gc2 = gc1 . clone () ; println ! ("{}" , * gc1 . borrow () + * gc2 . borrow ()) ; }

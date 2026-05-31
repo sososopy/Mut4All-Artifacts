@@ -1,0 +1,1 @@
+use std :: { net :: SocketAddr , str :: FromStr } ; use warp :: Filter ; # [tokio :: main (flavor = "current_thread")] async fn main () { let routes = warp :: any () . and (warp :: method ()) . map (| _ | "Bad!") ; warp :: serve (routes) . run (SocketAddr :: from_str ("0.0.0.0:1235") . unwrap ()) . await ; }

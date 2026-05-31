@@ -1,0 +1,1 @@
+struct TestStruct < T > (T) ; impl < T > TestStruct < T > { const SOME_CONST : u8 = 1 ; fn call (& mut self) { let item = self . 0 ; something (& item , & Self :: SOME_CONST) ; } } fn something < T1 , T2 > (_ : T1 , _ : T2) { unimplemented ! () }

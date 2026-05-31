@@ -1,0 +1,1 @@
+struct Data < 'a > { data : [u8 ; Self :: SIZE] , } impl < 'a > Data < 'a > { const SIZE : usize = 12 ; }

@@ -1,0 +1,41 @@
+Based on the bug report, a mutation operator targeting static_assert messages involving user-defined types with constexpr member functions that return negative values is designed.
+
+Mutation Operator: Mutate constexpr member functions returning a negative value within a user-defined type used as the static_assert message argument.
+
+Target code construct: This applies to any user-defined type that is used as the second argument (the message) in a static_assert declaration. Specifically, target constexpr member functions named size() or data() within that type that return integer or pointer types. The mutation changes the return value from a positive or zero value to a negative value (for integer returns) or to a null or invalid pointer expression (for pointer returns), while keeping the function constexpr.
+
+Mutation procedure:
+1. Identify a static_assert statement in the seed program where the second argument is an object of a user-defined type (class or struct). Let this type be referred to as T.
+2. Within T, locate any constexpr member function that returns an integer type (like int, size_t, etc.) or a pointer type (like const char*).
+3. If the function returns an integer type, replace its return expression with a negative integer literal (e.g., -1). Ensure the return type can represent negative values (e.g., not unsigned types unless the context allows conversion).
+4. If the function returns a pointer type, replace its return expression with a null pointer literal (e.g., nullptr) or an expression that yields a null pointer.
+5. Ensure the mutated function remains constexpr. Do not change the function's signature or other parts of the type T.
+6. If T does not have such a constexpr member function, introduce one. The introduced function should have a name like size or data, return an integer or pointer type, be marked constexpr, and return a negative value or null pointer as described. The function must be declared within T. Example introduction: if T is struct Widget { };, mutate to struct Widget { constexpr int size() const { return -1; } };. Use a return type that fits the context (e.g., int for simplicity).
+
+Example mutation on a seed program:
+Seed code snippet:
+struct Info {
+    constexpr int length() const { return 5; }
+    constexpr const char* text() const { return "hello"; }
+};
+static_assert(true, Info{});
+
+Mutated code snippet:
+struct Info {
+    constexpr int length() const { return -1; }
+    constexpr const char* text() const { return "hello"; }
+};
+static_assert(true, Info{});
+
+Alternatively, if the seed has no such member functions:
+Seed code snippet:
+struct Marker {};
+static_assert(sizeof(Marker) == 1, Marker{});
+
+Mutated code snippet:
+struct Marker {
+    constexpr int size() const { return -1; }
+};
+static_assert(sizeof(Marker) == 1, Marker{});
+
+This mutation operator focuses on triggering compiler crashes during the evaluation of static_assert message strings, particularly when the compiler tries to interpret negative sizes or null pointers from constexpr member functions, as seen in the bug report.

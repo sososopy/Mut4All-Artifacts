@@ -1,0 +1,1 @@
+# ! [feature (associated_consts)] struct Test { _x : [u32 ; Test :: ARRAY_SIZE] } impl Test { const ARRAY_SIZE : usize = 4 ; } fn main () { }

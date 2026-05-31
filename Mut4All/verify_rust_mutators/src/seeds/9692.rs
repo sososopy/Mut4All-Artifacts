@@ -1,0 +1,1 @@
+extern "C" fn glfwSetErrorCallback (_ : Option < extern "C" fn () >) { } extern "C" fn error_callback () { } # [fixed_stack_segment] # [inline (never)] fn main () { glfwSetErrorCallback (Some (error_callback)) ; }

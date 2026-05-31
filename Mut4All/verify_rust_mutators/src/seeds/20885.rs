@@ -1,0 +1,1 @@
+fn main () { let triangle = ([75] ,) ; let mut sums = [0 ; 15] ; sums [0] = triangle [0] [0] ; }

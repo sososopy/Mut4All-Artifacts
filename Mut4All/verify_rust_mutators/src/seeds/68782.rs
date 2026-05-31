@@ -1,0 +1,1 @@
+# ! [feature (const_if_match)] # ! [feature (const_fn)] # ! [feature (const_panic)] const fn bug (mut array : & [isize] , mut ip : usize) { match array [ip] { _ => panic ! (1) , } } const _ : () = bug (& [1] , 0) ;

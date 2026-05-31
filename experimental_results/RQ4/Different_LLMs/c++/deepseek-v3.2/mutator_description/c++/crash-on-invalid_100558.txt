@@ -1,0 +1,22 @@
+mutation operator: Lambda Trailing Return Type Mutation to Function Pointer Type
+
+This operator targets lambda expressions that have an explicit trailing return type. It applies when a lambda expression is present with a trailing return type that is a non-function type (e.g., a built-in type, class type). The mutation changes the trailing return type to a function pointer type, which can lead to parsing or semantic analysis issues, especially when combined with the lambda's parameter list and body.
+
+Specifically, for a lambda of the form:
+[ capture-list ] ( parameters ) -> return_type { body }
+
+Where 'return_type' is not already a function or pointer-to-function type, replace 'return_type' with a function pointer type. The function pointer type should be constructed using a type that exists in the current context. Preference is given to using a function type that matches an existing function declaration in the seed program. If no suitable function type exists, a simple function pointer type like 'void (*)()' can be introduced, but this requires declaring a dummy function type. To avoid introducing new undeclared elements, the operator first searches for any function declaration in the seed program (excluding the lambda itself). It uses the return type and parameter types of that function to construct the function pointer type. If no function declaration is found, the operator will not apply.
+
+Steps:
+1. Identify a lambda expression with an explicit trailing return type (e.g., -> int).
+2. Let the original return type be T (where T is not a function type or pointer-to-function type).
+3. Search the seed program for a function declaration (e.g., 'void func(int, float)'). Choose the first non-template, non-member function declaration found, excluding the lambda being mutated.
+4. Construct a function pointer type using the return type and parameter types of the found function. For example, if the function is 'void func(int, float)', the function pointer type is 'void (*)(int, float)'.
+5. Replace the lambda's trailing return type with this function pointer type.
+6. Ensure the lambda's body remains unchanged, which will likely cause a type mismatch between the body's return statements and the new return type.
+
+Example based on a seed program containing a function 'void bar(double)':
+Original lambda: [] (int x) -> int { return x + 1; }
+Mutated lambda: [] (int x) -> void (*)(double) { return x + 1; }
+
+Note: This mutation is designed to create a type inconsistency that may stress the compiler's type checking and lambda processing, particularly in C++23 mode where new lambda features exist. The use of an existing function type from the seed program ensures the function pointer type is valid in the context, but the lambda body returning a different type is invalid.

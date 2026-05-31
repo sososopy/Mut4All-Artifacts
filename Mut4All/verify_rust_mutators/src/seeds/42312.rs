@@ -1,0 +1,1 @@
+pub fn f (_ : ToString) { } fn main () { }

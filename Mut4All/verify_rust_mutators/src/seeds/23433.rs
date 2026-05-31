@@ -1,0 +1,1 @@
+# ! [feature (unique)] # ! [allow (unused_variables)] use std :: ptr :: Unique ; fn main () { let mut a = [0u8 ; 5] ; let b : Option < Unique < [u8] > > = unsafe { Some (Unique :: new (& mut a)) } ; match b { Some (ref inner) => println ! ("it's a some") , None => println ! ("it's a none") , } }

@@ -1,0 +1,1 @@
+# ! [feature (async_closure)] # [rocket :: launch] fn rocket () -> rocket :: Rocket { }

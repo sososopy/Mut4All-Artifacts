@@ -1,0 +1,1 @@
+pub type _Unwind_Exception_Cleanup_Fn = Option < extern "C" fn (unwind_code : _Unwind_Reason_Code , exception : * mut _Unwind_Exception) > ;

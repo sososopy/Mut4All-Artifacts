@@ -1,0 +1,1 @@
+trait ListItem < 'a > { fn list_name () -> & 'a str ; } struct List < 'a , T : ListItem < 'a > > { slice : & 'a [T] } impl < 'a , T : ListItem < 'a > > Collection for List < 'a , T > { fn len (& self) -> uint { 0 } } fn main () { }

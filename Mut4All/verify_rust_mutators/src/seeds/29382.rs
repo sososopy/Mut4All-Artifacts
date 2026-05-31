@@ -1,0 +1,1 @@
+# ! [feature (asm)] unsafe fn test (x : * mut u32) { asm ! ("" : "=m" (* x)) ; }

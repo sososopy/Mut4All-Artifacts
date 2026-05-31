@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] pub struct Foo < const D : usize > { pub coords : [u8 ; D] , } pub fn foo (_ : & [Foo < { 1 } >]) { }

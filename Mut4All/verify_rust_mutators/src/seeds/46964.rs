@@ -1,0 +1,1 @@
+extern crate hyper ; pub fn crash (mime : & hyper :: mime :: Mime) -> bool { match (mime . subtype () , mime . suffix ()) { (_ , Some (hyper :: mime :: JSON)) => true , (hyper :: mime :: JSON , None) => true , _ => false , } }

@@ -1,0 +1,1 @@
+use std :: marker :: PhantomData ; struct B < const I : u8 > ; impl B < 0 > { fn bug () -> Self { panic ! () } }

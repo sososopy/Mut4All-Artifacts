@@ -1,0 +1,21 @@
+mutation operator: Replace pattern binding with a wildcard pattern in a match arm that is preceded by a catch-all pattern.
+
+This mutation operator targets match expressions where a pattern arm uses a binding (like a variable or constant) that matches all values, making subsequent arms unreachable. The operator changes such a binding pattern to a wildcard pattern (`_`). This transformation can expose bugs in lints that analyze unreachable patterns or type limits, particularly when the compiler incorrectly handles the interaction between exhaustive bindings and complex range patterns in later arms.
+
+The operator applies to any match arm whose pattern is a single identifier (a variable or constant binding) that is not a wildcard (`_`). It only applies if this arm is the first arm in the match expression and there is at least one subsequent arm. The mutation replaces the identifier pattern with the wildcard pattern `_`. If the identifier is a constant (e.g., defined with `const`), it is still replaced with `_` because the constant acts as a binding that matches its value.
+
+For example, given a match expression:
+match some_tuple {
+    BINDING_NAME => { /* arm1 */ }
+    (start.., ..=end) | (..=start, end..) => { /* arm2 */ }
+}
+
+The mutated code becomes:
+match some_tuple {
+    _ => { /* arm1 */ }
+    (start.., ..=end) | (..=start, end..) => { /* arm2 */ }
+}
+
+This mutation may trigger issues in lints like `unreachable_patterns` or `type_limits` when the compiler evaluates the reachability of the complex range patterns after the change. The wildcard pattern is exhaustive, so the later arms remain unreachable, but the compiler's internal handling of ranges and type constraints might differ, potentially leading to an ICE as seen in the bug report.
+
+The operator uses existing elements from the seed program: the match expression, the binding identifier, and the subsequent patterns. No new variables, types, or functions are introduced. The change is purely syntactic: replace the identifier with `_`. This ensures broad applicability across different seed programs containing match expressions with binding patterns.

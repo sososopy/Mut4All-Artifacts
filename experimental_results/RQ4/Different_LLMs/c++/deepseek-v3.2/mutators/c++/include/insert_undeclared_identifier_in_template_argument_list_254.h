@@ -1,0 +1,32 @@
+//header file
+#pragma once
+#include "Mutator_base.h"
+
+/**
+ * Insert_Undeclared_Identifier_In_Template_Argument_List_254
+ */ 
+class MutatorFrontendAction_254 : public MutatorFrontendAction {
+public:
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(254)
+
+private:
+    class MutatorASTConsumer_254 : public MutatorASTConsumer {
+    public:
+        MutatorASTConsumer_254(Rewriter &R) : TheRewriter(R) {}
+        void HandleTranslationUnit(ASTContext &Context) override;
+    private:
+        Rewriter &TheRewriter;
+    
+    };
+    
+    class Callback : public MatchFinder::MatchCallback {
+    public:
+        Callback(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+        virtual void run(const MatchFinder::MatchResult &Result);
+    private:
+        Rewriter &Rewrite;
+        //Necessary node information record used in the mutation process
+        std::set<std::string> declaredIdentifiers;
+    };
+};
+

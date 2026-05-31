@@ -1,0 +1,21 @@
+Mutation operator: Replace pack expansion in attribute argument with unexpanded pack in function template  
+Applies to: Function templates with variadic parameter packs used in attributes requiring compile-time expressions (e.g., __attribute__((diagnose_if)), [[nodiscard]], etc.)  
+Example before:  
+template <typename... Args>  
+void func() {  
+    []() __attribute__((diagnose_if(Args... && true, "message", "error"))) {}();  
+}  
+
+Example after:  
+template <typename... Args>  
+void func() {  
+    []() __attribute__((diagnose_if(Args && true, "message", "error"))) {}();  
+}  
+
+Changes required:  
+1. Locate any function template parameter pack (e.g., Args) used in an attribute requiring a compile-time-evaluated expression  
+2. Remove the expansion operator (Ellipsis) from the pack usage in the attribute argument  
+3. Ensure the modified attribute argument becomes a dependent expression (e.g., Args instead of Args...)  
+4. Verify the attribute syntax remains valid but creates a dependent context  
+
+This mutation exploits the compiler's handling of dependent expressions in attributes during template instantiation, increasing likelihood of assertion failures when evaluators encounter unexpanded packs.

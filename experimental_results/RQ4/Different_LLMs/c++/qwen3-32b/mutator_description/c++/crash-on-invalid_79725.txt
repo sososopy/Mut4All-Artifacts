@@ -1,0 +1,31 @@
+Mutation Operator: UnclosedNamespaceWithGotoSkippingDestructorVariable  
+Description:  
+Inserts an anonymous namespace (missing closing brace) containing a function with a `goto` that bypasses a variable declaration of a type with a non-trivial destructor. If no such type exists, introduces a minimal `struct` with a declared destructor. Triggers compiler analysis of control flow and destruction order, especially under `-fms-compatibility`.  
+
+Application:  
+1. Locate a function body in the seed program where a `goto` can be inserted.  
+2. Wrap the function in an anonymous namespace without closing the brace.  
+3. Insert a `goto` statement followed by a variable declaration of a type requiring destruction. If no such type exists, define `struct Dummy { ~Dummy(); };` within the namespace.  
+4. Place a label after the declaration to create a jump bypassing initialization.  
+
+Example:  
+Original code:  
+```cpp  
+void func() {  
+    int x = 0;  
+}  
+```  
+
+Mutated code:  
+```cpp  
+namespace {  
+void func() {  
+    goto EXIT;  
+    Dummy d; // Dummy has non-trivial destructor  
+    EXIT:  
+    return;  
+}  
+// Missing closing brace for namespace  
+```  
+
+Compile with `-fms-compatibility` to expose control-flow analysis bugs.

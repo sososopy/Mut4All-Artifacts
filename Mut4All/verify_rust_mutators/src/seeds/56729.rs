@@ -1,0 +1,1 @@
+pub struct TriggerICE < 'a > (& 'a str) ; impl From < String > for TriggerICE < '_ > { fn from (s : String) -> Self { TriggerICE (& s) } }

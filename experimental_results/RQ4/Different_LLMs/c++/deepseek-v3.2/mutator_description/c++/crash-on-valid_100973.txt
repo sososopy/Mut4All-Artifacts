@@ -1,0 +1,45 @@
+Mutation Operator: Inline Namespace Nesting Duplication
+
+Target: This mutation operator applies when the seed program contains at least one namespace declaration. It specifically targets the structure of nested namespaces where an inline namespace could be introduced or duplicated.
+
+Description: For a selected namespace declaration that is nested inside another namespace (i.e., a namespace within a namespace scope), modify its declaration to be inline. If the selected nested namespace is already declared as inline, then create a new, additional inline namespace layer with the same name within the same parent namespace scope, effectively duplicating the inline namespace nesting. This operator aims to stress the compiler's handling of inline namespace lookup and AST representation, particularly in matchers or diagnostics that traverse nested namespaces.
+
+Procedure:
+1. Identify a namespace `N` declared within the scope of another namespace `P`.
+2. If `N` is not declared with the `inline` specifier, add the `inline` keyword to its declaration.
+3. If `N` is already declared with the `inline` specifier, create a new namespace declaration: `inline namespace N { }` placed adjacent to the existing declaration of `N` within the same parent namespace `P`. This results in two inline namespace `N` declarations directly within `P`.
+4. Ensure all existing contents (declarations) from the original namespace `N` remain in one of the `N` namespace bodies (typically the first). The newly created duplicate inline namespace may be left empty or can have a copy of some declarations if needed for syntactic validity, but preference is to keep it simple to avoid introducing new undefined symbols.
+
+Example (Pseudo-code):
+Original seed snippet:
+namespace P {
+    namespace N {
+        class C;
+    }
+}
+
+Mutated version (case: N not inline):
+namespace P {
+    inline namespace N {
+        class C;
+    }
+}
+
+Original seed snippet:
+namespace P {
+    inline namespace N {
+        int f();
+    }
+}
+
+Mutated version (case: N already inline, duplicate layer):
+namespace P {
+    inline namespace N {
+        int f();
+    }
+    inline namespace N {
+        // Potentially empty or with a copy like 'int g();' using existing types
+    }
+}
+
+Note: The operator uses only existing namespace names from the seed. No new data names, types, or variable names are introduced beyond the duplication of namespace declarations. The change is localized to namespace declarations and does not require new elements unless copying declarations for validity, in which case only existing function/type names from the program are reused.

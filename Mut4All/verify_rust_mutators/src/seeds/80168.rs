@@ -1,0 +1,1 @@
+pub struct Problem < 'a > { pub dat : & 'a [u8 ; Self :: C] , } impl < 'a > Problem < 'a > { const C : usize = 0 ; } fn main () { }

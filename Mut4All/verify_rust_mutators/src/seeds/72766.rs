@@ -1,0 +1,1 @@
+pub struct Thing ; impl Thing { pub async fn call (& self) -> Result < () , () > { Ok (()) } } async fn async_main () -> Result < () , () > { Thing { } . call () ? ; Ok (()) } fn main () { let _ = async_main () ; }

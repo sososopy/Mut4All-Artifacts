@@ -1,0 +1,1 @@
+use proc_macro :: TokenStream ; # [proc_macro_attribute] pub fn breaks_rust (_ : TokenStream , input : TokenStream) -> TokenStream { input }

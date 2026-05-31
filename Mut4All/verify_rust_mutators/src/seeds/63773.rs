@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] fn test < const A : & 'static str , const B : & 'static str > () { println ! ("{} {}" , A , B) ; } fn main () { test :: < "Hello" , "World" > () ; }

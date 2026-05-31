@@ -1,0 +1,1 @@
+fn main () { | x : usize | [0 ; x] ; }

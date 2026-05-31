@@ -1,0 +1,1 @@
+# [derive (Debug)] struct Point { } struct NestedA < 'a , 'b > { x : & 'a NestedB < 'b > } struct NestedB < 'a > { x : & 'a i32 , } fn main () { }

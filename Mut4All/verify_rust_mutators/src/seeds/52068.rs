@@ -1,0 +1,1 @@
+# ! [feature (generic_associated_types)] trait Fut { fn do_the_thing () -> usize ; } trait WantsToReturnFuture < F > where F : Fut { fn returns_future () -> F ; } trait HasAssociatedTypes { type Generic < F : Fut > : WantsToReturnFuture < F > ; fn get_generic () -> Self :: Generic ; } fn main () { println ! ("Hello, world!") ; }

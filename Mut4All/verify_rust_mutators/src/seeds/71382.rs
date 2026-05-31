@@ -1,0 +1,1 @@
+# ! [feature (const_generics)] # ! [feature (const_compare_raw_pointers)] struct Test () ; fn pass () { println ! ("Hello, world!") ; } impl Test { pub fn call_me (& self) { self . test :: < pass > () ; } fn test < const FN : fn () > (& self) { FN () ; } } fn main () { let x = Test () ; x . call_me () }

@@ -1,0 +1,13 @@
+mutation operator: swap lifetime parameters with type parameters in trait implementations
+
+This mutation operator targets trait implementations, specifically those with both type parameters and lifetime parameters. It applies when a trait method has generic parameters (type or lifetime) and the impl block provides an implementation. The operator swaps the order of lifetime and type generic parameters in the impl method signature relative to the trait declaration, while preserving the total number of generic parameters. This mismatch can expose internal compiler errors during generic argument instantiation.
+
+The mutation changes the impl method's generic parameter list to place lifetimes where types are expected and vice versa. For example, if a trait method declares `fn method<T>()`, the impl might be mutated to `fn method<'a>()`. Conversely, if a trait method declares `fn method<'a>()`, the impl might be mutated to `fn method<T>()`. When both exist, lifetimes and types are swapped in position.
+
+The mutation should use existing generic parameter names from the seed program. If the trait has one type parameter and the impl currently has zero parameters, introduce a lifetime parameter using a fresh lifetime name like `'a`. If the trait has one lifetime parameter and the impl currently has zero parameters, introduce a type parameter using a fresh type parameter name like `T`. When swapping, maintain the same number of generic parameters as the trait declaration but alter their kinds.
+
+For instance, given a trait declaration `trait Trait { fn process<T, 'a>(x: &'a T); }` and an impl `impl Trait for Type { fn process<T, 'a>(x: &'a T) {} }`, mutate to `impl Trait for Type { fn process<'a, T>(x: &'a T) {} }`. This keeps the same identifiers but swaps their positions, which is valid Rust syntax but may cause internal compiler errors when the compiler expects a specific ordering during substitution.
+
+If the trait has bounds on parameters, attempt to preserve those bounds on the swapped parameters where syntactically possible. For example, `fn compute<T: Bound>()` mutated to `fn compute<'a>()` would drop the bound since lifetimes cannot have trait bounds in that position. This mismatch is intentional to trigger edge cases.
+
+This operator aims to expose bugs in the compiler's handling of generic parameter kind mismatches, particularly in const trait contexts where effects and constness interact with generic instantiation.

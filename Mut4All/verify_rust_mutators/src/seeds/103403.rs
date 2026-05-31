@@ -1,0 +1,1 @@
+# ! [feature (async_fn_in_trait)] pub trait Meow { # [doc = " Who's a good dog?"] async fn woof () ; }

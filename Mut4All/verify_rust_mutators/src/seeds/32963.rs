@@ -1,0 +1,1 @@
+use std :: { fmt , mem } ; fn size_of_copy < T : Copy + ? Sized > () -> usize { mem :: size_of :: < T > () } fn main () { println ! ("{}" , size_of_copy ::< fmt :: Debug + Copy > ()) ; }

@@ -1,0 +1,11 @@
+Summary of structures that C++ compiler bugs are more likely to trigger: Based on the bug report, the crash occurs during the emission of a global variable definition with an atomic type and a constant initializer. Specifically, the assertion failure indicates a mismatch between the expected size of the emitted constant and the actual size of the variable. This suggests that bugs are more likely in scenarios involving non-standard or complex type qualifiers (like _Atomic), pointer types, and constant initialization. Other vulnerable structures include combinations of type qualifiers (e.g., volatile, const), alignas specifiers, and compound types (e.g., arrays, structs) with initializers.
+
+Mutation operator: Replace a global variable's type with an atomic-qualified version of its existing type, and if it has an initializer, adjust the initializer to be compatible.
+
+Where it applies: This mutation applies to global variable declarations in the seed program. It targets variables with scalar or pointer types that can be meaningfully made atomic.
+
+Changes to make: For a given global variable declaration in the seed program, modify its type by prefixing it with _Atomic. If the variable has an initializer, ensure the initializer is a constant expression that is valid for the atomic type. If the original initializer is not compatible (e.g., a non-constant), replace it with a simple constant like 0 or nullptr, depending on the type. If the variable is of a type that cannot be made atomic (e.g., a struct without a trivial copyable type in C++), skip the mutation. Use existing type names from the seed program; do not introduce new types.
+
+Example in pseudo-code: Original code: int globalVar = 42; Mutated code: _Atomic int globalVar = 42; Original code: float* ptr = &someVar; Mutated code: _Atomic float* ptr = nullptr; (if someVar is not a constant address).
+
+Note: This mutation introduces the _Atomic qualifier, which is a C11 feature but also supported in C++ as a compatibility feature. It may trigger code generation issues related to atomic operations and constant emission, as seen in the bug report.

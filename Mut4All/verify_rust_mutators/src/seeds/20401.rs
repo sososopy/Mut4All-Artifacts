@@ -1,0 +1,1 @@
+use std :: thread :: Thread ; use std :: sync :: { Arc , Mutex } ; fn main () { let numbers = Arc :: new (Mutex :: new (vec ! [1i , 2i , 3i])) ; for i in range (0u , 3u) { let number = numbers . clone () ; Thread :: spawn (move | | { let mut array = number . lock () ; (* array) [i] += 1 ; println ! ("numbers[{}] is {}" , i , (* array) [i]) ; }) . detach () ; } }

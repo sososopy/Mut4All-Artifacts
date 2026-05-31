@@ -1,0 +1,1 @@
+# ! [no_std] # ! [no_main] # [no_mangle] extern "C" fn main () -> ! { loop { } } # [panic_handler] fn panic_handler (_ : & core :: panic :: PanicInfo) -> ! { loop { } }

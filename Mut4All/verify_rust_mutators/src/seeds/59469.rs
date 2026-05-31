@@ -1,0 +1,1 @@
+# [cfg (target_arch = "x86")] use core :: arch :: x86 :: * ; # [cfg (target_arch = "x86_64")] use core :: arch :: x86_64 :: * ; unsafe fn pclmul (a : __m128i , b : __m128i , imm8 : i32) -> __m128i { _mm_clmulepi64_si128 (a , b , imm8) }

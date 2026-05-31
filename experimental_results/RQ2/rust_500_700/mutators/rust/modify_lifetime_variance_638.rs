@@ -1,0 +1,59 @@
+use proc_macro2::{Span, TokenStream};
+use quote::quote;
+use rand::{Rng, thread_rng};
+use syn::{
+    GenericParam, Ident, Item, Lifetime, Type, parse_quote,
+    visit_mut::VisitMut,
+};
+
+use crate::mutator::Mutator;
+
+pub struct Modify_Lifetime_Variance_638;
+
+impl Mutator for Modify_Lifetime_Variance_638 {
+    fn name(&self) -> &str {
+        "Modify_Lifetime_Variance_638"
+    }
+    fn mutate(&self, file: &mut syn::File) {
+        for item in &mut file.items {
+            if let Item::Struct(item_struct) = item {
+                let mut has_lifetime = false;
+                let mut lifetime_variance = None;
+
+                for param in &mut item_struct.generics.params {
+                    if let GenericParam::Lifetime(lifetime_param) = param {
+                        has_lifetime = true;
+                        if thread_rng().gen_bool(0.5) {
+                            lifetime_variance = Some("Covariant");
+                        } else {
+                            lifetime_variance = Some("Contravariant");
+                        }
+                    }
+                }
+
+                if has_lifetime {
+                    if let syn::Fields::Named(fields) = &mut item_struct.fields {
+                        for field in fields.named.iter_mut() {
+                            if let Type::Reference(type_reference) = &mut field.ty {
+                                if let Some(lifetime) = &mut type_reference.lifetime {
+                                    if let Some(variance) = lifetime_variance {
+                                        *lifetime = Lifetime {
+                                            apostrophe: lifetime.apostrophe,
+                                            ident: Ident::new(
+                                                &format!("{}_{}", lifetime.ident, variance),
+                                                lifetime.ident.span(),
+                                            ),
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn chain_of_thought(&self) -> &str {
+        "The mutation operator targets structs with lifetime parameters and modifies their lifetime variance. By introducing explicit covariance or contravariance, it aims to explore edge cases in Rust's type-checking and lifetime resolution, potentially exposing subtle issues in the compiler's handling of lifetime variance."
+    }
+}

@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; fn main () { let mut map = HashMap :: new () ; map . insert ("foo" . to_string () , "bar" . to_string ()) ; println ! ("{}" , map ["foo"]) ; }

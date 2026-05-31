@@ -1,0 +1,28 @@
+mutation operator: Introduce dependent expression in a context where constant evaluation is required.
+
+This mutation operator targets C++20 concepts and constraints, particularly in constructors and class template specializations. It applies when a class template has a constrained constructor or member function, and the program constructs an object of a specialization that inherits or uses that constraint.
+
+The operator modifies the constraint expression in a template to introduce a value-dependent subexpression that may incorrectly be considered non-dependent by the compiler. Specifically, it replaces a non-dependent constant expression within a constraint with a value-dependent expression that refers to template parameters or dependent members.
+
+Steps:
+1. Identify a template (class or function) that has a requires-clause or a constrained member.
+2. Within the constraint expression, locate a subexpression that is currently non-dependent (e.g., a literal, a non-dependent constant variable, or a type trait applied to non-dependent types).
+3. Replace that subexpression with a value-dependent expression. Use existing template parameters or dependent members. For example, replace 'true' with 'sizeof(T) > 0' (which is always true but value-dependent) or replace a constant integer with 'sizeof(T)' (which is value-dependent).
+4. Ensure the new expression is syntactically correct and uses only variables, types, or functions that exist in the seed program. If a new type trait or variable is needed, it must be declared in the seed program; do not introduce undeclared elements.
+
+Example of mutation:
+Original pseudo-code:
+template<typename T>
+struct S {
+    void f() requires (SomeTrait<T>::value && true);
+};
+
+Mutated pseudo-code:
+template<typename T>
+struct S {
+    void f() requires (SomeTrait<T>::value && sizeof(T) > 0);
+};
+
+In this example, 'true' is replaced with 'sizeof(T) > 0', which is value-dependent. The mutation should be applied to the constraint in the template where 'T' is a template parameter.
+
+Note: The mutation must preserve the logical truth value of the constraint where possible (e.g., using 'sizeof(T) > 0' instead of 'true' maintains truth). The goal is to create a dependent expression that may trigger incorrect handling during constant expression evaluation, as seen in the bug report where a dependent expression caused an assertion failure in EvaluateAsConstantExpr.

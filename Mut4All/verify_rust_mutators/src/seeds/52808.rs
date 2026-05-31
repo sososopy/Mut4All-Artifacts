@@ -1,0 +1,1 @@
+struct Foo < 'a > ([& 'a () ; 2]) ; impl < 'a > Foo < 'a > { const LEN : usize = 2 ; fn new () -> Self { Foo ({ let arr : [_ ; Self :: LEN] = [& () , & ()] ; arr }) } }

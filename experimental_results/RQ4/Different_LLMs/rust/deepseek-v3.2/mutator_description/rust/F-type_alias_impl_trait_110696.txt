@@ -1,0 +1,23 @@
+Based on the bug report, the bug involves type alias impl trait (TAIT) with complex trait bounds and associated types, leading to an internal compiler error during monomorphization. The bug is triggered when a trait implementation has a bound that includes a TAIT with nested generic parameters, and the compiler fails to resolve a trait instance.
+
+Mutation Operator: TAIT Trait Bound Permutation
+
+This mutation operator targets trait implementations that use type alias impl trait (TAIT) in their bounds. It permutes the generic parameters within the TAIT in the trait bound, specifically swapping or altering the order of type parameters that appear within the TAIT. This is likely to expose bugs in the compiler's handling of TAIT resolution and associated type projection.
+
+Applicability: This operator applies to any trait implementation where the trait bound includes a TAIT that itself has generic parameters. For example, in the bug report, the bound `T: MyFrom<Phantom2<DummyT<U>>>` includes `DummyT<U>`. The operator will mutate such bounds.
+
+Procedure: For each trait implementation in the seed program, examine its where clauses or implicit bounds. Identify any bound of the form `TypeParam: TraitName<TAIT<GenericArgs...>>` where `TAIT` is a type alias impl trait. If found, permute the generic arguments within `TAIT<GenericArgs...>`. Specifically, if `TAIT` has multiple generic arguments, swap their positions. If `TAIT` has a single generic argument that is itself a generic type with arguments (e.g., `DummyT<U>` where `U` is a type parameter), consider replacing it with another type parameter from the same scope if available, or with a concrete type if one exists in the program. However, to avoid introducing new elements, we restrict to swapping existing type parameters.
+
+Example: Given the seed code snippet:
+impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<DummyT<T>> for Scope<U> { ... }
+The bound is `T: MyFrom<Phantom2<DummyT<U>>>`. The TAIT is `DummyT<U>`. We can mutate by swapping the type parameter within the TAIT. Since `DummyT` has only one type parameter `U`, we need another type parameter to swap with. In this context, available type parameters are `T` and `U`. So, mutate the bound to `T: MyFrom<Phantom2<DummyT<T>>>`. This changes the relationship between the type parameters.
+
+If the TAIT has multiple parameters, e.g., `DummyT<A, B>`, swap them to `DummyT<B, A>`.
+
+If no other type parameter is available, the mutation may not apply. The operator should only apply when there are at least two distinct type parameters in scope that could be used within the TAIT.
+
+To ensure the mutation is valid, we only swap type parameters that are already used in the trait implementation's generic parameter list. This maintains that all type parameters are declared.
+
+Note: This mutation may create trait bounds that are impossible to satisfy, but that is acceptable as it tests the compiler's error handling or could trigger an ICE.
+
+Output: The mutated code will have the TAIT's generic arguments permuted in the trait bound, potentially altering the trait resolution and monomorphization process.

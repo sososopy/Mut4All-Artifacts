@@ -1,0 +1,1 @@
+extern { fn f (t : & [i32]) ; } fn main () { unsafe { f (& [0i32]) ; } }

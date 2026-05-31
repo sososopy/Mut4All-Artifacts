@@ -1,0 +1,1 @@
+# ! [feature (trait_alias)] pub trait MyFn = Fn (& mut Self) ; pub type F = dyn MyFn ; pub fn f (_f : & dyn MyFn) { }

@@ -1,0 +1,23 @@
+Mutation operator: Replace a struct field with a generic associated type and introduce a diverging return expression in the instantiating function.
+
+Apply to: Structs with a generic type parameter bound to a trait (e.g., `pub struct S<T: MyTrait>`).
+
+Example:
+Original code:
+pub struct S<T: MyTrait> { x: T }
+
+fn make<T: MyTrait>() -> S<T> { S { x: T::new() } }
+
+Mutated code:
+pub struct S<T: MyTrait> { x: T::Assoc } // Add associated type field
+impl MyTrait for () { type Assoc = Vec<Self>; } // Specialization
+
+fn make<T: MyTrait>() -> S<T> { loop {} } // Replace return with divergence
+
+Trigger by calling make::<()>();
+
+This targets specialization scenarios where:
+1. A struct field uses a generic associated type (T::Assoc)
+2. The function returns such a struct without proper value
+3. The generic argument has a specialized implementation of the trait
+4. The divergence creates a context needing drop glue analysis

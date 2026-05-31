@@ -1,0 +1,1 @@
+# [macro_use] extern crate error_chain ; error_chain ! { foreign_links { StringContainsNul (:: std :: ffi :: NulError) # [doc = "Attempted to pass a string containing `\0`"] ; } }

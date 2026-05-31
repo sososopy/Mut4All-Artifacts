@@ -1,0 +1,1 @@
+struct Foo < T > { x : T } type FooInt = Foo < int > ; impl Drop for FooInt { fn drop (& mut self) { } }

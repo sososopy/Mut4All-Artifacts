@@ -1,0 +1,1 @@
+fn main () { { use std :: ops :: Deref ; struct Thing (i8) ; impl Deref for Thing { fn deref (& self) -> i8 { self . 0 } } let thing = Thing (72) ; * thing } ; }

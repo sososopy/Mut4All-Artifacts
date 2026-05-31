@@ -1,0 +1,1 @@
+fn func ((1 , (Some (1) , 2 ..= 3)) : (isize , (Option < isize > , isize))) { } fn main () { let (1 , (Some (1) , 2 ..= 3)) = (1 , (None , 2)) ; }

@@ -1,0 +1,1 @@
+# ! [feature (extended_key_value_attributes)] # [doc = foo ! ()] macro_rules ! bar { () => { } ; } fn main () { }

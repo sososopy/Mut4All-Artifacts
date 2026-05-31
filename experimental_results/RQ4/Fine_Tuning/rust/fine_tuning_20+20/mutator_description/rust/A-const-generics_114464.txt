@@ -1,0 +1,41 @@
+Mutation Operator:
+Target: Function with const generics
+
+Description: Modify the constant expression used as a generic parameter to introduce a type dependency on a lifetime or a reference that does not directly relate to the size or alignment, which can affect const evaluation and trigger bugs in const generics.
+
+Mutation Rule:
+1. Identify a function with a const generic parameter, e.g., `fn test<const N: usize>() {}`.
+2. Locate a function call using a const expression, e.g., `test::<{ 3 }>();`.
+3. Modify the expression to include a lifetime-bound reference or a dereference operation that introduces a complex evaluation scenario. For example, change `3` to `{
+       let _: &'a (); // Introduces a lifetime-based reference
+       3
+   }`.
+4. Ensure that the lifetime `'a` is declared within the scope where the function is called, if not already present.
+
+Example:
+Original:
+```
+fn test<const N: usize>() {}
+
+fn example_function<'a>() {
+    test::<3>();
+}
+
+fn main() {}
+```
+
+Mutated:
+```
+fn test<const N: usize>() {}
+
+fn example_function<'a>() {
+    test::<{
+        let _: &'a (); // Added lifetime reference to the const expression
+        3
+    }>();
+}
+
+fn main() {}
+```
+
+This mutation leverages the Rust compiler's handling of const generics and lifetime references, potentially triggering internal compiler errors related to generic const expressions.

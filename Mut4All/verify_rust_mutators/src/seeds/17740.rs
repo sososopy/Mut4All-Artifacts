@@ -1,0 +1,1 @@
+fn main () { } struct Foo < 'a > { data : & 'a [u8] , } impl < 'a > Foo < 'a > { fn bar (self : & mut Foo) { } }

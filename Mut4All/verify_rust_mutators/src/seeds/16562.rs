@@ -1,0 +1,1 @@
+trait MatrixShape { } struct Col < D , C > { data : D , col : C , } impl < T , M : MatrixShape > Collection for Col < M , uint > { fn len (& self) -> uint { unimplemented ! () } } fn main () { }

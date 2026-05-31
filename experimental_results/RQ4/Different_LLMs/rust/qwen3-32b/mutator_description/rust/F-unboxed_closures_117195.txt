@@ -1,0 +1,13 @@
+Mutation operator: Target unboxed closure parameters in generic async functions with higher-ranked trait bounds requiring their output to be a Future tied to a mutable reference's lifetime. Apply to function definitions with a generic parameter F that implements a Fn* trait of a mutable reference type. Insert a where clause `for<'a> F: FnOnce<(&'a mut T,)> + 'a` where T is a type used in the function's body. Place this clause after existing where clauses if present. Modify the function to return a Future by adding `async fn` if not already present, and ensure the parameter is not used in the body to avoid usage errors. Example:
+
+Original:
+fn example<T>(f: impl Fn(&mut T)) { ... }
+
+Mutated:
+async fn example<T>(f: impl Fn(&mut T))
+where
+    for<'a> f: FnOnce<(&'a mut T,)> + 'a,
+{
+    let _x: T = unimplemented!();
+    &mut _x;
+}

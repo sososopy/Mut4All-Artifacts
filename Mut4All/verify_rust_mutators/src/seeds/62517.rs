@@ -1,0 +1,1 @@
+use futures :: Stream ; use std :: any :: Any ; async fn foo (x : & str) -> impl Stream < Item = Box < dyn Any > > { }

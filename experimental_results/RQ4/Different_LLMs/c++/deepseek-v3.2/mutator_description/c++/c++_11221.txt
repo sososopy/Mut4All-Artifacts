@@ -1,0 +1,11 @@
+mutation operator: Replace template specialization with an alternate partial specialization that reuses the same template parameters.
+
+This mutation targets class template partial specializations. It applies when a class template has at least one partial specialization defined. The operator modifies a partial specialization by creating a new, syntactically similar partial specialization that uses the same template parameter list but with a different pattern or condition, and replaces the original specialization's definition with this new one. The goal is to trigger conflicts in the compiler's internal tracking of specializations.
+
+For a seed program containing a class template `TemplateName` with template parameters `<Params>` and a partial specialization for pattern `<Pattern1>`, the operator will:
+1. Identify the partial specialization: `template <Params> class TemplateName<Pattern1> { ... };`
+2. Construct a new pattern `<Pattern2>` by modifying `<Pattern1>`. For example, if `<Pattern1>` is `T*`, change it to `T* const`. If it is `T[N]`, change it to `T[M]` where `M` is a different constant expression available in the context (e.g., a different integer literal or a named constant already declared). If the pattern is a template argument pack, adjust its usage.
+3. Replace the original partial specialization with: `template <Params> class TemplateName<Pattern2> { ... };`
+The body of the specialization is kept unchanged. This mutation may introduce a redefinition if another specialization for `<Pattern2>` already exists, or it may create a scenario where two partial specializations are considered overlapping, potentially exposing bugs in specialization resolution.
+
+Example: For a seed with `template<typename T> class C;` and a partial specialization `template<typename T> class C<T*> {};`, the operator could mutate it to `template<typename T> class C<T* const> {};`. Ensure that any new constants (like `const` qualifiers) are valid in the context, and do not introduce new type names or variables not already present.

@@ -1,0 +1,1 @@
+extern { static externalValue : int ; } fn main () { let boolValue = match 42 { externalValue => true , _ => false } ; }

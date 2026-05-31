@@ -1,0 +1,1 @@
+# ! [feature (rustc_attrs)] struct A ; # [rustc_mir (graphviz = "foo.gv")] fn mir () { A ; } fn main () { mir () ; }

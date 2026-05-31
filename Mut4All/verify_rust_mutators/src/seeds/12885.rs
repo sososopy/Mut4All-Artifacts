@@ -1,0 +1,1 @@
+static N : int = { let n : int = 56 ; n } ; fn main () { }

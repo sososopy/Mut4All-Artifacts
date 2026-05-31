@@ -1,0 +1,1 @@
+use std :: collections :: HashMap ; use async_std :: { fs , io , prelude :: * } ; type Handle = io :: BufWriter < fs :: File > ; struct Thing (HashMap < String , Handle >) ; impl Thing { pub async fn die_horribly (& mut self) { for v in self . 0 . values () { v . flush () . await ; } } } fn main () { println ! ("Hello, world!") ; }

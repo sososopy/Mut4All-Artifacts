@@ -1,0 +1,28 @@
+Mutation operator targeting recursive concept instantiation in C++20 code. This operator applies to template concept definitions that involve requires-expressions referencing a function that is declared later or not defined, especially when the concept is used in a function declaration before the referenced function is defined.
+
+The mutation operator introduces a new concept that references an existing concept in its requires-expression, creating a mutual or cyclic dependency. Specifically, it takes an existing concept definition and adds a new concept that requires the original concept, then modifies the original concept to require the new concept, forming a direct cycle. The operator operates on a seed program that already contains at least one concept definition and a function using that concept.
+
+Mutation operator: Insert a new concept definition that forms a cyclic dependency with an existing concept, and modify the existing concept to reference the new concept in its requires-expression. Use the names of existing types or functions from the seed program to avoid introducing undefined identifiers.
+
+Given a seed program containing a concept `C1` defined with a requires-expression referencing a function `F`, and a function declaration `G` that uses `C1`, the mutation operator performs the following steps:
+1. Identify the concept `C1` and the function `F` referenced in its requires-expression.
+2. Insert a new concept `C2` before `C1` with a requires-expression that references `C1`. For example, add `template<typename T> concept C2 = requires(T t) { requires C1<T>; };`.
+3. Modify the requires-expression of `C1` to additionally reference `C2`. For example, change `template<typename T> concept C1 = requires(T t) { F(t); };` to `template<typename T> concept C1 = requires(T t) { F(t); requires C2<T>; };`.
+4. Ensure that any function declarations using `C1` remain unchanged, but now depend on the cyclic concept definitions.
+
+Example of mutated code structure:
+Original seed code snippet:
+template<typename T>
+concept c = requires(T t) { f(t); };
+auto f(c auto);
+void g() { f(0); }
+
+After mutation:
+template<typename T>
+concept c2 = requires(T t) { requires c<T>; };
+template<typename T>
+concept c = requires(T t) { f(t); requires c2<T>; };
+auto f(c auto);
+void g() { f(0); }
+
+The mutation creates a cyclic dependency between `c` and `c2`. When the compiler attempts to check constraint satisfaction for `f(0)`, it may recursively instantiate both concepts, potentially triggering assertion failures similar to the bug report. This operator is designed to expose bugs in the compiler's handling of recursive concept instantiation and constraint satisfaction checking.

@@ -1,0 +1,21 @@
+Mutation operator: ClosureCaptureWithMismatchedProjection
+Target code construct: A mutable reference to a tuple struct containing a nested field, which is then destructured in a closure body using a pattern that introduces a new variable name.
+Apply this mutation to any struct assignment within a closure body that captures a mutable reference. Replace a direct assignment to a field or dereference with a destructuring pattern. The pattern should match the struct's field structure but include an unused variable name (like _x, _y) in the innermost position, ensuring a type mismatch between the pattern and the assigned value. For example:
+Original code:
+let v = V((Some(value),));
+v.0 = (None,);
+
+Mutate to:
+(|| {
+    V((x, _y)) = v;
+    v.0 = (None,);
+})();
+
+This creates a situation where the closure's body has a destructuring pattern that the compiler cannot resolve during borrow checking. The mutation requires:
+1. The closure must capture a mutable reference to a tuple struct
+2. The struct must have a nested field (like an Option or other wrapper)
+3. The assignment pattern must introduce a new variable (like x) and an unused wildcard (like _y)
+4. The assignment should maintain the same field structure as the original struct
+5. The closure must be immediately invoked
+
+The combination of closure capture, field projection, and pattern mismatch creates conditions where the compiler's type system might encounter conflicting projection kinds (Deref vs Field), potentially exposing ICEs like those in the reported issue.

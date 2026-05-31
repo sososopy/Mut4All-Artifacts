@@ -1,0 +1,39 @@
+Based on the bug report, the crash occurs when a user-defined conversion operator with a 'this' parameter is used in a context that involves an operator call within a static_assert, specifically when the conversion is part of a binary operator expression. The assertion failure indicates that the compiler expects a CXXMemberCallExpr or BlockExpr for CK_UserDefinedConversion but encounters something else. This suggests a bug in handling implicit conversions involving 'this' parameter member functions in constant evaluation contexts.
+
+Mutation operator: Insert a static_assert that uses a user-defined conversion operator with a 'this' parameter within a binary operator expression, where the conversion is required to evaluate the operator. Apply this to any struct or class that already defines a user-defined conversion operator (with or without a 'this' parameter) and any binary operator (overloaded or built-in). The mutation should modify the conversion operator to add a 'this' parameter if not present, and then add a static_assert that uses the conversion in a binary operation.
+
+Target code construct: Struct or class with a user-defined conversion operator and a binary operator (overloaded or built-in). The mutation applies inside the struct/class definition and in a static_assert in a function or at namespace scope.
+
+Procedure: For a given seed program, identify a struct or class S that has a user-defined conversion operator (e.g., operator T()) and a binary operator (e.g., operator+(int) or operator<<(int)). If the conversion operator does not have a 'this' parameter, modify it to include 'this const S& self' as the first parameter. Then, add a constexpr function (like test) that contains a static_assert which uses an object of S in a binary operator expression that requires the conversion. For example, if S has operator Wrap<S>() and operator<<(int), create a static_assert like static_assert((s << 11) == value), where s is a constexpr S object and value is an integer constant derived from the operation. Ensure that the conversion is implicitly invoked (e.g., s << 11 uses conversion to Wrap<S> to call operator<<). Use existing variable names and types from the seed; if Wrap<S> is not defined, define a simple wrapper struct that inherits from S or contains an S member.
+
+Example seed pseudo-code:
+struct S {
+    operator int() const { return 42; }
+    int operator+(int x) const { return 42 + x; }
+};
+void foo() {
+    constexpr S s;
+    static_assert(s + 1 == 43);
+}
+
+Mutation:
+First, modify the conversion operator in S to have a 'this' parameter:
+struct S {
+    constexpr operator int(this const S& self) const { return 42; }
+    int operator+(int x) const { return 42 + x; }
+};
+Then, add a static_assert that uses the conversion implicitly in a binary operator context. Since operator+ is already defined on S, no conversion is needed here. To force conversion, change the binary operator to be defined on a different type, like Wrap<S>, and add that type. If not present, define:
+template<typename Base>
+struct Wrap : Base {};
+Then modify S to have conversion to Wrap<S> and operator<< on Wrap<S>:
+struct S {
+    constexpr operator Wrap<S>(this const S& self) { return Wrap<S>{self}; }
+    constexpr int operator<<(this Wrap<S> self, int i) { return self.base + i; }
+    int base = 42;
+};
+Add a test function:
+void test() {
+    constexpr S s;
+    static_assert((s << 10) == 52);
+}
+This mutation introduces the necessary structures to trigger the bug: a user-defined conversion with 'this' parameter used in a binary operator within static_assert. The mutation should use existing names like S, Wrap, base, etc., or introduce them clearly as shown. Avoid undefined variables; ensure all types and variables are declared.

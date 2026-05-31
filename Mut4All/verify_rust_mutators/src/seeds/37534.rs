@@ -1,0 +1,1 @@
+use std :: ops :: Sized ; struct Test < T : ? Sized > ; fn main () { }

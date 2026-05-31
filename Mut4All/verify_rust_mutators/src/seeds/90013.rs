@@ -1,0 +1,1 @@
+# ! [feature (inline_const)] fn main () { const { | | { } } ; }

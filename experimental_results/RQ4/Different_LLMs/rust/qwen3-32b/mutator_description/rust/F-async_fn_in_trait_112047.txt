@@ -1,0 +1,26 @@
+Mutation operator: Introduce indirect async trait recursion via associated types  
+Applies to: Async trait methods returning an associated type that implements a different trait with an async method.  
+Mechanics:  
+1. Locate an async method in a trait that returns an associated type (e.g., `async fn first(self) -> Self::Second`).  
+2. In the implementation of this method, chain `.await` to a method from another trait implemented by the associated type (e.g., `self.first().await.second().await`).  
+3. Ensure the associated type's trait implementation includes a recursive call back to the original method (e.g., `Second` trait's `second` method calls `self.first().await`).  
+4. Use existing structs and traits in the seed program; if necessary, introduce a new trait with an async method and an associated type that forms a cycle.  
+
+Example transformation (pseudo-code):  
+Before:  
+```rust  
+trait First {  
+    type Second;  
+    async fn first(self) -> Self::Second;  
+}  
+```  
+After:  
+```rust  
+trait First {  
+    type Second: Second;  
+    async fn first(self) -> Self::Second;  
+}  
+```  
+In the method body of `Second::second`, insert a call to `self.first().await`.  
+
+Requires that the associated type forms a loop (e.g., `A`'s `Second` is `A`).

@@ -1,0 +1,1 @@
+struct TestClass { nominated : i32 , name : String , } impl TestClass { const NAMES : [str ; 4] = ["a" , "b" , "c" , "d"] ; pub fn new (name : & str) -> Self { TestClass { nominated : 0 , name : name . to_string () } } } fn main () { let mut a = TestClass :: new ("Name") ; }

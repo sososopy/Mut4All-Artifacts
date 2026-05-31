@@ -1,0 +1,11 @@
+Mutation Operator: Attribute Macro Expansion Emptiness
+
+This mutation operator targets attribute arguments that are macro invocations. It replaces the macro invocation inside an attribute with a macro that is defined to expand to an empty token stream (i.e., nothing). This mimics the bug-triggering condition where the attribute parser receives no content from the macro, potentially exposing missing checks for empty expansions in attribute parsing.
+
+Where it applies: This operator applies to any attribute in the seed program that has an argument which is a macro invocation (e.g., `#[attr = macro!()]`, `#[attr(macro!())]`). It specifically targets attributes that use the `=` syntax for key-value pairs or list-style arguments containing macros.
+
+Changes to make: For each target attribute, identify the macro invocation within its argument. Then, replace that macro invocation with a call to a new macro, `empty_macro`, which must be defined to expand to nothing. Ensure the new macro is declared in the same scope (typically at the crate root or within the same module) before its use. The definition should be: `macro_rules! empty_macro { () => {}; }`. If the seed program already contains a macro that expands to empty, use that existing macro instead of introducing a new one. The mutation only changes the macro call within the attribute, leaving all other parts of the program unchanged.
+
+Example in pseudo-code: Suppose the seed program contains: `#[crate_type = some_macro!()]`. After mutation, it becomes: `#[crate_type = empty_macro!()]`, with `macro_rules! empty_macro { () => {}; }` added to the program (if not already present). Another example: `#[some_attr(another_macro!())]` mutates to `#[some_attr(empty_macro!())]`.
+
+Note: The operator avoids introducing undefined names by ensuring `empty_macro` is defined. It uses existing program structures (attributes with macro arguments) and does not rely on specific data names or types.

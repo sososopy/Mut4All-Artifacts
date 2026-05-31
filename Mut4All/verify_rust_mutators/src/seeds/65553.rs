@@ -1,0 +1,1 @@
+use serde :: de :: Deserializer ; use serde_derive :: Deserialize ; # [derive (Deserialize)] struct A { # [serde (deserialize_with = "d")] b : i64 } pub fn d < 'de , D > (_des : D) -> Result < i64 , D :: Error > where D : Deserializer < 'de > , D :: Error : { Ok (5) }

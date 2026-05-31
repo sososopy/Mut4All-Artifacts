@@ -1,0 +1,46 @@
+The bug involves a crash during pseudo-destructor expression parsing with a variadic template type inside a requires clause without constraints. C++ compiler bugs are more likely to trigger in complex template contexts, especially involving pseudo-destructors, variadic templates, requires clauses, and nested type expressions.
+
+Mutation Operator: Replace a pseudo-destructor call on a concrete type with a pseudo-destructor call using a variadic template parameter pack expansion directly, without proper context.
+
+This mutation applies to any code that contains a pseudo-destructor expression (e.g., obj.~Type()) where Type is a non-template type or a simple template type. The goal is to mutate it into a pseudo-destructor expression that uses a variadic template parameter pack in an invalid manner, similar to the bug report.
+
+Specifically, locate any expression of the form: expr.~Type() where expr is an expression yielding an object and Type is a type name. This can appear in member functions, global functions, or lambda bodies. The mutation changes the Type part to a variadic template parameter pack expansion if the surrounding context is a template with a parameter pack. If the surrounding context is not a template, introduce a template with a parameter pack around the function or class containing the pseudo-destructor call. Prefer to use existing template parameters if available; if not, add a template parameter pack to the enclosing class or function. The mutation should generate code like: expr.~Pack...() where Pack is a template parameter pack name. Ensure the pack is used in a context where it is not properly supported for pseudo-destructors, aiming to trigger the assertion.
+
+Example: Suppose the seed program has a class with a method containing a pseudo-destructor call:
+class MyClass {
+    void cleanup() {
+        int x;
+        x.~int();
+    }
+};
+
+Mutate by first converting the class into a template with a variadic parameter pack, then altering the pseudo-destructor call to use the pack:
+template<typename... Pack>
+class MyClass {
+    void cleanup() {
+        int x;
+        x.~Pack...();
+    }
+};
+
+If the seed already has a template with a single parameter, change it to a parameter pack and adjust the pseudo-destructor call accordingly. For instance, if the seed is:
+template<typename T>
+struct S {
+    void f() {
+        T obj;
+        obj.~T();
+    }
+};
+
+Mutate to:
+template<typename... T>
+struct S {
+    void f() {
+        // Assuming an object of type T... is not valid, but we use the pack in the destructor call.
+        // Introduce a pointer or reference to manipulate, as in the bug report.
+        T* p; // This is invalid but mimics the bug's structure.
+        p->~T...();
+    }
+};
+
+Note: The mutation should avoid introducing undeclared variables. If a pointer is needed, declare it appropriately, e.g., as a member variable or local pointer of a type derived from the pack, but focus on the pseudo-destructor expression itself. The key is to produce an invalid pseudo-destructor call with a parameter pack expansion, which may crash the compiler during semantic analysis.

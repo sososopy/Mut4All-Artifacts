@@ -1,0 +1,1 @@
+static _X : uint = 0 as * const uint as uint ;

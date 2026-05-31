@@ -1,0 +1,1 @@
+fn bug () -> impl for < 'r > Fn () -> & 'r () { | | { & () } } fn main () { let f = bug () ; }

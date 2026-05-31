@@ -1,0 +1,1 @@
+use std :: fmt ; fn du () { println ! ("booo") ; } fn du2 () { println ! ("booo2") ; } struct Baonzo (fn ()) ; const PUM : Baonzo = Baonzo (du) ; fn main () { let fpx = Baonzo (du) ; match fpx { PUM => { println ! ("Here we are") ; } , _ => { } , } }

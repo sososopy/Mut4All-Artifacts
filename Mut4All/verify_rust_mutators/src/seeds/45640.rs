@@ -1,0 +1,1 @@
+# ! [feature (extern_types)] extern { pub type Foo ; }

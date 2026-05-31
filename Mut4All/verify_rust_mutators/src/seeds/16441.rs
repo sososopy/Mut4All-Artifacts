@@ -1,0 +1,1 @@
+# ! [crate_type = "lib"] # ! [no_std] struct Empty ; extern "C" fn ice (_a : Empty) { }

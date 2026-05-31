@@ -1,0 +1,1 @@
+fn main () { Float :: fract (0.5f32) ; }

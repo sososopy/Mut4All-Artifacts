@@ -1,0 +1,1 @@
+enum OptionalMsg { Value (int) , Error , } fn main () { let msg = Error ; match msg { Value { n } => println ! ("OK: {:d}" , n) , Error => println ! ("ERROR") , } }

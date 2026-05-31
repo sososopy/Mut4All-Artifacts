@@ -1,0 +1,1 @@
+use std :: fmt :: Show ; use std :: io :: PipeStream ; struct Program { stdin : PipeStream , } impl Program { fn send < T : Show > (& mut self , line : T) -> & mut Program { match writeln ! (self . stdin , "{}" , line) { Err (_) => panic ! () , Ok (_) => self , } } } fn main () { }

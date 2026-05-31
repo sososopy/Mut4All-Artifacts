@@ -1,0 +1,86 @@
+Mutation Operator: Lambda type inheritance override  
+Applies to: Classes that inherit from lambda types and override operator() with trailing return types.  
+
+Description: This mutation operator changes a derived class's definition of operator() to use a different parameter type list than the base lambda while retaining the inheritance and trailing return type structure. It creates a contradiction between the lambda's captured function signature and the overridden method's expected inputs. This may expose bugs related to lambda type handling within template inheritance.  
+
+Example (before mutation):  
+struct Base: Func {  
+    template<typename... Args>  
+    auto operator()(Args... args) -> decltype(Func::operator()(args...), void()) { ... }  
+}  
+
+Example (after mutation):  
+struct Base: Func {  
+    template<typename T, typename... Args>  
+    auto operator()(T t, Args... args) -> decltype(Func::operator()(args...), void()) { ... }  
+}  
+
+Changes:  
+- Adds an extraneous first parameter to the overridden operator().  
+- Maintains identical trailing return type and Func inheritance.  
+- Uses template parameters that already exist in the operator() declaration.  
+
+Mutation Operator: Template parameter aliasing  
+Applies to: Template parameters used to deduce lambda types within class templates.  
+
+Description: This mutation operator introduces a type alias within the template parameter list of a class template that inherits from a lambda type. The alias is used in place of the actual type, but the inheritance is left unchanged. This may confuse template type deduction, especially when combined with trailing return types.  
+
+Example (before mutation):  
+template<typename Func>  
+struct Base: Func { ... }  
+
+Example (after mutation):  
+template<typename Func>  
+using FuncAlias = Func;  
+template<typename Func>  
+struct Base: FuncAlias<Func> { ... }  
+
+Changes:  
+- Adds a type alias `FuncAlias` that references the original parameter `Func`.  
+- Replaces the direct inheritance from `Func` with inheritance from `FuncAlias<Func>`.  
+
+Mutation Operator: Inherited operator() call mismatch  
+Applies to: Derived classes that explicitly call a base class's operator() in the overridden version.  
+
+Description: This mutation operator modifies the call to the inherited operator() by intentionally providing a mismatched argument count or type. This exposes bugs in the compiler's handling of inherited function calls in templated lambda-based hierarchies.  
+
+Example (before mutation):  
+Func::operator()(args...);  
+
+Example (after mutation):  
+Func::operator()(args..., 0);  
+
+Changes:  
+- Adds an extra default value argument to the inherited call.  
+- Does not change the parameter list of the overridden function.  
+- Preserves the template-based argument deduction.  
+
+Mutation Operator: Empty trailing return type override  
+Applies to: Function overrides using `decltype(Func::operator()(...))` trailing return types.  
+
+Description: This mutation operator removes the expression inside the trailing return type, forcing the compiler to deduce the return type from an incomplete or empty expression context. This tests whether the compiler properly handles such expressions when inherited from lambda types.  
+
+Example (before mutation):  
+-> decltype(Func::operator()(args...), void())  
+
+Example (after mutation):  
+-> decltype((void)0)  
+
+Changes:  
+- Replaces the `Func::operator()(args...)` expression with a dummy null statement `void(0)`.  
+- Preserves the trailing return type syntax but removes the actual function call.  
+
+Mutation Operator: Lambda type substitution  
+Applies to: Use of `decltype` to capture lambda types for inheritance.  
+
+Description: This mutation operator replaces the lambda used to deduce a type with a different lambda having the same signature but potentially different capture semantics. This tests whether the compiler correctly handles inheritance from lambda types that are semantically equivalent but syntactically different.  
+
+Example (before mutation):  
+auto l = [](auto &&) {};
+
+Example (after mutation):  
+auto l = [](auto &&) { return 0; };
+
+Changes:  
+- Adds a return statement to the lambda without changing its parameter type or capture list.  
+- This ensures the lambda type is not identical to the original, potentially exposing inconsistencies in type-based inheritance.
