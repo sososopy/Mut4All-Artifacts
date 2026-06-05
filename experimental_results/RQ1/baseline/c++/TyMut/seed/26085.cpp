@@ -1,0 +1,2 @@
+
+enum struct Colour { grey };

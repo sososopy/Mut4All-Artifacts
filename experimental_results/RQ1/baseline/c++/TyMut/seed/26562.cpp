@@ -1,0 +1,17 @@
+
+template <typename T>
+struct QCachedT
+{
+  void operator delete(void *, T *) {}
+};
+template<int a>
+void exercise()
+{
+  struct thing_t
+    : QCachedT<thing_t>
+  {
+  };
+  thing_t *list[1];
+  new thing_t;
+}
+int main() { exercise<1>(); }

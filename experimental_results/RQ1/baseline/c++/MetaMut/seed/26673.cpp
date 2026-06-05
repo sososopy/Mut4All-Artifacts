@@ -1,0 +1,4 @@
+
+  enum {};
+  int main() {}
+

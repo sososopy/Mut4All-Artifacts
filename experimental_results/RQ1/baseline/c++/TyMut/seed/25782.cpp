@@ -1,0 +1,6 @@
+
+struct x
+{
+    operator class {} ();
+};
+

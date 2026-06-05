@@ -1,0 +1,2 @@
+inline auto var = [] (int) {};
+

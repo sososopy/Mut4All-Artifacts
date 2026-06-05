@@ -1,0 +1,2 @@
+
+_Complex float f = {{}};

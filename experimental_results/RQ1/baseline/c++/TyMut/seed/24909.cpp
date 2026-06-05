@@ -1,0 +1,27 @@
+struct Key1 {}; 
+
+template <int i>
+struct Item {};
+
+template <class... Ts>
+struct List {};
+
+template <class Key, class L>
+struct TemplatedClass {
+  template <class... Items>
+  TemplatedClass(Key, Items...);
+};
+
+template <class Key, class...Items>
+  requires(sizeof(Key) > 0 && (sizeof(Items) && ...))
+TemplatedClass(Key, Items...) -> TemplatedClass<Key, List<Items...>>;
+
+template <class T>
+struct HasTemplateParam {
+  template <class Key, class... Items>
+  using Alias = TemplatedClass<Key, List<Items...>>;
+};
+
+struct Mod1 : HasTemplateParam<Mod1> {
+  using Foo1 = decltype(Alias{Key1()});
+};

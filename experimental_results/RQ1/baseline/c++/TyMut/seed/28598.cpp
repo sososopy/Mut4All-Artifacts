@@ -1,0 +1,4 @@
+
+struct UnsignedArray {
+  int array[];
+};

@@ -1,0 +1,3 @@
+
+struct foo { foo::foo::foo::foo::foo::foo* bar; };
+

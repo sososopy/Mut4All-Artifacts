@@ -1,0 +1,8 @@
+
+template <typename T>
+struct CoordTraits
+{
+    static auto GetX(T const &p) { return 1; }
+};
+typedef CoordTraits<int> Traits;
+static constexpr auto GetX = Traits::GetX;

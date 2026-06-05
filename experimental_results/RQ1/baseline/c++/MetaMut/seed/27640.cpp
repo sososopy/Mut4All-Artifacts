@@ -1,0 +1,3 @@
+
+template <()> void A(auto){}
+

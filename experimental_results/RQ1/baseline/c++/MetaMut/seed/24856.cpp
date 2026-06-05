@@ -1,0 +1,12 @@
+template <template <typename> typename Iterator>
+struct K {};
+
+template <typename C, typename IteratorPolicy>
+class Foo {};
+
+template <typename C, template<typename> typename TTP>
+using Bar = Foo<C, K<TTP>>;
+
+void s() {
+   Bar(1);
+}
