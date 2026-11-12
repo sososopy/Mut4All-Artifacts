@@ -1,5 +1,5 @@
 //source file
-#include "../include/Modify_Structured_Binding_In_Lambda_Capture_46.h"
+#include "../include/modify_structured_binding_in_lambda_capture_46.h"
 
 // ========================================================================================================
 #define MUT46_OUTPUT 1

@@ -1,10 +1,10 @@
 //source file
-#include "../include/Alter_Whitespace_In_Expressions_19292.h"
+#include "../include/alter_whitespace_in_expressions_192.h"
 
 // ========================================================================================================
 #define MUT192_OUTPUT 1
 
-void MutatorFrontendAction_19292::Callback::run(const MatchFinder::MatchResult &Result) {
+void MutatorFrontendAction_192::Callback::run(const MatchFinder::MatchResult &Result) {
     //Check whether the matched AST node is the target node
     if (auto *BO = Result.Nodes.getNodeAs<clang::BinaryOperator>("binaryOp")) {
       //Filter nodes in header files
@@ -26,7 +26,7 @@ void MutatorFrontendAction_19292::Callback::run(const MatchFinder::MatchResult &
     }
 }
   
-void MutatorFrontendAction_19292::MutatorASTConsumer_19292::HandleTranslationUnit(ASTContext &Context) {
+void MutatorFrontendAction_192::MutatorASTConsumer_192::HandleTranslationUnit(ASTContext &Context) {
     MatchFinder matchFinder;
     //Define one or more ASTMatchers to identify the target AST node for mutation.
     auto matcher = binaryOperator(hasOperatorName("+"), hasOperatorName("-"),

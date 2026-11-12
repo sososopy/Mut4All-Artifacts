@@ -1,5 +1,5 @@
 //source file
-#include "../include/Enum_Type_Casting_In_Switch_Statements_427.h"
+#include "../include/enum_type_casting_in_switch_statements_427.h"
 
 // ========================================================================================================
 #define MUT427_OUTPUT 1

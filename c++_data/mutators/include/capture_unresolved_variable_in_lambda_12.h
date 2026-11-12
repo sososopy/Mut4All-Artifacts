@@ -3,16 +3,16 @@
 #include "Mutator_base.h"
 
 /**
- * Capture_Unresolved_Variable_In_Lambda_122
+ * Capture_Unresolved_Variable_In_Lambda_12
  */ 
-class MutatorFrontendAction_122 : public MutatorFrontendAction {
+class MutatorFrontendAction_12 : public MutatorFrontendAction {
 public:
     MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(12)
 
 private:
-    class MutatorASTConsumer_122 : public MutatorASTConsumer {
+    class MutatorASTConsumer_12 : public MutatorASTConsumer {
     public:
-        MutatorASTConsumer_122(Rewriter &R) : TheRewriter(R) {}
+        MutatorASTConsumer_12(Rewriter &R) : TheRewriter(R) {}
         void HandleTranslationUnit(ASTContext &Context) override;
     private:
         Rewriter &TheRewriter;

@@ -1,5 +1,5 @@
 //source file
-#include "../include/Invalid_Use_Of_Decltype_With_Generic_Lambda_246.h"
+#include "../include/invalid_use_of_decltype_with_generic_lambda_246.h"
 
 // ========================================================================================================
 #define MUT246_OUTPUT 1

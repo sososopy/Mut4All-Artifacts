@@ -1,5 +1,5 @@
 //source file
-#include "../include/Incomplete_Struct_Declaration_In_Template_363.h"
+#include "../include/incomplete_struct_declaration_in_template_363.h"
 
 // ========================================================================================================
 #define MUT363_OUTPUT 1

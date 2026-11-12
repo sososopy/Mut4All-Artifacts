@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_328.h"
+#include "../include/insert_invalid_function_declaration_inside_class_328.h"
 
 // ========================================================================================================
 #define MUT328_OUTPUT 1

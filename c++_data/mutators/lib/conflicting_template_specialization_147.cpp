@@ -1,10 +1,10 @@
 //source file
-#include "../include/conflicting_template_specialization_14747.h"
+#include "../include/conflicting_template_specialization_147.h"
 
 // ========================================================================================================
 #define MUT147_OUTPUT 1
 
-void MutatorFrontendAction_14747::Callback::run(const MatchFinder::MatchResult &Result) {
+void MutatorFrontendAction_147::Callback::run(const MatchFinder::MatchResult &Result) {
     if (auto *CT = Result.Nodes.getNodeAs<clang::ClassTemplateDecl>("ClassTemplate")) {
         if (!CT || !Result.Context->getSourceManager().isWrittenInMainFile(CT->getLocation()))
             return;
@@ -21,7 +21,7 @@ void MutatorFrontendAction_14747::Callback::run(const MatchFinder::MatchResult &
     }
 }
 
-void MutatorFrontendAction_14747::MutatorASTConsumer_14747::HandleTranslationUnit(ASTContext &Context) {
+void MutatorFrontendAction_147::MutatorASTConsumer_147::HandleTranslationUnit(ASTContext &Context) {
     MatchFinder matchFinder;
     DeclarationMatcher matcher = classTemplateDecl().bind("ClassTemplate");
     Callback callback(TheRewriter);

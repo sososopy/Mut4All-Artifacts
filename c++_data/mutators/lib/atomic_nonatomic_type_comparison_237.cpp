@@ -1,5 +1,5 @@
 //source file
-#include "../include/Atomic_NonAtomic_Type_Comparison_237.h"
+#include "../include/atomic_nonatomic_type_comparison_237.h"
 
 // ========================================================================================================
 #define MUT237_OUTPUT 1

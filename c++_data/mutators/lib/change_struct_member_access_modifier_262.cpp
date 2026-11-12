@@ -1,5 +1,5 @@
 //source file
-#include "../include/Change_Struct_Member_Access_Modifier_262.h"
+#include "../include/change_struct_member_access_modifier_262.h"
 
 // ========================================================================================================
 #define MUT262_OUTPUT 1

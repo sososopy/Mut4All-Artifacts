@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_Modify_Enum_Forward_Declaration_Base_Type_31.h"
+#include "../include/modify_enum_forward_declaration_base_type_31.h"
 
 // ========================================================================================================
 #define MUT31_OUTPUT 1

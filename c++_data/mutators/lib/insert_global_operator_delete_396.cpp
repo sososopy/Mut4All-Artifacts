@@ -1,5 +1,5 @@
 //source file
-#include "../include/Insert_Global_Operator_Delete_396.h"
+#include "../include/insert_global_operator_delete_396.h"
 
 // ========================================================================================================
 #define MUT396_OUTPUT 1

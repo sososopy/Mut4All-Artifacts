@@ -1,5 +1,5 @@
 //source file
-#include "../include/Restrict_Access_In_Template_Class_188.h"
+#include "../include/restrict_access_in_template_class_188.h"
 
 // ========================================================================================================
 #define MUT188_OUTPUT 1

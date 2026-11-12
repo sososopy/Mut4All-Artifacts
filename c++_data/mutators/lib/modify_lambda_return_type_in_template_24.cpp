@@ -1,5 +1,5 @@
 //source file
-#include "../include/Modify_Lambda_Return_Type_In_Template_24.h"
+#include "../include/modify_lambda_return_type_in_template_24.h"
 
 // ========================================================================================================
 #define MUT24_OUTPUT 1

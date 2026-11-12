@@ -1,10 +1,10 @@
 //source file
-#include "../include/Change_Reference_To_Non_Reference_15757.h"
+#include "../include/change_reference_to_non_reference_157.h"
 
 // ========================================================================================================
 #define MUT157_OUTPUT 1
 
-void MutatorFrontendAction_15757::Callback::run(const MatchFinder::MatchResult &Result) {
+void MutatorFrontendAction_157::Callback::run(const MatchFinder::MatchResult &Result) {
     //Check whether the matched AST node is the target node
     if (auto *Decl = Result.Nodes.getNodeAs<clang::VarDecl>("refVarDecl")) {
       //Filter nodes in header files
@@ -26,7 +26,7 @@ void MutatorFrontendAction_15757::Callback::run(const MatchFinder::MatchResult &
     }
 }
   
-void MutatorFrontendAction_15757::MutatorASTConsumer_15757::HandleTranslationUnit(ASTContext &Context) {
+void MutatorFrontendAction_157::MutatorASTConsumer_157::HandleTranslationUnit(ASTContext &Context) {
     MatchFinder matchFinder;
     //Define one or more ASTMatchers to identify the target AST node for mutation.
     DeclarationMatcher matcher = varDecl(hasType(references(qualType())), hasInitializer(expr())).bind("refVarDecl");

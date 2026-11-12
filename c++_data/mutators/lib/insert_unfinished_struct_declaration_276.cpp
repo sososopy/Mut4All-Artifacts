@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_276.h"
+#include "../include/insert_unfinished_struct_declaration_276.h"
 
 // ========================================================================================================
 #define MUT276_OUTPUT 1

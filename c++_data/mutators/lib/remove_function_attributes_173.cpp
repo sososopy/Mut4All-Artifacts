@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_Remove_Function_Attributes_173.h"
+#include "../include/remove_function_attributes_173.h"
 
 // ========================================================================================================
 #define MUT173_OUTPUT 1

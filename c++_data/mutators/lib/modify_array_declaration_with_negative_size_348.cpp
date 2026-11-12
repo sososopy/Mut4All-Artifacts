@@ -1,5 +1,5 @@
 //source file
-#include "../include/Modify_Array_Declaration_With_Negative_Size_348.h"
+#include "../include/modify_array_declaration_with_negative_size_348.h"
 
 // ========================================================================================================
 #define MUT348_OUTPUT 1

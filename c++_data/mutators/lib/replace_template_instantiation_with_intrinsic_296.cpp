@@ -1,5 +1,5 @@
 //source file
-#include "../include/Replace_Template_Instantiation_With_Intrinsic_296.h"
+#include "../include/replace_template_instantiation_with_intrinsic_296.h"
 
 // ========================================================================================================
 #define MUT296_OUTPUT 1

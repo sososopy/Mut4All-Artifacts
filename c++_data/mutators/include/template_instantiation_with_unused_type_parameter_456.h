@@ -5,14 +5,14 @@
 /**
  * Template_Instantiation_With_Unused_Type_Parameter_456
  */ 
-class MutatorFrontendAction_1 : public MutatorFrontendAction {
+class MutatorFrontendAction_456 : public MutatorFrontendAction {
 public:
-    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(1)
+    MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(456)
 
 private:
-    class MutatorASTConsumer_1 : public MutatorASTConsumer {
+    class MutatorASTConsumer_456 : public MutatorASTConsumer {
     public:
-        MutatorASTConsumer_1(Rewriter &R) : TheRewriter(R) {}
+        MutatorASTConsumer_456(Rewriter &R) : TheRewriter(R) {}
         void HandleTranslationUnit(ASTContext &Context) override;
     private:
         Rewriter &TheRewriter;

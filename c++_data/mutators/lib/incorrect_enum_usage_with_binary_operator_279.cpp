@@ -1,5 +1,5 @@
 //source file
-#include "../include/Incorrect_Enum_Usage_With_Binary_Operator_279.h"
+#include "../include/incorrect_enum_usage_with_binary_operator_279.h"
 
 // ========================================================================================================
 #define MUT279_OUTPUT 1

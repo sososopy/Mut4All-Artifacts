@@ -3,16 +3,16 @@
 #include "Mutator_base.h"
 
 /**
- * Alter_Whitespace_In_Expressions_19292
+ * Alter_Whitespace_In_Expressions_192
  */ 
-class MutatorFrontendAction_19292 : public MutatorFrontendAction {
+class MutatorFrontendAction_192 : public MutatorFrontendAction {
 public:
     MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(192)
 
 private:
-    class MutatorASTConsumer_19292 : public MutatorASTConsumer {
+    class MutatorASTConsumer_192 : public MutatorASTConsumer {
     public:
-        MutatorASTConsumer_19292(Rewriter &R) : TheRewriter(R) {}
+        MutatorASTConsumer_192(Rewriter &R) : TheRewriter(R) {}
         void HandleTranslationUnit(ASTContext &Context) override;
     private:
         Rewriter &TheRewriter;

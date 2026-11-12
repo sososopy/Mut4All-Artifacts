@@ -1,5 +1,5 @@
 //source file
-#include "../include/Implicit_Member_Initialization_In_Template_Struct_6.h"
+#include "../include/implicit_member_initialization_in_template_struct_6.h"
 
 // ========================================================================================================
 #define MUT6_OUTPUT 1

@@ -3,16 +3,16 @@
 #include "Mutator_base.h"
 
 /**
- * Conflicting_Template_Specialization_14747
+ * Conflicting_Template_Specialization_147
  */ 
-class MutatorFrontendAction_14747 : public MutatorFrontendAction {
+class MutatorFrontendAction_147 : public MutatorFrontendAction {
 public:
     MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(147)
 
 private:
-    class MutatorASTConsumer_14747 : public MutatorASTConsumer {
+    class MutatorASTConsumer_147 : public MutatorASTConsumer {
     public:
-        MutatorASTConsumer_14747(Rewriter &R) : TheRewriter(R) {}
+        MutatorASTConsumer_147(Rewriter &R) : TheRewriter(R) {}
         void HandleTranslationUnit(ASTContext &Context) override;
     private:
         Rewriter &TheRewriter;

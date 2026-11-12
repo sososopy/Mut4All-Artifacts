@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_359.h"
+#include "../include/inconsistent_template_typedef_and_struct_359.h"
 
 // ========================================================================================================
 #define MUT359_OUTPUT 1

@@ -1,5 +1,5 @@
 //source file
-#include "../include/Struct_With_Nested_Lambdas_345.h"
+#include "../include/struct_with_nested_lambdas_345.h"
 
 // ========================================================================================================
 #define MUT345_OUTPUT 1

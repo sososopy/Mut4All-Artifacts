@@ -3,16 +3,16 @@
 #include "Mutator_base.h"
 
 /**
- * Constrain_NonType_Template_Parameter_Pack_13535
+ * Constrain_NonType_Template_Parameter_Pack_135
  */ 
-class MutatorFrontendAction_13535 : public MutatorFrontendAction {
+class MutatorFrontendAction_135 : public MutatorFrontendAction {
 public:
     MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(135)
 
 private:
-    class MutatorASTConsumer_13535 : public MutatorASTConsumer {
+    class MutatorASTConsumer_135 : public MutatorASTConsumer {
     public:
-        MutatorASTConsumer_13535(Rewriter &R) : TheRewriter(R) {}
+        MutatorASTConsumer_135(Rewriter &R) : TheRewriter(R) {}
         void HandleTranslationUnit(ASTContext &Context) override;
     private:
         Rewriter &TheRewriter;

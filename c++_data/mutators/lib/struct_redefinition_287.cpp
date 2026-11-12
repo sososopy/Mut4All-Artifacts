@@ -1,5 +1,5 @@
 //source file
-#include "../include/Struct_Redefinition_287.h"
+#include "../include/struct_redefinition_287.h"
 
 // ========================================================================================================
 #define MUT287_OUTPUT 1

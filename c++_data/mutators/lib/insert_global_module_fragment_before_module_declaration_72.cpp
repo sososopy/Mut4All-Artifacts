@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_Insert_Global_Module_Fragment_Before_Module_Declaration_72.h"
+#include "../include/insert_global_module_fragment_before_module_declaration_72.h"
 
 // ========================================================================================================
 #define MUT72_OUTPUT 1

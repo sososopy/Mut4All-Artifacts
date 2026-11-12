@@ -1,5 +1,5 @@
 //source file
-#include "../include/Inline_Namespace_Manipulation_390.h"
+#include "../include/inline_namespace_manipulation_390.h"
 
 // ========================================================================================================
 #define MUT390_OUTPUT 1

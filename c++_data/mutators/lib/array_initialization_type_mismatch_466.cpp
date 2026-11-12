@@ -1,5 +1,5 @@
 //source file
-#include "../include/Array_Initialization_Type_Mismatch_466.h"
+#include "../include/array_initialization_type_mismatch_466.h"
 
 // ========================================================================================================
 #define MUT466_OUTPUT 1

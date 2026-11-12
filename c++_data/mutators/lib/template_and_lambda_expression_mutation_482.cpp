@@ -1,5 +1,5 @@
 //source file
-#include "../include/Template_And_Lambda_Expression_Mutation_482.h"
+#include "../include/template_and_lambda_expression_mutation_482.h"
 
 // ========================================================================================================
 #define MUT482_OUTPUT 1

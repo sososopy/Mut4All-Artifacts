@@ -1,5 +1,5 @@
 //source file
-#include "../include/Modify_Class_Member_To_Invalid_380.h"
+#include "../include/modify_class_member_to_invalid_380.h"
 
 // ========================================================================================================
 #define MUT380_OUTPUT 1

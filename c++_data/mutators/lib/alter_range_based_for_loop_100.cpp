@@ -1,10 +1,10 @@
 //source file
-#include "../include/Alter_Range_Based_For_Loop_10000.h"
+#include "../include/alter_range_based_for_loop_100.h"
 
 // ========================================================================================================
 #define MUT100_OUTPUT 1
 
-void MutatorFrontendAction_10000::Callback::run(const MatchFinder::MatchResult &Result) {
+void MutatorFrontendAction_100::Callback::run(const MatchFinder::MatchResult &Result) {
     if (auto *FL = Result.Nodes.getNodeAs<clang::CXXForRangeStmt>("ForLoop")) {
         if (!FL || !Result.Context->getSourceManager().isWrittenInMainFile(
                      FL->getForLoc()))
@@ -33,7 +33,7 @@ void MutatorFrontendAction_10000::Callback::run(const MatchFinder::MatchResult &
     }
 }
 
-void MutatorFrontendAction_10000::MutatorASTConsumer_10000::HandleTranslationUnit(ASTContext &Context) {
+void MutatorFrontendAction_100::MutatorASTConsumer_100::HandleTranslationUnit(ASTContext &Context) {
     MatchFinder matchFinder;
     StatementMatcher matcher = cxxForRangeStmt().bind("ForLoop");
     Callback callback(TheRewriter);

@@ -1,5 +1,5 @@
 //source file
-#include "../include/Enum_Usage_In_Struct_With_Using_Declaration_67.h"
+#include "../include/enum_usage_in_struct_with_using_declaration_67.h"
 
 // ========================================================================================================
 #define MUT67_OUTPUT 1

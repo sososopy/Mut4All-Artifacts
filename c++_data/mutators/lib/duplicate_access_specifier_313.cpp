@@ -1,5 +1,5 @@
 //source file
-#include "../include/Duplicate_Access_Specifier_313.h"
+#include "../include/duplicate_access_specifier_313.h"
 
 // ========================================================================================================
 #define MUT313_OUTPUT 1

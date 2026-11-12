@@ -1,5 +1,5 @@
 //source file
-#include "../include/Enum_Usage_Within_Structs_437.h"
+#include "../include/enum_usage_within_structs_437.h"
 
 // ========================================================================================================
 #define MUT437_OUTPUT 1

@@ -1,5 +1,5 @@
 //source file
-#include "../include/Anonymous_Struct_Usage_With_Alias_Template_371.h"
+#include "../include/anonymous_struct_usage_with_alias_template_371.h"
 
 // ========================================================================================================
 #define MUT371_OUTPUT 1

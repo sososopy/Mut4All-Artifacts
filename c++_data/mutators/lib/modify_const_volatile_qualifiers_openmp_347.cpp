@@ -1,5 +1,5 @@
 //source file
-#include "../include/Modify_Const_Volatile_Qualifiers_OpenMP_347.h"
+#include "../include/modify_const_volatile_qualifiers_openmp_347.h"
 
 // ========================================================================================================
 #define MUT347_OUTPUT 1

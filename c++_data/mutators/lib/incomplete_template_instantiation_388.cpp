@@ -1,5 +1,5 @@
 //source file
-#include "../include/Incomplete_Template_Instantiation_388.h"
+#include "../include/incomplete_template_instantiation_388.h"
 
 // ========================================================================================================
 #define MUT388_OUTPUT 1

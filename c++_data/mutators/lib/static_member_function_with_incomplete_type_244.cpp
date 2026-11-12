@@ -1,5 +1,5 @@
 //source file
-#include "../include/Static_Member_Function_With_Incomplete_Type_244.h"
+#include "../include/static_member_function_with_incomplete_type_244.h"
 
 // ========================================================================================================
 #define MUT244_OUTPUT 1

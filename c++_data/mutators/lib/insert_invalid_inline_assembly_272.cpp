@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_272.h"
+#include "../include/insert_invalid_inline_assembly_272.h"
 
 // ========================================================================================================
 #define MUT272_OUTPUT 1

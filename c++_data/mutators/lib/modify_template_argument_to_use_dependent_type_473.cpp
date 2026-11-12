@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_473.h"
+#include "../include/modify_template_argument_to_use_dependent_type_473.h"
 
 // ========================================================================================================
 #define MUT473_OUTPUT 1

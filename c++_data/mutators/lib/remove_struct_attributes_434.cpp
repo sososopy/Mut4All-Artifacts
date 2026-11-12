@@ -1,5 +1,5 @@
 //source file
-#include "../include/Mutator_434.h"
+#include "../include/remove_struct_attributes_434.h"
 
 // ========================================================================================================
 #define MUT434_OUTPUT 1

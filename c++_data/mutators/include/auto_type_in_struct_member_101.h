@@ -3,16 +3,16 @@
 #include "Mutator_base.h"
 
 /**
- * Auto_Type_In_Struct_Member_10101
+ * Auto_Type_In_Struct_Member_101
  */ 
-class MutatorFrontendAction_10101 : public MutatorFrontendAction {
+class MutatorFrontendAction_101 : public MutatorFrontendAction {
 public:
     MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(101)
 
 private:
-    class MutatorASTConsumer_10101 : public MutatorASTConsumer {
+    class MutatorASTConsumer_101 : public MutatorASTConsumer {
     public:
-        MutatorASTConsumer_10101(Rewriter &R) : TheRewriter(R) {}
+        MutatorASTConsumer_101(Rewriter &R) : TheRewriter(R) {}
         void HandleTranslationUnit(ASTContext &Context) override;
     private:
         Rewriter &TheRewriter;

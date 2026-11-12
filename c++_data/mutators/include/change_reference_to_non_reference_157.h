@@ -3,16 +3,16 @@
 #include "Mutator_base.h"
 
 /**
- * Change_Reference_To_Non_Reference_15757
+ * Change_Reference_To_Non_Reference_157
  */ 
-class MutatorFrontendAction_15757 : public MutatorFrontendAction {
+class MutatorFrontendAction_157 : public MutatorFrontendAction {
 public:
     MUTATOR_FRONTEND_ACTION_CREATE_ASTCONSUMER(157)
 
 private:
-    class MutatorASTConsumer_15757 : public MutatorASTConsumer {
+    class MutatorASTConsumer_157 : public MutatorASTConsumer {
     public:
-        MutatorASTConsumer_15757(Rewriter &R) : TheRewriter(R) {}
+        MutatorASTConsumer_157(Rewriter &R) : TheRewriter(R) {}
         void HandleTranslationUnit(ASTContext &Context) override;
     private:
         Rewriter &TheRewriter;

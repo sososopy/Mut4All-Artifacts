@@ -1,5 +1,5 @@
 //source file
-#include "../include/Negative_Array_Size_Declaration_350.h"
+#include "../include/negative_array_size_declaration_350.h"
 
 // ========================================================================================================
 #define MUT350_OUTPUT 1

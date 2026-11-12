@@ -1,5 +1,5 @@
 //source file
-#include "../include/Invalid_Type_Specification_In_Template_Classes_284.h"
+#include "../include/invalid_type_specification_in_template_classes_284.h"
 
 // ========================================================================================================
 #define MUT284_OUTPUT 1

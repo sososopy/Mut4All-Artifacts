@@ -1,10 +1,10 @@
 //source file
-#include "../include/Capture_Unresolved_Variable_In_Lambda_122.h"
+#include "../include/capture_unresolved_variable_in_lambda_12.h"
 
 // ========================================================================================================
 #define MUT12_OUTPUT 1
 
-void MutatorFrontendAction_122::Callback::run(const MatchFinder::MatchResult &Result) {
+void MutatorFrontendAction_12::Callback::run(const MatchFinder::MatchResult &Result) {
     if (auto *VD = Result.Nodes.getNodeAs<clang::VarDecl>("lambdaVar")) {
         if (!VD || !Result.Context->getSourceManager().isWrittenInMainFile(
                        VD->getLocation()))
@@ -33,7 +33,7 @@ void MutatorFrontendAction_122::Callback::run(const MatchFinder::MatchResult &Re
     }
 }
 
-void MutatorFrontendAction_122::MutatorASTConsumer_122::HandleTranslationUnit(ASTContext &Context) {
+void MutatorFrontendAction_12::MutatorASTConsumer_12::HandleTranslationUnit(ASTContext &Context) {
     MatchFinder matchFinder;
     auto matcher = varDecl(hasInitializer(lambdaExpr())).bind("lambdaVar");
     Callback callback(TheRewriter);

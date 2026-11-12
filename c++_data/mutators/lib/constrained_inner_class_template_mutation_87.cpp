@@ -1,5 +1,5 @@
 //source file
-#include "../include/Constrained_Inner_Class_Template_Mutation_87.h"
+#include "../include/constrained_inner_class_template_mutation_87.h"
 
 // ========================================================================================================
 #define MUT87_OUTPUT 1
